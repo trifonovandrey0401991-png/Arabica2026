@@ -1,0 +1,3691 @@
+[
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,Комсомольская 1 (На Площади)",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "с.Винсады,ул Подгорная 156д (На Выезде)",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Иноземцево , ул Гагарина 1",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск,ул Коллективная 26а",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,ул Пятигорская 19",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Ежевичный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwG5ok9QEIvHA_sMqayKTZ9USOkZCvwACufIxG97SmEhSqd-d8z4Q2gEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Вишневый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwHRok9RorrMa6NGheM-leEgfwgoa0AACvfIxG97SmEj_WiTlTXo1fAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Клубничный (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 Цитрусовый (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwHJok9Q-DQkoj5roRgL0jGIqLmqrIQACsvIxG97SmEjkp4KP8EJCYQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵 ЛаймМята (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwHBok9QkV1DwqPW0VO63otnRb-yxhQACtfIxG97SmEjtxtJspWFl1QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍵КлубничныйЦитрус (На Основе Чая)",
+    "price": "200",
+    "category": "Лимонад На Чае",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwGxok9PYuaDsbHqvfmanW1xE6el10gACu_IxG97SmEjESgJdUvEOcAEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹\"Классический\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Демис\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEelmRITK9gjBIeuWpjaaI4KEbGBA-AACstsxG8hQgElYvsbMkAINUQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Цветочный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEetmRITl7iJYuenhgUzbgnRuDkNqawACs9sxG8hQgEncmX0oNHeTNQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Витаминный циклон\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEfFmRIU5sQ1bmlMkKk9HiDZa7SAOaAACttsxG8hQgEkze9tD6kowagEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клюквенный\" 500мл",
+    "price": "220",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEfNmRIVUurqi7cjmUinBJxlq5unVuAACt9sxG8hQgEkKBVHIby_qWwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Санрайз\" 500мл",
+    "price": "170",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEe1mRIUAAfoOmHXIUloFit4T7lrO1yMAArTbMRvIUIBJDccaU5h4vRkBAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹\"Ежевика-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEedmRISUO8S0U_U74V8RnCaPvpxAeQACsdsxG8hQgEm9pU4KuNFtIwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Индивидуальный\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeVmRIRYr7HoYYrtIz24ZuE0eDxfuwACsNsxG8hQgEkE7Yji0RQCOAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Ягодный Бум\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeNmRIQGSHsrrqdX_H7WLhjjLA3wnwACr9sxG8hQgEnLqO3qWehcsgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Дыня-Малина\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF1WTX4DOWMh2H0_GczooUSHcdVeL2AAIYzzEbkv3ASuFOQxAum0x8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🍹\"Что-То Голубое\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEeFmRIPe5ynypl9rAXqCymH1ek3L_gACrtsxG8hQgElRG7zBZcGCYAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Пинаколада\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEd9mRIPEhByhkMAS-vDMj-j9_Mzv9AACrdsxG8hQgEkriYYJIrFHfAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Клубничный мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdtmRIOEy9UsnsdaYsvnz7Ikv_xz1gACq9sxG8hQgEncQ9UEFFGD5QEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Мохито\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEd1mRIOjjCHwNxkXxnsKH96U4lKHRwACrNsxG8hQgEmAsl8lw2ahPQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🍹\"Арбуз-Бабл Гам\" 500мл",
+    "price": "150",
+    "category": "Лимонады",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdlmRINbRO5B9QrZbI0AATy6Kg-nE20AAqrbMRvIUIBJuBK2Y6Wy2h0BAAMCAAN5AAM1BA"
+  },
+  {
+    "name": "🍹Цитрусовый Ревень",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwKhok9jLFtzcLTxvwJNxi8gYQgbAtQACAvIxGxZ0oUiKnp-x523C6QEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "🍹 Базилик Кофе",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEqwKZok9hmFcBtJ_6o29S926CCrr8oMwAD8jEbFnShSAZgrOrm-8lSAQADAgADeQADNgQ"
+  },
+  {
+    "name": "🧋Бананини Фрапучини",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋 Тропический Раф",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEkVQ9oTxEP9lG8SvsttnbhiL6yM34rCgACs_oxG9g7eUprEfL-hTvrrQEAAwIAA3gAAzYE"
+  },
+  {
+    "name": "🧋Айс Латте 1 эспрессо 500мл",
+    "price": "160",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Айс Латте 2 эспрессо 500мл",
+    "price": "180",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEdFmRH6jTyQz-oB3V6LhaG0sbs9E4wACptsxG8hQgEkBSxrUeLtZoQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 1 эспрессо  500мл",
+    "price": "200",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋Бамбл 2 эспрессо  500мл",
+    "price": "230",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEc9mRH5xyofyPjl56y9EmDDSrxzLlQACpdsxG8hQgEmoM8izmYUKnQEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🧋OREO 500мл",
+    "price": "280",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIGAAFk3TEa0T58pkvpt8XJO0jqjCN26wACiM8xG2Mw6Ep_MMntzRRwlwEAAwIAA3kAAzAE"
+  },
+  {
+    "name": "🧋Фраппе на молоке 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе на воде 500мл",
+    "price": "100",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Фраппе с мороженным 500мл",
+    "price": "150",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF8WTX41nwII3_-kA3eGYaHN5lOc4DAAIrzzEbkv3ASku71XNaJQe8AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🧋Урбеч-айс 500мл",
+    "price": "270",
+    "category": "Кофейные Холодные",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFwWTX3ykUrolMCquPmYHDqIFPlEEuAAIKzzEbkv3ASloGCttr9y-hAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Капучино 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFt2TX3pFQlAMad14ri70q7iGiW2S_AAIEzzEbkv3ASkCFZAxQqY8iAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Минадальный 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFvWTX3vbwTQlqco3e4Td37HcRZ2bJAAIIzzEbkv3ASgYkuHz8Z1vMAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино с Зефиром 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEIEddmRH-2UPCoE2O-x1JDaawmg4mKNAACqdsxG8hQgEmXIzsGIv7DpwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Латте 250мл",
+    "price": "100",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте 350мл",
+    "price": "130",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFuWTX3rIV93OpUC_qDoEcihONe1qOAAIGzzEbkv3ASghU4Vbra8kLAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Латте Арахисовый 350мл",
+    "price": "200",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEbaxFn2cQicA2agQABoLxjymTCczdPs8AAAg_wMRvdedBK36lDEO4BPj4BAAMCAAN5AAM2BA"
+  },
+  {
+    "name": "Латте Малиновый 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEbaxhn2cSPAuJ2J5ZOhjzt0FdNTlJ7dAACFPAxG9150Eqqsore1jBJfgEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф 250мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф 350мл",
+    "price": "220",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 250мл",
+    "price": "180",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Урбеч 350мл",
+    "price": "260",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFv2TX3wyvAqfQGMtupepbhcpg2q05AAIJzzEbkv3ASmgoKW8VSqcGAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Раф Нутелла 250мл",
+    "price": "210",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Раф Нутелла 350мл",
+    "price": "300",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAERNu1nPOj69VIn5AHxG20n0TEp-WWMDgACOuYxGyDc6EnL72lazQPvEQEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт 250мл",
+    "price": "120",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Флэт Уайт 350мл",
+    "price": "160",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFw2TX30wlVL2uWS6FnTeovzIVaz_HAAILzzEbkv3ASrUH14RxEOqmAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Американо 250мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Американо 350мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFr2TX3g_I444-MBnKPjuK6nkyegPfAAL8zjEbkv3ASgfMjFCFJHVkAQADAgADeAADMAQ"
+  },
+  {
+    "name": "Эспрессо 35мл",
+    "price": "80",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Эспрессо 70мл",
+    "price": "140",
+    "category": "Кофейные Горячие",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIFx2TX33-pfv8jP7X5IH4HhKGu73vcAAIQzzEbkv3ASlWcdgyRh07GAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Манго-Маракуйя 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvZmcSoXbKSgsgksSG2eQXzc8gIY2gACl98xG847iEtUaiBvPOK-zwEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Облепиховый Пунш 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvRmcSoBkBrN4dwyVg5aGQKYO-mC3gAClt8xG847iEu1jrzLSxP3ZAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Глинтвейн 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvhmcSoohCdp1C2ryyyNdlaX4o_kLwACmN8xG847iEuLbMoQLs0otgEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 250мл",
+    "price": "120",
+    "category": "Горячие Напитки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "Какао 350мл",
+    "price": "180",
+    "category": "Горячие Напитки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAEJQvpmcSo8bIM66Y5_-O12-_VFMOvHXwACmd8xG847iEtha2_zIrpnrAEAAwIAA3kAAzUE"
+  },
+  {
+    "name": "🥛\"Пломбир\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF5WTX4sgdXDNkZ_H3m6uCDWm7NkjbAAIlzzEbkv3ASuFAZgio8-jfAQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Клубника\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF52TX4ugZq4iDvGvmdv5oxZG9MKbOAAImzzEbkv3ASn48V_tQ3Qe7AQADAgADeQADMAQ"
+  },
+  {
+    "name": "🥛\"Шоколад\" 500мл",
+    "price": "150",
+    "category": "Молочный Коктейль",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAIF6WTX4vpTSA1KwZrxJSxVwUhr5riYAAInzzEbkv3ASn6jC-407GIJAQADAgADeQADMAQ"
+  },
+  {
+    "name": "Капучино Кокос-Апельсин 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBxpDupy7875COMlH_8rQbgbSzx6HAACkAtrGzB1eEgmiK1lEl5tKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте Дубайский 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBhpDuoRe56WUVTrgs5YsAjkccUy7wACjQtrGzB1eEhVpj3oMEpdHwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Латте с Печеньем 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBZpDunzqyNhepYcqcSjn00pzkA1FAACiwtrGzB1eEhCNTpssI7AKwEAAwIAA3kAAzYE"
+  },
+  {
+    "name": "Флэт Уайт (Шоколад - Мята) 350мл",
+    "price": "1",
+    "category": "Новинки",
+    "shop": "Ессентуки , ул пятигорская 149/1 (Золотушка)",
+    "photo_id": "AgACAgIAAxkBAAE2tBppDuor4xBTmepsD1jy8DGIRisq6AACjgtrGzB1eEhgHsKAPrAfLwEAAwIAA3kAAzYE"
+  }
+]

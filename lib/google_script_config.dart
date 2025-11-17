@@ -1,0 +1,2 @@
+const String googleScriptUrl = 'https://arabica26.ru';
+
