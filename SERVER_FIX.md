@@ -54,3 +54,5 @@ const SCRIPT_URL = "https://arabica26.ru/exec";
 
 Если видите ошибку про HTML, значит URL сервера неправильный или сервер не настроен для API.
 
+
+

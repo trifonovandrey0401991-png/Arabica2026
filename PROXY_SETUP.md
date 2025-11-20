@@ -115,3 +115,5 @@ Invoke-WebRequest -Uri "https://arabica26.ru?action=getClient&phone=%2B790012345
 
 Для работы в браузере Chrome может потребоваться прокси-сервер из-за ограничений CORS. Для мобильных приложений можно использовать прямой URL.
 
+
+

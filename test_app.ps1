@@ -83,3 +83,5 @@ Write-Host "  flutter run -d windows         # Запуск на Windows"
 Write-Host "  flutter run -d linux           # Запуск на Linux"
 Write-Host "  flutter run -d android         # Запуск на Android"
 
+
+

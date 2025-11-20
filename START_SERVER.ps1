@@ -70,3 +70,5 @@ Write-Host "Оставьте этот терминал открытым!" -Foreg
 Write-Host ""
 node index.js
 
+
+

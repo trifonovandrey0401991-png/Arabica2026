@@ -84,3 +84,5 @@ echo "  flutter run -d windows         # Запуск на Windows"
 echo "  flutter run -d linux           # Запуск на Linux"
 echo "  flutter run -d android         # Запуск на Android"
 
+
+
