@@ -40,7 +40,9 @@ class MenuPage extends StatefulWidget {
 class _MenuPageState extends State<MenuPage> {
   late Future<List<MenuItem>> _menuFuture;
   String _searchQuery = '';
-  String _selectedShop = 'Все магазины';
+  String? _selectedShop; // null означает, что магазин еще не выбран
+  bool _shopSelected = false;
+  bool _dialogShown = false; // Флаг, что диалог уже показывался
 
   @override
   void initState() {
@@ -71,7 +73,94 @@ class _MenuPageState extends State<MenuPage> {
     return searchTokens.every((token) => normalizedItem.contains(token));
   }
 
-  Widget _buildDialog(MenuItem item, String imagePath) {
+  Future<void> _showShopSelectionDialog() async {
+    if (_selectedShop != null) {
+      print('⚠️ Магазин уже выбран, пропускаем диалог');
+      return; // Уже выбран магазин
+    }
+    
+    print('🔍 Показываем диалог выбора магазина');
+    
+    try {
+      final menuData = await _menuFuture;
+      final shops = <String>{'Все магазины', ...menuData.map((e) => e.shop)}.toList()
+        ..sort((a, b) {
+          if (a == 'Все магазины') return -1;
+          if (b == 'Все магазины') return 1;
+          return a.compareTo(b);
+        });
+
+      if (!mounted) {
+        print('⚠️ Виджет не mounted, пропускаем диалог');
+        return;
+      }
+      
+      print('✅ Список магазинов: ${shops.length}');
+    
+    final selected = await showDialog<String>(
+      context: context,
+      barrierDismissible: false, // Нельзя закрыть без выбора
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Выберите магазин',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: shops.length,
+            itemBuilder: (context, index) {
+              final shop = shops[index];
+              return ListTile(
+                leading: Icon(
+                  shop == 'Все магазины' 
+                    ? Icons.store_mall_directory 
+                    : Icons.store,
+                  color: const Color(0xFF004D40),
+                ),
+                title: Text(
+                  shop,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                onTap: () => Navigator.pop(context, shop),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                tileColor: Colors.grey[50],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+      if (selected != null && mounted) {
+        print('✅ Выбран магазин: $selected');
+        setState(() {
+          _selectedShop = selected;
+          _shopSelected = true;
+        });
+      } else if (selected == null && mounted) {
+        // Если магазин не выбран, возвращаемся назад
+        print('⚠️ Магазин не выбран, возвращаемся назад');
+        setState(() {
+          _dialogShown = false; // Сбрасываем флаг, чтобы можно было попробовать снова
+        });
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      print('❌ Ошибка при показе диалога: $e');
+      if (mounted) {
+        setState(() {
+          _dialogShown = false; // Сбрасываем флаг при ошибке
+        });
+      }
+    }
+  }
+
+  Widget _buildItemDialog(MenuItem item, String imagePath) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       title: Text(item.name),
@@ -116,6 +205,7 @@ class _MenuPageState extends State<MenuPage> {
   @override
   Widget build(BuildContext context) {
     print("📌 Категория: ${widget.selectedCategory}");
+    print("🔍 Состояние: _selectedShop=$_selectedShop, _dialogShown=$_dialogShown, _shopSelected=$_shopSelected");
 
     return Scaffold(
       appBar: AppBar(
@@ -126,7 +216,49 @@ class _MenuPageState extends State<MenuPage> {
         future: _menuFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Загрузка меню...'),
+                ],
+              ),
+            );
+          }
+
+          // Если магазин не выбран, показываем диалог и ждем выбора
+          if (_selectedShop == null) {
+            print("⚠️ Магазин не выбран, проверяем диалог. _dialogShown=$_dialogShown");
+            // Показываем диалог только один раз
+            if (!_dialogShown) {
+              print("✅ Показываем диалог через Future.microtask");
+              _dialogShown = true;
+              // Используем Future.microtask для показа диалога после build
+              Future.microtask(() {
+                print("🔄 Future.microtask выполнен, mounted=$mounted, _selectedShop=$_selectedShop");
+                if (mounted && _selectedShop == null) {
+                  print("🚀 Вызываем _showShopSelectionDialog()");
+                  _showShopSelectionDialog();
+                } else {
+                  print("❌ Не вызываем диалог: mounted=$mounted, _selectedShop=$_selectedShop");
+                }
+              });
+            } else {
+              print("⚠️ Диалог уже показывался, пропускаем");
+            }
+            
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Выберите магазин...'),
+                ],
+              ),
+            );
           }
 
           final all = snapshot.data!;
@@ -139,7 +271,18 @@ class _MenuPageState extends State<MenuPage> {
             return byName && byShop && byCategory;
           }).toList();
 
-          final categories = filtered.map((e) => e.category).toSet().toList()
+          // Удаляем дубликаты по имени напитка (оставляем первое вхождение)
+          final seenNames = <String>{};
+          final uniqueFiltered = filtered.where((item) {
+            final normalizedName = item.name.trim().toLowerCase();
+            if (seenNames.contains(normalizedName)) {
+              return false;
+            }
+            seenNames.add(normalizedName);
+            return true;
+          }).toList();
+
+          final categories = uniqueFiltered.map((e) => e.category).toSet().toList()
             ..sort();
 
           return Column(
@@ -165,16 +308,18 @@ class _MenuPageState extends State<MenuPage> {
                     ),
                     const SizedBox(width: 10),
                     Flexible(
-                      child: DropdownButton<String>(
-                        value: _selectedShop,
-                        isExpanded: true,
-                        items: shops
-                            .map((s) => DropdownMenuItem(
-                                  value: s,
-                                  child: Text(s, overflow: TextOverflow.ellipsis),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedShop = v!),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showShopSelectionDialog(),
+                        icon: const Icon(Icons.store, size: 20),
+                        label: Text(
+                          _selectedShop ?? 'Выберите магазин',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004D40),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
                       ),
                     ),
                   ],
@@ -186,14 +331,14 @@ class _MenuPageState extends State<MenuPage> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "Найдено напитков: ${filtered.length}",
+                    "Найдено напитков: ${uniqueFiltered.length}",
                     style: const TextStyle(color: Colors.black54),
                   ),
                 ),
               ),
 
               Expanded(
-                child: filtered.isEmpty
+                child: uniqueFiltered.isEmpty
                     ? const Center(child: Text("Нет напитков 😕"))
                     : ListView.builder(
                         padding: const EdgeInsets.all(8),
@@ -201,7 +346,7 @@ class _MenuPageState extends State<MenuPage> {
                         itemBuilder: (context, index) {
                           final category = categories[index];
                           final itemsOfCategory =
-                              filtered.where((e) => e.category == category).toList();
+                              uniqueFiltered.where((e) => e.category == category).toList();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +382,7 @@ class _MenuPageState extends State<MenuPage> {
                                     onTap: () => showDialog(
                                       context: context,
                                       builder: (_) =>
-                                          _buildDialog(item, imagePath),
+                                          _buildItemDialog(item, imagePath),
                                     ),
                                     child: Container(
                                       decoration: BoxDecoration(
