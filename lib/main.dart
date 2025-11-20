@@ -5,6 +5,8 @@ import 'registration_page.dart';
 import 'cart_provider.dart';
 import 'order_provider.dart';
 import 'notification_service.dart';
+import 'loyalty_service.dart';
+import 'loyalty_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,32 +83,122 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
   Future<void> _checkRegistration() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final registered = prefs.getBool('is_registered') ?? false;
+      final savedPhone = prefs.getString('user_phone');
+      final savedName = prefs.getString('user_name');
+      final isRegistered = prefs.getBool('is_registered') ?? false;
       
-      setState(() {
-        _isRegistered = registered;
-        _isLoading = false;
-      });
+      // Сначала проверяем локальные данные (мгновенно)
+      if (savedPhone != null && savedPhone.isNotEmpty && 
+          savedName != null && savedName.isNotEmpty && isRegistered) {
+        // Есть локальные данные - сразу показываем приветствие
+        if (mounted) {
+          setState(() {
+            _isRegistered = true;
+            _isLoading = false;
+          });
 
-      if (registered && mounted) {
-        // Пользователь зарегистрирован, переходим в приложение
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => Builder(
-                builder: (context) {
-                  NotificationService.setGlobalContext(context);
-                  return const MainMenuPage();
-                },
-              ),
-            ),
-          );
+          // Пользователь зарегистрирован, переходим в приложение
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => Builder(
+                    builder: (context) {
+                      NotificationService.setGlobalContext(context);
+                      return const MainMenuPage();
+                    },
+                  ),
+                ),
+              );
+            }
+          });
+        }
+        
+        // В фоне проверяем актуальность данных через API
+        _verifyRegistrationInBackground(savedPhone);
+        return;
+      }
+      
+      // Если есть только телефон, проверяем через API
+      if (savedPhone != null && savedPhone.isNotEmpty) {
+        try {
+          // Проверяем, существует ли пользователь в базе
+          final loyaltyInfo = await LoyaltyService.fetchByPhone(savedPhone);
+          
+          // Пользователь найден в базе, обновляем данные
+          await prefs.setBool('is_registered', true);
+          await prefs.setString('user_name', loyaltyInfo.name);
+          await prefs.setString('user_phone', loyaltyInfo.phone);
+          await LoyaltyStorage.save(loyaltyInfo);
+          
+          if (mounted) {
+            setState(() {
+              _isRegistered = true;
+              _isLoading = false;
+            });
+
+            // Пользователь зарегистрирован, переходим в приложение
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => Builder(
+                      builder: (context) {
+                        NotificationService.setGlobalContext(context);
+                        return const MainMenuPage();
+                      },
+                    ),
+                  ),
+                );
+              }
+            });
+          }
+          return;
+        } catch (e) {
+          // Пользователь не найден в базе или сервер недоступен
+          // Очищаем данные и показываем регистрацию
+          // ignore: avoid_print
+          print('⚠️ Пользователь не найден или сервер недоступен: $e');
+          await prefs.remove('is_registered');
+          await prefs.remove('user_name');
+          await prefs.remove('user_phone');
+        }
+      }
+      
+      // Пользователь не зарегистрирован или не найден в базе
+      if (mounted) {
+        setState(() {
+          _isRegistered = false;
+          _isLoading = false;
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      // ignore: avoid_print
+      print('❌ Ошибка при проверке регистрации: $e');
+      if (mounted) {
+        setState(() {
+          _isRegistered = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Проверка регистрации в фоне (без блокировки UI)
+  Future<void> _verifyRegistrationInBackground(String phone) async {
+    try {
+      final loyaltyInfo = await LoyaltyService.fetchByPhone(phone);
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Обновляем данные в фоне
+      await prefs.setBool('is_registered', true);
+      await prefs.setString('user_name', loyaltyInfo.name);
+      await prefs.setString('user_phone', loyaltyInfo.phone);
+      await LoyaltyStorage.save(loyaltyInfo);
+    } catch (e) {
+      // Игнорируем ошибки в фоновой проверке
+      // ignore: avoid_print
+      print('⚠️ Фоновая проверка регистрации не удалась: $e');
     }
   }
 

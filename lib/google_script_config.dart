@@ -1,2 +1,1 @@
-const String googleScriptUrl = 'https://arabica26.ru';
-
+const String googleScriptUrl = 'http://127.0.0.1:3000';

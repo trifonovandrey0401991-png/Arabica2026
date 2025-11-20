@@ -47,8 +47,23 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Ошибка при обработке QR-кода';
+        final errorString = e.toString().toLowerCase();
+        
+        if (errorString.contains('не найден') || 
+            errorString.contains('not found') ||
+            errorString.contains('клиент не найден')) {
+          errorMessage = 'Клиент с таким QR-кодом не найден';
+        } else if (errorString.contains('failed to fetch') || 
+                   errorString.contains('connection') ||
+                   errorString.contains('network')) {
+          errorMessage = 'Ошибка подключения к серверу';
+        } else if (errorString.contains('timeout')) {
+          errorMessage = 'Превышено время ожидания';
+        }
+        
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = errorMessage;
           _client = null;
         });
       }
@@ -86,9 +101,30 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Ошибка при списании баллов';
+        final errorString = e.toString().toLowerCase();
+        
+        if (errorString.contains('failed to fetch') || 
+            errorString.contains('connection') ||
+            errorString.contains('network')) {
+          errorMessage = 'Ошибка подключения к серверу';
+        } else if (errorString.contains('timeout')) {
+          errorMessage = 'Превышено время ожидания';
+        } else if (errorString.contains('недостаточно') || 
+                   errorString.contains('not enough')) {
+          errorMessage = 'Недостаточно баллов для списания';
+        }
+        
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = errorMessage;
         });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) {

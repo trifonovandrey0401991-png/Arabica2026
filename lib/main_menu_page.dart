@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'menu_groups_page.dart';
 import 'cart_page.dart';
 import 'orders_page.dart';
@@ -11,16 +12,77 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'loyalty_page.dart';
 import 'loyalty_scanner_page.dart';
 
-class MainMenuPage extends StatelessWidget {
+class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
+
+  @override
+  State<MainMenuPage> createState() => _MainMenuPageState();
+}
+
+class _MainMenuPageState extends State<MainMenuPage> {
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('user_name');
+    if (mounted) {
+      setState(() {
+        _userName = name;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Арабика')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: GridView.count(
+      body: Column(
+        children: [
+          // Приветствие с именем
+          if (_userName != null && _userName!.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20.0),
+              decoration: BoxDecoration(
+                color: Colors.teal[50],
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.teal[200]!,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.waving_hand,
+                    color: Colors.teal[700],
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Привет, $_userName!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal[900],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // Сетка меню
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: GridView.count(
           crossAxisCount: 2,           // 2 кнопки в строке
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
@@ -90,9 +152,11 @@ class MainMenuPage extends StatelessWidget {
               );
             }),
             _tile(context, Icons.receipt_long, 'Отчёт о смене', () {}),
-          ],
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 

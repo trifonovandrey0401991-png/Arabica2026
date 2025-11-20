@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'registration_service.dart';
 import 'loyalty_storage.dart';
+import 'loyalty_service.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {
@@ -36,8 +37,46 @@ class _RegistrationPageState extends State<RegistrationPage> {
     try {
       final phone = '+7${_phoneController.text.trim()}';
       final name = _nameController.text.trim();
-      final qrCode = const Uuid().v4();
 
+      // Сначала проверяем, существует ли пользователь с таким номером
+      // ignore: avoid_print
+      print('🔍 Проверка существующего пользователя с номером: $phone');
+      try {
+        final existingUser = await LoyaltyService.fetchByPhone(phone);
+        
+        // Пользователь уже существует в базе
+        // ignore: avoid_print
+        print('✅ Пользователь найден: ${existingUser.name} (${existingUser.phone})');
+        
+        if (mounted) {
+          // Сохраняем данные существующего пользователя
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('is_registered', true);
+          await prefs.setString('user_name', existingUser.name);
+          await prefs.setString('user_phone', existingUser.phone);
+          await LoyaltyStorage.save(existingUser);
+
+          // Показываем сообщение и переходим в приложение
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Добро пожаловать обратно, ${existingUser.name}!'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Переходим в главное меню
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+        return;
+      } catch (e) {
+        // Пользователь не найден - продолжаем регистрацию
+        // ignore: avoid_print
+        print('⚠️ Пользователь не найден в базе, продолжаем регистрацию: $e');
+      }
+
+      // Регистрируем нового пользователя
+      final qrCode = const Uuid().v4();
       final loyaltyInfo = await RegistrationService.registerUser(
         name: name,
         phone: phone,
@@ -67,10 +106,26 @@ class _RegistrationPageState extends State<RegistrationPage> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Ошибка регистрации. Попробуйте еще раз.';
+        
+        // Более понятные сообщения об ошибках
+        final errorString = e.toString().toLowerCase();
+        if (errorString.contains('failed to fetch') || 
+            errorString.contains('connection') ||
+            errorString.contains('network')) {
+          errorMessage = 'Ошибка подключения к серверу. Проверьте интернет-соединение.';
+        } else if (errorString.contains('timeout')) {
+          errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
+        } else if (errorString.contains('не найден') || 
+                   errorString.contains('not found')) {
+          errorMessage = 'Сервер недоступен. Попробуйте позже.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

@@ -72,8 +72,25 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Не удалось обновить данные';
+        final errorString = e.toString().toLowerCase();
+        
+        if (errorString.contains('не найден') || 
+            errorString.contains('not found') ||
+            errorString.contains('клиент не найден')) {
+          errorMessage = 'Клиент не найден в базе данных';
+        } else if (errorString.contains('failed to fetch') || 
+                   errorString.contains('connection') ||
+                   errorString.contains('network')) {
+          errorMessage = 'Ошибка подключения к серверу. Проверьте интернет-соединение.';
+        } else if (errorString.contains('timeout')) {
+          errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
+        } else if (errorString.contains('ошибка сервера')) {
+          errorMessage = 'Сервер временно недоступен. Попробуйте позже.';
+        }
+        
         setState(() {
-          _error = 'Не удалось обновить данные: $e';
+          _error = errorMessage;
           _loading = false;
         });
       }

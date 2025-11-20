@@ -50,35 +50,74 @@ class LoyaltyService {
       'points': 0,
       'freeDrinks': 0,
     });
+    
+    // Если есть сообщение о том, что пользователь уже существует, это нормально
+    if (response['message'] != null) {
+      // ignore: avoid_print
+      print('ℹ️ ${response['message']}');
+    }
+    
     return LoyaltyInfo.fromJson(response['client']);
   }
 
   static Future<LoyaltyInfo> fetchByPhone(String phone) async {
-    final uri = Uri.parse(
-      '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(phone)}',
-    );
+    try {
+      final uri = Uri.parse(
+        '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(phone)}',
+      );
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 10));
-    final data = _decode(response.body);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка сервера: ${response.statusCode}');
+      }
+
+      final data = _decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
+      }
+
+      if (data['client'] == null) {
+        throw Exception('Клиент не найден в базе данных');
+      }
+
+      return LoyaltyInfo.fromJson(data['client']);
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Ошибка при получении данных клиента: $e');
     }
-
-    return LoyaltyInfo.fromJson(data['client']);
   }
 
   static Future<LoyaltyInfo> fetchByQr(String qr) async {
-    final uri = Uri.parse(
-      '$googleScriptUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
-    );
+    try {
+      final uri = Uri.parse(
+        '$googleScriptUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
+      );
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 10));
-    final data = _decode(response.body);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка сервера: ${response.statusCode}');
+      }
+
+      final data = _decode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
+      }
+
+      if (data['client'] == null) {
+        throw Exception('Клиент не найден в базе данных');
+      }
+
+      return LoyaltyInfo.fromJson(data['client']);
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Ошибка при получении данных клиента: $e');
     }
-
-    return LoyaltyInfo.fromJson(data['client']);
   }
 
   static Future<LoyaltyInfo> addPoint(String qr) async {
@@ -114,13 +153,20 @@ class LoyaltyService {
           )
           .timeout(const Duration(seconds: 10));
 
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка сервера: ${response.statusCode}');
+      }
+
       final data = _decode(response.body);
       if (data['success'] != true) {
         throw Exception(data['error'] ?? 'Произошла ошибка сервера');
       }
       return data;
     } catch (e) {
-      if (e.toString().contains('Invalid URL')) {
+      if (e is Exception && e.toString().contains('Invalid URL')) {
+        rethrow;
+      }
+      if (e is Exception) {
         rethrow;
       }
       throw Exception('Ошибка при отправке запроса: $e');
@@ -129,9 +175,19 @@ class LoyaltyService {
 
   static Map<String, dynamic> _decode(String raw) {
     try {
-      return jsonDecode(raw) as Map<String, dynamic>;
+      if (raw.isEmpty) {
+        throw Exception('Пустой ответ от сервера');
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception('Некорректный формат ответа сервера');
+      }
+      return decoded;
     } catch (e) {
-      throw Exception('Некорректный ответ сервера');
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Некорректный ответ сервера: $e');
     }
   }
 }
