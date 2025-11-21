@@ -124,94 +124,95 @@ class CartPage extends StatelessWidget {
                     },
                   ),
                 ),
-                // Итого и кнопка оформления
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Итого:',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+              ),
+              // Итого и кнопка оформления
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Итого:',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Text(
-                            '${cart.totalPrice.toStringAsFixed(0)} ₽',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF004D40),
-                            ),
+                        ),
+                        Text(
+                          '${cart.totalPrice.toStringAsFixed(0)} ₽',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF004D40),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                        SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Создаем заказ из корзины
-                            final orderProvider = OrderProvider.of(context);
-                            orderProvider.createOrder(
-                              cart.items,
-                              cart.totalPrice,
-                            );
-                            
-                            // Очищаем корзину
-                            cart.clear();
-                            
-                            // Переходим в меню заказов
-                            Navigator.of(context).pop(); // Закрываем корзину
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const OrdersPage(),
-                              ),
-                            );
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Заказ создан!'),
-                                backgroundColor: Color(0xFF004D40),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF004D40),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Создаем заказ из корзины
+                          final orderProvider = OrderProvider.of(context);
+                          orderProvider.createOrder(
+                            cart.items,
+                            cart.totalPrice,
+                          );
+                          
+                          // Очищаем корзину
+                          cart.clear();
+                          
+                          // Переходим в меню заказов
+                          Navigator.of(context).pop(); // Закрываем корзину
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const OrdersPage(),
                             ),
+                          );
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Заказ создан!'),
+                              backgroundColor: Color(0xFF004D40),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004D40),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
-                            'К заказу',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        ),
+                        child: const Text(
+                          'К заказу',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            );
+              ),
+            ],
+          );
         },
       ),
     );
