@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
 import 'cart_provider.dart';
 import 'shop_model.dart';
 
@@ -64,9 +65,81 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<List<MenuItem>> _loadMenu() async {
-    final jsonString = await rootBundle.loadString('assets/menu.json');
-    final List<dynamic> jsonData = json.decode(jsonString);
-    return jsonData.map((e) => MenuItem.fromJson(e)).toList();
+    try {
+      // Пробуем загрузить из Google Sheets
+      const sheetUrl =
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
+      
+      final response = await http.get(Uri.parse(sheetUrl));
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
+      }
+
+      final lines = const LineSplitter().convert(response.body);
+      final List<MenuItem> menuItems = [];
+      
+      // Парсим CSV, пропускаем заголовок (первая строка)
+      for (var i = 1; i < lines.length; i++) {
+        final row = Shop._parseCsvLine(lines[i]);
+        
+        // Столбцы: A=0 (название), B=1 (цена), C=2 (категория), D=3 (адрес магазина)
+        if (row.length >= 4) {
+          String name = row[0].trim().replaceAll('"', '').trim();
+          String price = row[1].trim().replaceAll('"', '').trim();
+          String category = row[2].trim().replaceAll('"', '').trim();
+          String shopAddress = row[3].trim().replaceAll('"', '').trim();
+          
+          // Пропускаем пустые строки и заголовки
+          if (name.isNotEmpty && 
+              name.toLowerCase() != 'название' &&
+              name.toLowerCase() != 'название напитка' &&
+              price.isNotEmpty &&
+              category.isNotEmpty &&
+              shopAddress.isNotEmpty) {
+            
+            // Генерируем photo_id из названия (можно улучшить, если есть столбец с фото)
+            String photoId = _generatePhotoId(name);
+            
+            menuItems.add(MenuItem(
+              name: name,
+              price: price,
+              category: category,
+              shop: shopAddress, // Используем адрес магазина из столбца D
+              photoId: photoId,
+            ));
+          }
+        }
+      }
+
+      print('✅ Загружено напитков из Google Sheets: ${menuItems.length}');
+      return menuItems;
+    } catch (e) {
+      print('⚠️ Ошибка загрузки меню из Google Sheets: $e');
+      print('Пробуем загрузить из menu.json...');
+      
+      // Fallback на JSON файл
+      try {
+        final jsonString = await rootBundle.loadString('assets/menu.json');
+        final List<dynamic> jsonData = json.decode(jsonString);
+        final items = jsonData.map((e) => MenuItem.fromJson(e)).toList();
+        print('✅ Загружено напитков из menu.json: ${items.length}');
+        return items;
+      } catch (jsonError) {
+        print('❌ Ошибка загрузки из menu.json: $jsonError');
+        return [];
+      }
+    }
+  }
+
+  /// Генерирует photo_id из названия напитка
+  String _generatePhotoId(String name) {
+    // Преобразуем название в нижний регистр, убираем спецсимволы
+    String id = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s]'), '')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .trim();
+    return id.isEmpty ? 'no_photo' : id;
   }
 
   String _normalizeCategory(String value) {
