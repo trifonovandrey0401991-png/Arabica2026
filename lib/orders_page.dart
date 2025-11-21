@@ -309,15 +309,15 @@ class OrdersPage extends StatelessWidget {
                                   fontSize: 14,
                                 ),
                               ),
-                              TextButton.icon(
+                              ElevatedButton.icon(
                                 onPressed: () {
-                                  _showCommentDialog(context, order);
+                                  _showCommentDialog(context, order, orderProvider);
                                 },
                                 icon: Icon(
                                   order.comment != null && order.comment!.isNotEmpty
                                       ? Icons.edit
                                       : Icons.add_comment,
-                                  size: 18,
+                                  size: 16,
                                 ),
                                 label: Text(
                                   order.comment != null && order.comment!.isNotEmpty
@@ -325,15 +325,19 @@ class OrdersPage extends StatelessWidget {
                                       : 'Добавить комментарий',
                                   style: const TextStyle(fontSize: 12),
                                 ),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF004D40),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF004D40),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           if (order.comment != null &&
                               order.comment!.isNotEmpty) ...[
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 8),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
@@ -347,7 +351,7 @@ class OrdersPage extends StatelessWidget {
                               ),
                             ),
                           ] else ...[
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 8),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
@@ -356,11 +360,11 @@ class OrdersPage extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: Colors.grey[300]!),
                               ),
-                              child: Text(
+                              child: const Text(
                                 'Комментарий не добавлен',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey[600],
+                                  color: Colors.grey,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
@@ -379,11 +383,14 @@ class OrdersPage extends StatelessWidget {
     );
   }
 
-  /// Диалог для ввода/редактирования комментария к заказу
-  void _showCommentDialog(BuildContext context, Order order) {
+  /// Диалог для ввода комментария к заказу
+  void _showCommentDialog(
+    BuildContext context,
+    Order order,
+    OrderProvider orderProvider,
+  ) {
     final TextEditingController controller =
         TextEditingController(text: order.comment ?? '');
-    final orderProvider = OrderProvider.of(context);
 
     showDialog(
       context: context,
@@ -409,17 +416,18 @@ class OrdersPage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final comment = controller.text.trim().isEmpty
-                  ? null
-                  : controller.text.trim();
-              orderProvider.updateOrderComment(order.id, comment);
+              final comment = controller.text.trim();
+              orderProvider.updateOrderComment(
+                order.id,
+                comment.isEmpty ? null : comment,
+              );
               Navigator.of(dialogContext).pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    comment == null
+                    comment.isEmpty
                         ? 'Комментарий удален'
-                        : 'Комментарий сохранен',
+                        : 'Комментарий добавлен',
                   ),
                   backgroundColor: const Color(0xFF004D40),
                   duration: const Duration(seconds: 2),
