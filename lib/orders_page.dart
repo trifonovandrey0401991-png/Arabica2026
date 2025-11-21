@@ -296,18 +296,43 @@ class OrdersPage extends StatelessWidget {
                                 ),
                               )),
                           // Комментарий
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Комментарий:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  _showCommentDialog(context, order);
+                                },
+                                icon: Icon(
+                                  order.comment != null && order.comment!.isNotEmpty
+                                      ? Icons.edit
+                                      : Icons.add_comment,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  order.comment != null && order.comment!.isNotEmpty
+                                      ? 'Изменить'
+                                      : 'Добавить комментарий',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF004D40),
+                                ),
+                              ),
+                            ],
+                          ),
                           if (order.comment != null &&
                               order.comment!.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Комментарий:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
                             const SizedBox(height: 4),
                             Container(
                               width: double.infinity,
@@ -321,6 +346,25 @@ class OrdersPage extends StatelessWidget {
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
+                          ] else ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Text(
+                                'Комментарий не добавлен',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -331,6 +375,63 @@ class OrdersPage extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  /// Диалог для ввода/редактирования комментария к заказу
+  void _showCommentDialog(BuildContext context, Order order) {
+    final TextEditingController controller =
+        TextEditingController(text: order.comment ?? '');
+    final orderProvider = OrderProvider.of(context);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        title: const Text('Комментарий к заказу'),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          decoration: InputDecoration(
+            hintText: 'Введите комментарий к заказу...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final comment = controller.text.trim().isEmpty
+                  ? null
+                  : controller.text.trim();
+              orderProvider.updateOrderComment(order.id, comment);
+              Navigator.of(dialogContext).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    comment == null
+                        ? 'Комментарий удален'
+                        : 'Комментарий сохранен',
+                  ),
+                  backgroundColor: const Color(0xFF004D40),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF004D40),
+            ),
+            child: const Text('Сохранить'),
+          ),
+        ],
       ),
     );
   }

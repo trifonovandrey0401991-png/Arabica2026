@@ -153,6 +153,26 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
+  /// Обновить комментарий к заказу
+  void updateOrderComment(String orderId, String? comment) {
+    final index = _orders.indexWhere((order) => order.id == orderId);
+    if (index >= 0) {
+      final order = _orders[index];
+      _orders[index] = Order(
+        id: order.id,
+        items: order.items,
+        totalPrice: order.totalPrice,
+        createdAt: order.createdAt,
+        comment: comment,
+        status: order.status,
+        acceptedBy: order.acceptedBy,
+        rejectedBy: order.rejectedBy,
+        rejectionReason: order.rejectionReason,
+      );
+      notifyListeners();
+    }
+  }
+
   /// Получить провайдер из контекста
   static OrderProvider of(BuildContext context) {
     final scope = context.findAncestorWidgetOfExactType<_OrderProviderScope>();

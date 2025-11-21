@@ -3,6 +3,7 @@ import 'cart_provider.dart';
 import 'order_provider.dart';
 import 'notification_service.dart';
 import 'employees_page.dart';
+import 'orders_page.dart';
 
 /// Страница корзины
 class CartPage extends StatelessWidget {
@@ -163,7 +164,32 @@ class CartPage extends StatelessWidget {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
-                            _showOrderDialog(context, cart);
+                            // Создаем заказ из корзины
+                            final orderProvider = OrderProvider.of(context);
+                            orderProvider.createOrder(
+                              cart.items,
+                              cart.totalPrice,
+                            );
+                            
+                            // Очищаем корзину
+                            cart.clear();
+                            
+                            // Переходим в меню заказов
+                            Navigator.of(context).pop(); // Закрываем корзину
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const OrdersPage(),
+                              ),
+                            );
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Заказ создан!'),
+                                backgroundColor: Color(0xFF004D40),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF004D40),
@@ -173,7 +199,7 @@ class CartPage extends StatelessWidget {
                             ),
                           ),
                           child: const Text(
-                            'Оформить заказ',
+                            'К заказу',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -187,190 +213,6 @@ class CartPage extends StatelessWidget {
               ],
             );
         },
-      ),
-    );
-  }
-
-  /// Диалог оформления заказа
-  void _showOrderDialog(BuildContext context, CartProvider cart) {
-    final orderProvider = OrderProvider.of(context);
-    String? comment;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (builderContext, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: const Text(
-            'Оформление заказа',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Кнопка "Комментарий к заказу"
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    _showCommentDialog(builderContext, comment, (newComment) {
-                      setState(() {
-                        comment = newComment;
-                      });
-                    });
-                  },
-                  icon: const Icon(Icons.comment_outlined),
-                  label: Text(
-                    comment == null || comment!.isEmpty
-                        ? 'Указать комментарий'
-                        : 'Изменить комментарий',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[200],
-                    foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-              if (comment != null && comment!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          comment!,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              // Кнопка "Заказать"
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    orderProvider.createOrder(
-                      cart.items,
-                      cart.totalPrice,
-                      comment: comment,
-                    );
-                    
-                    // Получаем последний созданный заказ
-                    final newOrder = orderProvider.orders.first;
-                    
-                    // Отправляем уведомления сотрудникам
-                    try {
-                      // Загружаем список сотрудников
-                      final employees = await EmployeesPage.loadEmployeesForNotifications();
-                      await NotificationService.notifyNewOrder(
-                        context,
-                        newOrder,
-                        employees,
-                      );
-                    } catch (e) {
-                      // ignore: avoid_print
-                      print("Ошибка отправки уведомлений: $e");
-                      // Все равно отправляем базовое уведомление
-                      await NotificationService.notifyNewOrder(
-                        context,
-                        newOrder,
-                        [],
-                      );
-                    }
-                    
-                    cart.clear();
-                    Navigator.of(dialogContext).pop();
-                    Navigator.of(context).pop(); // Закрываем корзину
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Заказ успешно оформлен!'),
-                        backgroundColor: Color(0xFF004D40),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Заказать',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Диалог для ввода комментария
-  void _showCommentDialog(
-    BuildContext context,
-    String? initialComment,
-    Function(String?) onSave,
-  ) {
-    final TextEditingController controller =
-        TextEditingController(text: initialComment ?? '');
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: const Text('Комментарий к заказу'),
-        content: TextField(
-          controller: controller,
-          maxLines: 5,
-          decoration: InputDecoration(
-            hintText: 'Введите комментарий к заказу...',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onSave(controller.text.trim().isEmpty ? null : controller.text.trim());
-              Navigator.of(dialogContext).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-            ),
-            child: const Text('Готово'),
-          ),
-        ],
       ),
     );
   }
