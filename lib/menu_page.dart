@@ -79,36 +79,54 @@ class _MenuPageState extends State<MenuPage> {
       final List<MenuItem> menuItems = [];
       
       // Парсим CSV, пропускаем заголовок (первая строка)
+      final Set<String> seenAddresses = {}; // Для отладки
+      
       for (var i = 1; i < lines.length; i++) {
-        final row = Shop.parseCsvLine(lines[i]);
-        
-        // Столбцы: A=0 (название), B=1 (цена), C=2 (категория), D=3 (адрес магазина)
-        if (row.length >= 4) {
-          String name = row[0].trim().replaceAll('"', '').trim();
-          String price = row[1].trim().replaceAll('"', '').trim();
-          String category = row[2].trim().replaceAll('"', '').trim();
-          String shopAddress = row[3].trim().replaceAll('"', '').trim();
+        try {
+          final row = Shop.parseCsvLine(lines[i]);
           
-          // Пропускаем пустые строки и заголовки
-          if (name.isNotEmpty && 
-              name.toLowerCase() != 'название' &&
-              name.toLowerCase() != 'название напитка' &&
-              price.isNotEmpty &&
-              category.isNotEmpty &&
-              shopAddress.isNotEmpty) {
+          // Столбцы: A=0 (название), B=1 (цена), C=2 (категория), D=3 (адрес магазина)
+          if (row.length >= 4) {
+            String name = row[0].trim().replaceAll('"', '').trim();
+            String price = row[1].trim().replaceAll('"', '').trim();
+            String category = row[2].trim().replaceAll('"', '').trim();
+            String shopAddress = row[3].trim().replaceAll('"', '').trim();
             
-            // Генерируем photo_id из названия (можно улучшить, если есть столбец с фото)
-            String photoId = _generatePhotoId(name);
+            // Отслеживаем уникальные адреса для отладки
+            if (shopAddress.isNotEmpty) {
+              seenAddresses.add(shopAddress);
+            }
             
-            menuItems.add(MenuItem(
-              name: name,
-              price: price,
-              category: category,
-              shop: shopAddress, // Используем адрес магазина из столбца D
-              photoId: photoId,
-            ));
+            // Пропускаем пустые строки и заголовки
+            if (name.isNotEmpty && 
+                name.toLowerCase() != 'название' &&
+                name.toLowerCase() != 'название напитка' &&
+                price.isNotEmpty &&
+                category.isNotEmpty &&
+                shopAddress.isNotEmpty) {
+              
+              // Генерируем photo_id из названия (можно улучшить, если есть столбец с фото)
+              String photoId = _generatePhotoId(name);
+              
+              menuItems.add(MenuItem(
+                name: name,
+                price: price,
+                category: category,
+                shop: shopAddress, // Используем адрес магазина из столбца D
+                photoId: photoId,
+              ));
+            }
+          } else if (i <= 5) {
+            print('⚠️ Строка $i меню: недостаточно колонок (${row.length} < 4)');
           }
+        } catch (e) {
+          print('❌ Ошибка парсинга строки $i меню: $e');
         }
+      }
+      
+      print('📊 Уникальных адресов в меню: ${seenAddresses.length}');
+      for (var addr in seenAddresses) {
+        print('  - $addr');
       }
 
       print('✅ Загружено напитков из Google Sheets: ${menuItems.length}');
