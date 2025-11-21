@@ -239,5 +239,3 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return categoriesList;
   }
 }
-
-}
