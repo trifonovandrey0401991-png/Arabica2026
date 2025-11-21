@@ -29,9 +29,11 @@ class Shop {
   /// Загрузить список магазинов из Google Sheets (столбец D)
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     try {
+      // Используем URL с указанием диапазона до 800 строки
       const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню&range=A1:D800';
       
+      print('📥 Загружаем данные из Google Sheets (диапазон A1:D800)...');
       final response = await http.get(Uri.parse(sheetUrl));
       if (response.statusCode != 200) {
         throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
@@ -40,11 +42,20 @@ class Shop {
       final lines = const LineSplitter().convert(response.body);
       final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
       
-      print('📊 Всего строк в CSV: ${lines.length}');
+      print('📊 Всего строк получено из CSV: ${lines.length}');
       
       // Обрабатываем до 800 строки (индекс 0-799, но пропускаем заголовок, так что 1-800)
-      final maxRows = lines.length > 800 ? 800 : lines.length;
-      print('📊 Обрабатываем строки с 1 по $maxRows');
+      // Если пришло меньше строк, обрабатываем все
+      final maxRows = lines.length;
+      final targetRows = 800;
+      print('📊 Обрабатываем строки с 1 по ${maxRows > targetRows ? targetRows : maxRows} (целевое: $targetRows)');
+      
+      // Если пришло меньше 800 строк, это может означать, что Google Sheets не возвращает пустые строки
+      if (maxRows < targetRows) {
+        print('⚠️ Внимание: получено только $maxRows строк вместо $targetRows');
+        print('   Google Sheets CSV может не возвращать пустые строки');
+        print('   Попробуем альтернативный способ загрузки...');
+      }
       
       int processedRows = 0;
       int emptyRows = 0;
@@ -52,7 +63,9 @@ class Shop {
       int validAddresses = 0;
       
       // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
-      for (var i = 1; i < maxRows; i++) {
+      // Обрабатываем все строки, которые пришли, но не более 800
+      final rowsToProcess = maxRows > targetRows ? targetRows : maxRows;
+      for (var i = 1; i < rowsToProcess; i++) {
         try {
           // Правильный парсинг CSV с учетом кавычек
           final row = parseCsvLine(lines[i]);
