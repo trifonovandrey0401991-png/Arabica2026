@@ -3,6 +3,7 @@ import 'cart_provider.dart';
 import 'order_provider.dart';
 import 'notification_service.dart';
 import 'employees_page.dart';
+import 'orders_page.dart';
 
 /// Страница корзины
 class CartPage extends StatelessWidget {
