@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'cart_provider.dart';
+import 'shop_model.dart';
 
 class MenuItem {
   final String name;
@@ -41,12 +42,23 @@ class MenuPage extends StatefulWidget {
 class _MenuPageState extends State<MenuPage> {
   late Future<List<MenuItem>> _menuFuture;
   String _searchQuery = '';
-  String _selectedShop = 'Все магазины';
+  String? _selectedShop; // null означает, что магазин еще не выбран
+  bool _shopDialogShown = false;
 
   @override
   void initState() {
     super.initState();
     _menuFuture = _loadMenu();
+    // Показываем диалог выбора магазина после загрузки меню
+    _menuFuture.then((_) {
+      if (mounted && _selectedShop == null && !_shopDialogShown) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted && _selectedShop == null) {
+            _showShopSelectionDialog();
+          }
+        });
+      }
+    });
   }
 
   Future<List<MenuItem>> _loadMenu() async {
@@ -70,6 +82,111 @@ class _MenuPageState extends State<MenuPage> {
 
     final searchTokens = normalizedSelected.split(' ');
     return searchTokens.every((token) => normalizedItem.contains(token));
+  }
+
+  /// Показать диалог выбора магазина
+  Future<void> _showShopSelectionDialog() async {
+    if (_selectedShop != null) {
+      return; // Магазин уже выбран
+    }
+
+    if (_shopDialogShown) {
+      return; // Диалог уже показывался
+    }
+
+    _shopDialogShown = true;
+
+    final shops = Shop.getShops();
+
+    if (!mounted) return;
+
+    final selected = await showDialog<Shop>(
+      context: context,
+      barrierDismissible: false, // Нельзя закрыть без выбора
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Выберите магазин',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF004D40),
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.85,
+            ),
+            itemCount: shops.length,
+            itemBuilder: (context, index) {
+              final shop = shops[index];
+              return GestureDetector(
+                onTap: () => Navigator.pop(context, shop),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF004D40),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        shop.icon,
+                        size: 40,
+                        color: const Color(0xFF004D40),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          shop.address,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF004D40),
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    if (selected != null && mounted) {
+      setState(() {
+        _selectedShop = selected.name;
+      });
+    } else if (selected == null && mounted) {
+      // Если магазин не выбран, возвращаемся назад
+      Navigator.pop(context);
+    }
   }
 
   Widget _buildDialog(MenuItem item, String imagePath) {
@@ -140,7 +257,37 @@ class _MenuPageState extends State<MenuPage> {
         future: _menuFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Загрузка меню...'),
+                ],
+              ),
+            );
+          }
+
+          // Если магазин не выбран, показываем диалог и ждем выбора
+          if (_selectedShop == null) {
+            if (!_shopDialogShown) {
+              Future.microtask(() {
+                if (mounted && _selectedShop == null) {
+                  _showShopSelectionDialog();
+                }
+              });
+            }
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Выберите магазин...'),
+                ],
+              ),
+            );
           }
 
           final all = snapshot.data!;
@@ -179,16 +326,18 @@ class _MenuPageState extends State<MenuPage> {
                     ),
                     const SizedBox(width: 10),
                     Flexible(
-                      child: DropdownButton<String>(
-                        value: _selectedShop,
-                        isExpanded: true,
-                        items: shops
-                            .map((s) => DropdownMenuItem(
-                                  value: s,
-                                  child: Text(s, overflow: TextOverflow.ellipsis),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedShop = v!),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showShopSelectionDialog(),
+                        icon: const Icon(Icons.store, size: 20),
+                        label: Text(
+                          _selectedShop ?? 'Выберите магазин',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004D40),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
                       ),
                     ),
                   ],
