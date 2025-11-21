@@ -239,4 +239,5 @@ class _MainMenuPageState extends State<MainMenuPage> {
     print("📋 Загружено категорий из Google Sheets: ${categoriesList.length}");
     return categoriesList;
   }
+  }
 }
