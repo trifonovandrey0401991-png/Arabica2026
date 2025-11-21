@@ -38,61 +38,102 @@ class Shop {
       }
 
       final lines = const LineSplitter().convert(response.body);
-      final Set<String> uniqueAddresses = {};
+      final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
       
-      // Парсим CSV, столбец D - это индекс 3
+      // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
       for (var i = 1; i < lines.length; i++) {
         // Правильный парсинг CSV с учетом кавычек
         final row = _parseCsvLine(lines[i]);
         if (row.length > 3) {
           String address = row[3].trim().replaceAll('"', '').trim();
-          if (address.isNotEmpty && address != 'Адрес') {
-            uniqueAddresses.add(address);
+          
+          // Пропускаем пустые адреса и заголовки
+          if (address.isNotEmpty && 
+              address.toLowerCase() != 'адрес' && 
+              address.toLowerCase() != 'address' &&
+              !address.toLowerCase().startsWith('столбец')) {
+            // Нормализуем адрес для сравнения (убираем лишние пробелы)
+            String normalizedAddress = address.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+            
+            // Сохраняем оригинальный адрес (первое вхождение)
+            if (!uniqueAddresses.containsKey(normalizedAddress)) {
+              uniqueAddresses[normalizedAddress] = address;
+            }
           }
         }
       }
 
+      print('📋 Найдено уникальных адресов: ${uniqueAddresses.length}');
+      for (var addr in uniqueAddresses.values) {
+        print('  - $addr');
+      }
+
       // Создаем список магазинов из уникальных адресов
       final shops = <Shop>[];
-      for (var address in uniqueAddresses) {
-        // Извлекаем название магазина из адреса или используем адрес как название
+      int shopIndex = 0;
+      final icons = [
+        Icons.store,
+        Icons.store_mall_directory,
+        Icons.local_cafe,
+        Icons.coffee,
+        Icons.restaurant,
+        Icons.shopping_bag,
+        Icons.bakery_dining,
+        Icons.local_dining,
+      ];
+
+      for (var address in uniqueAddresses.values) {
+        // Извлекаем название магазина из адреса
         String shopName = _extractShopName(address);
         shops.add(Shop(
           name: shopName,
-          address: address,
-          icon: _getIconForShop(shopName),
+          address: address, // Используем оригинальный адрес
+          icon: shopIndex < icons.length ? icons[shopIndex] : Icons.store,
         ));
+        shopIndex++;
       }
 
-      // Сортируем по названию
-      shops.sort((a, b) => a.name.compareTo(b.name));
+      // Сортируем по адресу
+      shops.sort((a, b) => a.address.compareTo(b.address));
 
+      print('✅ Загружено магазинов: ${shops.length}');
       return shops;
     } catch (e) {
       print('⚠️ Ошибка загрузки магазинов из Google Sheets: $e');
+      print('Stack trace: ${StackTrace.current}');
       // Возвращаем список по умолчанию при ошибке
       return _getDefaultShops();
     }
   }
 
-  /// Парсинг CSV строки с учетом кавычек
+  /// Парсинг CSV строки с учетом кавычек и запятых внутри кавычек
   static List<String> _parseCsvLine(String line) {
     final List<String> result = [];
-    String current = '';
+    StringBuffer current = StringBuffer();
     bool inQuotes = false;
 
     for (int i = 0; i < line.length; i++) {
       final char = line[i];
+      
       if (char == '"') {
-        inQuotes = !inQuotes;
+        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
+          // Двойная кавычка внутри кавычек - экранированная кавычка
+          current.write('"');
+          i++; // Пропускаем следующую кавычку
+        } else {
+          // Обычная кавычка - переключаем режим
+          inQuotes = !inQuotes;
+        }
       } else if (char == ',' && !inQuotes) {
-        result.add(current);
-        current = '';
+        // Запятая вне кавычек - разделитель полей
+        result.add(current.toString());
+        current.clear();
       } else {
-        current += char;
+        current.write(char);
       }
     }
-    result.add(current);
+    // Добавляем последнее поле
+    result.add(current.toString());
     return result;
   }
 
