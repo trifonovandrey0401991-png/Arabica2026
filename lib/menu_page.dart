@@ -41,6 +41,7 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> {
   late Future<List<MenuItem>> _menuFuture;
+  late Future<List<Shop>> _shopsFuture;
   String _searchQuery = '';
   String? _selectedShop; // null означает, что магазин еще не выбран
   bool _shopDialogShown = false;
@@ -49,8 +50,9 @@ class _MenuPageState extends State<MenuPage> {
   void initState() {
     super.initState();
     _menuFuture = _loadMenu();
-    // Показываем диалог выбора магазина после загрузки меню
-    _menuFuture.then((_) {
+    _shopsFuture = Shop.loadShopsFromGoogleSheets();
+    // Показываем диалог выбора магазина после загрузки меню и магазинов
+    Future.wait([_menuFuture, _shopsFuture]).then((_) {
       if (mounted && _selectedShop == null && !_shopDialogShown) {
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted && _selectedShop == null) {
@@ -96,7 +98,8 @@ class _MenuPageState extends State<MenuPage> {
 
     _shopDialogShown = true;
 
-    final shops = Shop.getShops();
+    // Загружаем магазины из Google Sheets
+    final shops = await _shopsFuture;
 
     if (!mounted) return;
 
