@@ -43,7 +43,7 @@ class Shop {
       // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
       for (var i = 1; i < lines.length; i++) {
         // Правильный парсинг CSV с учетом кавычек
-        final row = _parseCsvLine(lines[i]);
+        final row = parseCsvLine(lines[i]);
         if (row.length > 3) {
           String address = row[3].trim().replaceAll('"', '').trim();
           
@@ -107,7 +107,7 @@ class Shop {
   }
 
   /// Парсинг CSV строки с учетом кавычек и запятых внутри кавычек
-  static List<String> _parseCsvLine(String line) {
+  static List<String> parseCsvLine(String line) {
     final List<String> result = [];
     StringBuffer current = StringBuffer();
     bool inQuotes = false;

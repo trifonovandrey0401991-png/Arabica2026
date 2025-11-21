@@ -80,7 +80,7 @@ class _MenuPageState extends State<MenuPage> {
       
       // Парсим CSV, пропускаем заголовок (первая строка)
       for (var i = 1; i < lines.length; i++) {
-        final row = Shop._parseCsvLine(lines[i]);
+        final row = Shop.parseCsvLine(lines[i]);
         
         // Столбцы: A=0 (название), B=1 (цена), C=2 (категория), D=3 (адрес магазина)
         if (row.length >= 4) {
