@@ -26,61 +26,64 @@ class Shop {
     return Icons.store; // По умолчанию
   }
 
-  /// Загрузить список магазинов из Google Sheets (столбец D)
+  /// Загрузить список магазинов из Google Sheets (столбец D) используя Google Sheets API
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     try {
-      // Используем URL с указанием диапазона до 800 строки
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню&range=A1:D800';
+      const spreadsheetId = '1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU';
+      const sheetName = 'Меню';
+      const range = 'D1:D800'; // Столбец D, строки 1-800
       
-      print('📥 Загружаем данные из Google Sheets (диапазон A1:D800)...');
-      final response = await http.get(Uri.parse(sheetUrl));
+      // Используем Google Sheets API v4 (публичный доступ)
+      final apiUrl = Uri.parse(
+        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$sheetName!$range'
+      );
+      
+      print('📥 Загружаем данные из Google Sheets API (диапазон D1:D800)...');
+      print('   URL: $apiUrl');
+      
+      final response = await http.get(apiUrl);
       if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
+        print('❌ Ошибка API: ${response.statusCode}');
+        print('   Ответ: ${response.body}');
+        throw Exception('Ошибка загрузки данных из Google Sheets API: ${response.statusCode}');
       }
 
-      final lines = const LineSplitter().convert(response.body);
-      final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
+      final jsonData = json.decode(response.body) as Map<String, dynamic>;
+      final values = jsonData['values'] as List<dynamic>?;
       
-      print('📊 Всего строк получено из CSV: ${lines.length}');
-      
-      // Обрабатываем до 800 строки (индекс 0-799, но пропускаем заголовок, так что 1-800)
-      // Если пришло меньше строк, обрабатываем все
-      final maxRows = lines.length;
-      final targetRows = 800;
-      print('📊 Обрабатываем строки с 1 по ${maxRows > targetRows ? targetRows : maxRows} (целевое: $targetRows)');
-      
-      // Если пришло меньше 800 строк, это может означать, что Google Sheets не возвращает пустые строки
-      if (maxRows < targetRows) {
-        print('⚠️ Внимание: получено только $maxRows строк вместо $targetRows');
-        print('   Google Sheets CSV может не возвращать пустые строки');
-        print('   Попробуем альтернативный способ загрузки...');
+      if (values == null || values.isEmpty) {
+        throw Exception('Нет данных в ответе API');
       }
+
+      print('📊 Всего строк получено из API: ${values.length}');
+      
+      final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
       
       int processedRows = 0;
       int emptyRows = 0;
       int headerRows = 0;
       int validAddresses = 0;
+      final targetRows = 800;
       
-      // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
-      // Обрабатываем все строки, которые пришли, но не более 800
-      final rowsToProcess = maxRows > targetRows ? targetRows : maxRows;
-      for (var i = 1; i < rowsToProcess; i++) {
+      // Обрабатываем все строки до 800
+      final rowsToProcess = values.length > targetRows ? targetRows : values.length;
+      print('📊 Обрабатываем строки с 1 по $rowsToProcess (целевое: $targetRows)');
+      
+      for (var i = 0; i < rowsToProcess; i++) {
         try {
-          // Правильный парсинг CSV с учетом кавычек
-          final row = parseCsvLine(lines[i]);
+          final row = values[i] as List<dynamic>?;
           processedRows++;
           
           // Логируем первые несколько строк для отладки
-          if (i <= 10) {
-            print('📝 Строка $i: колонок = ${row.length}');
-            if (row.length > 3) {
-              print('   [D] = "${row[3]}"');
+          if (i < 10) {
+            print('📝 Строка ${i + 1}: колонок = ${row?.length ?? 0}');
+            if (row != null && row.isNotEmpty) {
+              print('   [D] = "${row[0]}"');
             }
           }
           
-          if (row.length > 3) {
-            String address = row[3].trim().replaceAll('"', '').trim();
+          if (row != null && row.isNotEmpty) {
+            String address = (row[0] ?? '').toString().trim();
             
             // Проверяем, является ли это заголовком
             if (address.toLowerCase() == 'адрес' || 
@@ -88,8 +91,8 @@ class Shop {
                 address.toLowerCase() == 'd' ||
                 address.toLowerCase().startsWith('столбец')) {
               headerRows++;
-              if (i <= 10) {
-                print('⚠️ Строка $i: заголовок - "$address"');
+              if (i < 10) {
+                print('⚠️ Строка ${i + 1}: заголовок - "$address"');
               }
               continue;
             }
@@ -97,8 +100,8 @@ class Shop {
             // Обрабатываем все адреса, включая пустые (для статистики)
             if (address.isEmpty) {
               emptyRows++;
-              if (i <= 10) {
-                print('⚠️ Строка $i: пустой адрес');
+              if (i < 10) {
+                print('⚠️ Строка ${i + 1}: пустой адрес');
               }
             } else {
               validAddresses++;
@@ -109,19 +112,20 @@ class Shop {
               // Сохраняем оригинальный адрес (первое вхождение)
               if (!uniqueAddresses.containsKey(normalizedAddress)) {
                 uniqueAddresses[normalizedAddress] = address;
-                print('✅ Строка $i: добавлен адрес "$address"');
+                print('✅ Строка ${i + 1}: добавлен адрес "$address"');
               } else {
                 // Логируем дубликаты
-                print('⚠️ Строка $i: дубликат адреса "$address" (уже есть: "${uniqueAddresses[normalizedAddress]}")');
+                print('⚠️ Строка ${i + 1}: дубликат адреса "$address" (уже есть: "${uniqueAddresses[normalizedAddress]}")');
               }
             }
           } else {
-            if (i <= 10) {
-              print('⚠️ Строка $i: недостаточно колонок (${row.length} < 4)');
+            emptyRows++;
+            if (i < 10) {
+              print('⚠️ Строка ${i + 1}: пустая строка');
             }
           }
         } catch (e) {
-          print('❌ Ошибка парсинга строки $i: $e');
+          print('❌ Ошибка обработки строки ${i + 1}: $e');
         }
       }
       
