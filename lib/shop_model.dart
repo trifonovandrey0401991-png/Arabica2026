@@ -32,37 +32,64 @@ class Shop {
       const sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
       
+      print('📥 Загружаем адреса магазинов из Google Sheets...');
+      print('   URL: $sheetUrl');
+      
       final response = await http.get(Uri.parse(sheetUrl));
       if (response.statusCode != 200) {
+        print('❌ Ошибка загрузки: ${response.statusCode}');
         throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
       }
 
       final lines = const LineSplitter().convert(response.body);
+      print('📊 Всего строк получено из CSV: ${lines.length}');
+      
       final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
+      int processedRows = 0;
+      int emptyRows = 0;
+      int validAddresses = 0;
       
       // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
       for (var i = 1; i < lines.length; i++) {
-        // Правильный парсинг CSV с учетом кавычек
-        final row = _parseCsvLine(lines[i]);
-        if (row.length > 3) {
-          String address = row[3].trim().replaceAll('"', '').trim();
+        try {
+          // Правильный парсинг CSV с учетом кавычек
+          final row = _parseCsvLine(lines[i]);
+          processedRows++;
           
-          // Пропускаем пустые адреса и заголовки
-          if (address.isNotEmpty && 
-              address.toLowerCase() != 'адрес' && 
-              address.toLowerCase() != 'address' &&
-              !address.toLowerCase().startsWith('столбец')) {
-            // Нормализуем адрес для сравнения (убираем лишние пробелы)
-            String normalizedAddress = address.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+          if (row.length > 3) {
+            String address = row[3].trim().replaceAll('"', '').trim();
             
-            // Сохраняем оригинальный адрес (первое вхождение)
-            if (!uniqueAddresses.containsKey(normalizedAddress)) {
-              uniqueAddresses[normalizedAddress] = address;
+            // Пропускаем пустые адреса и заголовки
+            if (address.isEmpty) {
+              emptyRows++;
+            } else if (address.toLowerCase() != 'адрес' && 
+                       address.toLowerCase() != 'address' &&
+                       !address.toLowerCase().startsWith('столбец')) {
+              validAddresses++;
+              
+              // Нормализуем адрес для сравнения (убираем лишние пробелы)
+              String normalizedAddress = address.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+              
+              // Сохраняем оригинальный адрес (первое вхождение)
+              if (!uniqueAddresses.containsKey(normalizedAddress)) {
+                uniqueAddresses[normalizedAddress] = address;
+                print('✅ Строка $i: добавлен новый адрес "$address"');
+              }
             }
+          } else if (i <= 10) {
+            print('⚠️ Строка $i: недостаточно колонок (${row.length} < 4)');
           }
+        } catch (e) {
+          print('❌ Ошибка парсинга строки $i: $e');
         }
       }
 
+      print('📊 Статистика обработки:');
+      print('   Обработано строк: $processedRows');
+      print('   Пустых адресов: $emptyRows');
+      print('   Валидных адресов: $validAddresses');
+      print('   Уникальных адресов: ${uniqueAddresses.length}');
+      
       print('📋 Найдено уникальных адресов: ${uniqueAddresses.length}');
       for (var addr in uniqueAddresses.values) {
         print('  - $addr');
