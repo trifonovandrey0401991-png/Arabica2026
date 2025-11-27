@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'loyalty_page.dart';
 import 'loyalty_scanner_page.dart';
+import 'shop_model.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -89,13 +90,22 @@ class _MainMenuPageState extends State<MainMenuPage> {
           childAspectRatio: 1,         // делает плитки квадратными
           children: [
             _tile(context, Icons.local_cafe, 'Меню', () async {
-  // при нажатии сначала загружаем все напитки, чтобы получить список категорий
-  final categories = await _loadCategories(context);
+  // Сначала показываем диалог выбора магазина
+  final shop = await _showShopSelectionDialog(context);
+  if (!context.mounted || shop == null) return;
+  
+  // После выбора магазина загружаем категории для этого магазина
+  final categories = await _loadCategoriesForShop(context, shop.address);
   if (!context.mounted) return;
+  
+  // Открываем страницу категорий с выбранным магазином
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => MenuGroupsPage(groups: categories),
+      builder: (context) => MenuGroupsPage(
+        groups: categories,
+        selectedShop: shop.address,
+      ),
     ),
   );
 }),
