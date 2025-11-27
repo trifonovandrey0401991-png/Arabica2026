@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'cart_provider.dart';
+import 'cart_page.dart';
 
 class MenuItem {
   final String name;
@@ -169,162 +170,224 @@ class _MenuPageState extends State<MenuPage> {
           final categories = filtered.map((e) => e.category).toSet().toList()
             ..sort();
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Поиск напитка...',
-                          prefixIcon: const Icon(Icons.search),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+          return ListenableBuilder(
+            listenable: CartProvider.of(context),
+            builder: (context, _) {
+              final cart = CartProvider.of(context);
+              final hasItems = !cart.isEmpty;
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Поиск напитка...',
+                              prefixIcon: const Icon(Icons.search),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (v) => setState(() => _searchQuery = v),
                           ),
                         ),
-                        onChanged: (v) => setState(() => _searchQuery = v),
+                      ],
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Найдено напитков: ${filtered.length}",
+                        style: const TextStyle(color: Colors.black54),
                       ),
                     ),
-                  ],
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.only(left: 12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Найдено напитков: ${filtered.length}",
-                    style: const TextStyle(color: Colors.black54),
                   ),
-                ),
-              ),
 
-              Expanded(
-                child: filtered.isEmpty
-                    ? const Center(child: Text("Нет напитков 😕"))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final category = categories[index];
-                          final itemsOfCategory =
-                              filtered.where((e) => e.category == category).toList();
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text("Нет напитков 😕"))
+                        : ListView.builder(
+                            padding: EdgeInsets.only(
+                              left: 8,
+                              right: 8,
+                              top: 8,
+                              bottom: hasItems ? 80 : 8, // Отступ снизу для кнопки
+                            ),
+                            itemCount: categories.length,
+                            itemBuilder: (context, index) {
+                              final category = categories[index];
+                              final itemsOfCategory =
+                                  filtered.where((e) => e.category == category).toList();
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 14),
-                              Text(
-                                category,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF004D40),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 14,
-                                  mainAxisSpacing: 14,
-                                  childAspectRatio: 0.72,
-                                ),
-                                itemCount: itemsOfCategory.length,
-                                itemBuilder: (context, i) {
-                                  final item = itemsOfCategory[i];
-                                  final imagePath =
-                                      'assets/images/${item.photoId}.jpg';
-
-                                  return GestureDetector(
-                                    onTap: () => showDialog(
-                                      context: context,
-                                      builder: (_) =>
-                                          _buildDialog(item, imagePath),
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    category,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF004D40),
                                     ),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(18),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.08),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Expanded(
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  const BorderRadius.vertical(
-                                                top: Radius.circular(18),
+                                  ),
+                                  const SizedBox(height: 8),
+
+                                  GridView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    gridDelegate:
+                                        const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 2,
+                                      crossAxisSpacing: 14,
+                                      mainAxisSpacing: 14,
+                                      childAspectRatio: 0.72,
+                                    ),
+                                    itemCount: itemsOfCategory.length,
+                                    itemBuilder: (context, i) {
+                                      final item = itemsOfCategory[i];
+                                      final imagePath =
+                                          'assets/images/${item.photoId}.jpg';
+
+                                      return GestureDetector(
+                                        onTap: () => showDialog(
+                                          context: context,
+                                          builder: (_) =>
+                                              _buildDialog(item, imagePath),
+                                        ),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(18),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.08),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
                                               ),
-                                              child: Image.asset(
-                                                imagePath,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) =>
-                                                    Image.asset(
-                                                  'assets/images/no_photo.png',
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            ),
+                                            ],
                                           ),
-                                          Padding(
-                                            padding: const EdgeInsets.all(10),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item.name,
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.w600,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Expanded(
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      const BorderRadius.vertical(
+                                                    top: Radius.circular(18),
+                                                  ),
+                                                  child: Image.asset(
+                                                    imagePath,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) =>
+                                                        Image.asset(
+                                                      'assets/images/no_photo.png',
+                                                      fit: BoxFit.cover,
+                                                    ),
                                                   ),
                                                 ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  "${item.price} ₽",
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF00695C),
-                                                  ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.all(10),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      item.name,
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      "${item.price} ₽",
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Color(0xFF00695C),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          );
-                        },
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                  ),
+
+                  // Кнопка "К заказу" внизу экрана
+                  if (hasItems)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
                       ),
-              ),
-            ],
+                      child: SafeArea(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CartPage(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.shopping_cart, size: 24),
+                            label: Text(
+                              'К заказу (${cart.itemCount})',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004D40),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                                horizontal: 24,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           );
         },
       ),
