@@ -29,13 +29,24 @@ class Shop {
   /// Загрузить список магазинов из Google Sheets (столбец D) используя CSV экспорт
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     try {
-      // Используем CSV экспорт (не требует API ключа)
-      const sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
+      // Используем CSV экспорт с явным указанием диапазона для получения всех строк
+      // Пробуем несколько вариантов URL для надежности
+      String sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню&range=D1:D800';
       
-      print('📥 Загружаем данные из Google Sheets (CSV экспорт)...');
+      print('📥 Загружаем данные из Google Sheets (CSV экспорт с диапазоном D1:D800)...');
       print('   URL: $sheetUrl');
       
-      final response = await http.get(Uri.parse(sheetUrl));
+      var response = await http.get(Uri.parse(sheetUrl));
+      
+      // Если не получилось с диапазоном, пробуем без него, но с запросом только столбца D
+      if (response.statusCode != 200 || response.body.isEmpty) {
+        print('⚠️ Первый вариант не сработал, пробуем альтернативный...');
+        // Используем Google Visualization API Query Language для запроса только столбца D
+        sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&tq=SELECT%20D&sheet=Меню';
+        print('   Альтернативный URL: $sheetUrl');
+        response = await http.get(Uri.parse(sheetUrl));
+      }
+      
       if (response.statusCode != 200) {
         print('❌ Ошибка загрузки: ${response.statusCode}');
         print('   Ответ: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
@@ -45,84 +56,127 @@ class Shop {
       final lines = const LineSplitter().convert(response.body);
       print('📊 Всего строк получено из CSV: ${lines.length}');
       
-      final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
-      
-      int processedRows = 0;
-      int emptyRows = 0;
-      int headerRows = 0;
-      int validAddresses = 0;
-      
-      // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
-      // Пропускаем заголовок (первая строка) и обрабатываем все остальные строки
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          final row = parseCsvLine(lines[i]);
-          processedRows++;
-          
-          // Логируем первые несколько строк для отладки
-          if (i <= 10) {
-            print('📝 Строка $i: колонок = ${row.length}');
-            if (row.length > 3) {
-              print('   [D] = "${row[3]}"');
-            }
+      // Если получили меньше строк, чем ожидалось, предупреждаем
+      if (lines.length < 500) {
+        print('⚠️ ВНИМАНИЕ: Получено только ${lines.length} строк, ожидалось больше!');
+        print('   Это может означать, что CSV экспорт обрезает данные при пустых ячейках.');
+        print('   Попробуем загрузить полный диапазон A1:D800...');
+        
+        // Пробуем загрузить полный диапазон A-D, чтобы получить все строки
+        final fullRangeUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню&range=A1:D800';
+        final fullResponse = await http.get(Uri.parse(fullRangeUrl));
+        if (fullResponse.statusCode == 200 && fullResponse.body.isNotEmpty) {
+          final fullLines = const LineSplitter().convert(fullResponse.body);
+          print('📊 При загрузке полного диапазона получено строк: ${fullLines.length}');
+          if (fullLines.length > lines.length) {
+            print('✅ Используем данные из полного диапазона');
+            return _processCsvLines(fullLines);
           }
-          
-          if (row.length > 3) {
-            String address = row[3].trim().replaceAll('"', '').trim();
-            
-            // Проверяем, является ли это заголовком
-            if (address.toLowerCase() == 'адрес' || 
-                address.toLowerCase() == 'address' ||
-                address.toLowerCase() == 'd' ||
-                address.toLowerCase().startsWith('столбец')) {
-              headerRows++;
-              if (i <= 10) {
-                print('⚠️ Строка $i: заголовок - "$address"');
-              }
-              continue;
-            }
-            
-            // Обрабатываем все адреса, включая пустые (для статистики)
-            if (address.isEmpty) {
-              emptyRows++;
-              if (i <= 10) {
-                print('⚠️ Строка $i: пустой адрес');
-              }
-            } else {
-              validAddresses++;
-              
-              // Нормализуем адрес для сравнения (убираем лишние пробелы, но сохраняем регистр для отображения)
-              String normalizedAddress = address.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-              
-              // Сохраняем оригинальный адрес (первое вхождение)
-              if (!uniqueAddresses.containsKey(normalizedAddress)) {
-                uniqueAddresses[normalizedAddress] = address;
-                if (i <= 20) {
-                  print('✅ Строка $i: добавлен адрес "$address"');
-                }
-              } else {
-                // Логируем дубликаты только для первых строк
-                if (i <= 20) {
-                  print('⚠️ Строка $i: дубликат адреса "$address" (уже есть: "${uniqueAddresses[normalizedAddress]}")');
-                }
-              }
-            }
-          } else {
-            if (i <= 10) {
-              print('⚠️ Строка $i: недостаточно колонок (${row.length} < 4)');
-            }
-          }
-        } catch (e) {
-          print('❌ Ошибка парсинга строки $i: $e');
         }
       }
       
-      print('📊 Статистика обработки:');
-      print('   Обработано строк: $processedRows');
-      print('   Пустых адресов: $emptyRows');
-      print('   Заголовков: $headerRows');
-      print('   Валидных адресов: $validAddresses');
-      print('   Уникальных адресов: ${uniqueAddresses.length}');
+      return _processCsvLines(lines);
+    } catch (e) {
+      print('⚠️ Ошибка загрузки магазинов из Google Sheets: $e');
+      print('Stack trace: ${StackTrace.current}');
+      // Возвращаем список по умолчанию при ошибке
+      return _getDefaultShops();
+    }
+  }
+
+  /// Обработать CSV строки и извлечь уникальные адреса магазинов
+  static Future<List<Shop>> _processCsvLines(List<String> lines) async {
+    final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
+    
+    int processedRows = 0;
+    int emptyRows = 0;
+    int headerRows = 0;
+    int validAddresses = 0;
+    
+    // Определяем, сколько столбцов в CSV
+    // Если запрашивали только столбец D, то будет 1 столбец (индекс 0)
+    // Если запрашивали A-D, то столбец D - это индекс 3
+    bool isSingleColumn = false;
+    if (lines.isNotEmpty) {
+      final firstRow = parseCsvLine(lines[0]);
+      isSingleColumn = firstRow.length == 1;
+      print('📊 Определено столбцов в CSV: ${firstRow.length} (${isSingleColumn ? "только D" : "A-D"})');
+    }
+    
+    // Парсим CSV
+    // Если это один столбец (D), то индекс 0, иначе индекс 3
+    final columnIndex = isSingleColumn ? 0 : 3;
+    
+    // Пропускаем заголовок (первая строка) и обрабатываем все остальные строки
+    for (var i = 1; i < lines.length; i++) {
+      try {
+        final row = parseCsvLine(lines[i]);
+        processedRows++;
+        
+        // Логируем первые несколько строк для отладки
+        if (i <= 10) {
+          print('📝 Строка $i: колонок = ${row.length}');
+          if (row.length > columnIndex) {
+            print('   [D] = "${row[columnIndex]}"');
+          }
+        }
+        
+        if (row.length > columnIndex) {
+          String address = row[columnIndex].trim().replaceAll('"', '').trim();
+          
+          // Проверяем, является ли это заголовком
+          if (address.toLowerCase() == 'адрес' || 
+              address.toLowerCase() == 'address' ||
+              address.toLowerCase() == 'd' ||
+              address.toLowerCase().startsWith('столбец')) {
+            headerRows++;
+            if (i <= 10) {
+              print('⚠️ Строка $i: заголовок - "$address"');
+            }
+            continue;
+          }
+          
+          // Обрабатываем все адреса, включая пустые (для статистики)
+          if (address.isEmpty) {
+            emptyRows++;
+            if (i <= 10) {
+              print('⚠️ Строка $i: пустой адрес');
+            }
+          } else {
+            validAddresses++;
+            
+            // Нормализуем адрес для сравнения (убираем лишние пробелы, но сохраняем регистр для отображения)
+            String normalizedAddress = address.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+            
+            // Сохраняем оригинальный адрес (первое вхождение)
+            if (!uniqueAddresses.containsKey(normalizedAddress)) {
+              uniqueAddresses[normalizedAddress] = address;
+              if (i <= 20 || uniqueAddresses.length <= 10) {
+                print('✅ Строка $i: добавлен адрес "$address"');
+              }
+            } else {
+              // Логируем дубликаты только для первых строк или первых 10 уникальных
+              if (i <= 20 || uniqueAddresses.length <= 10) {
+                print('⚠️ Строка $i: дубликат адреса "$address" (уже есть: "${uniqueAddresses[normalizedAddress]}")');
+              }
+            }
+          }
+        } else {
+          if (i <= 10) {
+            print('⚠️ Строка $i: недостаточно колонок (${row.length} <= $columnIndex)');
+          }
+        }
+      } catch (e) {
+        print('❌ Ошибка парсинга строки $i: $e');
+      }
+    }
+    
+    print('📊 Статистика обработки:');
+    print('   Обработано строк: $processedRows');
+    print('   Пустых адресов: $emptyRows');
+    print('   Заголовков: $headerRows');
+    print('   Валидных адресов: $validAddresses');
+    print('   Уникальных адресов: ${uniqueAddresses.length}');
 
       print('📋 Найдено уникальных адресов: ${uniqueAddresses.length}');
       for (var addr in uniqueAddresses.values) {
