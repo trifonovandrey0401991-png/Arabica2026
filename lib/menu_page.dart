@@ -32,8 +32,13 @@ class MenuItem {
 
 class MenuPage extends StatefulWidget {
   final String? selectedCategory;
+  final String? selectedShop;
 
-  const MenuPage({super.key, this.selectedCategory});
+  const MenuPage({
+    super.key,
+    this.selectedCategory,
+    this.selectedShop,
+  });
 
   @override
   State<MenuPage> createState() => _MenuPageState();
@@ -41,26 +46,12 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage> {
   late Future<List<MenuItem>> _menuFuture;
-  late Future<List<Shop>> _shopsFuture;
   String _searchQuery = '';
-  String? _selectedShop; // null означает, что магазин еще не выбран
-  bool _shopDialogShown = false;
 
   @override
   void initState() {
     super.initState();
     _menuFuture = _loadMenu();
-    _shopsFuture = Shop.loadShopsFromGoogleSheets();
-    // Показываем диалог выбора магазина после загрузки меню и магазинов
-    Future.wait([_menuFuture, _shopsFuture]).then((_) {
-      if (mounted && _selectedShop == null && !_shopDialogShown) {
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted && _selectedShop == null) {
-            _showShopSelectionDialog();
-          }
-        });
-      }
-    });
   }
 
   Future<List<MenuItem>> _loadMenu() async {
@@ -272,34 +263,13 @@ class _MenuPageState extends State<MenuPage> {
             );
           }
 
-          // Если магазин не выбран, показываем диалог и ждем выбора
-          if (_selectedShop == null) {
-            if (!_shopDialogShown) {
-              Future.microtask(() {
-                if (mounted && _selectedShop == null) {
-                  _showShopSelectionDialog();
-                }
-              });
-            }
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Выберите магазин...'),
-                ],
-              ),
-            );
-          }
-
           final all = snapshot.data!;
-          final shops = <String>{'Все магазины', ...all.map((e) => e.shop)}.toList();
 
+          // Фильтруем по выбранному магазину и категории
           final filtered = all.where((item) {
             final byName = item.name.toLowerCase().contains(_searchQuery.toLowerCase());
-            final byShop = _selectedShop == 'Все магазины' || item.shop == _selectedShop;
-            final byCategory = _matchCategory(item);
+            final byShop = widget.selectedShop == null || item.shop == widget.selectedShop;
+            final byCategory = widget.selectedCategory == null || _matchCategory(item);
             return byName && byShop && byCategory;
           }).toList();
 
@@ -325,22 +295,6 @@ class _MenuPageState extends State<MenuPage> {
                           ),
                         ),
                         onChanged: (v) => setState(() => _searchQuery = v),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showShopSelectionDialog(),
-                        icon: const Icon(Icons.store, size: 20),
-                        label: Text(
-                          _selectedShop ?? 'Выберите магазин',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF004D40),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        ),
                       ),
                     ),
                   ],

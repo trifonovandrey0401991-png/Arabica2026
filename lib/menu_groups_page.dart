@@ -3,8 +3,13 @@ import 'menu_page.dart';
 
 class MenuGroupsPage extends StatelessWidget {
   final List<String> groups;
+  final String? selectedShop;
 
-  const MenuGroupsPage({super.key, required this.groups});
+  const MenuGroupsPage({
+    super.key,
+    required this.groups,
+    this.selectedShop,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +27,10 @@ class MenuGroupsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MenuPage(selectedCategory: g),
+                  builder: (context) => MenuPage(
+                    selectedCategory: g,
+                    selectedShop: selectedShop,
+                  ),
                 ),
               );
             },
