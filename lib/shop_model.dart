@@ -178,42 +178,41 @@ class Shop {
     print('   Валидных адресов: $validAddresses');
     print('   Уникальных адресов: ${uniqueAddresses.length}');
 
-      print('📋 Найдено уникальных адресов: ${uniqueAddresses.length}');
-      for (var addr in uniqueAddresses.values) {
-        print('  - $addr');
-      }
+    print('📋 Найдено уникальных адресов: ${uniqueAddresses.length}');
+    for (var addr in uniqueAddresses.values) {
+      print('  - $addr');
+    }
 
-      // Создаем список магазинов из уникальных адресов
-      final shops = <Shop>[];
-      int shopIndex = 0;
-      final icons = [
-        Icons.store,
-        Icons.store_mall_directory,
-        Icons.local_cafe,
-        Icons.coffee,
-        Icons.restaurant,
-        Icons.shopping_bag,
-        Icons.bakery_dining,
-        Icons.local_dining,
-      ];
+    // Создаем список магазинов из уникальных адресов
+    final shops = <Shop>[];
+    int shopIndex = 0;
+    final icons = [
+      Icons.store,
+      Icons.store_mall_directory,
+      Icons.local_cafe,
+      Icons.coffee,
+      Icons.restaurant,
+      Icons.shopping_bag,
+      Icons.bakery_dining,
+      Icons.local_dining,
+    ];
 
-      for (var address in uniqueAddresses.values) {
-        // Извлекаем название магазина из адреса
-        String shopName = _extractShopName(address);
-        shops.add(Shop(
-          name: shopName,
-          address: address, // Используем оригинальный адрес
-          icon: shopIndex < icons.length ? icons[shopIndex] : Icons.store,
-        ));
-        shopIndex++;
-      }
+    for (var address in uniqueAddresses.values) {
+      // Извлекаем название магазина из адреса
+      String shopName = _extractShopName(address);
+      shops.add(Shop(
+        name: shopName,
+        address: address, // Используем оригинальный адрес
+        icon: shopIndex < icons.length ? icons[shopIndex] : Icons.store,
+      ));
+      shopIndex++;
+    }
 
-      // Сортируем по адресу
-      shops.sort((a, b) => a.address.compareTo(b.address));
+    // Сортируем по адресу
+    shops.sort((a, b) => a.address.compareTo(b.address));
 
-      print('✅ Загружено магазинов: ${shops.length}');
-      return shops;
-    } catch (e) {
+    print('✅ Загружено магазинов: ${shops.length}');
+    return shops;
       print('⚠️ Ошибка загрузки магазинов из Google Sheets: $e');
       print('Stack trace: ${StackTrace.current}');
       // Возвращаем список по умолчанию при ошибке
