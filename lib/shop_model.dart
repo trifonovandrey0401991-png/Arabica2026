@@ -213,11 +213,6 @@ class Shop {
 
     print('✅ Загружено магазинов: ${shops.length}');
     return shops;
-      print('⚠️ Ошибка загрузки магазинов из Google Sheets: $e');
-      print('Stack trace: ${StackTrace.current}');
-      // Возвращаем список по умолчанию при ошибке
-      return _getDefaultShops();
-    }
   }
 
   /// Парсинг CSV строки с учетом кавычек и запятых внутри кавычек
