@@ -160,51 +160,79 @@ class CartPage extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                        SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Создаем заказ без комментария
-                            final orderProvider = OrderProvider.of(context);
-                            orderProvider.createOrder(
-                              cart.items,
-                              cart.totalPrice,
-                            );
-                            
-                            // Очищаем корзину
-                            cart.clear();
-                            
-                            // Переходим в меню заказов
-                            Navigator.of(context).pop(); // Закрываем корзину
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const OrdersPage(),
+                      // Две кнопки: Заказать и Комментарий к заказу
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                // Создаем заказ без комментария
+                                final orderProvider = OrderProvider.of(context);
+                                orderProvider.createOrder(
+                                  cart.items,
+                                  cart.totalPrice,
+                                );
+                                
+                                // Очищаем корзину
+                                cart.clear();
+                                
+                                // Переходим в меню заказов
+                                Navigator.of(context).pop(); // Закрываем корзину
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const OrdersPage(),
+                                  ),
+                                );
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Заказ добавлен!'),
+                                    backgroundColor: Color(0xFF004D40),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF004D40),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                            );
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Заказ добавлен!'),
-                                backgroundColor: Color(0xFF004D40),
-                                duration: Duration(seconds: 2),
+                              child: const Text(
+                                'Заказать',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF004D40),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'К заказу',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                _showCommentDialogWithOrder(context, cart);
+                              },
+                              icon: const Icon(Icons.comment_outlined),
+                              label: const Text(
+                                'Комментарий к заказу',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey[700],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -354,7 +382,128 @@ class CartPage extends StatelessWidget {
     );
   }
 
-  /// Диалог для ввода комментария
+  /// Диалог для ввода комментария с возможностью заказать
+  void _showCommentDialogWithOrder(BuildContext context, CartProvider cart) {
+    final TextEditingController controller = TextEditingController();
+    final orderProvider = OrderProvider.of(context);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        title: const Text(
+          'Комментарий к заказу',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: 'Введите комментарий к заказу...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Две кнопки внизу диалога
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Создаем заказ с комментарием
+                        final comment = controller.text.trim().isEmpty 
+                            ? null 
+                            : controller.text.trim();
+                        
+                        orderProvider.createOrder(
+                          cart.items,
+                          cart.totalPrice,
+                          comment: comment,
+                        );
+                        
+                        // Очищаем корзину
+                        cart.clear();
+                        
+                        // Закрываем диалог и корзину
+                        Navigator.of(dialogContext).pop();
+                        Navigator.of(context).pop(); // Закрываем корзину
+                        
+                        // Переходим в меню заказов
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const OrdersPage(),
+                          ),
+                        );
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Заказ добавлен!'),
+                            backgroundColor: Color(0xFF004D40),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF004D40),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Заказать',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Просто закрываем диалог и возвращаемся к корзине
+                        Navigator.of(dialogContext).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[600],
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Вернуться к заказу',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Диалог для ввода комментария (старый метод, оставлен для совместимости)
   void _showCommentDialog(
     BuildContext context,
     String? initialComment,
