@@ -44,4 +44,3 @@ echo "✅ Контрольная точка создана успешно!"
 echo "   Тег: $VERSION"
 echo "   Для отката используйте: git checkout $VERSION"
 echo "   Для просмотра всех тегов: git tag -l"
-
