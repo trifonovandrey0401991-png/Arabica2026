@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'cart_provider.dart';
-import 'shop_model.dart';
 
 class MenuItem {
   final String name;
