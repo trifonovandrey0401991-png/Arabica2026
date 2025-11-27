@@ -10,8 +10,8 @@
  *  F: Баллы
  */
 
-// ПРАВИЛЬНЫЙ ID таблицы
-const SPREADSHEET_ID = '1IgaHiFjwEHsLYePbkfhVvnLKmIpb1ZyPivIHsWD90Qk';
+// Используем единую таблицу для всего
+const SPREADSHEET_ID = '1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU';
 const SHEET_NAME = 'Лист11';
 const HEADER_ROW = ['Имя клиента', 'Номер телефона', 'QR', 'Бесплатные напитки', '', 'Баллы'];
 const COLS = {
