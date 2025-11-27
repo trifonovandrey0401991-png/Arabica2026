@@ -29,23 +29,14 @@ class Shop {
   /// Загрузить список магазинов из Google Sheets (столбец D) используя CSV экспорт
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     try {
-      // Используем CSV экспорт с явным указанием диапазона для получения всех строк
-      // Пробуем несколько вариантов URL для надежности
-      String sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню&range=D1:D800';
+      // Загружаем весь лист без указания диапазона - это должно вернуть все строки
+      // Google Sheets CSV экспорт обрезает данные при указании диапазона с пустыми ячейками
+      const sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
       
-      print('📥 Загружаем данные из Google Sheets (CSV экспорт с диапазоном D1:D800)...');
+      print('📥 Загружаем данные из Google Sheets (CSV экспорт всего листа)...');
       print('   URL: $sheetUrl');
       
-      var response = await http.get(Uri.parse(sheetUrl));
-      
-      // Если не получилось с диапазоном, пробуем без него, но с запросом только столбца D
-      if (response.statusCode != 200 || response.body.isEmpty) {
-        print('⚠️ Первый вариант не сработал, пробуем альтернативный...');
-        // Используем Google Visualization API Query Language для запроса только столбца D
-        sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&tq=SELECT%20D&sheet=Меню';
-        print('   Альтернативный URL: $sheetUrl');
-        response = await http.get(Uri.parse(sheetUrl));
-      }
+      final response = await http.get(Uri.parse(sheetUrl));
       
       if (response.statusCode != 200) {
         print('❌ Ошибка загрузки: ${response.statusCode}');
@@ -59,20 +50,8 @@ class Shop {
       // Если получили меньше строк, чем ожидалось, предупреждаем
       if (lines.length < 500) {
         print('⚠️ ВНИМАНИЕ: Получено только ${lines.length} строк, ожидалось больше!');
-        print('   Это может означать, что CSV экспорт обрезает данные при пустых ячейках.');
-        print('   Попробуем загрузить полный диапазон A1:D800...');
-        
-        // Пробуем загрузить полный диапазон A-D, чтобы получить все строки
-        final fullRangeUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню&range=A1:D800';
-        final fullResponse = await http.get(Uri.parse(fullRangeUrl));
-        if (fullResponse.statusCode == 200 && fullResponse.body.isNotEmpty) {
-          final fullLines = const LineSplitter().convert(fullResponse.body);
-          print('📊 При загрузке полного диапазона получено строк: ${fullLines.length}');
-          if (fullLines.length > lines.length) {
-            print('✅ Используем данные из полного диапазона');
-            return _processCsvLines(fullLines);
-          }
-        }
+        print('   Возможно, в таблице есть пустые строки, которые CSV экспорт пропускает.');
+        print('   Обрабатываем все доступные строки...');
       }
       
       return _processCsvLines(lines);

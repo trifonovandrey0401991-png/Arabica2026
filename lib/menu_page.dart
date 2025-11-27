@@ -66,46 +66,34 @@ class _MenuPageState extends State<MenuPage> {
 
   Future<List<MenuItem>> _loadMenu() async {
     try {
-      // Используем Google Sheets API v4
-      const spreadsheetId = '1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU';
-      const sheetName = 'Меню';
-      const range = 'A1:D800'; // Столбцы A-D, строки 1-800
+      // Используем CSV экспорт (не требует API ключа)
+      const sheetUrl = 'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
       
-      final apiUrl = Uri.parse(
-        'https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/$sheetName!$range'
-      );
+      print('📥 Загружаем меню из Google Sheets (CSV экспорт)...');
       
-      print('📥 Загружаем меню из Google Sheets API (диапазон A1:D800)...');
-      
-      final response = await http.get(apiUrl);
+      final response = await http.get(Uri.parse(sheetUrl));
       if (response.statusCode != 200) {
-        print('❌ Ошибка API: ${response.statusCode}');
-        print('   Ответ: ${response.body}');
-        throw Exception('Ошибка загрузки данных из Google Sheets API: ${response.statusCode}');
+        print('❌ Ошибка загрузки: ${response.statusCode}');
+        throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
       }
 
-      final jsonData = json.decode(response.body) as Map<String, dynamic>;
-      final values = jsonData['values'] as List<dynamic>?;
-      
-      if (values == null || values.isEmpty) {
-        throw Exception('Нет данных в ответе API');
-      }
-
-      print('📊 Всего строк получено из API: ${values.length}');
+      final lines = const LineSplitter().convert(response.body);
+      print('📊 Всего строк получено из CSV: ${lines.length}');
       
       final List<MenuItem> menuItems = [];
       final Set<String> seenAddresses = {}; // Для отладки
       
-      // Парсим данные, пропускаем заголовок (первая строка)
-      for (var i = 1; i < values.length; i++) {
+      // Парсим CSV, пропускаем заголовок (первая строка)
+      for (var i = 1; i < lines.length; i++) {
         try {
-          final row = values[i] as List<dynamic>?;
+          final row = Shop.parseCsvLine(lines[i]);
           
-          if (row != null && row.length >= 4) {
-            String name = (row[0] ?? '').toString().trim();
-            String price = (row[1] ?? '').toString().trim();
-            String category = (row[2] ?? '').toString().trim();
-            String shopAddress = (row[3] ?? '').toString().trim();
+          // Столбцы: A=0 (название), B=1 (цена), C=2 (категория), D=3 (адрес магазина)
+          if (row.length >= 4) {
+            String name = row[0].trim().replaceAll('"', '').trim();
+            String price = row[1].trim().replaceAll('"', '').trim();
+            String category = row[2].trim().replaceAll('"', '').trim();
+            String shopAddress = row[3].trim().replaceAll('"', '').trim();
             
             // Отслеживаем уникальные адреса для отладки
             if (shopAddress.isNotEmpty) {
@@ -142,7 +130,7 @@ class _MenuPageState extends State<MenuPage> {
         print('  - $addr');
       }
 
-      print('✅ Загружено напитков из Google Sheets API: ${menuItems.length}');
+      print('✅ Загружено напитков из Google Sheets: ${menuItems.length}');
       return menuItems;
     } catch (e) {
       print('⚠️ Ошибка загрузки меню из Google Sheets: $e');
