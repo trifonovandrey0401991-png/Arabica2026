@@ -342,7 +342,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       // ignore: avoid_print
       print("📋 Категории: $categoriesList");
       return categoriesList;
-  } catch (e) {
+    } catch (e) {
     // Если не получилось загрузить из JSON, пробуем из Google Sheets
     // ignore: avoid_print
     print("⚠️ Ошибка загрузки из menu.json: $e, пробуем Google Sheets...");
