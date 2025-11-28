@@ -17,10 +17,15 @@ class TestQuestion {
   /// Загрузить вопросы из Google Sheets
   static Future<List<TestQuestion>> loadQuestions() async {
     try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Вопросы_Тестирование';
+      // Правильно кодируем название листа с кириллицей
+      const sheetName = 'Вопросы_Тестирование';
+      final encodedSheetName = Uri.encodeComponent(sheetName);
+      final sheetUrl =
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=$encodedSheetName';
       
       print('📥 Загружаем вопросы теста из Google Sheets...');
+      print('   Лист: $sheetName');
+      print('   URL: $sheetUrl');
       final response = await http.get(Uri.parse(sheetUrl));
       
       if (response.statusCode != 200) {

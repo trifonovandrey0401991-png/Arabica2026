@@ -75,10 +75,22 @@ class _TestPageState extends State<TestPage> {
   void _selectAnswer(String answer) {
     if (_testFinished) return;
     
+    final question = _questions[_currentQuestionIndex];
+    final isCorrect = answer == question.correctAnswer;
+    
     setState(() {
       _selectedAnswer = answer;
       _userAnswers[_currentQuestionIndex] = answer;
     });
+
+    // Если ответ правильный, автоматически переходим к следующему вопросу через 1.5 секунды
+    if (isCorrect) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted && !_testFinished) {
+          _nextQuestion();
+        }
+      });
+    }
   }
 
   void _nextQuestion() {
@@ -255,6 +267,7 @@ class _TestPageState extends State<TestPage> {
     final question = _questions[_currentQuestionIndex];
     final isCorrect = _selectedAnswer == question.correctAnswer;
     final hasSelected = _selectedAnswer != null;
+    final isWrongAnswer = hasSelected && !isCorrect;
 
     return Scaffold(
       appBar: AppBar(
@@ -331,7 +344,7 @@ class _TestPageState extends State<TestPage> {
               ),
             ),
           ),
-          if (hasSelected)
+          if (isWrongAnswer)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
