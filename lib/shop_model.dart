@@ -15,15 +15,16 @@ class Shop {
   });
 
   /// Получить иконку по названию магазина
+  /// Используем outlined иконки для лучшей видимости на темном фоне
   static IconData _getIconForShop(String shopName) {
     final name = shopName.toLowerCase();
-    if (name.contains('пятигорск')) return Icons.store;
-    if (name.contains('ессентуки')) return Icons.store_mall_directory;
-    if (name.contains('кисловодск')) return Icons.local_cafe;
-    if (name.contains('железноводск')) return Icons.coffee;
-    if (name.contains('минеральные')) return Icons.restaurant;
-    if (name.contains('ставрополь')) return Icons.shopping_bag;
-    return Icons.store; // По умолчанию
+    if (name.contains('пятигорск')) return Icons.store_outlined;
+    if (name.contains('ессентуки')) return Icons.store_mall_directory_outlined;
+    if (name.contains('кисловодск')) return Icons.local_cafe_outlined;
+    if (name.contains('железноводск')) return Icons.coffee_outlined;
+    if (name.contains('минеральные')) return Icons.restaurant_outlined;
+    if (name.contains('ставрополь')) return Icons.shopping_bag_outlined;
+    return Icons.store_outlined; // По умолчанию
   }
 
   /// Загрузить список магазинов из Google Sheets (столбец D)

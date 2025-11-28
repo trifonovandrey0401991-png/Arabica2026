@@ -45,18 +45,28 @@ class _MainMenuPageState extends State<MainMenuPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Арабика')),
-      body: Column(
-        children: [
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40), // Темно-бирюзовый фон
+          // Если есть изображение фона, раскомментируйте следующие строки:
+          // image: DecorationImage(
+          //   image: AssetImage('assets/images/arabica_background.png'),
+          //   fit: BoxFit.cover,
+          //   opacity: 0.3,
+          // ),
+        ),
+        child: Column(
+          children: [
           // Приветствие с именем
           if (_userName != null && _userName!.isNotEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20.0),
               decoration: BoxDecoration(
-                color: Colors.teal[50],
+                color: Colors.white.withOpacity(0.1),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.teal[200]!,
+                    color: Colors.white.withOpacity(0.3),
                     width: 1,
                   ),
                 ),
@@ -64,18 +74,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.waving_hand,
-                    color: Colors.teal[700],
+                    color: Colors.white,
                     size: 28,
                   ),
                   const SizedBox(width: 12),
                   Text(
                     'Привет, $_userName!',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.teal[900],
+                      color: Colors.white,
                     ),
                   ),
                 ],
@@ -181,9 +191,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
         padding: EdgeInsets.zero,
-        backgroundColor: Colors.teal[700],
+        backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
         ),
         elevation: 4,
       ),
@@ -216,15 +230,20 @@ class _MainMenuPageState extends State<MainMenuPage> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF004D40).withOpacity(0.95),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
           ),
           title: const Text(
             'Выберите магазин',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF004D40),
+              color: Colors.white,
             ),
           ),
           content: SizedBox(
@@ -244,15 +263,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   onTap: () => Navigator.pop(context, shop),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF004D40),
+                        color: Colors.white.withOpacity(0.5),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withOpacity(0.3),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -264,7 +283,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                         Icon(
                           shop.icon,
                           size: 40,
-                          color: const Color(0xFF004D40),
+                          color: Colors.white,
                         ),
                         const SizedBox(height: 8),
                         Padding(
@@ -275,7 +294,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF004D40),
+                              color: Colors.white,
                             ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,

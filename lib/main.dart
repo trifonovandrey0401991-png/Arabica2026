@@ -45,7 +45,7 @@ class ArabicaApp extends StatelessWidget {
               elevation: 0,
               centerTitle: true,
             ),
-            scaffoldBackgroundColor: Colors.white,
+            scaffoldBackgroundColor: const Color(0xFF004D40), // Темно-бирюзовый фон
           ),
           routes: {
             '/home': (context) => Builder(
