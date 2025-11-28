@@ -85,17 +85,16 @@ class _TestPageState extends State<TestPage> {
       _userAnswers[_currentQuestionIndex] = answer;
     });
 
-    // Если ответ правильный, автоматически переходим к следующему вопросу через 1.5 секунды
-    // ВАЖНО: переход происходит ТОЛЬКО при правильном ответе
-    if (isCorrect) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted && !_testFinished && _selectedAnswer == answer) {
-          // Дополнительная проверка: убеждаемся, что мы все еще на том же вопросе
-          _nextQuestion();
-        }
-      });
-    }
-    // При неправильном ответе НЕ переходим автоматически - пользователь должен нажать кнопку
+    // Автоматически переходим к следующему вопросу после задержки
+    // Для правильного ответа - 1.5 секунды, для неправильного - 2 секунды (чтобы увидеть правильный ответ)
+    final delay = isCorrect ? 1500 : 2000;
+    
+    Future.delayed(Duration(milliseconds: delay), () {
+      if (mounted && !_testFinished && _selectedAnswer == answer) {
+        // Дополнительная проверка: убеждаемся, что мы все еще на том же вопросе
+        _nextQuestion();
+      }
+    });
   }
 
   void _nextQuestion() {
