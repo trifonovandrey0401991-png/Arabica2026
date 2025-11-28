@@ -18,6 +18,7 @@ class TestQuestion {
   static Future<List<TestQuestion>> loadQuestions() async {
     try {
       // Правильно кодируем название листа с кириллицей
+      // Используем точное название листа: "Вопросы_Тестирование" (с подчеркиванием)
       const sheetName = 'Вопросы_Тестирование';
       final encodedSheetName = Uri.encodeComponent(sheetName);
       final sheetUrl =
@@ -25,14 +26,28 @@ class TestQuestion {
       
       print('📥 Загружаем вопросы теста из Google Sheets...');
       print('   Лист: $sheetName');
+      print('   Закодированное название: $encodedSheetName');
       print('   URL: $sheetUrl');
+      
       final response = await http.get(Uri.parse(sheetUrl));
       
       if (response.statusCode != 200) {
+        print('❌ Ошибка загрузки: ${response.statusCode}');
+        print('   Тело ответа: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
         throw Exception('Ошибка загрузки: ${response.statusCode}');
       }
 
       final lines = const LineSplitter().convert(response.body);
+      print('📊 Получено строк из CSV: ${lines.length}');
+      
+      // Логируем первые несколько строк для отладки
+      if (lines.isNotEmpty && lines.length > 1) {
+        print('📝 Первая строка (заголовок): ${lines[0]}');
+        if (lines.length > 1) {
+          print('📝 Вторая строка (данные): ${lines[1]}');
+        }
+      }
+
       final List<TestQuestion> questions = [];
 
       // Пропускаем заголовок (первая строка)
@@ -40,6 +55,9 @@ class TestQuestion {
         try {
           final row = _parseCsvLine(lines[i]);
           
+          // Столбец A (индекс 0) - вопрос
+          // Столбец B (индекс 1) - варианты ответов через запятую
+          // Столбец C (индекс 2) - правильный ответ
           if (row.length >= 3) {
             final question = row[0].trim().replaceAll('"', '');
             final optionsStr = row[1].trim().replaceAll('"', '');
@@ -47,7 +65,6 @@ class TestQuestion {
             
             if (question.isNotEmpty && optionsStr.isNotEmpty && correctAnswer.isNotEmpty) {
               // Парсим варианты ответов (разделены запятой)
-              // Учитываем, что варианты могут быть в кавычках в CSV
               final options = optionsStr
                   .split(',')
                   .map((e) => e.trim().replaceAll('"', ''))
@@ -60,8 +77,17 @@ class TestQuestion {
                   options: options,
                   correctAnswer: correctAnswer,
                 ));
+                
+                // Логируем первые несколько вопросов для отладки
+                if (questions.length <= 3) {
+                  print('✅ Вопрос ${questions.length}: "$question"');
+                  print('   Варианты: $options');
+                  print('   Правильный ответ: "$correctAnswer"');
+                }
               }
             }
+          } else {
+            print('⚠️ Строка $i: недостаточно столбцов (${row.length} < 3)');
           }
         } catch (e) {
           print('⚠️ Ошибка парсинга строки $i: $e');
@@ -73,6 +99,7 @@ class TestQuestion {
       return questions;
     } catch (e) {
       print('⚠️ Ошибка загрузки вопросов: $e');
+      print('   Stack trace: ${StackTrace.current}');
       return [];
     }
   }
