@@ -97,7 +97,11 @@ class _TestPageState extends State<TestPage> {
     if (_currentQuestionIndex < _questions.length - 1) {
       setState(() {
         _currentQuestionIndex++;
-        _selectedAnswer = _userAnswers[_currentQuestionIndex];
+        // Сбрасываем выбранный ответ для нового вопроса
+        // Если на этот вопрос уже был дан ответ, показываем его, иначе null
+        _selectedAnswer = _userAnswers.containsKey(_currentQuestionIndex) 
+            ? _userAnswers[_currentQuestionIndex] 
+            : null;
       });
     } else {
       _finishTest();
