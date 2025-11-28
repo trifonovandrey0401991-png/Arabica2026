@@ -86,91 +86,92 @@ class _MainMenuPageState extends State<MainMenuPage> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: GridView.count(
-          crossAxisCount: 2,           // 2 кнопки в строке
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1,         // делает плитки квадратными
-          children: [
-            _tile(context, Icons.local_cafe, 'Меню', () async {
-  // Сначала показываем диалог выбора магазина
-  final shop = await _showShopSelectionDialog(context);
-  if (!context.mounted || shop == null) return;
-  
-  // После выбора магазина загружаем категории для этого магазина
-  final categories = await _loadCategoriesForShop(context, shop.address);
-  if (!context.mounted) return;
-  
-  // Открываем страницу категорий с выбранным магазином
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => MenuGroupsPage(
-        groups: categories,
-        selectedShop: shop.address,
-      ),
-    ),
-  );
-}),
+                crossAxisCount: 2,           // 2 кнопки в строке
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1,         // делает плитки квадратными
+                children: [
+                  _tile(context, Icons.local_cafe, 'Меню', () async {
+                    // Сначала показываем диалог выбора магазина
+                    final shop = await _showShopSelectionDialog(context);
+                    if (!context.mounted || shop == null) return;
+                    
+                    // После выбора магазина загружаем категории для этого магазина
+                    final categories = await _loadCategoriesForShop(context, shop.address);
+                    if (!context.mounted) return;
+                    
+                    // Открываем страницу категорий с выбранным магазином
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MenuGroupsPage(
+                          groups: categories,
+                          selectedShop: shop.address,
+                        ),
+                      ),
+                    );
+                  }),
 
-            _tile(context, Icons.shopping_cart, 'Корзина', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CartPage(),
-                ),
-              );
-            }),
-            _tile(context, Icons.receipt_long, 'Мои заказы', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const OrdersPage(),
-                ),
-              );
-            }),
-            _tile(context, Icons.people, 'Сотрудники', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EmployeesPage(),
-                ),
-              );
-            }),
-            _tile(context, Icons.qr_code, 'Карта лояльности', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LoyaltyPage(),
-                ),
-              );
-            }),
-            _tile(context, Icons.qr_code_scanner, 'Списать бонусы', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LoyaltyScannerPage(),
-                ),
-              );
-            }),
-            _tile(context, Icons.rate_review, 'Отзывы', () {}),
-            _tile(context, Icons.search, 'Наличие товара', () {}),
-            _tile(context, Icons.menu_book, 'Обучение', () {
-              _showTrainingDialog(context);
-            }),
-            _tile(context, Icons.quiz, 'Тестирование', () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TestNotificationsPage(),
-                ),
-              );
-            }),
-            _tile(context, Icons.receipt_long, 'Отчёт о смене', () {}),
-              ],
+                  _tile(context, Icons.shopping_cart, 'Корзина', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CartPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.receipt_long, 'Мои заказы', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OrdersPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.people, 'Сотрудники', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EmployeesPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.qr_code, 'Карта лояльности', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoyaltyPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.qr_code_scanner, 'Списать бонусы', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoyaltyScannerPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.rate_review, 'Отзывы', () {}),
+                  _tile(context, Icons.search, 'Наличие товара', () {}),
+                  _tile(context, Icons.menu_book, 'Обучение', () {
+                    _showTrainingDialog(context);
+                  }),
+                  _tile(context, Icons.quiz, 'Тестирование', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TestNotificationsPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.receipt_long, 'Отчёт о смене', () {}),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
