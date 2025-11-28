@@ -323,7 +323,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   Future<List<String>> _loadCategories(BuildContext context) async {
-  try {
+    try {
     // Пробуем загрузить из menu.json (более надежно)
     final jsonString = await rootBundle.loadString('assets/menu.json');
     final List<dynamic> jsonData = json.decode(jsonString);
