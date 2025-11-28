@@ -324,24 +324,24 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   Future<List<String>> _loadCategories(BuildContext context) async {
     try {
-    // Пробуем загрузить из menu.json (более надежно)
-    final jsonString = await rootBundle.loadString('assets/menu.json');
-    final List<dynamic> jsonData = json.decode(jsonString);
-    final Set<String> categories = {};
-    
-    for (var item in jsonData) {
-      final category = (item['category'] ?? '').toString().trim();
-      if (category.isNotEmpty) {
-        categories.add(category);
+      // Пробуем загрузить из menu.json (более надежно)
+      final jsonString = await rootBundle.loadString('assets/menu.json');
+      final List<dynamic> jsonData = json.decode(jsonString);
+      final Set<String> categories = {};
+      
+      for (var item in jsonData) {
+        final category = (item['category'] ?? '').toString().trim();
+        if (category.isNotEmpty) {
+          categories.add(category);
+        }
       }
-    }
-    
-    final categoriesList = categories.toList()..sort();
-    // ignore: avoid_print
-    print("📋 Загружено категорий из menu.json: ${categoriesList.length}");
-    // ignore: avoid_print
-    print("📋 Категории: $categoriesList");
-    return categoriesList;
+      
+      final categoriesList = categories.toList()..sort();
+      // ignore: avoid_print
+      print("📋 Загружено категорий из menu.json: ${categoriesList.length}");
+      // ignore: avoid_print
+      print("📋 Категории: $categoriesList");
+      return categoriesList;
   } catch (e) {
     // Если не получилось загрузить из JSON, пробуем из Google Sheets
     // ignore: avoid_print
