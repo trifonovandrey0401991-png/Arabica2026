@@ -12,6 +12,8 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'loyalty_page.dart';
 import 'loyalty_scanner_page.dart';
 import 'shop_model.dart';
+import 'training_page.dart';
+import 'test_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -152,7 +154,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
             }),
             _tile(context, Icons.rate_review, 'Отзывы', () {}),
             _tile(context, Icons.search, 'Наличие товара', () {}),
-            _tile(context, Icons.menu_book, 'Обучение', () {}),
+            _tile(context, Icons.menu_book, 'Обучение', () {
+              _showTrainingDialog(context);
+            }),
             _tile(context, Icons.quiz, 'Тестирование', () {
               Navigator.push(
                 context,
@@ -366,5 +370,70 @@ class _MainMenuPageState extends State<MainMenuPage> {
     print("📋 Загружено категорий из Google Sheets: ${categoriesList.length}");
     return categoriesList;
   }
+
+  /// Показать диалог выбора: Обучение или Тест
+  void _showTrainingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Обучение',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF004D40),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TrainingPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.menu_book),
+                label: const Text('Обучение'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004D40),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TestPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.quiz),
+                label: const Text('Сдать тест'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[700],
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
