@@ -46,7 +46,16 @@ class OrdersPage extends StatelessWidget {
         title: const Text('Мои заказы'),
         backgroundColor: const Color(0xFF004D40),
       ),
-      body: ListenableBuilder(
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+          ),
+        ),
+        child: ListenableBuilder(
         listenable: OrderProvider.of(context),
         builder: (context, _) {
           final orderProvider = OrderProvider.of(context);
@@ -380,6 +389,7 @@ class OrdersPage extends StatelessWidget {
           );
         },
       ),
+        ),
     );
   }
 

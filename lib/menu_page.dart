@@ -141,7 +141,16 @@ class _MenuPageState extends State<MenuPage> {
         title: Text(widget.selectedCategory ?? 'Меню напитков'),
         backgroundColor: const Color(0xFF004D40),
       ),
-      body: FutureBuilder<List<MenuItem>>(
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+          ),
+        ),
+        child: FutureBuilder<List<MenuItem>>(
         future: _menuFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -391,6 +400,7 @@ class _MenuPageState extends State<MenuPage> {
           );
         },
       ),
+        ),
     );
   }
 }

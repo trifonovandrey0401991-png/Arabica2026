@@ -16,7 +16,16 @@ class CartPage extends StatelessWidget {
         title: const Text('Корзина'),
         backgroundColor: const Color(0xFF004D40),
       ),
-      body: ListenableBuilder(
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+          ),
+        ),
+        child: ListenableBuilder(
         listenable: CartProvider.of(context),
         builder: (context, _) {
           final cart = CartProvider.of(context);
@@ -241,6 +250,7 @@ class CartPage extends StatelessWidget {
             );
         },
       ),
+        ),
     );
   }
 

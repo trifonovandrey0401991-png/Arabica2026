@@ -51,7 +51,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           image: DecorationImage(
             image: AssetImage('assets/images/arabica_background.png'),
             fit: BoxFit.cover,
-            opacity: 0.3, // Прозрачность фона
+            opacity: 0.6, // Увеличена прозрачность для лучшей видимости логотипа
           ),
         ),
         child: Column(
