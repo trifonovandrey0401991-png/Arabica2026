@@ -343,32 +343,33 @@ class _MainMenuPageState extends State<MainMenuPage> {
       print("📋 Категории: $categoriesList");
       return categoriesList;
     } catch (e) {
-    // Если не получилось загрузить из JSON, пробуем из Google Sheets
-    // ignore: avoid_print
-    print("⚠️ Ошибка загрузки из menu.json: $e, пробуем Google Sheets...");
-    
-    const sheetUrl =
-        'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
-    final response = await http.get(Uri.parse(sheetUrl));
-    if (response.statusCode != 200) {
-      throw Exception('Ошибка загрузки категорий');
-    }
-    final lines = const LineSplitter().convert(response.body);
-    final Set<String> categories = {};
-    for (var i = 1; i < lines.length; i++) {
-      final row = lines[i].split(',');
-      if (row.length >= 3) {
-        // Убираем кавычки и лишние пробелы
-        String category = row[2].trim().replaceAll('"', '').trim();
-        if (category.isNotEmpty) {
-          categories.add(category);
+      // Если не получилось загрузить из JSON, пробуем из Google Sheets
+      // ignore: avoid_print
+      print("⚠️ Ошибка загрузки из menu.json: $e, пробуем Google Sheets...");
+      
+      const sheetUrl =
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
+      final response = await http.get(Uri.parse(sheetUrl));
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки категорий');
+      }
+      final lines = const LineSplitter().convert(response.body);
+      final Set<String> categories = {};
+      for (var i = 1; i < lines.length; i++) {
+        final row = lines[i].split(',');
+        if (row.length >= 3) {
+          // Убираем кавычки и лишние пробелы
+          String category = row[2].trim().replaceAll('"', '').trim();
+          if (category.isNotEmpty) {
+            categories.add(category);
+          }
         }
       }
+      final categoriesList = categories.toList()..sort();
+      // ignore: avoid_print
+      print("📋 Загружено категорий из Google Sheets: ${categoriesList.length}");
+      return categoriesList;
     }
-    final categoriesList = categories.toList()..sort();
-    // ignore: avoid_print
-    print("📋 Загружено категорий из Google Sheets: ${categoriesList.length}");
-    return categoriesList;
   }
 
   /// Показать диалог выбора: Обучение или Тест
