@@ -18,8 +18,8 @@ class TestQuestion {
   static Future<List<TestQuestion>> loadQuestions() async {
     try {
       // Правильно кодируем название листа с кириллицей
-      // Используем точное название листа: "Вопросы_Тестирование" (с подчеркиванием)
-      const sheetName = 'Вопросы_Тестирование';
+      // Используем точное название листа: "Вопросы Тестирования" (с пробелом, БЕЗ подчеркивания)
+      const sheetName = 'Вопросы Тестирования';
       final encodedSheetName = Uri.encodeComponent(sheetName);
       final sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=$encodedSheetName';
