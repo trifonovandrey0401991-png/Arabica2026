@@ -47,13 +47,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
       appBar: AppBar(title: const Text('Арабика')),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40), // Темно-бирюзовый фон
-          // Если есть изображение фона, раскомментируйте следующие строки:
-          // image: DecorationImage(
-          //   image: AssetImage('assets/images/arabica_background.png'),
-          //   fit: BoxFit.cover,
-          //   opacity: 0.3,
-          // ),
+          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.3, // Прозрачность фона
+          ),
         ),
         child: Column(
           children: [
