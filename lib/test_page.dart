@@ -74,9 +74,11 @@ class _TestPageState extends State<TestPage> {
 
   void _selectAnswer(String answer) {
     if (_testFinished) return;
+    if (_selectedAnswer != null) return; // Предотвращаем повторный выбор
     
     final question = _questions[_currentQuestionIndex];
-    final isCorrect = answer == question.correctAnswer;
+    // Сравниваем ответы с учетом пробелов и регистра
+    final isCorrect = answer.trim() == question.correctAnswer.trim();
     
     setState(() {
       _selectedAnswer = answer;
@@ -84,13 +86,16 @@ class _TestPageState extends State<TestPage> {
     });
 
     // Если ответ правильный, автоматически переходим к следующему вопросу через 1.5 секунды
+    // ВАЖНО: переход происходит ТОЛЬКО при правильном ответе
     if (isCorrect) {
       Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted && !_testFinished) {
+        if (mounted && !_testFinished && _selectedAnswer == answer) {
+          // Дополнительная проверка: убеждаемся, что мы все еще на том же вопросе
           _nextQuestion();
         }
       });
     }
+    // При неправильном ответе НЕ переходим автоматически - пользователь должен нажать кнопку
   }
 
   void _nextQuestion() {
