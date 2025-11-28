@@ -26,7 +26,16 @@ class _TrainingPageState extends State<TrainingPage> {
         title: const Text('Обучение'),
         backgroundColor: const Color(0xFF004D40),
       ),
-      body: FutureBuilder<List<TrainingArticle>>(
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+          ),
+        ),
+        child: FutureBuilder<List<TrainingArticle>>(
         future: _articlesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -114,6 +123,7 @@ class _TrainingPageState extends State<TrainingPage> {
           );
         },
       ),
+        ),
     );
   }
 }
