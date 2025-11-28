@@ -75,10 +75,13 @@ class TestQuestion {
   /// Получить случайные 20 вопросов
   static List<TestQuestion> getRandomQuestions(List<TestQuestion> allQuestions, int count) {
     if (allQuestions.length <= count) {
-      return List.from(allQuestions)..shuffle(Random());
+      final result = List<TestQuestion>.from(allQuestions);
+      result.shuffle(Random());
+      return result;
     }
-    final shuffled = List.from(allQuestions)..shuffle(Random());
-    return shuffled.take(count).toList();
+    final shuffled = List<TestQuestion>.from(allQuestions);
+    shuffled.shuffle(Random());
+    return List<TestQuestion>.from(shuffled.take(count));
   }
 
   static List<String> _parseCsvLine(String line) {

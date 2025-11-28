@@ -171,7 +171,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
         ),
       ],
-      ),
     );
   }
 

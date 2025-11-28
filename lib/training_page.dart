@@ -72,7 +72,7 @@ class _TrainingPageState extends State<TrainingPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: groupIndex > 0 ? 24 : 0),
+                    padding: EdgeInsets.only(bottom: 12, top: groupIndex > 0 ? 24 : 0),
                     child: Text(
                       group,
                       style: const TextStyle(
