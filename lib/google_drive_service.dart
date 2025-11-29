@@ -48,8 +48,12 @@ class GoogleDriveService {
       print('🔗 URL загрузки: $serverUrl/upload-photo');
       
       try {
+        // Для веб-платформы используем более простой подход
+        final uri = Uri.parse('$serverUrl/upload-photo');
+        print('🌐 Отправляем POST запрос на: $uri');
+        
         final response = await http.post(
-          Uri.parse('$serverUrl/upload-photo'),
+          uri,
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -59,10 +63,10 @@ class GoogleDriveService {
             'fileData': base64Image,
           }),
         ).timeout(
-          const Duration(seconds: 30),
+          const Duration(seconds: 60), // Увеличиваем таймаут для больших файлов
           onTimeout: () {
-            print('⏱️ Таймаут при загрузке фото (30 секунд)');
-            throw Exception('Таймаут при загрузке фото (30 секунд)');
+            print('⏱️ Таймаут при загрузке фото (60 секунд)');
+            throw Exception('Таймаут при загрузке фото (60 секунд)');
           },
         );
 
