@@ -95,6 +95,10 @@ class GoogleDriveService {
         print('❌ Stack trace: $stackTrace');
         return null;
       }
+    } catch (e) {
+      print('❌ Критическая ошибка загрузки фото: $e');
+      return null;
+    }
   }
 
   /// Получить URL фото (теперь это просто URL с сервера)
