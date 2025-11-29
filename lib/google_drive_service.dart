@@ -5,8 +5,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-// Для веб-платформы используем dart:html
-import 'dart:html' as html if (dart.library.io) 'dart:io';
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
 class GoogleDriveService {
@@ -55,124 +53,43 @@ class GoogleDriveService {
         final uri = Uri.parse('$serverUrl/upload-photo');
         print('🌐 Отправляем POST запрос на: $uri');
         print('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
-        print('📋 Origin: ${kIsWeb ? "web" : "mobile"}');
         
-        // Для веб-платформы пробуем отправлять данные частями или использовать другой формат
-        final requestBody = jsonEncode({
-          'fileName': fileName,
-          'fileData': base64Image,
-        });
+        // Декодируем base64 в bytes
+        final bytes = base64Decode(base64Image);
+        print('📦 Размер файла: ${bytes.length} байт (${(bytes.length / 1024).toStringAsFixed(2)} KB)');
         
-        print('📦 Размер JSON тела: ${requestBody.length} символов');
-        if (requestBody.length > 1000000) {
-          final sizeMB = (requestBody.length / 1024 / 1024).toStringAsFixed(2);
-          print('⚠️ Внимание: Размер запроса очень большой ($sizeMB MB)');
-        }
+        // Используем MultipartRequest - стандартный способ для загрузки файлов
+        final request = http.MultipartRequest(
+          'POST',
+          uri,
+        );
         
-        http.Response response;
+        // Добавляем файл
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: fileName,
+          ),
+        );
         
-        // Для веб-платформы пробуем несколько подходов
-        if (kIsWeb) {
-          print('🌐 Используем XMLHttpRequest для веб-платформы');
-          bool xhrSuccess = false;
-          
-          try {
-            final xhr = html.HttpRequest();
-            final completer = Completer<http.Response>();
-            
-            // Добавляем обработчики до отправки
-            xhr.onReadyStateChange.listen((e) {
-              print('📡 XMLHttpRequest readyState: ${xhr.readyState}');
-              if (xhr.readyState == html.HttpRequest.DONE) {
-                final status = xhr.status ?? 0;
-                print('📡 XMLHttpRequest status: $status');
-                if (status >= 200 && status < 300) {
-                  final headers = <String, String>{};
-                  xhr.responseHeaders.forEach((key, value) {
-                    headers[key] = value;
-                  });
-                  completer.complete(http.Response(
-                    xhr.responseText ?? '',
-                    status,
-                    headers: headers,
-                  ));
-                  xhrSuccess = true;
-                } else {
-                  completer.completeError(Exception('HTTP $status: ${xhr.statusText}'));
-                }
-              }
-            });
-            
-            xhr.onError.listen((e) {
-              print('❌ XMLHttpRequest onError: ${xhr.statusText}');
-              completer.completeError(Exception('Network error: ${xhr.statusText}'));
-            });
-            
-            xhr.onAbort.listen((e) {
-              print('⚠️ XMLHttpRequest aborted');
-              completer.completeError(Exception('Request aborted'));
-            });
-            
-            print('📤 Открываем соединение: ${uri.toString()}');
-            xhr.open('POST', uri.toString(), async: true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('Accept', 'application/json');
-            
-            print('📤 Отправляем данные...');
-            xhr.send(requestBody);
-            
-            response = await completer.future.timeout(
-              const Duration(seconds: 120),
-              onTimeout: () {
-                print('⏱️ Таймаут XMLHttpRequest');
-                xhr.abort();
-                throw Exception('Таймаут при загрузке фото (120 секунд)');
-              },
-            );
-            
-            print('📥 Получен ответ через XMLHttpRequest: статус ${response.statusCode}');
-          } catch (e, stackTrace) {
-            print('⚠️ XMLHttpRequest не сработал: $e');
-            print('⚠️ Stack trace: $stackTrace');
-            if (!xhrSuccess) {
-              print('⚠️ Пробуем http.post как fallback...');
-              // Fallback на обычный http.post
-              response = await http.post(
-                uri,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                },
-                body: requestBody,
-              ).timeout(
-                const Duration(seconds: 120),
-                onTimeout: () {
-                  print('⏱️ Таймаут при загрузке фото (120 секунд)');
-                  throw Exception('Таймаут при загрузке фото (120 секунд)');
-                },
-              );
-            } else {
-              rethrow;
-            }
-          }
-        } else {
-          // Для мобильных платформ используем обычный http.post
-          response = await http.post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: requestBody,
-          ).timeout(
-            const Duration(seconds: 120),
-            onTimeout: () {
-              print('⏱️ Таймаут при загрузке фото (120 секунд)');
-              throw Exception('Таймаут при загрузке фото (120 секунд)');
-            },
-          );
-        }
-
+        // Добавляем имя файла как поле
+        request.fields['fileName'] = fileName;
+        
+        print('📤 Отправляем multipart/form-data запрос...');
+        
+        // Отправляем запрос
+        final streamedResponse = await request.send().timeout(
+          const Duration(seconds: 120),
+          onTimeout: () {
+            print('⏱️ Таймаут при загрузке фото (120 секунд)');
+            throw Exception('Таймаут при загрузке фото (120 секунд)');
+          },
+        );
+        
+        // Получаем ответ
+        final response = await http.Response.fromStream(streamedResponse);
+        
         print('📥 Получен ответ: статус ${response.statusCode}');
         print('📥 Размер ответа: ${response.body.length} символов');
 
