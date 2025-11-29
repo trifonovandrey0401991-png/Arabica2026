@@ -19,17 +19,18 @@ function doOptions(e) {
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    const action = data.action;
+    // Приводим action к нижнему регистру для надежности
+    const action = (data.action || '').toLowerCase();
 
     let result;
-    if (action === 'uploadPhoto') {
+    if (action === 'uploadphoto') {
       result = uploadPhoto(data.fileName, data.fileData);
-    } else if (action === 'deletePhoto') {
+    } else if (action === 'deletephoto') {
       result = deletePhoto(data.fileId);
     } else {
       result = ContentService.createTextOutput(JSON.stringify({
         success: false,
-        error: 'Unknown action'
+        error: 'Unknown action: ' + (data.action || 'undefined')
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
