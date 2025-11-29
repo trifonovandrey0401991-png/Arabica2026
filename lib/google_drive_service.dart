@@ -65,66 +65,89 @@ class GoogleDriveService {
         
         http.Response response;
         
-        // Для веб-платформы используем XMLHttpRequest напрямую
+        // Для веб-платформы пробуем несколько подходов
         if (kIsWeb) {
           print('🌐 Используем XMLHttpRequest для веб-платформы');
+          bool xhrSuccess = false;
+          
           try {
             final xhr = html.HttpRequest();
             final completer = Completer<http.Response>();
             
-            xhr.open('POST', uri.toString(), async: true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('Accept', 'application/json');
-            
-            xhr.onLoad.listen((e) {
-              final status = xhr.status ?? 0;
-              if (status >= 200 && status < 300) {
-                final headers = <String, String>{};
-                xhr.responseHeaders.forEach((key, value) {
-                  headers[key] = value;
-                });
-                completer.complete(http.Response(
-                  xhr.responseText ?? '',
-                  status,
-                  headers: headers,
-                ));
-              } else {
-                completer.completeError(Exception('HTTP $status: ${xhr.statusText}'));
+            // Добавляем обработчики до отправки
+            xhr.onReadyStateChange.listen((e) {
+              print('📡 XMLHttpRequest readyState: ${xhr.readyState}');
+              if (xhr.readyState == html.HttpRequest.DONE) {
+                final status = xhr.status ?? 0;
+                print('📡 XMLHttpRequest status: $status');
+                if (status >= 200 && status < 300) {
+                  final headers = <String, String>{};
+                  xhr.responseHeaders.forEach((key, value) {
+                    headers[key] = value;
+                  });
+                  completer.complete(http.Response(
+                    xhr.responseText ?? '',
+                    status,
+                    headers: headers,
+                  ));
+                  xhrSuccess = true;
+                } else {
+                  completer.completeError(Exception('HTTP $status: ${xhr.statusText}'));
+                }
               }
             });
             
             xhr.onError.listen((e) {
+              print('❌ XMLHttpRequest onError: ${xhr.statusText}');
               completer.completeError(Exception('Network error: ${xhr.statusText}'));
             });
             
+            xhr.onAbort.listen((e) {
+              print('⚠️ XMLHttpRequest aborted');
+              completer.completeError(Exception('Request aborted'));
+            });
+            
+            print('📤 Открываем соединение: ${uri.toString()}');
+            xhr.open('POST', uri.toString(), async: true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Accept', 'application/json');
+            
+            print('📤 Отправляем данные...');
             xhr.send(requestBody);
             
             response = await completer.future.timeout(
               const Duration(seconds: 120),
               onTimeout: () {
+                print('⏱️ Таймаут XMLHttpRequest');
                 xhr.abort();
                 throw Exception('Таймаут при загрузке фото (120 секунд)');
               },
             );
             
             print('📥 Получен ответ через XMLHttpRequest: статус ${response.statusCode}');
-          } catch (e) {
-            print('⚠️ XMLHttpRequest не сработал, пробуем http.post: $e');
-            // Fallback на обычный http.post
-            response = await http.post(
-              uri,
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: requestBody,
-            ).timeout(
-              const Duration(seconds: 120),
-              onTimeout: () {
-                print('⏱️ Таймаут при загрузке фото (120 секунд)');
-                throw Exception('Таймаут при загрузке фото (120 секунд)');
-              },
-            );
+          } catch (e, stackTrace) {
+            print('⚠️ XMLHttpRequest не сработал: $e');
+            print('⚠️ Stack trace: $stackTrace');
+            if (!xhrSuccess) {
+              print('⚠️ Пробуем http.post как fallback...');
+              // Fallback на обычный http.post
+              response = await http.post(
+                uri,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+                body: requestBody,
+              ).timeout(
+                const Duration(seconds: 120),
+                onTimeout: () {
+                  print('⏱️ Таймаут при загрузке фото (120 секунд)');
+                  throw Exception('Таймаут при загрузке фото (120 секунд)');
+                },
+              );
+            } else {
+              rethrow;
+            }
           }
         } else {
           // Для мобильных платформ используем обычный http.post
