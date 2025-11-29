@@ -113,6 +113,16 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     }
   }
 
+  /// Сохранить ответ и автоматически перейти к следующему вопросу
+  Future<void> _saveAndNext() async {
+    _saveAnswer();
+    // Небольшая задержка для визуального отклика
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      _nextQuestion();
+    }
+  }
+
   void _previousQuestion() {
     if (_currentQuestionIndex > 0) {
       setState(() {
@@ -376,6 +386,11 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     fillColor: Colors.white,
                   ),
                   onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    if (_canProceed()) {
+                      _saveAndNext();
+                    }
+                  },
                 ),
               ] else if (question.isPhotoOnly) ...[
                 if (_photoPath != null)
@@ -395,7 +410,13 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     ),
                   ),
                 ElevatedButton.icon(
-                  onPressed: _takePhoto,
+                  onPressed: () async {
+                    await _takePhoto();
+                    // Если фото сделано, автоматически переходим к следующему вопросу
+                    if (_photoPath != null && _canProceed()) {
+                      _saveAndNext();
+                    }
+                  },
                   icon: const Icon(Icons.camera_alt),
                   label: Text(_photoPath == null ? 'Сделать фото' : 'Изменить фото'),
                   style: ElevatedButton.styleFrom(
@@ -413,6 +434,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                           setState(() {
                             _selectedYesNo = 'Да';
                           });
+                          // Автоматически переходим к следующему вопросу
+                          if (_canProceed()) {
+                            _saveAndNext();
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _selectedYesNo == 'Да' 
@@ -439,6 +464,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                           setState(() {
                             _selectedYesNo = 'Нет';
                           });
+                          // Автоматически переходим к следующему вопросу
+                          if (_canProceed()) {
+                            _saveAndNext();
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _selectedYesNo == 'Нет' 
@@ -471,6 +500,11 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     fillColor: Colors.white,
                   ),
                   onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    if (_canProceed()) {
+                      _saveAndNext();
+                    }
+                  },
                 ),
               ],
 
