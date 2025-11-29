@@ -11,13 +11,27 @@ class GoogleDriveService {
   /// Загрузить фото в Google Drive
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
     try {
-      final file = File(photoPath);
-      if (!await file.exists()) {
-        throw Exception('Файл не найден: $photoPath');
+      String base64Image;
+      
+      // Проверяем, является ли это base64 data URL (для веб)
+      if (photoPath.startsWith('data:image/')) {
+        // Извлекаем base64 часть из data URL
+        // Формат: data:image/jpeg;base64,<base64_data>
+        final base64Index = photoPath.indexOf(',');
+        if (base64Index != -1) {
+          base64Image = photoPath.substring(base64Index + 1);
+        } else {
+          throw Exception('Неверный формат data URL');
+        }
+      } else {
+        // Для мобильных платформ - читаем из файла
+        final file = File(photoPath);
+        if (!await file.exists()) {
+          throw Exception('Файл не найден: $photoPath');
+        }
+        final bytes = await file.readAsBytes();
+        base64Image = base64Encode(bytes);
       }
-
-      final bytes = await file.readAsBytes();
-      final base64Image = base64Encode(bytes);
 
       final response = await http.post(
         Uri.parse(scriptUrl),
