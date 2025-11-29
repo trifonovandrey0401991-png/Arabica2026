@@ -1,7 +1,15 @@
 // Google Apps Script для работы с пересменками
 // Разверните этот скрипт и обновите URL в google_drive_service.dart
 
-const FOLDER_ID = 'YOUR_GOOGLE_DRIVE_FOLDER_ID'; // ID папки в Google Drive
+const FOLDER_ID = '1G3o-YBRAOP8f9Sb_5cXvOjADdwks5UsQ'; // ID папки в Google Drive
+
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    message: 'Google Apps Script для пересменки работает',
+    folderId: FOLDER_ID
+  })).setMimeType(ContentService.MimeType.JSON);
+}
 
 function doPost(e) {
   try {

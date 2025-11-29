@@ -16,23 +16,30 @@ class GoogleDriveService {
       // Проверяем, является ли это base64 data URL (для веб)
       if (photoPath.startsWith('data:image/')) {
         // Извлекаем base64 часть из data URL
-        // Формат: data:image/jpeg;base64,<base64_data>
         final base64Index = photoPath.indexOf(',');
         if (base64Index != -1) {
           base64Image = photoPath.substring(base64Index + 1);
         } else {
-          throw Exception('Неверный формат data URL');
+          print('⚠️ Неверный формат data URL');
+          return null;
         }
       } else {
         // Для мобильных платформ - читаем из файла
-        final file = File(photoPath);
-        if (!await file.exists()) {
-          throw Exception('Файл не найден: $photoPath');
+        try {
+          final file = File(photoPath);
+          if (!await file.exists()) {
+            print('⚠️ Файл не найден: $photoPath');
+            return null;
+          }
+          final bytes = await file.readAsBytes();
+          base64Image = base64Encode(bytes);
+        } catch (e) {
+          print('⚠️ Ошибка чтения файла: $e');
+          return null;
         }
-        final bytes = await file.readAsBytes();
-        base64Image = base64Encode(bytes);
       }
 
+      // Добавляем таймаут для запроса (30 секунд)
       final response = await http.post(
         Uri.parse(scriptUrl),
         headers: {'Content-Type': 'application/json'},
@@ -41,21 +48,34 @@ class GoogleDriveService {
           'fileName': fileName,
           'fileData': base64Image,
         }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Таймаут при загрузке фото (30 секунд)');
+        },
       );
 
       if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return result['fileId'] as String?;
-        } else {
-          throw Exception(result['error'] ?? 'Ошибка загрузки фото');
+        try {
+          final result = jsonDecode(response.body);
+          if (result['success'] == true) {
+            return result['fileId'] as String?;
+          } else {
+            print('⚠️ Ошибка от сервера: ${result['error']}');
+            return null;
+          }
+        } catch (e) {
+          print('⚠️ Ошибка парсинга ответа: $e');
+          return null;
         }
       } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+        print('⚠️ Ошибка HTTP: ${response.statusCode}');
+        return null;
       }
     } catch (e) {
       print('❌ Ошибка загрузки фото: $e');
-      rethrow;
+      // Возвращаем null вместо проброса ошибки, чтобы не блокировать сохранение отчета
+      return null;
     }
   }
 

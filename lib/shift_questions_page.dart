@@ -277,15 +277,21 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
               answer.photoPath!,
               fileName,
             );
-            syncedAnswers.add(ShiftAnswer(
-              question: answer.question,
-              textAnswer: answer.textAnswer,
-              numberAnswer: answer.numberAnswer,
-              photoPath: answer.photoPath,
-              photoDriveId: driveId,
-            ));
+            if (driveId != null) {
+              syncedAnswers.add(ShiftAnswer(
+                question: answer.question,
+                textAnswer: answer.textAnswer,
+                numberAnswer: answer.numberAnswer,
+                photoPath: answer.photoPath,
+                photoDriveId: driveId,
+              ));
+            } else {
+              // Если не удалось загрузить, сохраняем без photoDriveId
+              print('⚠️ Фото не загружено в Google Drive, сохраняем локально');
+              syncedAnswers.add(answer);
+            }
           } catch (e) {
-            // Если не удалось загрузить, сохраняем локально
+            print('⚠️ Исключение при загрузке фото: $e');
             syncedAnswers.add(answer);
           }
         } else {
