@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -111,9 +112,12 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
       if (photo != null) {
         if (kIsWeb) {
-          // Для веб используем путь напрямую
+          // Для веб конвертируем в base64 data URL
+          final bytes = await photo.readAsBytes();
+          final base64String = base64Encode(bytes);
+          final dataUrl = 'data:image/jpeg;base64,$base64String';
           setState(() {
-            _photoPath = photo.path;
+            _photoPath = dataUrl;
           });
         } else {
           // Для мобильных сохраняем в файл

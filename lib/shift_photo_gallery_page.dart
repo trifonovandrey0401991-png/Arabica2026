@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'shift_report_model.dart';
 import 'google_drive_service.dart';
 
@@ -80,47 +81,71 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
         },
         itemBuilder: (context, index) {
           final photo = photos[index];
-          // Проверяем, является ли это ID файла из Google Drive
-          final isDriveId = !photo.startsWith('http') && !photo.contains('/') && !File(photo).existsSync();
           
           return Center(
-            child: isDriveId
-                ? FutureBuilder<String>(
-                    future: Future.value(GoogleDriveService.getPhotoUrl(photo)),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Image.network(
-                          snapshot.data!,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Icon(Icons.error, size: 64),
-                            );
-                          },
-                        );
-                      }
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    },
-                  )
-                : File(photo).existsSync()
-                    ? Image.file(
-                        File(photo),
+            child: kIsWeb
+                ? (photo.startsWith('data:') || photo.startsWith('http'))
+                    ? Image.network(
+                        photo,
                         fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(Icons.error, size: 64),
+                          );
+                        },
                       )
-                    : photo.startsWith('http')
-                        ? Image.network(
-                            photo,
+                    : FutureBuilder<String>(
+                        future: Future.value(GoogleDriveService.getPhotoUrl(photo)),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Image.network(
+                              snapshot.data!,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(Icons.error, size: 64),
+                                );
+                              },
+                            );
+                          }
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        },
+                      )
+                : (photo.startsWith('http') || photo.contains('drive.google.com'))
+                    ? Image.network(
+                        photo,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(Icons.error, size: 64),
+                          );
+                        },
+                      )
+                    : File(photo).existsSync()
+                        ? Image.file(
+                            File(photo),
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
+                          )
+                        : FutureBuilder<String>(
+                            future: Future.value(GoogleDriveService.getPhotoUrl(photo)),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData) {
+                                return Image.network(
+                                  snapshot.data!,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Icon(Icons.error, size: 64),
+                                    );
+                                  },
+                                );
+                              }
                               return const Center(
-                                child: Icon(Icons.error, size: 64),
+                                child: CircularProgressIndicator(),
                               );
                             },
-                          )
-                        : const Center(
-                            child: Icon(Icons.error, size: 64),
                           ),
           );
         },
