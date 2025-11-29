@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 /// Сервис для работы с Google Drive через Google Apps Script
 class GoogleDriveService {
   // URL вашего Google Apps Script (нужно будет обновить после создания скрипта)
-  static const String scriptUrl = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+  static const String scriptUrl = 'https://script.google.com/macros/s/AKfycbzOQoFZbPc_r2n4525e5_G6zL3q5R02mJvKHMY_xCILTH0uSYshSlyXiIRaROs3P03I/exec';
 
   /// Загрузить фото в Google Drive
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {

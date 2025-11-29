@@ -187,7 +187,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     );
                   }),
-                  _tile(context, Icons.receipt_long, 'Отчёт о смене', () {
+                  _tile(context, Icons.work_history, 'Пересменка', () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
