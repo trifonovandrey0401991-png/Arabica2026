@@ -172,6 +172,12 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         question: question.question,
         photoPath: _photoPath,
       );
+    } else if (question.isYesNo) {
+      if (_selectedYesNo == null) return;
+      answer = ShiftAnswer(
+        question: question.question,
+        textAnswer: _selectedYesNo, // Сохраняем 'Да' или 'Нет'
+      );
     } else {
       answer = ShiftAnswer(
         question: question.question,
@@ -396,6 +402,63 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     backgroundColor: const Color(0xFF004D40),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
+                ),
+              ] else if (question.isYesNo) ...[
+                // Кнопки Да/Нет
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedYesNo = 'Да';
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _selectedYesNo == 'Да' 
+                              ? Colors.green 
+                              : Colors.grey[300],
+                          foregroundColor: _selectedYesNo == 'Да' 
+                              ? Colors.white 
+                              : Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Да',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedYesNo = 'Нет';
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _selectedYesNo == 'Нет' 
+                              ? Colors.red 
+                              : Colors.grey[300],
+                          foregroundColor: _selectedYesNo == 'Нет' 
+                              ? Colors.white 
+                              : Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Нет',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ] else ...[
                 TextField(
