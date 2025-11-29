@@ -7,10 +7,17 @@ import 'order_provider.dart';
 import 'notification_service.dart';
 import 'loyalty_service.dart';
 import 'loyalty_storage.dart';
+import 'shift_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.initialize();
+  
+  // Синхронизация отчетов пересменки при запуске приложения
+  ShiftSyncService.syncAllReports().catchError((e) {
+    print('⚠️ Ошибка синхронизации при запуске: $e');
+  });
+  
   runApp(const ArabicaApp());
 }
 

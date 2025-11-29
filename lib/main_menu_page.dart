@@ -14,6 +14,9 @@ import 'loyalty_scanner_page.dart';
 import 'shop_model.dart';
 import 'training_page.dart';
 import 'test_page.dart';
+import 'shift_employee_selection_page.dart';
+import 'shift_reports_list_page.dart';
+import 'shift_sync_service.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -29,6 +32,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
   void initState() {
     super.initState();
     _loadUserName();
+    // Синхронизация отчетов при открытии главного меню
+    _syncReports();
+  }
+
+  Future<void> _syncReports() async {
+    try {
+      await ShiftSyncService.syncAllReports();
+    } catch (e) {
+      print('⚠️ Ошибка синхронизации: $e');
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -174,7 +187,22 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     );
                   }),
-                  _tile(context, Icons.receipt_long, 'Отчёт о смене', () {}),
+                  _tile(context, Icons.receipt_long, 'Отчёт о смене', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ShiftEmployeeSelectionPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.assessment, 'Отчет по пересменкам', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ShiftReportsListPage(),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
