@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -70,30 +71,37 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   Future<void> _takePhoto() async {
     try {
-      // Показываем диалог выбора источника
-      final ImageSource? source = await showDialog<ImageSource>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Выберите источник'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Камера'),
-                onTap: () => Navigator.pop(context, ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Галерея'),
-                onTap: () => Navigator.pop(context, ImageSource.gallery),
-              ),
-            ],
+      ImageSource? source;
+      
+      // На веб всегда используем галерею
+      if (kIsWeb) {
+        source = ImageSource.gallery;
+      } else {
+        // На мобильных показываем диалог выбора
+        source = await showDialog<ImageSource>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Выберите источник'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Камера'),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Галерея'),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        );
+      }
 
-      if (source == null) return; // Пользователь отменил выбор
+      if (source == null) return;
 
       final ImagePicker picker = ImagePicker();
       final XFile? photo = await picker.pickImage(
@@ -102,21 +110,31 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       );
 
       if (photo != null) {
-        final appDir = await getApplicationDocumentsDirectory();
-        final fileName = 'shift_photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final savedFile = File(path.join(appDir.path, fileName));
-        await File(photo.path).copy(savedFile.path);
-
-        setState(() {
-          _photoPath = savedFile.path;
-        });
+        if (kIsWeb) {
+          // Для веб используем путь напрямую
+          setState(() {
+            _photoPath = photo.path;
+          });
+        } else {
+          // Для мобильных сохраняем в файл
+          final appDir = await getApplicationDocumentsDirectory();
+          final fileName = 'shift_photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final savedFile = File(path.join(appDir.path, fileName));
+          final bytes = await photo.readAsBytes();
+          await savedFile.writeAsBytes(bytes);
+          setState(() {
+            _photoPath = savedFile.path;
+          });
+        }
       }
     } catch (e) {
+      print('❌ Ошибка при выборе фото: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Что-то пошло не так, попробуйте позже'),
+          SnackBar(
+            content: Text('Ошибка: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
