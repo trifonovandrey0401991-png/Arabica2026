@@ -446,10 +446,20 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(_photoPath!),
-                        fit: BoxFit.cover,
-                      ),
+                      child: kIsWeb
+                          ? Image.network(
+                              _photoPath!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(Icons.error, size: 64),
+                                );
+                              },
+                            )
+                          : Image.file(
+                              File(_photoPath!),
+                              fit: BoxFit.cover,
+                            ),
                     ),
                   ),
                 ElevatedButton.icon(
