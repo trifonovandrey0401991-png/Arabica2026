@@ -8,19 +8,12 @@ function doGet(e) {
     success: true,
     message: 'Google Apps Script для пересменки работает',
     folderId: FOLDER_ID
-  }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doOptions(e) {
   return ContentService.createTextOutput('')
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -40,20 +33,12 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Добавляем CORS заголовки для веб-платформы
-    return result
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return result;
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.toString()
-    }))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -66,27 +51,15 @@ function uploadPhoto(fileName, base64Data) {
     // Делаем файл доступным для просмотра
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
-    const result = ContentService.createTextOutput(JSON.stringify({
+    return ContentService.createTextOutput(JSON.stringify({
       success: true,
       fileId: file.getId()
     })).setMimeType(ContentService.MimeType.JSON);
-    
-    // Добавляем CORS заголовки
-    return result
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   } catch (error) {
-    const errorResult = ContentService.createTextOutput(JSON.stringify({
+    return ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
-    
-    // Добавляем CORS заголовки
-    return errorResult
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
 
@@ -95,26 +68,14 @@ function deletePhoto(fileId) {
     const file = DriveApp.getFileById(fileId);
     file.setTrashed(true);
     
-    const result = ContentService.createTextOutput(JSON.stringify({
+    return ContentService.createTextOutput(JSON.stringify({
       success: true
     })).setMimeType(ContentService.MimeType.JSON);
-    
-    // Добавляем CORS заголовки
-    return result
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   } catch (error) {
-    const errorResult = ContentService.createTextOutput(JSON.stringify({
+    return ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
-    
-    // Добавляем CORS заголовки
-    return errorResult
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
 
