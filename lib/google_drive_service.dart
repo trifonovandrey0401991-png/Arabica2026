@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -48,9 +49,16 @@ class GoogleDriveService {
       print('🔗 URL загрузки: $serverUrl/upload-photo');
       
       try {
-        // Для веб-платформы используем более простой подход
         final uri = Uri.parse('$serverUrl/upload-photo');
         print('🌐 Отправляем POST запрос на: $uri');
+        print('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
+        
+        final requestBody = jsonEncode({
+          'fileName': fileName,
+          'fileData': base64Image,
+        });
+        
+        print('📦 Размер JSON тела: ${requestBody.length} символов');
         
         final response = await http.post(
           uri,
@@ -58,12 +66,9 @@ class GoogleDriveService {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
-          body: jsonEncode({
-            'fileName': fileName,
-            'fileData': base64Image,
-          }),
+          body: requestBody,
         ).timeout(
-          const Duration(seconds: 60), // Увеличиваем таймаут для больших файлов
+          const Duration(seconds: 60),
           onTimeout: () {
             print('⏱️ Таймаут при загрузке фото (60 секунд)');
             throw Exception('Таймаут при загрузке фото (60 секунд)');
