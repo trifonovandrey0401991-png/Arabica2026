@@ -77,18 +77,19 @@ class GoogleDriveService {
             xhr.setRequestHeader('Accept', 'application/json');
             
             xhr.onLoad.listen((e) {
-              if (xhr.status >= 200 && xhr.status < 300) {
+              final status = xhr.status ?? 0;
+              if (status >= 200 && status < 300) {
                 final headers = <String, String>{};
                 xhr.responseHeaders.forEach((key, value) {
                   headers[key] = value;
                 });
                 completer.complete(http.Response(
                   xhr.responseText ?? '',
-                  xhr.status,
+                  status,
                   headers: headers,
                 ));
               } else {
-                completer.completeError(Exception('HTTP ${xhr.status}: ${xhr.statusText}'));
+                completer.completeError(Exception('HTTP $status: ${xhr.statusText}'));
               }
             });
             
