@@ -10,8 +10,8 @@ class GoogleDriveService {
   static const String scriptUrl = 'https://script.google.com/macros/s/AKfycbz0ROkJVhliPpWSTlXqJbfqu4LXbRzvMxmWqWZv6jR2K14pBbxvVGsf8PBR-3mYzgda/exec';
   
   // URL прокси-сервера для обхода CORS на веб-платформе
-  // Используйте URL вашего сервера, где запущен прокси
-  static const String proxyUrl = 'https://arabica26.ru:3000';
+  // Nginx проксирует запросы с https://arabica26.ru на localhost:3000
+  static const String proxyUrl = 'https://arabica26.ru';
 
   /// Загрузить фото в Google Drive
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
