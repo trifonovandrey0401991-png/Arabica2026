@@ -77,18 +77,37 @@ class GoogleDriveService {
         request.fields['fileName'] = fileName;
         
         print('📤 Отправляем multipart/form-data запрос...');
+        print('📋 Content-Type будет установлен автоматически: multipart/form-data');
+        print('📋 Количество файлов: ${request.files.length}');
+        print('📋 Поля: ${request.fields}');
         
         // Отправляем запрос
-        final streamedResponse = await request.send().timeout(
-          const Duration(seconds: 120),
-          onTimeout: () {
-            print('⏱️ Таймаут при загрузке фото (120 секунд)');
-            throw Exception('Таймаут при загрузке фото (120 секунд)');
-          },
-        );
+        http.StreamedResponse streamedResponse;
+        try {
+          streamedResponse = await request.send().timeout(
+            const Duration(seconds: 120),
+            onTimeout: () {
+              print('⏱️ Таймаут при загрузке фото (120 секунд)');
+              throw Exception('Таймаут при загрузке фото (120 секунд)');
+            },
+          );
+          print('📡 Запрос отправлен, получен streamedResponse');
+        } catch (e, stackTrace) {
+          print('❌ Ошибка при отправке запроса: $e');
+          print('❌ Stack trace: $stackTrace');
+          rethrow;
+        }
         
         // Получаем ответ
-        final response = await http.Response.fromStream(streamedResponse);
+        http.Response response;
+        try {
+          response = await http.Response.fromStream(streamedResponse);
+          print('📥 Ответ получен, статус: ${response.statusCode}');
+        } catch (e, stackTrace) {
+          print('❌ Ошибка при чтении ответа: $e');
+          print('❌ Stack trace: $stackTrace');
+          rethrow;
+        }
         
         print('📥 Получен ответ: статус ${response.statusCode}');
         print('📥 Размер ответа: ${response.body.length} символов');
