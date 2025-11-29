@@ -22,7 +22,11 @@ class ShiftQuestion {
       answerFormatB?.toLowerCase().trim() == 'free' ||
       answerFormatB?.toLowerCase().trim() == 'photo';
 
-  bool get isTextOnly => !isNumberOnly && !isPhotoOnly;
+  bool get isYesNo => 
+      (answerFormatB == null || answerFormatB!.trim().isEmpty) &&
+      (answerFormatC == null || answerFormatC!.trim().isEmpty);
+
+  bool get isTextOnly => !isNumberOnly && !isPhotoOnly && !isYesNo;
 
   /// Загрузить вопросы из Google Sheets
   static Future<List<ShiftQuestion>> loadQuestions() async {

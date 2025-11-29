@@ -30,6 +30,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _numberController = TextEditingController();
   String? _photoPath;
+  String? _selectedYesNo; // 'Да' или 'Нет'
   bool _isSubmitting = false;
 
   @override
@@ -105,6 +106,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         _textController.clear();
         _numberController.clear();
         _photoPath = null;
+        _selectedYesNo = null;
       });
     } else {
       _submitReport();
@@ -125,6 +127,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
               _textController.text = answer.textAnswer ?? '';
             } else if (question.isPhotoOnly) {
               _photoPath = answer.photoPath;
+            } else if (question.isYesNo) {
+              _selectedYesNo = answer.textAnswer; // 'Да' или 'Нет'
             }
           }
         }
@@ -142,6 +146,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       return _numberController.text.trim().isNotEmpty;
     } else if (question.isPhotoOnly) {
       return _photoPath != null;
+    } else if (question.isYesNo) {
+      return _selectedYesNo != null;
     } else {
       return _textController.text.trim().isNotEmpty;
     }
