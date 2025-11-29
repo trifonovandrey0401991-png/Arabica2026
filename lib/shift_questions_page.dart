@@ -70,9 +70,34 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   Future<void> _takePhoto() async {
     try {
+      // Показываем диалог выбора источника
+      final ImageSource? source = await showDialog<ImageSource>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Выберите источник'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Камера'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Галерея'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (source == null) return; // Пользователь отменил выбор
+
       final ImagePicker picker = ImagePicker();
       final XFile? photo = await picker.pickImage(
-        source: ImageSource.camera,
+        source: source,
         imageQuality: 85,
       );
 
@@ -418,7 +443,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     }
                   },
                   icon: const Icon(Icons.camera_alt),
-                  label: Text(_photoPath == null ? 'Сделать фото' : 'Изменить фото'),
+                  label: Text(_photoPath == null ? 'Добавить фото' : 'Изменить фото'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF004D40),
                     padding: const EdgeInsets.symmetric(vertical: 16),
