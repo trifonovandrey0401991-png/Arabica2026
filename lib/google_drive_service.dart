@@ -4,23 +4,18 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// Сервис для работы с Google Drive через Google Apps Script
+/// Сервис для работы с фото пересменки (сохранение на сервере)
 class GoogleDriveService {
-  // URL вашего Google Apps Script
-  static const String scriptUrl = 'https://script.google.com/macros/s/AKfycbz0ROkJVhliPpWSTlXqJbfqu4LXbRzvMxmWqWZv6jR2K14pBbxvVGsf8PBR-3mYzgda/exec';
-  
-  // URL прокси-сервера для обхода CORS на веб-платформе
-  // Nginx проксирует запросы с https://arabica26.ru на localhost:3000
-  static const String proxyUrl = 'https://arabica26.ru';
+  // URL сервера для загрузки фото
+  static const String serverUrl = 'https://arabica26.ru';
 
-  /// Загрузить фото в Google Drive
+  /// Загрузить фото на сервер
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
     try {
       String base64Image;
       
       // Проверяем, является ли это base64 data URL (для веб)
       if (photoPath.startsWith('data:image/')) {
-        // Извлекаем base64 часть из data URL
         final base64Index = photoPath.indexOf(',');
         if (base64Index != -1) {
           base64Image = photoPath.substring(base64Index + 1);
@@ -29,7 +24,6 @@ class GoogleDriveService {
           return null;
         }
       } else {
-        // Для мобильных платформ - читаем из файла
         try {
           final file = File(photoPath);
           if (!await file.exists()) {
@@ -44,24 +38,17 @@ class GoogleDriveService {
         }
       }
 
-      // Логируем размер данных для диагностики
-      print('📤 Начинаем загрузку фото: $fileName');
+      print('📤 Начинаем загрузку фото на сервер: $fileName');
       print('📏 Размер base64 данных: ${base64Image.length} символов');
       if (base64Image.length > 1000000) {
         final sizeMB = (base64Image.length / 1024 / 1024).toStringAsFixed(2);
         print('⚠️ Внимание: Размер данных очень большой ($sizeMB MB)');
       }
 
-      // На веб-платформе используем прокси для обхода CORS
-      final url = kIsWeb ? proxyUrl : scriptUrl;
-      print('🌐 Используем URL: $url (${kIsWeb ? "через прокси" : "напрямую"})');
-
-      // Добавляем таймаут для запроса (30 секунд)
       final response = await http.post(
-        Uri.parse(url),
+        Uri.parse('$serverUrl/upload-photo'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'action': 'uploadPhoto',
           'fileName': fileName,
           'fileData': base64Image,
         }),
@@ -76,8 +63,9 @@ class GoogleDriveService {
         try {
           final result = jsonDecode(response.body);
           if (result['success'] == true) {
-            print('✅ Фото успешно загружено в Google Drive: ${result['fileId']}');
-            return result['fileId'] as String?;
+            final photoUrl = result['filePath'] as String;
+            print('✅ Фото успешно загружено на сервер: $photoUrl');
+            return photoUrl; // Возвращаем URL фото
           } else {
             print('⚠️ Ошибка от сервера: ${result['error']}');
             return null;
@@ -93,26 +81,41 @@ class GoogleDriveService {
       }
     } catch (e) {
       print('❌ Ошибка загрузки фото: $e');
-      // Возвращаем null вместо проброса ошибки, чтобы не блокировать сохранение отчета
       return null;
     }
   }
 
-  /// Получить URL фото по ID
-  static String getPhotoUrl(String fileId) {
-    return 'https://drive.google.com/uc?export=view&id=$fileId';
+  /// Получить URL фото (теперь это просто URL с сервера)
+  static String getPhotoUrl(String filePath) {
+    // Если это уже полный URL, возвращаем как есть
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    // Иначе добавляем базовый URL сервера
+    return '$serverUrl/photos/$filePath';
   }
 
-  /// Удалить фото из Google Drive
-  static Future<bool> deletePhoto(String fileId) async {
+  /// Удалить фото с сервера
+  static Future<bool> deletePhoto(String fileName) async {
     try {
+      // Извлекаем имя файла из URL, если это URL
+      String actualFileName = fileName;
+      if (fileName.contains('/')) {
+        final parts = fileName.split('/');
+        actualFileName = parts.isNotEmpty ? parts.last : fileName;
+      }
+
       final response = await http.post(
-        Uri.parse(scriptUrl),
+        Uri.parse('$serverUrl/delete-photo'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'action': 'deletePhoto',
-          'fileId': fileId,
+          'fileName': actualFileName,
         }),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Таймаут при удалении фото');
+        },
       );
 
       if (response.statusCode == 200) {
@@ -126,4 +129,3 @@ class GoogleDriveService {
     }
   }
 }
-
