@@ -45,44 +45,56 @@ class GoogleDriveService {
         print('⚠️ Внимание: Размер данных очень большой ($sizeMB MB)');
       }
 
-      final response = await http.post(
-        Uri.parse('$serverUrl/upload-photo'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'fileName': fileName,
-          'fileData': base64Image,
-        }),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception('Таймаут при загрузке фото (30 секунд)');
-        },
-      );
+      print('🔗 URL загрузки: $serverUrl/upload-photo');
+      
+      try {
+        final response = await http.post(
+          Uri.parse('$serverUrl/upload-photo'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'fileName': fileName,
+            'fileData': base64Image,
+          }),
+        ).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            print('⏱️ Таймаут при загрузке фото (30 секунд)');
+            throw Exception('Таймаут при загрузке фото (30 секунд)');
+          },
+        );
 
-      if (response.statusCode == 200) {
-        try {
-          final result = jsonDecode(response.body);
-          if (result['success'] == true) {
-            final photoUrl = result['filePath'] as String;
-            print('✅ Фото успешно загружено на сервер: $photoUrl');
-            return photoUrl; // Возвращаем URL фото
-          } else {
-            print('⚠️ Ошибка от сервера: ${result['error']}');
+        print('📥 Получен ответ: статус ${response.statusCode}');
+        print('📥 Размер ответа: ${response.body.length} символов');
+
+        if (response.statusCode == 200) {
+          try {
+            final result = jsonDecode(response.body);
+            if (result['success'] == true) {
+              final photoUrl = result['filePath'] as String;
+              print('✅ Фото успешно загружено на сервер: $photoUrl');
+              return photoUrl; // Возвращаем URL фото
+            } else {
+              print('⚠️ Ошибка от сервера: ${result['error']}');
+              return null;
+            }
+          } catch (e) {
+            print('⚠️ Ошибка парсинга ответа: $e');
+            print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
             return null;
           }
-        } catch (e) {
-          print('⚠️ Ошибка парсинга ответа: $e');
+        } else {
+          print('⚠️ Ошибка HTTP: ${response.statusCode}');
+          print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
           return null;
         }
-      } else {
-        print('⚠️ Ошибка HTTP: ${response.statusCode}');
-        print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+      } catch (e, stackTrace) {
+        print('❌ Ошибка загрузки фото: $e');
+        print('❌ Stack trace: $stackTrace');
         return null;
       }
-    } catch (e) {
-      print('❌ Ошибка загрузки фото: $e');
-      return null;
-    }
   }
 
   /// Получить URL фото (теперь это просто URL с сервера)
