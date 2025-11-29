@@ -55,13 +55,19 @@ class GoogleDriveService {
         final uri = Uri.parse('$serverUrl/upload-photo');
         print('🌐 Отправляем POST запрос на: $uri');
         print('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
+        print('📋 Origin: ${kIsWeb ? "web" : "mobile"}');
         
+        // Для веб-платформы пробуем отправлять данные частями или использовать другой формат
         final requestBody = jsonEncode({
           'fileName': fileName,
           'fileData': base64Image,
         });
         
         print('📦 Размер JSON тела: ${requestBody.length} символов');
+        if (requestBody.length > 1000000) {
+          final sizeMB = (requestBody.length / 1024 / 1024).toStringAsFixed(2);
+          print('⚠️ Внимание: Размер запроса очень большой ($sizeMB MB)');
+        }
         
         http.Response response;
         
