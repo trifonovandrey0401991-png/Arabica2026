@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+// Для веб-платформы используем dart:html
+import 'dart:html' as html if (dart.library.io) 'dart:io';
+
 /// Сервис для работы с фото пересменки (сохранение на сервере)
 class GoogleDriveService {
   // URL сервера для загрузки фото
@@ -60,20 +63,85 @@ class GoogleDriveService {
         
         print('📦 Размер JSON тела: ${requestBody.length} символов');
         
-        final response = await http.post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: requestBody,
-        ).timeout(
-          const Duration(seconds: 60),
-          onTimeout: () {
-            print('⏱️ Таймаут при загрузке фото (60 секунд)');
-            throw Exception('Таймаут при загрузке фото (60 секунд)');
-          },
-        );
+        http.Response response;
+        
+        // Для веб-платформы используем XMLHttpRequest напрямую
+        if (kIsWeb) {
+          print('🌐 Используем XMLHttpRequest для веб-платформы');
+          try {
+            final xhr = html.HttpRequest();
+            final completer = Completer<http.Response>();
+            
+            xhr.open('POST', uri.toString(), async: true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Accept', 'application/json');
+            
+            xhr.onLoad.listen((e) {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                final headers = <String, String>{};
+                xhr.responseHeaders.forEach((key, value) {
+                  headers[key] = value;
+                });
+                completer.complete(http.Response(
+                  xhr.responseText ?? '',
+                  xhr.status,
+                  headers: headers,
+                ));
+              } else {
+                completer.completeError(Exception('HTTP ${xhr.status}: ${xhr.statusText}'));
+              }
+            });
+            
+            xhr.onError.listen((e) {
+              completer.completeError(Exception('Network error: ${xhr.statusText}'));
+            });
+            
+            xhr.send(requestBody);
+            
+            response = await completer.future.timeout(
+              const Duration(seconds: 120),
+              onTimeout: () {
+                xhr.abort();
+                throw Exception('Таймаут при загрузке фото (120 секунд)');
+              },
+            );
+            
+            print('📥 Получен ответ через XMLHttpRequest: статус ${response.statusCode}');
+          } catch (e) {
+            print('⚠️ XMLHttpRequest не сработал, пробуем http.post: $e');
+            // Fallback на обычный http.post
+            response = await http.post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: requestBody,
+            ).timeout(
+              const Duration(seconds: 120),
+              onTimeout: () {
+                print('⏱️ Таймаут при загрузке фото (120 секунд)');
+                throw Exception('Таймаут при загрузке фото (120 секунд)');
+              },
+            );
+          }
+        } else {
+          // Для мобильных платформ используем обычный http.post
+          response = await http.post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: requestBody,
+          ).timeout(
+            const Duration(seconds: 120),
+            onTimeout: () {
+              print('⏱️ Таймаут при загрузке фото (120 секунд)');
+              throw Exception('Таймаут при загрузке фото (120 секунд)');
+            },
+          );
+        }
 
         print('📥 Получен ответ: статус ${response.statusCode}');
         print('📥 Размер ответа: ${response.body.length} символов');
