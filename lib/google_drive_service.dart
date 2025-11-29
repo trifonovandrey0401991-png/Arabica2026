@@ -1,12 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 /// Сервис для работы с Google Drive через Google Apps Script
 class GoogleDriveService {
-  // URL вашего Google Apps Script (нужно будет обновить после создания скрипта)
+  // URL вашего Google Apps Script
   static const String scriptUrl = 'https://script.google.com/macros/s/AKfycbz0ROkJVhliPpWSTlXqJbfqu4LXbRzvMxmWqWZv6jR2K14pBbxvVGsf8PBR-3mYzgda/exec';
+  
+  // URL прокси-сервера для обхода CORS на веб-платформе
+  static const String proxyUrl = 'http://localhost:3000';
 
   /// Загрузить фото в Google Drive
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
@@ -47,9 +51,13 @@ class GoogleDriveService {
         print('⚠️ Внимание: Размер данных очень большой ($sizeMB MB)');
       }
 
+      // На веб-платформе используем прокси для обхода CORS
+      final url = kIsWeb ? proxyUrl : scriptUrl;
+      print('🌐 Используем URL: $url (${kIsWeb ? "через прокси" : "напрямую"})');
+
       // Добавляем таймаут для запроса (30 секунд)
       final response = await http.post(
-        Uri.parse(scriptUrl),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'action': 'uploadPhoto',
@@ -67,6 +75,7 @@ class GoogleDriveService {
         try {
           final result = jsonDecode(response.body);
           if (result['success'] == true) {
+            print('✅ Фото успешно загружено в Google Drive: ${result['fileId']}');
             return result['fileId'] as String?;
           } else {
             print('⚠️ Ошибка от сервера: ${result['error']}');
@@ -78,6 +87,7 @@ class GoogleDriveService {
         }
       } else {
         print('⚠️ Ошибка HTTP: ${response.statusCode}');
+        print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
         return null;
       }
     } catch (e) {

@@ -7,10 +7,8 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Используйте либо прямой URL сервера, либо URL Google Apps Script
-const SCRIPT_URL = process.env.SCRIPT_URL || "https://arabica26.ru";
-// Для использования Google Apps Script раскомментируйте и укажите ваш URL:
-// const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+// URL Google Apps Script для загрузки фото в Google Drive
+const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbz0ROkJVhliPpWSTlXqJbfqu4LXbRzvMxmWqWZv6jR2K14pBbxvVGsf8PBR-3mYzgda/exec";
 
 app.post('/', async (req, res) => {
   try {
