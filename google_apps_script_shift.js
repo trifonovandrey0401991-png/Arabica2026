@@ -8,7 +8,19 @@ function doGet(e) {
     success: true,
     message: 'Google Apps Script для пересменки работает',
     folderId: FOLDER_ID
-  })).setMimeType(ContentService.MimeType.JSON);
+  }))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
 function doPost(e) {
@@ -16,21 +28,32 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
 
+    let result;
     if (action === 'uploadPhoto') {
-      return uploadPhoto(data.fileName, data.fileData);
+      result = uploadPhoto(data.fileName, data.fileData);
     } else if (action === 'deletePhoto') {
-      return deletePhoto(data.fileId);
+      result = deletePhoto(data.fileId);
     } else {
-      return ContentService.createTextOutput(JSON.stringify({
+      result = ContentService.createTextOutput(JSON.stringify({
         success: false,
         error: 'Unknown action'
       })).setMimeType(ContentService.MimeType.JSON);
     }
+
+    // Добавляем CORS заголовки для веб-платформы
+    return result
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
 
@@ -43,15 +66,27 @@ function uploadPhoto(fileName, base64Data) {
     // Делаем файл доступным для просмотра
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
-    return ContentService.createTextOutput(JSON.stringify({
+    const result = ContentService.createTextOutput(JSON.stringify({
       success: true,
       fileId: file.getId()
     })).setMimeType(ContentService.MimeType.JSON);
+    
+    // Добавляем CORS заголовки
+    return result
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
+    const errorResult = ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+    
+    // Добавляем CORS заголовки
+    return errorResult
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
 
@@ -60,14 +95,26 @@ function deletePhoto(fileId) {
     const file = DriveApp.getFileById(fileId);
     file.setTrashed(true);
     
-    return ContentService.createTextOutput(JSON.stringify({
+    const result = ContentService.createTextOutput(JSON.stringify({
       success: true
     })).setMimeType(ContentService.MimeType.JSON);
+    
+    // Добавляем CORS заголовки
+    return result
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
+    const errorResult = ContentService.createTextOutput(JSON.stringify({
       success: false,
       error: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+    
+    // Добавляем CORS заголовки
+    return errorResult
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
 }
 

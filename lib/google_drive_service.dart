@@ -39,6 +39,14 @@ class GoogleDriveService {
         }
       }
 
+      // Логируем размер данных для диагностики
+      print('📤 Начинаем загрузку фото: $fileName');
+      print('📏 Размер base64 данных: ${base64Image.length} символов');
+      if (base64Image.length > 1000000) {
+        final sizeMB = (base64Image.length / 1024 / 1024).toStringAsFixed(2);
+        print('⚠️ Внимание: Размер данных очень большой ($sizeMB MB)');
+      }
+
       // Добавляем таймаут для запроса (30 секунд)
       final response = await http.post(
         Uri.parse(scriptUrl),

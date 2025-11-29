@@ -107,7 +107,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       final ImagePicker picker = ImagePicker();
       final XFile? photo = await picker.pickImage(
         source: source,
-        imageQuality: 85,
+        imageQuality: kIsWeb ? 60 : 85, // Меньшее качество для веб для уменьшения размера
+        maxWidth: kIsWeb ? 1920 : null, // Ограничение размера для веб
+        maxHeight: kIsWeb ? 1080 : null,
       );
 
       if (photo != null) {
