@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+// Условный импорт для веб-платформы
+import 'dart:html' as html if (dart.library.io) 'dart:io';
+
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
 class GoogleDriveService {
@@ -14,13 +17,14 @@ class GoogleDriveService {
   /// Загрузить фото на сервер
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
     try {
-      String base64Image;
+      List<int> bytes;
       
       // Проверяем, является ли это base64 data URL (для веб)
       if (photoPath.startsWith('data:image/')) {
         final base64Index = photoPath.indexOf(',');
         if (base64Index != -1) {
-          base64Image = photoPath.substring(base64Index + 1);
+          final base64Image = photoPath.substring(base64Index + 1);
+          bytes = base64Decode(base64Image);
         } else {
           print('⚠️ Неверный формат data URL');
           return null;
@@ -32,8 +36,7 @@ class GoogleDriveService {
             print('⚠️ Файл не найден: $photoPath');
             return null;
           }
-          final bytes = await file.readAsBytes();
-          base64Image = base64Encode(bytes);
+          bytes = await file.readAsBytes();
         } catch (e) {
           print('⚠️ Ошибка чтения файла: $e');
           return null;
@@ -41,105 +44,126 @@ class GoogleDriveService {
       }
 
       print('📤 Начинаем загрузку фото на сервер: $fileName');
-      print('📏 Размер base64 данных: ${base64Image.length} символов');
-      if (base64Image.length > 1000000) {
-        final sizeMB = (base64Image.length / 1024 / 1024).toStringAsFixed(2);
-        print('⚠️ Внимание: Размер данных очень большой ($sizeMB MB)');
+      print('📦 Размер файла: ${bytes.length} байт (${(bytes.length / 1024).toStringAsFixed(2)} KB)');
+      if (bytes.length > 1000000) {
+        final sizeMB = (bytes.length / 1024 / 1024).toStringAsFixed(2);
+        print('⚠️ Внимание: Размер файла очень большой ($sizeMB MB)');
       }
 
       print('🔗 URL загрузки: $serverUrl/upload-photo');
-      
-      try {
-        final uri = Uri.parse('$serverUrl/upload-photo');
-        print('🌐 Отправляем POST запрос на: $uri');
-        print('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
-        
-        // Декодируем base64 в bytes
-        final bytes = base64Decode(base64Image);
-        print('📦 Размер файла: ${bytes.length} байт (${(bytes.length / 1024).toStringAsFixed(2)} KB)');
-        
-        // Используем MultipartRequest - стандартный способ для загрузки файлов
-        final request = http.MultipartRequest(
-          'POST',
-          uri,
-        );
-        
-        // Добавляем файл
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            bytes,
-            filename: fileName,
-          ),
-        );
-        
-        // Добавляем имя файла как поле
-        request.fields['fileName'] = fileName;
-        
-        print('📤 Отправляем multipart/form-data запрос...');
-        print('📋 Content-Type будет установлен автоматически: multipart/form-data');
-        print('📋 Количество файлов: ${request.files.length}');
-        print('📋 Поля: ${request.fields}');
-        
-        // Отправляем запрос
-        http.StreamedResponse streamedResponse;
-        try {
-          streamedResponse = await request.send().timeout(
-            const Duration(seconds: 120),
-            onTimeout: () {
-              print('⏱️ Таймаут при загрузке фото (120 секунд)');
-              throw Exception('Таймаут при загрузке фото (120 секунд)');
-            },
-          );
-          print('📡 Запрос отправлен, получен streamedResponse');
-        } catch (e, stackTrace) {
-          print('❌ Ошибка при отправке запроса: $e');
-          print('❌ Stack trace: $stackTrace');
-          rethrow;
-        }
-        
-        // Получаем ответ
-        http.Response response;
-        try {
-          response = await http.Response.fromStream(streamedResponse);
-          print('📥 Ответ получен, статус: ${response.statusCode}');
-        } catch (e, stackTrace) {
-          print('❌ Ошибка при чтении ответа: $e');
-          print('❌ Stack trace: $stackTrace');
-          rethrow;
-        }
-        
-        print('📥 Получен ответ: статус ${response.statusCode}');
-        print('📥 Размер ответа: ${response.body.length} символов');
+      print('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
 
-        if (response.statusCode == 200) {
-          try {
-            final result = jsonDecode(response.body);
-            if (result['success'] == true) {
-              final photoUrl = result['filePath'] as String;
-              print('✅ Фото успешно загружено на сервер: $photoUrl');
-              return photoUrl; // Возвращаем URL фото
-            } else {
-              print('⚠️ Ошибка от сервера: ${result['error']}');
-              return null;
-            }
-          } catch (e) {
-            print('⚠️ Ошибка парсинга ответа: $e');
-            print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
-            return null;
-          }
-        } else {
-          print('⚠️ Ошибка HTTP: ${response.statusCode}');
-          print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
-          return null;
-        }
-      } catch (e, stackTrace) {
-        print('❌ Ошибка загрузки фото: $e');
-        print('❌ Stack trace: $stackTrace');
-        return null;
+      // Для веб используем нативный fetch API, для мобильных - MultipartRequest
+      if (kIsWeb) {
+        return await _uploadPhotoWeb(bytes, fileName);
+      } else {
+        return await _uploadPhotoMobile(bytes, fileName);
       }
     } catch (e) {
       print('❌ Критическая ошибка загрузки фото: $e');
+      return null;
+    }
+  }
+
+  /// Загрузка фото на веб-платформе через fetch API
+  static Future<String?> _uploadPhotoWeb(List<int> bytes, String fileName) async {
+    try {
+      // Используем dart:html для веб
+      final formData = html.FormData();
+      
+      // Создаем Blob из bytes
+      final blob = html.Blob([bytes], 'image/jpeg');
+      formData.appendBlob('file', blob, fileName);
+      formData.append('fileName', fileName);
+
+      print('📤 Отправляем запрос через fetch API...');
+
+      final response = await html.window.fetch(
+        '$serverUrl/upload-photo',
+        html.RequestInit(
+          method: 'POST',
+          body: formData,
+          // НЕ устанавливаем Content-Type - браузер сделает это сам с boundary
+        ),
+      ).timeout(
+        const Duration(seconds: 120),
+        onTimeout: () {
+          print('⏱️ Таймаут при загрузке фото (120 секунд)');
+          throw Exception('Таймаут при загрузке фото');
+        },
+      );
+
+      print('📥 Получен ответ: статус ${response.status}');
+
+      if (response.ok) {
+        final result = await response.json() as Map<String, dynamic>;
+        if (result['success'] == true) {
+          final photoUrl = result['filePath'] as String;
+          print('✅ Фото успешно загружено на сервер: $photoUrl');
+          return photoUrl;
+        } else {
+          print('⚠️ Ошибка от сервера: ${result['error']}');
+          return null;
+        }
+      } else {
+        final errorText = await response.text();
+        print('⚠️ Ошибка HTTP: ${response.status}');
+        print('⚠️ Тело ответа: ${errorText.substring(0, errorText.length > 500 ? 500 : errorText.length)}');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      print('❌ Ошибка загрузки фото (веб): $e');
+      print('❌ Stack trace: $stackTrace');
+      return null;
+    }
+  }
+
+  /// Загрузка фото на мобильных платформах через MultipartRequest
+  static Future<String?> _uploadPhotoMobile(List<int> bytes, String fileName) async {
+    try {
+      final uri = Uri.parse('$serverUrl/upload-photo');
+      
+      final request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName,
+        ),
+      );
+      request.fields['fileName'] = fileName;
+
+      print('📤 Отправляем multipart/form-data запрос...');
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 120),
+        onTimeout: () {
+          print('⏱️ Таймаут при загрузке фото (120 секунд)');
+          throw Exception('Таймаут при загрузке фото');
+        },
+      );
+
+      final response = await http.Response.fromStream(streamedResponse);
+      print('📥 Получен ответ: статус ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final photoUrl = result['filePath'] as String;
+          print('✅ Фото успешно загружено на сервер: $photoUrl');
+          return photoUrl;
+        } else {
+          print('⚠️ Ошибка от сервера: ${result['error']}');
+          return null;
+        }
+      } else {
+        print('⚠️ Ошибка HTTP: ${response.statusCode}');
+        print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      print('❌ Ошибка загрузки фото (мобильный): $e');
+      print('❌ Stack trace: $stackTrace');
       return null;
     }
   }
