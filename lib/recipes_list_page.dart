@@ -1,0 +1,218 @@
+import 'package:flutter/material.dart';
+import 'recipe_model.dart';
+import 'recipe_view_page.dart';
+
+class RecipesListPage extends StatefulWidget {
+  const RecipesListPage({super.key});
+
+  @override
+  State<RecipesListPage> createState() => _RecipesListPageState();
+}
+
+class _RecipesListPageState extends State<RecipesListPage> {
+  late Future<List<Recipe>> _recipesFuture;
+  String _searchQuery = '';
+  String? _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _recipesFuture = Recipe.loadRecipesFromGoogleSheets();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Рецепты'),
+        backgroundColor: const Color(0xFF004D40),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40),
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.6,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Поиск и фильтр
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white.withOpacity(0.1),
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Поиск по названию...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  FutureBuilder<List<String>>(
+                    future: Recipe.getUniqueCategories(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: InputDecoration(
+                            labelText: 'Категория',
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Все категории'),
+                            ),
+                            ...snapshot.data!.map((cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Text(cat),
+                            )),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedCategory = value;
+                            });
+                          },
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Список рецептов
+            Expanded(
+              child: FutureBuilder<List<Recipe>>(
+                future: _recipesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Рецепты не найдены',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                    );
+                  }
+
+                  // Фильтрация
+                  var recipes = snapshot.data!;
+                  
+                  if (_searchQuery.isNotEmpty) {
+                    recipes = recipes.where((r) => 
+                      r.name.toLowerCase().contains(_searchQuery)
+                    ).toList();
+                  }
+                  
+                  if (_selectedCategory != null) {
+                    recipes = recipes.where((r) => 
+                      r.category == _selectedCategory
+                    ).toList();
+                  }
+
+                  if (recipes.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Рецепты не найдены',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                    );
+                  }
+
+                  // Группировка по категориям
+                  final categories = recipes.map((r) => r.category).toSet().toList();
+                  categories.sort();
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: categories.length,
+                    itemBuilder: (context, catIndex) {
+                      final category = categories[catIndex];
+                      final categoryRecipes = recipes
+                          .where((r) => r.category == category)
+                          .toList();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8, top: catIndex > 0 ? 16 : 0),
+                            child: Text(
+                              category,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          ...categoryRecipes.map((recipe) => Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: recipe.photoId != null
+                                  ? Image.asset(
+                                      'assets/images/${recipe.photoId}.jpg',
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Image.asset(
+                                        'assets/images/no_photo.png',
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      'assets/images/no_photo.png',
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                    ),
+                              title: Text(
+                                recipe.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              trailing: const Icon(Icons.arrow_forward_ios),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RecipeViewPage(recipe: recipe),
+                                  ),
+                                );
+                              },
+                            ),
+                          )),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

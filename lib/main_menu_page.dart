@@ -17,6 +17,7 @@ import 'test_page.dart';
 import 'shift_employee_selection_page.dart';
 import 'shift_reports_list_page.dart';
 import 'shift_sync_service.dart';
+import 'recipes_list_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -200,6 +201,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const ShiftReportsListPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.restaurant_menu, 'Рецепты', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RecipesListPage(),
                       ),
                     );
                   }),
