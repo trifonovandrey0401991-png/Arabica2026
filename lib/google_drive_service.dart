@@ -79,9 +79,9 @@ class GoogleDriveService {
       print('📤 Отправляем запрос через XMLHttpRequest...');
 
       final completer = Completer<String?>();
-      final xhr = html.XMLHttpRequest();
+      final xhr = html.HttpRequest();
       
-      xhr.open('POST', '$serverUrl/upload-photo', true);
+      xhr.open('POST', '$serverUrl/upload-photo', async: true);
       
       xhr.onLoad.listen((e) {
         final status = xhr.status ?? 0;
@@ -89,7 +89,7 @@ class GoogleDriveService {
         
         if (status >= 200 && status < 300) {
           try {
-            final result = jsonDecode(xhr.responseText) as Map<String, dynamic>;
+            final result = jsonDecode(xhr.responseText ?? '') as Map<String, dynamic>;
             if (result['success'] == true) {
               final photoUrl = result['filePath'] as String;
               print('✅ Фото успешно загружено на сервер: $photoUrl');
@@ -103,14 +103,15 @@ class GoogleDriveService {
             completer.complete(null);
           }
         } else {
+          final responseText = xhr.responseText ?? '';
           print('⚠️ Ошибка HTTP: $status');
-          print('⚠️ Тело ответа: ${xhr.responseText.substring(0, xhr.responseText.length > 500 ? 500 : xhr.responseText.length)}');
+          print('⚠️ Тело ответа: ${responseText.length > 500 ? responseText.substring(0, 500) : responseText}');
           completer.complete(null);
         }
       });
       
       xhr.onError.listen((e) {
-        print('❌ Ошибка XMLHttpRequest: ${xhr.statusText}');
+        print('❌ Ошибка XMLHttpRequest: ${xhr.statusText ?? "Unknown error"}');
         completer.complete(null);
       });
       
