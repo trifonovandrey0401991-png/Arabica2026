@@ -42,6 +42,7 @@ class ShiftReport {
   final DateTime createdAt;
   final List<ShiftAnswer> answers;
   final bool isSynced; // Синхронизирован ли с облаком
+  final DateTime? confirmedAt; // Время подтверждения отчета
 
   ShiftReport({
     required this.id,
@@ -50,6 +51,7 @@ class ShiftReport {
     required this.createdAt,
     required this.answers,
     this.isSynced = false,
+    this.confirmedAt,
   });
 
   /// Генерировать уникальный ID на основе комбинации
@@ -66,6 +68,7 @@ class ShiftReport {
     'createdAt': createdAt.toIso8601String(),
     'answers': answers.map((a) => a.toJson()).toList(),
     'isSynced': isSynced,
+    'confirmedAt': confirmedAt?.toIso8601String(),
   };
 
   factory ShiftReport.fromJson(Map<String, dynamic> json) => ShiftReport(
@@ -77,6 +80,9 @@ class ShiftReport {
         ?.map((a) => ShiftAnswer.fromJson(a))
         .toList() ?? [],
     isSynced: json['isSynced'] ?? false,
+    confirmedAt: json['confirmedAt'] != null 
+        ? DateTime.parse(json['confirmedAt']) 
+        : null,
   );
 
   /// Проверить, старше ли недели
@@ -84,6 +90,38 @@ class ShiftReport {
     final now = DateTime.now();
     final difference = now.difference(createdAt);
     return difference.inDays > 7;
+  }
+
+  /// Проверить, подтвержден ли отчет
+  bool get isConfirmed => confirmedAt != null;
+
+  /// Проверить, не подтвержден ли отчет в течение 6 часов
+  bool get isNotVerified {
+    if (isConfirmed) return false;
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+    return difference.inHours >= 6;
+  }
+
+  /// Получить статус проверки
+  /// Возвращает: 'confirmed' - подтвержден, 'not_verified' - не проверен (6+ часов), 'pending' - ожидает проверки
+  String get verificationStatus {
+    if (isConfirmed) return 'confirmed';
+    if (isNotVerified) return 'not_verified';
+    return 'pending';
+  }
+
+  /// Создать копию отчета с обновленным временем подтверждения
+  ShiftReport copyWith({DateTime? confirmedAt}) {
+    return ShiftReport(
+      id: id,
+      employeeName: employeeName,
+      shopAddress: shopAddress,
+      createdAt: createdAt,
+      answers: answers,
+      isSynced: isSynced,
+      confirmedAt: confirmedAt ?? this.confirmedAt,
+    );
   }
 
   /// Сохранить отчет локально

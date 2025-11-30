@@ -6,13 +6,43 @@ import 'google_drive_service.dart';
 import 'shift_photo_gallery_page.dart';
 
 /// Страница просмотра отчета пересменки
-class ShiftReportViewPage extends StatelessWidget {
+class ShiftReportViewPage extends StatefulWidget {
   final ShiftReport report;
 
   const ShiftReportViewPage({
     super.key,
     required this.report,
   });
+
+  @override
+  State<ShiftReportViewPage> createState() => _ShiftReportViewPageState();
+}
+
+class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
+  late ShiftReport _currentReport;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentReport = widget.report;
+  }
+
+  Future<void> _confirmReport() async {
+    final confirmedReport = _currentReport.copyWith(confirmedAt: DateTime.now());
+    await ShiftReport.updateReport(confirmedReport);
+    setState(() {
+      _currentReport = confirmedReport;
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Отчет подтвержден'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,39 +60,42 @@ class ShiftReportViewPage extends StatelessWidget {
             opacity: 0.6,
           ),
         ),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            // Информация об отчете
-            Card(
-              child: Padding(
+            Expanded(
+              child: ListView(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Магазин: ${report.shopAddress}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                children: [
+                  // Информация об отчете
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Магазин: ${_currentReport.shopAddress}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Сотрудник: ${_currentReport.employeeName}'),
+                          Text(
+                            'Дата: ${_currentReport.createdAt.day}.${_currentReport.createdAt.month}.${_currentReport.createdAt.year} '
+                            '${_currentReport.createdAt.hour}:${_currentReport.createdAt.minute.toString().padLeft(2, '0')}',
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text('Сотрудник: ${report.employeeName}'),
-                    Text(
-                      'Дата: ${report.createdAt.day}.${report.createdAt.month}.${report.createdAt.year} '
-                      '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 16),
 
-            // Ответы на вопросы
-            ...report.answers.asMap().entries.map((entry) {
-              final index = entry.key;
-              final answer = entry.value;
+                  // Ответы на вопросы
+                  ..._currentReport.answers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final answer = entry.value;
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
@@ -90,7 +123,7 @@ class ShiftReportViewPage extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ShiftPhotoGalleryPage(
-                                  reports: [report],
+                                  reports: [_currentReport],
                                   initialIndex: index,
                                 ),
                               ),
@@ -148,6 +181,60 @@ class ShiftReportViewPage extends StatelessWidget {
                 ),
               );
             }),
+                ],
+              ),
+            ),
+            // Кнопка подтверждения внизу
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+              ),
+              child: SafeArea(
+                child: _currentReport.isConfirmed
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Отчет подтвержден',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _confirmReport,
+                          icon: const Icon(Icons.check_circle, size: 24),
+                          label: const Text(
+                            'Подтвердить',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF004D40),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ),
           ],
         ),
       ),

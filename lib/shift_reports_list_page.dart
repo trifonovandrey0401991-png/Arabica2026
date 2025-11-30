@@ -212,6 +212,40 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage> {
                       itemCount: _filteredReports.length,
                       itemBuilder: (context, index) {
                         final report = _filteredReports[index];
+                        final status = report.verificationStatus;
+                        
+                        // Определяем иконку и цвет в зависимости от статуса
+                        Widget statusIcon;
+                        if (status == 'confirmed') {
+                          statusIcon = const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 24,
+                          );
+                        } else if (status == 'not_verified') {
+                          statusIcon = const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cancel,
+                                color: Colors.red,
+                                size: 24,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'не проверено',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          statusIcon = const SizedBox.shrink();
+                        }
+                        
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
@@ -234,16 +268,35 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage> {
                                 Text('Вопросов: ${report.answers.length}'),
                               ],
                             ),
-                            trailing: const Icon(Icons.arrow_forward_ios),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ShiftReportViewPage(
-                                    report: report,
-                                  ),
-                                ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                statusIcon,
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward_ios),
+                              ],
+                            ),
+                            onTap: () async {
+                              // Загружаем актуальный отчет перед открытием
+                              final allReports = await ShiftReport.loadAllReports();
+                              final updatedReport = allReports.firstWhere(
+                                (r) => r.id == report.id,
+                                orElse: () => report,
                               );
+                              
+                              if (mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ShiftReportViewPage(
+                                      report: updatedReport,
+                                    ),
+                                  ),
+                                ).then((_) {
+                                  // Обновляем список после возврата
+                                  _loadData();
+                                });
+                              }
                             },
                           ),
                         );
