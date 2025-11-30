@@ -65,10 +65,10 @@ class GoogleDriveService {
     }
   }
 
-  /// Загрузка фото на веб-платформе через fetch API
+  /// Загрузка фото на веб-платформе через XMLHttpRequest
   static Future<String?> _uploadPhotoWeb(List<int> bytes, String fileName) async {
     try {
-      // Используем dart:html для веб
+      // Используем XMLHttpRequest для веб (более надежно, чем fetch)
       final formData = html.FormData();
       
       // Создаем Blob из bytes
@@ -76,41 +76,56 @@ class GoogleDriveService {
       formData.appendBlob('file', blob, fileName);
       formData.append('fileName', fileName);
 
-      print('📤 Отправляем запрос через fetch API...');
+      print('📤 Отправляем запрос через XMLHttpRequest...');
 
-      final response = await html.window.fetch(
-        '$serverUrl/upload-photo',
-        html.RequestInit(
-          method: 'POST',
-          body: formData,
-          // НЕ устанавливаем Content-Type - браузер сделает это сам с boundary
-        ),
-      ).timeout(
+      final completer = Completer<String?>();
+      final xhr = html.XMLHttpRequest();
+      
+      xhr.open('POST', '$serverUrl/upload-photo', true);
+      
+      xhr.onLoad.listen((e) {
+        final status = xhr.status ?? 0;
+        print('📥 Получен ответ: статус $status');
+        
+        if (status >= 200 && status < 300) {
+          try {
+            final result = jsonDecode(xhr.responseText) as Map<String, dynamic>;
+            if (result['success'] == true) {
+              final photoUrl = result['filePath'] as String;
+              print('✅ Фото успешно загружено на сервер: $photoUrl');
+              completer.complete(photoUrl);
+            } else {
+              print('⚠️ Ошибка от сервера: ${result['error']}');
+              completer.complete(null);
+            }
+          } catch (e) {
+            print('⚠️ Ошибка парсинга ответа: $e');
+            completer.complete(null);
+          }
+        } else {
+          print('⚠️ Ошибка HTTP: $status');
+          print('⚠️ Тело ответа: ${xhr.responseText.substring(0, xhr.responseText.length > 500 ? 500 : xhr.responseText.length)}');
+          completer.complete(null);
+        }
+      });
+      
+      xhr.onError.listen((e) {
+        print('❌ Ошибка XMLHttpRequest: ${xhr.statusText}');
+        completer.complete(null);
+      });
+      
+      // Отправляем запрос
+      xhr.send(formData);
+      
+      // Таймаут
+      return completer.future.timeout(
         const Duration(seconds: 120),
         onTimeout: () {
           print('⏱️ Таймаут при загрузке фото (120 секунд)');
-          throw Exception('Таймаут при загрузке фото');
+          xhr.abort();
+          return null;
         },
       );
-
-      print('📥 Получен ответ: статус ${response.status}');
-
-      if (response.ok) {
-        final result = await response.json() as Map<String, dynamic>;
-        if (result['success'] == true) {
-          final photoUrl = result['filePath'] as String;
-          print('✅ Фото успешно загружено на сервер: $photoUrl');
-          return photoUrl;
-        } else {
-          print('⚠️ Ошибка от сервера: ${result['error']}');
-          return null;
-        }
-      } else {
-        final errorText = await response.text();
-        print('⚠️ Ошибка HTTP: ${response.status}');
-        print('⚠️ Тело ответа: ${errorText.substring(0, errorText.length > 500 ? 500 : errorText.length)}');
-        return null;
-      }
     } catch (e, stackTrace) {
       print('❌ Ошибка загрузки фото (веб): $e');
       print('❌ Stack trace: $stackTrace');
