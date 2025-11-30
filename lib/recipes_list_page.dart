@@ -155,7 +155,7 @@ class _RecipesListPageState extends State<RecipesListPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8, top: catIndex > 0 ? 16 : 0),
+                            padding: EdgeInsets.only(bottom: 8, top: catIndex > 0 ? 16 : 0),
                             child: Text(
                               category,
                               style: const TextStyle(
