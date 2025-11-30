@@ -66,7 +66,7 @@ class RecipeViewPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        recipe.recipe,
+                        recipe.recipe.replaceAll('\\n', '\n'),
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
