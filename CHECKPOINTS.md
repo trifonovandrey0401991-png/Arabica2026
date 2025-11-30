@@ -107,3 +107,4 @@ git checkout main
 3. Проверьте работу приложения
 4. Если нужно вернуться: `git checkout main`
 
+

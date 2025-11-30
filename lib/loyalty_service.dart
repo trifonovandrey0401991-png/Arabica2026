@@ -62,26 +62,26 @@ class LoyaltyService {
 
   static Future<LoyaltyInfo> fetchByPhone(String phone) async {
     try {
-      final uri = Uri.parse(
-        '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(phone)}',
-      );
+    final uri = Uri.parse(
+      '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(phone)}',
+    );
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
       
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
       }
 
-      final data = _decode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
-      }
+    final data = _decode(response.body);
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
+    }
 
       if (data['client'] == null) {
         throw Exception('Клиент не найден в базе данных');
       }
 
-      return LoyaltyInfo.fromJson(data['client']);
+    return LoyaltyInfo.fromJson(data['client']);
     } catch (e) {
       if (e is Exception) {
         rethrow;
@@ -92,26 +92,26 @@ class LoyaltyService {
 
   static Future<LoyaltyInfo> fetchByQr(String qr) async {
     try {
-      final uri = Uri.parse(
-        '$googleScriptUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
-      );
+    final uri = Uri.parse(
+      '$googleScriptUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
+    );
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
       
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
       }
 
-      final data = _decode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
-      }
+    final data = _decode(response.body);
+    if (data['success'] != true) {
+      throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
+    }
 
       if (data['client'] == null) {
         throw Exception('Клиент не найден в базе данных');
       }
 
-      return LoyaltyInfo.fromJson(data['client']);
+    return LoyaltyInfo.fromJson(data['client']);
     } catch (e) {
       if (e is Exception) {
         rethrow;
