@@ -28,20 +28,35 @@ class ReviewService {
       print('   URL: $url');
       print('   Body: ${jsonEncode(body)}');
       
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(body),
-      ).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          print('⏱️ Таймаут при создании отзыва');
-          throw Exception('Таймаут при создании отзыва');
-        },
-      );
+      http.Response response;
+      try {
+        response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode(body),
+        ).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            print('⏱️ Таймаут при создании отзыва');
+            throw Exception('Таймаут при создании отзыва');
+          },
+        );
+      } on http.ClientException catch (e) {
+        // Ошибка сети (Failed to fetch)
+        print('❌ Сетевая ошибка (ClientException): $e');
+        print('   Это может быть из-за:');
+        print('   1. CORS блокирует запрос');
+        print('   2. Смешанный контент (HTTP/HTTPS)');
+        print('   3. Проблема с сертификатом SSL');
+        print('   4. Сервер недоступен');
+        rethrow;
+      } catch (e) {
+        print('❌ Неожиданная ошибка при отправке запроса: $e');
+        rethrow;
+      }
 
       print('📥 Получен ответ:');
       print('   Status: ${response.statusCode}');
@@ -60,6 +75,19 @@ class ReviewService {
         print('❌ Ошибка создания отзыва: ${response.statusCode}');
         print('   Response body: ${response.body}');
       }
+      return null;
+    } on http.ClientException catch (e, stackTrace) {
+      // Ошибка сети (Failed to fetch) - обычно на веб-платформе
+      print('❌ Сетевая ошибка (ClientException): $e');
+      print('   Stack trace: $stackTrace');
+      print('   Возможные причины:');
+      print('   1. CORS блокирует запрос (проверьте настройки сервера)');
+      print('   2. Смешанный контент (HTTP/HTTPS)');
+      print('   3. Проблема с сертификатом SSL');
+      print('   4. Сервер недоступен или не отвечает');
+      print('   Попробуйте:');
+      print('   - Проверить консоль браузера на наличие CORS ошибок');
+      print('   - Проверить, что сервер доступен: curl https://arabica26.ru/api/reviews');
       return null;
     } catch (e, stackTrace) {
       print('❌ Критическая ошибка создания отзыва: $e');
