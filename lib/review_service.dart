@@ -15,33 +15,55 @@ class ReviewService {
     required String reviewText,
   }) async {
     try {
+      final url = '$serverUrl/api/reviews';
+      final body = {
+        'clientPhone': clientPhone,
+        'clientName': clientName,
+        'shopAddress': shopAddress,
+        'reviewType': reviewType,
+        'reviewText': reviewText,
+      };
+      
+      print('📤 Отправка запроса на создание отзыва:');
+      print('   URL: $url');
+      print('   Body: ${jsonEncode(body)}');
+      
       final response = await http.post(
-        Uri.parse('$serverUrl/api/reviews'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'clientPhone': clientPhone,
-          'clientName': clientName,
-          'shopAddress': shopAddress,
-          'reviewType': reviewType,
-          'reviewText': reviewText,
-        }),
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
       ).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
+          print('⏱️ Таймаут при создании отзыва');
           throw Exception('Таймаут при создании отзыва');
         },
       );
 
+      print('📥 Получен ответ:');
+      print('   Status: ${response.statusCode}');
+      print('   Body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
+          print('✅ Отзыв успешно создан');
           return Review.fromJson(result['review']);
+        } else {
+          print('❌ Сервер вернул success: false');
+          print('   Error: ${result['error']}');
         }
+      } else {
+        print('❌ Ошибка создания отзыва: ${response.statusCode}');
+        print('   Response body: ${response.body}');
       }
-      print('❌ Ошибка создания отзыва: ${response.statusCode}');
       return null;
-    } catch (e) {
-      print('❌ Ошибка создания отзыва: $e');
+    } catch (e, stackTrace) {
+      print('❌ Критическая ошибка создания отзыва: $e');
+      print('   Stack trace: $stackTrace');
       return null;
     }
   }
