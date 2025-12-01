@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'main_menu_page.dart';
 import 'registration_page.dart';
 import 'cart_provider.dart';
@@ -9,16 +8,27 @@ import 'notification_service.dart';
 import 'loyalty_service.dart';
 import 'loyalty_storage.dart';
 import 'shift_sync_service.dart';
-import 'firebase_service.dart';
+import 'firebase_wrapper.dart';
+
+// Условный импорт Firebase (для веб используется заглушка)
+import 'firebase_service.dart' if (dart.library.html) 'firebase_service_stub.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Инициализация Firebase
-  await Firebase.initializeApp();
-  
-  // Инициализация Firebase Messaging
-  await FirebaseService.initialize();
+  // Инициализация Firebase (только для мобильных платформ)
+  try {
+    await FirebaseWrapper.initializeApp();
+    
+    // Инициализация Firebase Messaging
+    await FirebaseService.initialize();
+  } catch (e) {
+    // Firebase недоступен (веб-платформа или пакеты не установлены)
+    print('⚠️ Firebase не доступен: $e');
+    print('   Push-уведомления будут работать только на мобильных устройствах');
+    // Инициализируем заглушку для веб
+    await FirebaseService.initialize();
+  }
   
   await NotificationService.initialize();
   
