@@ -18,6 +18,9 @@ import 'shift_employee_selection_page.dart';
 import 'shift_reports_list_page.dart';
 import 'shift_sync_service.dart';
 import 'recipes_list_page.dart';
+import 'review_type_selection_page.dart';
+import 'reviews_list_page.dart';
+import 'my_dialogs_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -175,7 +178,39 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     );
                   }),
-                  _tile(context, Icons.rate_review, 'Отзывы', () {}),
+                  _tile(context, Icons.rate_review, 'Отзывы', () {
+                    print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
+                    if (!context.mounted) {
+                      print('❌ Context не mounted');
+                      return;
+                    }
+                    print('🔵 Context mounted, открываем ReviewTypeSelectionPage');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) {
+                          print('🔵 Builder вызван, создаем ReviewTypeSelectionPage');
+                          return const ReviewTypeSelectionPage();
+                        },
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.chat, 'Мои диалоги', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyDialogsPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.feedback, 'Отзывы покупателей', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ReviewsListPage(),
+                      ),
+                    );
+                  }),
                   _tile(context, Icons.search, 'Наличие товара', () {}),
                   _tile(context, Icons.menu_book, 'Обучение', () {
                     _showTrainingDialog(context);
