@@ -28,6 +28,16 @@ class ReviewService {
       print('   URL: $url');
       print('   Body: ${jsonEncode(body)}');
       
+      // Проверяем, доступен ли сервер (только для диагностики)
+      try {
+        final testResponse = await http.get(Uri.parse('$serverUrl/api/reviews')).timeout(
+          const Duration(seconds: 5),
+        );
+        print('✅ Сервер доступен (тестовый запрос: ${testResponse.statusCode})');
+      } catch (e) {
+        print('⚠️ Сервер может быть недоступен: $e');
+      }
+      
       http.Response response;
       try {
         response = await http.post(
@@ -45,13 +55,14 @@ class ReviewService {
           },
         );
       } on http.ClientException catch (e) {
-        // Ошибка сети (Failed to fetch)
+        // Ошибка сети (Failed to fetch) - обычно на веб-платформе
         print('❌ Сетевая ошибка (ClientException): $e');
         print('   Это может быть из-за:');
-        print('   1. CORS блокирует запрос');
+        print('   1. CORS блокирует запрос (проверьте настройки сервера)');
         print('   2. Смешанный контент (HTTP/HTTPS)');
         print('   3. Проблема с сертификатом SSL');
         print('   4. Сервер недоступен');
+        print('   Попробуйте открыть консоль браузера (F12) и проверить ошибки CORS');
         rethrow;
       } catch (e) {
         print('❌ Неожиданная ошибка при отправке запроса: $e');
