@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'main_menu_page.dart';
 import 'registration_page.dart';
 import 'cart_provider.dart';
@@ -8,9 +9,17 @@ import 'notification_service.dart';
 import 'loyalty_service.dart';
 import 'loyalty_storage.dart';
 import 'shift_sync_service.dart';
+import 'firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Инициализация Firebase
+  await Firebase.initializeApp();
+  
+  // Инициализация Firebase Messaging
+  await FirebaseService.initialize();
+  
   await NotificationService.initialize();
   
   // Синхронизация отчетов пересменки при запуске приложения
@@ -58,6 +67,7 @@ class ArabicaApp extends StatelessWidget {
             '/home': (context) => Builder(
                   builder: (context) {
                     NotificationService.setGlobalContext(context);
+                    FirebaseService.setGlobalContext(context);
                     return const MainMenuPage();
                   },
                 ),
@@ -152,6 +162,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
                     builder: (context) => Builder(
                       builder: (context) {
                         NotificationService.setGlobalContext(context);
+                        FirebaseService.setGlobalContext(context);
                         return const MainMenuPage();
                       },
                     ),
@@ -226,6 +237,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       return Builder(
         builder: (context) {
           NotificationService.setGlobalContext(context);
+          FirebaseService.setGlobalContext(context);
           return const MainMenuPage();
         },
       );
