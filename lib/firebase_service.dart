@@ -24,6 +24,15 @@ class FirebaseService {
     if (_initialized) return;
 
     try {
+      // Проверяем, что Firebase Core инициализирован (для мобильных платформ)
+      // На веб это будет stub, который просто вернется
+      try {
+        // ignore: avoid_dynamic_calls
+        await Future.delayed(const Duration(milliseconds: 1000)); // Даем время Firebase Core инициализироваться
+      } catch (e) {
+        print('⚠️ Проблема с задержкой инициализации: $e');
+      }
+      
       // Запрашиваем разрешение на уведомления
       NotificationSettings settings = await _messaging.requestPermission(
         alert: true,
