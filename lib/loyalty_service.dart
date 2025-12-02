@@ -66,7 +66,7 @@ class LoyaltyService {
       '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(phone)}',
     );
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    final response = await http.get(uri).timeout(const Duration(seconds: 30));
       
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
@@ -96,7 +96,7 @@ class LoyaltyService {
       '$googleScriptUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
     );
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    final response = await http.get(uri).timeout(const Duration(seconds: 30));
       
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
@@ -151,7 +151,7 @@ class LoyaltyService {
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
