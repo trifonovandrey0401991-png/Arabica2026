@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'review_model.dart';
 
@@ -40,15 +41,21 @@ class ReviewService {
         try {
           print('🌐 Используем fetch API для веб-платформы');
           // ignore: avoid_web_libraries_in_flutter
-          final request = await html.HttpRequest.request(
-            url,
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            sendData: jsonEncode(body),
-          );
+          final request = html.HttpRequest();
+          request.open('POST', url, async: true);
+          request.setRequestHeader('Content-Type', 'application/json');
+          request.setRequestHeader('Accept', 'application/json');
+          
+          final completer = html.Completer<void>();
+          request.onLoad.listen((_) {
+            completer.complete();
+          });
+          request.onError.listen((error) {
+            completer.completeError(error);
+          });
+          
+          request.send(jsonEncode(body));
+          await completer.future;
           
           if (request.status >= 200 && request.status < 300) {
             final responseBody = request.responseText;
