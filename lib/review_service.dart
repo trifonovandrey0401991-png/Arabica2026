@@ -42,7 +42,7 @@ class ReviewService {
           print('🌐 Используем fetch API для веб-платформы');
           // ignore: avoid_web_libraries_in_flutter
           final request = html.HttpRequest();
-          request.open('POST', url, async: true);
+          request.open('POST', url, true);
           request.setRequestHeader('Content-Type', 'application/json');
           request.setRequestHeader('Accept', 'application/json');
           

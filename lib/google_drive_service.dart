@@ -72,7 +72,7 @@ class GoogleDriveService {
       final formData = html.FormData();
       
       // Создаем Blob из bytes
-      final blob = html.Blob([bytes], 'image/jpeg');
+      final blob = html.Blob(bytes, 'image/jpeg');
       formData.appendBlob('file', blob, fileName);
       formData.append('fileName', fileName);
 
@@ -81,7 +81,7 @@ class GoogleDriveService {
       final completer = Completer<String?>();
       final xhr = html.HttpRequest();
       
-      xhr.open('POST', '$serverUrl/upload-photo', async: true);
+      xhr.open('POST', '$serverUrl/upload-photo', true);
       
       xhr.onLoad.listen((e) {
         final status = xhr.status ?? 0;
