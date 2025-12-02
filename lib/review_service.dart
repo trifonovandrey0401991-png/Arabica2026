@@ -1,6 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'review_model.dart';
+
+// Для веб-платформы используем dart:html
+import 'dart:html' as html if (dart.library.io) '';
 
 /// Сервис для работы с отзывами
 class ReviewService {
@@ -27,18 +31,54 @@ class ReviewService {
       print('📤 Отправка запроса на создание отзыва:');
       print('   URL: $url');
       print('   Body: ${jsonEncode(body)}');
-      
-      // Проверяем, доступен ли сервер (только для диагностики)
-      try {
-        final testResponse = await http.get(Uri.parse('$serverUrl/api/reviews')).timeout(
-          const Duration(seconds: 5),
-        );
-        print('✅ Сервер доступен (тестовый запрос: ${testResponse.statusCode})');
-      } catch (e) {
-        print('⚠️ Сервер может быть недоступен: $e');
-      }
+      print('   Платформа: ${kIsWeb ? "Web" : "Mobile"}');
       
       http.Response response;
+      
+      // Для веб-платформы используем альтернативный способ
+      if (kIsWeb) {
+        try {
+          print('🌐 Используем fetch API для веб-платформы');
+          // ignore: avoid_web_libraries_in_flutter
+          final request = await html.HttpRequest.request(
+            url,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            sendData: jsonEncode(body),
+          );
+          
+          if (request.status >= 200 && request.status < 300) {
+            final responseBody = request.responseText;
+            print('📥 Получен ответ через fetch API:');
+            print('   Status: ${request.status}');
+            print('   Body: $responseBody');
+            
+            final result = jsonDecode(responseBody);
+            if (result['success'] == true) {
+              print('✅ Отзыв успешно создан');
+              return Review.fromJson(result['review']);
+            } else {
+              print('❌ Сервер вернул success: false');
+              print('   Error: ${result['error']}');
+            }
+            return null;
+          } else {
+            print('❌ Ошибка создания отзыва: ${request.status}');
+            print('   Response: ${request.responseText}');
+            return null;
+          }
+        } catch (e, stackTrace) {
+          print('❌ Ошибка при использовании fetch API: $e');
+          print('   Stack trace: $stackTrace');
+          // Пробуем обычный способ как fallback
+          print('   Пробуем обычный HTTP клиент...');
+        }
+      }
+      
+      // Обычный способ для мобильных платформ или fallback для веб
       try {
         response = await http.post(
           Uri.parse(url),
