@@ -42,10 +42,12 @@ class LoyaltyService {
     required String phone,
     required String qr,
   }) async {
+    // Нормализуем номер телефона: убираем + и пробелы
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     final response = await _post({
       'action': 'register',
       'name': name,
-      'phone': phone,
+      'phone': normalizedPhone,
       'qr': qr,
       'points': 0,
       'freeDrinks': 0,
@@ -62,8 +64,10 @@ class LoyaltyService {
 
   static Future<LoyaltyInfo> fetchByPhone(String phone) async {
     try {
+    // Нормализуем номер телефона: убираем + и пробелы
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     final uri = Uri.parse(
-      '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(phone)}',
+      '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
     );
 
     final response = await http.get(uri).timeout(const Duration(seconds: 30));
