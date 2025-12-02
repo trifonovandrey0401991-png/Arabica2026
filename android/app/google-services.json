@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "571903009188",
+    "project_id": "arabica2026-96aa0",
+    "storage_bucket": "arabica2026-96aa0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571903009188:android:c13c62df004d6b9650a131",
+        "android_client_info": {
+          "package_name": "a.rabica2026_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYsmM9lYt21MSZIjmHHwbIxDy3BNveY9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571903009188:android:d432b572ad3b63ec50a131",
+        "android_client_info": {
+          "package_name": "com.example.arabica_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYsmM9lYt21MSZIjmHHwbIxDy3BNveY9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
