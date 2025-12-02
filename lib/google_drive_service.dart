@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 // Условный импорт для веб-платформы
-import 'dart:html' as html if (dart.library.io) 'dart:io';
+import 'dart:html' as html if (dart.library.html) '';
 
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)

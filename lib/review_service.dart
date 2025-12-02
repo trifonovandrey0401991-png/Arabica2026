@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'review_model.dart';
 
 // Для веб-платформы используем dart:html
-import 'dart:html' as html if (dart.library.io) '';
+import 'dart:html' as html if (dart.library.html) '';
 
 /// Сервис для работы с отзывами
 class ReviewService {

@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.arabica_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = "25.1.8937393"
 
     compileOptions {
@@ -47,3 +47,5 @@ flutter {
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }
+
+apply plugin: 'com.google.gms.google-services'
