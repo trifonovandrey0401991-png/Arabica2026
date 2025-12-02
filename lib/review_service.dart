@@ -46,35 +46,45 @@ class ReviewService {
           request.setRequestHeader('Content-Type', 'application/json');
           request.setRequestHeader('Accept', 'application/json');
           
-          final completer = html.Completer<void>();
+          final completer = Completer<void>();
           request.onLoad.listen((_) {
-            completer.complete();
+            if (!completer.isCompleted) {
+              completer.complete();
+            }
           });
           request.onError.listen((error) {
-            completer.completeError(error);
+            if (!completer.isCompleted) {
+              completer.completeError(error);
+            }
           });
           
           request.send(jsonEncode(body));
           await completer.future;
           
-          if (request.status >= 200 && request.status < 300) {
-            final responseBody = request.responseText;
+          final status = request.status;
+          final responseBody = request.responseText;
+          
+          if (status != null && status >= 200 && status < 300) {
             print('📥 Получен ответ через fetch API:');
-            print('   Status: ${request.status}');
+            print('   Status: $status');
             print('   Body: $responseBody');
             
-            final result = jsonDecode(responseBody);
-            if (result['success'] == true) {
-              print('✅ Отзыв успешно создан');
-              return Review.fromJson(result['review']);
+            if (responseBody != null && responseBody.isNotEmpty) {
+              final result = jsonDecode(responseBody);
+              if (result['success'] == true) {
+                print('✅ Отзыв успешно создан');
+                return Review.fromJson(result['review']);
+              } else {
+                print('❌ Сервер вернул success: false');
+                print('   Error: ${result['error']}');
+              }
             } else {
-              print('❌ Сервер вернул success: false');
-              print('   Error: ${result['error']}');
+              print('❌ Пустой ответ от сервера');
             }
             return null;
           } else {
-            print('❌ Ошибка создания отзыва: ${request.status}');
-            print('   Response: ${request.responseText}');
+            print('❌ Ошибка создания отзыва: $status');
+            print('   Response: $responseBody');
             return null;
           }
         } catch (e, stackTrace) {
