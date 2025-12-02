@@ -72,24 +72,57 @@ class LoyaltyService {
     
     print('📞 Поиск пользователя с номером: $normalizedPhone (исходный: $phone)');
     print('🔗 URL запроса: $uri');
+    print('⏰ Время начала запроса: ${DateTime.now().toIso8601String()}');
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 30));
+    http.Response response;
+    try {
+      response = await http.get(uri).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          print('⏱️ ТАЙМАУТ: Запрос не завершился за 30 секунд');
+          throw Exception('Таймаут при получении данных клиента');
+        },
+      );
+      print('✅ Ответ получен: статус ${response.statusCode}');
+      print('📦 Размер ответа: ${response.body.length} байт');
+      print('⏰ Время получения ответа: ${DateTime.now().toIso8601String()}');
+    } on http.ClientException catch (e) {
+      print('❌ Сетевая ошибка (ClientException): $e');
+      print('   Это может быть из-за:');
+      print('   1. Проблем с сетью на устройстве');
+      print('   2. Сервер недоступен');
+      print('   3. Проблем с DNS');
+      rethrow;
+    } on Exception catch (e) {
+      print('❌ Ошибка запроса: $e');
+      rethrow;
+    }
       
       if (response.statusCode != 200) {
+        print('❌ Неожиданный статус ответа: ${response.statusCode}');
+        print('📄 Тело ответа: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
         throw Exception('Ошибка сервера: ${response.statusCode}');
       }
 
     final data = _decode(response.body);
+    print('📋 Данные ответа: success=${data['success']}, client=${data['client'] != null ? "найден" : "не найден"}');
+    
     if (data['success'] != true) {
+      print('❌ Сервер вернул success: false');
+      print('   Ошибка: ${data['error']}');
       throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
     }
 
       if (data['client'] == null) {
+        print('❌ Клиент не найден в ответе сервера');
         throw Exception('Клиент не найден в базе данных');
       }
 
+    print('✅ Пользователь найден: ${data['client']['name']}');
     return LoyaltyInfo.fromJson(data['client']);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА в fetchByPhone: $e');
+      print('📚 Stack trace: $stackTrace');
       if (e is Exception) {
         rethrow;
       }
