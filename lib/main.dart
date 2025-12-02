@@ -20,6 +20,9 @@ void main() async {
   try {
     await FirebaseWrapper.initializeApp();
     
+    // Небольшая задержка для завершения инициализации Firebase Core
+    await Future.delayed(const Duration(milliseconds: 500));
+    
     // Инициализация Firebase Messaging
     await FirebaseService.initialize();
   } catch (e) {
@@ -27,7 +30,11 @@ void main() async {
     print('⚠️ Firebase не доступен: $e');
     print('   Push-уведомления будут работать только на мобильных устройствах');
     // Инициализируем заглушку для веб
-    await FirebaseService.initialize();
+    try {
+      await FirebaseService.initialize();
+    } catch (e2) {
+      print('⚠️ Ошибка инициализации Firebase Service: $e2');
+    }
   }
   
   await NotificationService.initialize();

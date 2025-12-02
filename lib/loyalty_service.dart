@@ -69,6 +69,9 @@ class LoyaltyService {
     final uri = Uri.parse(
       '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
     );
+    
+    print('📞 Поиск пользователя с номером: $normalizedPhone (исходный: $phone)');
+    print('🔗 URL запроса: $uri');
 
     final response = await http.get(uri).timeout(const Duration(seconds: 30));
       
