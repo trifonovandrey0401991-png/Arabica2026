@@ -1,4 +1,5 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
+// Условный импорт Firebase Messaging: по умолчанию stub, на мобильных - реальный пакет
+import 'firebase_service_stub.dart' if (dart.library.io) 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -221,4 +222,5 @@ class FirebaseService {
     );
   }
 }
+
 

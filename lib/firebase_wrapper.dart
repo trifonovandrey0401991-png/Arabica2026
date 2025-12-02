@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-// Условный импорт Firebase (только для мобильных платформ)
-import 'package:firebase_core/firebase_core.dart' if (dart.library.html) 'firebase_core_stub.dart' as firebase_core;
+// Условный импорт Firebase: по умолчанию stub, на мобильных - реальный пакет
+import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:firebase_core/firebase_core.dart';
 
 /// Обертка для Firebase, которая работает на всех платформах
 class FirebaseWrapper {
