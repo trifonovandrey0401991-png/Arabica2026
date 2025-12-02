@@ -1,5 +1,6 @@
 // Условный импорт Firebase Messaging: на веб - stub, на мобильных - реальный пакет
 import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.html) 'firebase_service_stub.dart';
+import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +25,16 @@ class FirebaseService {
     if (_initialized) return;
 
     try {
+      // Проверяем, что Firebase Core инициализирован
+      // ignore: avoid_dynamic_calls
+      try {
+        // ignore: avoid_dynamic_calls
+        firebase_core.Firebase.app();
+      } catch (e) {
+        print('⚠️ Firebase Core не инициализирован, пропускаем Firebase Messaging');
+        return;
+      }
+      
       // Запрашиваем разрешение на уведомления
       NotificationSettings settings = await _messaging.requestPermission(
         alert: true,
