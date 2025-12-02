@@ -73,16 +73,23 @@ class LoyaltyService {
     print('📞 Поиск пользователя с номером: $normalizedPhone (исходный: $phone)');
     print('🔗 URL запроса: $uri');
     print('⏰ Время начала запроса: ${DateTime.now().toIso8601String()}');
+    print('🌐 Платформа: ${Uri.base.scheme}');
+    print('🔍 Пробуем подключиться к серверу...');
 
     http.Response response;
     try {
+      final stopwatch = Stopwatch()..start();
       response = await http.get(uri).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
+          stopwatch.stop();
           print('⏱️ ТАЙМАУТ: Запрос не завершился за 30 секунд');
+          print('⏱️ Прошло времени: ${stopwatch.elapsedMilliseconds}ms');
           throw Exception('Таймаут при получении данных клиента');
         },
       );
+      stopwatch.stop();
+      print('⏱️ Время подключения: ${stopwatch.elapsedMilliseconds}ms');
       print('✅ Ответ получен: статус ${response.statusCode}');
       print('📦 Размер ответа: ${response.body.length} байт');
       print('⏰ Время получения ответа: ${DateTime.now().toIso8601String()}');
