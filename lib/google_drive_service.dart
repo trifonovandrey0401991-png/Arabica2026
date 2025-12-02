@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-// Условный импорт для веб-платформы
-import 'dart:html' as html if (dart.library.html) '';
+// Условный импорт для веб-платформы, для мобильных - stub
+import 'dart:html' as html if (dart.library.io) 'html_stub.dart';
 
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
