@@ -4,8 +4,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'review_model.dart';
 
-// Для веб-платформы используем dart:html, для мобильных - stub
-import 'dart:html' as html if (dart.library.io) 'html_stub.dart';
+// Условный импорт: по умолчанию stub, на веб - dart:html
+import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 /// Сервис для работы с отзывами
 class ReviewService {
