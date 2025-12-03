@@ -87,3 +87,5 @@ static const String scriptUrl = 'https://script.google.com/macros/s/YOUR_SCRIPT_
 - Можно принудительно обновить через кнопку "Обновить" в списке отчетов
 
 
+
+
