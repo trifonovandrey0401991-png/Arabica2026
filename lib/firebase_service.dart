@@ -10,8 +10,9 @@ import 'my_dialogs_page.dart';
 import 'review_detail_page.dart';
 import 'review_service.dart';
 import 'review_model.dart';
-// Условный импорт Firebase Core для проверки инициализации
-import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:firebase_core/firebase_core.dart';
+// Прямой импорт Firebase Core - доступен на мобильных платформах
+// На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
+import 'package:firebase_core/firebase_core.dart' as firebase_core;
 
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
@@ -136,6 +137,8 @@ class FirebaseService {
         return;
       }
 
+      print('🔵 Шаг 1: После получения разрешений, перед инициализацией локальных уведомлений');
+      print('🔵 Начало инициализации локальных уведомлений...');
       // Инициализация локальных уведомлений
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosSettings = DarwinInitializationSettings(
@@ -149,48 +152,142 @@ class FirebaseService {
         iOS: iosSettings,
       );
 
-      await _localNotifications.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: _onNotificationTapped,
-      );
+      try {
+        await _localNotifications.initialize(
+          initSettings,
+          onDidReceiveNotificationResponse: _onNotificationTapped,
+        );
+        print('✅ Локальные уведомления инициализированы');
+      } catch (e) {
+        print('⚠️ Ошибка инициализации локальных уведомлений: $e');
+        // Продолжаем работу даже если локальные уведомления не инициализированы
+      }
 
-      // Получаем FCM токен
-      String? token = await messaging.getToken();
-      if (token != null) {
-        print('📱 FCM Token получен: ${token.substring(0, 20)}...');
-        await _saveTokenToServer(token);
+      // Получаем FCM токен с повторными попытками и обработкой ошибок
+      // Выносим в отдельный блок, чтобы ошибки не перехватывались общим catch
+      print('🔵 Начало получения FCM токена...');
+      String? token;
+      try {
+        token = await _getTokenWithRetries(messaging);
+        print('🔵 Получение токена завершено, результат: ${token != null ? "успешно" : "не получен"}');
+      } catch (e) {
+        // Если ошибка все равно произошла, логируем, но продолжаем работу
+        print('⚠️ Критическая ошибка при получении токена: $e');
+        print('⚠️ Приложение продолжит работу без push-уведомлений');
       }
 
       // Обработка уведомлений в foreground (когда приложение открыто)
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print('📨 Получено сообщение в foreground: ${message.notification?.title}');
-        _showLocalNotification(message);
-      });
+      try {
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          print('📨 Получено сообщение в foreground: ${message.notification?.title}');
+          _showLocalNotification(message);
+        });
+      } catch (e) {
+        print('⚠️ Ошибка при настройке слушателя onMessage: $e');
+      }
 
       // Обработка нажатия на уведомление (когда приложение в фоне)
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        print('👆 Уведомление открыто из фона: ${message.data}');
-        _handleNotificationTap(message);
-      });
+      try {
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          print('👆 Уведомление открыто из фона: ${message.data}');
+          _handleNotificationTap(message);
+        });
+      } catch (e) {
+        print('⚠️ Ошибка при настройке слушателя onMessageOpenedApp: $e');
+      }
 
       // Обработка уведомления, которое открыло приложение (когда приложение было закрыто)
-      RemoteMessage? initialMessage = await messaging.getInitialMessage();
-      if (initialMessage != null) {
-        print('👆 Уведомление открыло приложение: ${initialMessage.data}');
-        _handleNotificationTap(initialMessage);
+      try {
+        RemoteMessage? initialMessage = await messaging.getInitialMessage();
+        if (initialMessage != null) {
+          print('👆 Уведомление открыло приложение: ${initialMessage.data}');
+          _handleNotificationTap(initialMessage);
+        }
+      } catch (e) {
+        print('⚠️ Ошибка при получении initialMessage: $e');
+        // Продолжаем работу даже если не удалось получить initialMessage
       }
 
       // Обновление токена при его изменении
-      messaging.onTokenRefresh.listen((newToken) {
-        print('🔄 FCM Token обновлен: ${newToken.substring(0, 20)}...');
-        _saveTokenToServer(newToken);
-      });
+      try {
+        messaging.onTokenRefresh.listen((newToken) {
+          print('🔄 FCM Token обновлен: ${newToken.substring(0, 20)}...');
+          _saveTokenToServer(newToken);
+        });
+      } catch (e) {
+        print('⚠️ Ошибка при настройке слушателя onTokenRefresh: $e');
+      }
 
       _initialized = true;
       print('✅ Firebase Messaging инициализирован');
     } catch (e) {
       print('❌ Ошибка инициализации Firebase Messaging: $e');
     }
+  }
+
+  /// Получить FCM токен с повторными попытками и обработкой ошибок
+  static Future<String?> _getTokenWithRetries(FirebaseMessaging messaging) async {
+    print('🔵 Начало получения FCM токена с повторными попытками...');
+    String? token;
+    int attempts = 0;
+    const maxAttempts = 5;
+    const delaySeconds = 3;
+
+    while (token == null && attempts < maxAttempts) {
+      try {
+        attempts++;
+        print('🔵 Попытка $attempts/$maxAttempts получить FCM токен...');
+        
+        // Пытаемся получить токен
+        token = await messaging.getToken();
+        
+        if (token != null) {
+          print('📱 FCM Token получен: ${token.substring(0, 20)}...');
+          await _saveTokenToServer(token);
+          return token;
+        }
+      } catch (e) {
+        String errorMsg = e.toString();
+        print('⚠️ Ошибка получения токена (попытка $attempts/$maxAttempts): $errorMsg');
+        
+        // Проверяем тип ошибки
+        if (errorMsg.contains('FIS_AUTH_ERROR') || 
+            errorMsg.contains('Firebase Installations Service') ||
+            errorMsg.contains('firebase_messaging/unknown')) {
+          if (attempts < maxAttempts) {
+            print('🔵 Ошибка аутентификации Firebase. Повторная попытка через $delaySeconds секунд...');
+            print('💡 Убедитесь, что SHA-сертификаты добавлены в Firebase Console');
+            await Future.delayed(Duration(seconds: delaySeconds));
+          } else {
+            print('❌ Не удалось получить FCM токен после $maxAttempts попыток');
+            print('⚠️ Приложение продолжит работу, но push-уведомления не будут работать');
+            print('💡 Проверьте:');
+            print('   1. SHA-1 и SHA-256 сертификаты добавлены в Firebase Console');
+            print('   2. Package name совпадает: com.example.arabica_app');
+            print('   3. google-services.json актуален');
+            // Приложение продолжит работу без токена
+            break;
+          }
+        } else {
+          // Другая ошибка - пробуем еще раз
+          if (attempts < maxAttempts) {
+            print('🔵 Повторная попытка через $delaySeconds секунд...');
+            await Future.delayed(Duration(seconds: delaySeconds));
+          } else {
+            print('❌ Не удалось получить FCM токен: $errorMsg');
+            break;
+          }
+        }
+      }
+    }
+
+    // Если токен не получен, логируем предупреждение
+    if (token == null) {
+      print('⚠️ FCM токен не получен. Push-уведомления не будут работать.');
+      print('💡 Остальной функционал приложения работает нормально.');
+    }
+    
+    return token;
   }
 
   /// Установить глобальный контекст для навигации
