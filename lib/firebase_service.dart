@@ -23,10 +23,29 @@ class FirebaseService {
   static BuildContext? _globalContext;
   
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
-  static FirebaseMessaging get _getMessaging {
+  static FirebaseMessaging _getMessaging() {
     if (_messaging == null) {
       print('🔵 Создание экземпляра FirebaseMessaging...');
-      _messaging = FirebaseMessaging.instance;
+      
+      // Проверяем, что Firebase App готов (только для мобильных платформ)
+      if (!kIsWeb) {
+        try {
+          // ignore: avoid_dynamic_calls
+          final app = firebase_core.Firebase.app();
+          print('✅ Firebase App найден перед созданием Messaging: ${app.name}');
+        } catch (e) {
+          print('❌ Firebase App не найден: $e');
+          throw Exception('Firebase App не инициализирован. Невозможно создать FirebaseMessaging.');
+        }
+      }
+      
+      try {
+        _messaging = FirebaseMessaging.instance;
+        print('✅ Экземпляр FirebaseMessaging создан');
+      } catch (e) {
+        print('❌ Ошибка создания FirebaseMessaging: $e');
+        rethrow;
+      }
     }
     return _messaging!;
   }
@@ -67,7 +86,14 @@ class FirebaseService {
       
       // Получаем экземпляр FirebaseMessaging только после проверки готовности Firebase
       print('🔵 Получение экземпляра FirebaseMessaging...');
-      final messaging = _getMessaging;
+      FirebaseMessaging messaging;
+      try {
+        messaging = _getMessaging();
+      } catch (e) {
+        print('❌ Ошибка получения FirebaseMessaging, повторная попытка через 2 секунды...');
+        await Future.delayed(const Duration(milliseconds: 2000));
+        messaging = _getMessaging();
+      }
       
       // Запрашиваем разрешение на уведомления
       NotificationSettings settings;
