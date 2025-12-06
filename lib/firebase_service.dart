@@ -15,12 +15,21 @@ import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:
 
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static FirebaseMessaging? _messaging;
   static final FlutterLocalNotificationsPlugin _localNotifications = 
       FlutterLocalNotificationsPlugin();
 
   static bool _initialized = false;
   static BuildContext? _globalContext;
+  
+  /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
+  static FirebaseMessaging get _getMessaging {
+    if (_messaging == null) {
+      print('🔵 Создание экземпляра FirebaseMessaging...');
+      _messaging = FirebaseMessaging.instance;
+    }
+    return _messaging!;
+  }
 
   /// Инициализация Firebase Messaging
   static Future<void> initialize() async {
@@ -56,10 +65,14 @@ class FirebaseService {
       // Дополнительная задержка перед запросом разрешений
       await Future.delayed(const Duration(milliseconds: 500));
       
+      // Получаем экземпляр FirebaseMessaging только после проверки готовности Firebase
+      print('🔵 Получение экземпляра FirebaseMessaging...');
+      final messaging = _getMessaging;
+      
       // Запрашиваем разрешение на уведомления
       NotificationSettings settings;
       try {
-        settings = await _messaging.requestPermission(
+        settings = await messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
@@ -73,7 +86,7 @@ class FirebaseService {
           await Future.delayed(const Duration(milliseconds: 2000));
           // Повторная попытка
           try {
-            settings = await _messaging.requestPermission(
+            settings = await messaging.requestPermission(
               alert: true,
               badge: true,
               sound: true,
@@ -116,7 +129,7 @@ class FirebaseService {
       );
 
       // Получаем FCM токен
-      String? token = await _messaging.getToken();
+      String? token = await messaging.getToken();
       if (token != null) {
         print('📱 FCM Token получен: ${token.substring(0, 20)}...');
         await _saveTokenToServer(token);
@@ -142,7 +155,7 @@ class FirebaseService {
       }
 
       // Обновление токена при его изменении
-      _messaging.onTokenRefresh.listen((newToken) {
+      messaging.onTokenRefresh.listen((newToken) {
         print('🔄 FCM Token обновлен: ${newToken.substring(0, 20)}...');
         _saveTokenToServer(newToken);
       });
