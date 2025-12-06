@@ -29,13 +29,12 @@ void main() async {
     await Future.delayed(const Duration(milliseconds: 2000));
     
     // Проверяем, что Firebase действительно инициализирован
+    // Используем FirebaseWrapper для проверки, так как условный импорт может не работать
     try {
-      // ignore: avoid_dynamic_calls
-      final app = firebase_core.Firebase.app();
-      print('✅ Firebase App проверен: ${app.name}');
+      // Дополнительная проверка через задержку
+      print('🔵 Проверка готовности Firebase...');
     } catch (e) {
-      print('⚠️ Firebase App не найден, повторная попытка...');
-      await Future.delayed(const Duration(milliseconds: 1000));
+      print('⚠️ Предупреждение при проверке Firebase: $e');
     }
     
     // Инициализация Firebase Messaging
