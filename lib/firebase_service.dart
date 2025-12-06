@@ -37,7 +37,7 @@ class FirebaseService {
       if (!kIsWeb) {
         // Дополнительная задержка для гарантии инициализации Firebase Core
         print('🔵 Дополнительное ожидание инициализации Firebase Core...');
-        await Future.delayed(const Duration(milliseconds: 1000));
+        await Future.delayed(const Duration(milliseconds: 2000));
         
         // Пытаемся использовать Firebase Messaging - если Firebase не инициализирован,
         // это вызовет ошибку, которую мы обработаем
@@ -53,13 +53,40 @@ class FirebaseService {
       
       print('🔵 Запрос разрешений на уведомления...');
       
+      // Дополнительная задержка перед запросом разрешений
+      await Future.delayed(const Duration(milliseconds: 500));
+      
       // Запрашиваем разрешение на уведомления
-      NotificationSettings settings = await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
+      NotificationSettings settings;
+      try {
+        settings = await _messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+      } catch (e) {
+        print('❌ Ошибка при запросе разрешений: $e');
+        // Если ошибка связана с отсутствием Firebase App, ждем еще
+        if (e.toString().contains('no-app') || e.toString().contains('Firebase App')) {
+          print('🔵 Ожидание инициализации Firebase App...');
+          await Future.delayed(const Duration(milliseconds: 2000));
+          // Повторная попытка
+          try {
+            settings = await _messaging.requestPermission(
+              alert: true,
+              badge: true,
+              sound: true,
+              provisional: false,
+            );
+          } catch (e2) {
+            print('❌ Повторная ошибка при запросе разрешений: $e2');
+            throw e2;
+          }
+        } else {
+          throw e;
+        }
+      }
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         print('✅ Пользователь разрешил уведомления');
