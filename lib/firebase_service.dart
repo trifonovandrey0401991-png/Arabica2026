@@ -148,7 +148,7 @@ class FirebaseService {
       });
 
       // Обработка уведомления, которое открыло приложение (когда приложение было закрыто)
-      RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+      RemoteMessage? initialMessage = await messaging.getInitialMessage();
       if (initialMessage != null) {
         print('👆 Уведомление открыло приложение: ${initialMessage.data}');
         _handleNotificationTap(initialMessage);
