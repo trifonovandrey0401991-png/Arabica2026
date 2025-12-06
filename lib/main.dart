@@ -9,6 +9,8 @@ import 'loyalty_service.dart';
 import 'loyalty_storage.dart';
 import 'shift_sync_service.dart';
 import 'firebase_wrapper.dart';
+// Условный импорт Firebase Core для проверки инициализации
+import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:firebase_core/firebase_core.dart';
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'firebase_service.dart' if (dart.library.html) 'firebase_service_stub.dart';
@@ -18,13 +20,28 @@ void main() async {
   
   // Инициализация Firebase (только для мобильных платформ)
   try {
+    print('🔵 Начало инициализации Firebase Core...');
     await FirebaseWrapper.initializeApp();
+    print('✅ Firebase Core инициализирован');
     
-    // Небольшая задержка для завершения инициализации Firebase Core
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Увеличиваем задержку для завершения инициализации Firebase Core
+    print('🔵 Ожидание завершения инициализации Firebase Core...');
+    await Future.delayed(const Duration(milliseconds: 2000));
+    
+    // Проверяем, что Firebase действительно инициализирован
+    try {
+      // ignore: avoid_dynamic_calls
+      final app = firebase_core.Firebase.app();
+      print('✅ Firebase App проверен: ${app.name}');
+    } catch (e) {
+      print('⚠️ Firebase App не найден, повторная попытка...');
+      await Future.delayed(const Duration(milliseconds: 1000));
+    }
     
     // Инициализация Firebase Messaging
+    print('🔵 Начало инициализации Firebase Messaging...');
     await FirebaseService.initialize();
+    print('✅ Firebase Messaging инициализирован');
   } catch (e) {
     // Firebase недоступен (веб-платформа или пакеты не установлены)
     print('⚠️ Firebase не доступен: $e');

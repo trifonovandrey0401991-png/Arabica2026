@@ -1,5 +1,6 @@
 // Условный импорт Firebase Messaging: на веб - stub, на мобильных - реальный пакет
 import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.html) 'firebase_service_stub.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,8 @@ import 'my_dialogs_page.dart';
 import 'review_detail_page.dart';
 import 'review_service.dart';
 import 'review_model.dart';
+// Условный импорт Firebase Core для проверки инициализации
+import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:firebase_core/firebase_core.dart';
 
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
@@ -21,17 +24,37 @@ class FirebaseService {
 
   /// Инициализация Firebase Messaging
   static Future<void> initialize() async {
-    if (_initialized) return;
+    if (_initialized) {
+      print('🔵 Firebase Messaging уже инициализирован');
+      return;
+    }
 
     try {
+      print('🔵 Проверка инициализации Firebase Core...');
+      
       // Проверяем, что Firebase Core инициализирован (для мобильных платформ)
       // На веб это будет stub, который просто вернется
-      try {
-        // ignore: avoid_dynamic_calls
-        await Future.delayed(const Duration(milliseconds: 1000)); // Даем время Firebase Core инициализироваться
-      } catch (e) {
-        print('⚠️ Проблема с задержкой инициализации: $e');
+      if (!kIsWeb) {
+        try {
+          // ignore: avoid_dynamic_calls
+          final app = firebase_core.Firebase.app();
+          print('✅ Firebase App найден: ${app.name}');
+        } catch (e) {
+          print('⚠️ Firebase App не инициализирован, ожидание...');
+          await Future.delayed(const Duration(milliseconds: 2000));
+          // Повторная проверка
+          try {
+            // ignore: avoid_dynamic_calls
+            final app = firebase_core.Firebase.app();
+            print('✅ Firebase App найден после ожидания: ${app.name}');
+          } catch (e2) {
+            print('❌ Firebase App все еще не инициализирован: $e2');
+            throw Exception('Firebase Core не инициализирован');
+          }
+        }
       }
+      
+      print('🔵 Запрос разрешений на уведомления...');
       
       // Запрашиваем разрешение на уведомления
       NotificationSettings settings = await _messaging.requestPermission(
@@ -115,19 +138,31 @@ class FirebaseService {
   /// Сохранить FCM токен на сервере
   static Future<void> _saveTokenToServer(String token) async {
     try {
+      print('🔵 Начало сохранения FCM токена на сервере...');
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('user_phone');
       
+      print('🔵 Телефон из SharedPreferences: ${phone ?? "null"}');
+      
       if (phone == null || phone.isEmpty) {
         print('⚠️ Телефон не найден, токен не сохранен');
+        print('   Проверьте, что пользователь авторизован');
         return;
       }
 
+      // Нормализация номера телефона (убираем + и пробелы)
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+      print('🔵 Нормализованный телефон: $normalizedPhone');
+      print('🔵 FCM токен (первые 30 символов): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+
+      final url = 'https://arabica26.ru/api/fcm-tokens';
+      print('🔵 Отправка запроса на: $url');
+      
       final response = await http.post(
-        Uri.parse('https://arabica26.ru/api/fcm-tokens'),
+        Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'phone': phone,
+          'phone': normalizedPhone,
           'token': token,
         }),
       ).timeout(
@@ -137,13 +172,18 @@ class FirebaseService {
         },
       );
 
+      print('🔵 Ответ сервера: ${response.statusCode}');
+      print('🔵 Тело ответа: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ FCM токен сохранен на сервере');
+        print('✅ FCM токен сохранен на сервере для телефона: $normalizedPhone');
       } else {
         print('⚠️ Ошибка сохранения токена: ${response.statusCode}');
+        print('   Ответ: ${response.body}');
       }
     } catch (e) {
       print('❌ Ошибка сохранения FCM токена: $e');
+      print('   Stack trace: ${StackTrace.current}');
     }
   }
 
