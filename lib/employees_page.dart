@@ -293,13 +293,6 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Обновляем статусы при каждом построении страницы (если не загружаются)
-    if (!_isLoadingVerification) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadVerificationStatuses();
-      });
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Сотрудники'),
