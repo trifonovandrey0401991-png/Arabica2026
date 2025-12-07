@@ -42,9 +42,31 @@ class _MainMenuPageState extends State<MainMenuPage> {
   @override
   void initState() {
     super.initState();
+    // Сначала загружаем кэшированную роль для немедленного отображения
+    _loadCachedRole();
+    // Затем обновляем роль через API
     _loadUserData();
     // Синхронизация отчетов при открытии главного меню
     _syncReports();
+  }
+
+  /// Загрузить кэшированную роль для немедленного отображения
+  Future<void> _loadCachedRole() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = prefs.getString('user_name');
+      final cachedRole = await UserRoleService.loadUserRole();
+      
+      if (mounted) {
+        setState(() {
+          _userName = cachedRole?.displayName ?? name;
+          _userRole = cachedRole;
+        });
+        print('📦 Кэшированная роль загружена: ${cachedRole?.role.name ?? "нет"}');
+      }
+    } catch (e) {
+      print('⚠️ Ошибка загрузки кэшированной роли: $e');
+    }
   }
 
   Future<void> _syncReports() async {
