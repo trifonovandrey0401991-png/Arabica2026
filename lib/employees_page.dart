@@ -149,6 +149,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _loadVerificationStatuses();
   }
 
+
   Future<void> _loadVerificationStatuses() async {
     if (_isLoadingVerification) return;
     setState(() {
@@ -282,10 +283,29 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Обновляем статусы при каждом построении страницы (если не загружаются)
+    if (!_isLoadingVerification) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadVerificationStatuses();
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Сотрудники'),
         backgroundColor: const Color(0xFF004D40),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() {
+                _employeesFuture = _loadEmployees();
+                _loadVerificationStatuses();
+              });
+            },
+            tooltip: 'Обновить',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -535,7 +555,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
                                   ),
                                 );
                                 // Обновляем статусы верификации после возврата
-                                if (result == true) {
+                                if (result == true || result != null) {
                                   await _loadVerificationStatuses();
                                 }
                               }

@@ -269,11 +269,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Сотрудники - только админ
     if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.people, 'Сотрудники', () {
-        Navigator.push(
+      items.add(_tile(context, Icons.people, 'Сотрудники', () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const EmployeesPage()),
         );
+        // Обновляем страницу после возврата (на случай, если были изменения)
+        if (mounted) {
+          setState(() {});
+        }
       }));
     }
 
