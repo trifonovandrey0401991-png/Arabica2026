@@ -55,6 +55,7 @@ function doGet(e) {
     case 'getclient':
       return getClient(e.parameter);
     case 'getuserrole':
+    case 'get_user_role':
       return getUserRole(e.parameter);
     default:
       return buildResponse({ success: false, error: `Unknown GET action: ${action}` });
