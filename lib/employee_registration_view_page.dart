@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'employee_registration_model.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_page.dart';
@@ -33,12 +34,23 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Future<void> _checkAdminRole() async {
     try {
-      final roleData = await UserRoleService.getUserRole();
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? '';
+      if (phone.isEmpty) {
+        setState(() {
+          _isAdmin = false;
+        });
+        return;
+      }
+      final roleData = await UserRoleService.getUserRole(phone);
       setState(() {
-        _isAdmin = roleData?.role == UserRole.admin;
+        _isAdmin = roleData.role == UserRole.admin;
       });
     } catch (e) {
       print('Ошибка проверки роли: $e');
+      setState(() {
+        _isAdmin = false;
+      });
     }
   }
 
@@ -68,8 +80,21 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     if (!_isAdmin || _registration == null) return;
 
     final newVerifiedStatus = !_registration!.isVerified;
-    final roleData = await UserRoleService.getUserRole();
-    final adminName = roleData?.displayName ?? 'Администратор';
+    final prefs = await SharedPreferences.getInstance();
+    final phone = prefs.getString('userPhone') ?? '';
+    if (phone.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось определить телефон администратора'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    final roleData = await UserRoleService.getUserRole(phone);
+    final adminName = roleData.displayName.isNotEmpty ? roleData.displayName : 'Администратор';
 
     final success = await EmployeeRegistrationService.verifyEmployee(
       widget.employeePhone,
