@@ -80,6 +80,8 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     if (!_isAdmin || _registration == null) return;
 
     final newVerifiedStatus = !_registration!.isVerified;
+    print('🔄 Переключение статуса верификации: $newVerifiedStatus');
+    
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('userPhone') ?? '';
     if (phone.isEmpty) {
@@ -103,11 +105,8 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     );
 
     if (success) {
+      print('✅ Верификация успешна, загружаем обновленную регистрацию...');
       await _loadRegistration();
-      // Обновляем статус в локальном состоянии
-      setState(() {
-        // Статус уже обновлен в _loadRegistration
-      });
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,11 +119,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             backgroundColor: Colors.green,
           ),
         );
-      }
-      
-      // Возвращаем true, чтобы обновить статус в списке сотрудников
-      if (mounted) {
-        Navigator.pop(context, true);
+        
+        // Возвращаем true, чтобы обновить статус в списке сотрудников
+        // Делаем это после показа сообщения
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.pop(context, true);
+          }
+        });
       }
     } else {
       if (mounted) {
