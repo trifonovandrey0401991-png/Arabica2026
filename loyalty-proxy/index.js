@@ -97,7 +97,7 @@ app.get('/', async (req, res) => {
 });
 
 // Эндпоинт для загрузки фото
-app.post('/upload-photo', upload.single('photo'), (req, res) => {
+app.post('/upload-photo', upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Файл не загружен' });
@@ -109,6 +109,7 @@ app.post('/upload-photo', upload.single('photo'), (req, res) => {
     res.json({
       success: true,
       url: fileUrl,
+      filePath: fileUrl, // Для совместимости с Flutter кодом
       filename: req.file.filename
     });
   } catch (error) {
@@ -129,7 +130,9 @@ app.post('/api/recount-reports', async (req, res) => {
     }
     
     const reportId = req.body.id || `report_${Date.now()}`;
-    const reportFile = path.join(reportsDir, `${reportId}.json`);
+    // Санитизируем имя файла: заменяем недопустимые символы на подчеркивания
+    const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
     
     // Сохраняем отчет с временной меткой
     const reportData = {
@@ -138,8 +141,13 @@ app.post('/api/recount-reports', async (req, res) => {
       savedAt: new Date().toISOString()
     };
     
-    fs.writeFileSync(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
-    console.log('Отчет сохранен:', reportFile);
+    try {
+      fs.writeFileSync(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
+      console.log('Отчет сохранен:', reportFile);
+    } catch (writeError) {
+      console.error('Ошибка записи файла:', writeError);
+      throw writeError;
+    }
     
     // Пытаемся также отправить в Google Apps Script (опционально)
     try {
