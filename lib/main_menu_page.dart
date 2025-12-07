@@ -59,20 +59,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final name = prefs.getString('user_name');
     final phone = prefs.getString('user_phone');
     
-    // Загружаем роль пользователя
-    UserRoleData? roleData = await UserRoleService.loadUserRole();
+    // Загружаем роль пользователя из кэша (как fallback)
+    UserRoleData? cachedRole = await UserRoleService.loadUserRole();
+    UserRoleData? roleData = cachedRole;
     
-    // Если роли нет в кэше, проверяем через API
-    if (roleData == null && phone != null && phone.isNotEmpty) {
+    // Всегда проверяем роль через API (если есть телефон)
+    if (phone != null && phone.isNotEmpty) {
       try {
+        print('🔄 Обновление роли через API...');
         roleData = await UserRoleService.getUserRole(phone);
         await UserRoleService.saveUserRole(roleData);
+        print('✅ Роль обновлена: ${roleData.role.name}');
         // Обновляем имя, если нужно
         if (roleData.displayName.isNotEmpty) {
           await prefs.setString('user_name', roleData.displayName);
         }
       } catch (e) {
-        print('⚠️ Ошибка загрузки роли: $e');
+        print('⚠️ Ошибка загрузки роли через API: $e');
+        print('📦 Используем кэшированную роль');
+        // Используем кэшированную роль, если API недоступен
+        roleData = cachedRole;
       }
     }
     
