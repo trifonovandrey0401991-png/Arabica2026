@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'user_role_service.dart';
+import 'google_script_config.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -34,10 +36,11 @@ class EmployeesPage extends StatefulWidget {
   const EmployeesPage({super.key});
 
   /// Загрузить сотрудников для уведомлений (статический метод)
+  /// Загружает только сотрудников и админов из Лист11
   static Future<List<Employee>> loadEmployeesForNotifications() async {
     try {
       const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Работники';
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
       
       final response = await http.get(Uri.parse(sheetUrl));
       
@@ -48,16 +51,37 @@ class EmployeesPage extends StatefulWidget {
       final lines = const LineSplitter().convert(response.body);
       final List<Employee> employees = [];
 
+      // Пропускаем заголовок (первая строка)
       for (var i = 1; i < lines.length; i++) {
         try {
           final line = lines[i];
           final row = _parseCsvLineStatic(line);
           
-          if (row.length > 4) {
-            final name = row[4].trim().replaceAll('"', '');
+          // Столбец A (0) - имя клиента
+          // Столбец B (1) - телефон
+          // Столбец G (6) - имя сотрудника (если заполнено - сотрудник)
+          // Столбец H (7) - админ (если "1" - админ)
+          
+          if (row.length > 7) {
+            final clientName = row[0].trim().replaceAll('"', '');
+            final phone = row[1].trim().replaceAll('"', '');
+            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
+            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
             
-            if (name.isNotEmpty) {
-              employees.add(Employee(name: name));
+            // Проверяем, является ли пользователь сотрудником или админом
+            final isEmployee = employeeName.isNotEmpty;
+            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
+            
+            if (isEmployee || isAdminUser) {
+              // Используем имя из столбца G, если оно заполнено, иначе из столбца A
+              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
+              
+              if (displayName.isNotEmpty) {
+                employees.add(Employee(
+                  name: displayName,
+                  phone: phone.isNotEmpty ? phone : null,
+                ));
+              }
             }
           }
         } catch (e) {
@@ -65,6 +89,7 @@ class EmployeesPage extends StatefulWidget {
         }
       }
 
+      // Удаляем дубликаты по имени
       final Map<String, Employee> uniqueEmployees = {};
       for (var employee in employees) {
         if (!uniqueEmployees.containsKey(employee.name)) {
@@ -72,8 +97,12 @@ class EmployeesPage extends StatefulWidget {
         }
       }
 
-      return uniqueEmployees.values.toList();
+      final result = uniqueEmployees.values.toList();
+      result.sort((a, b) => a.name.compareTo(b.name));
+      
+      return result;
     } catch (e) {
+      print('❌ Ошибка загрузки сотрудников: $e');
       return [];
     }
   }
@@ -117,7 +146,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
   Future<List<Employee>> _loadEmployees() async {
     try {
       const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Работники';
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
       
       final response = await http.get(Uri.parse(sheetUrl));
       
@@ -136,18 +165,33 @@ class _EmployeesPageState extends State<EmployeesPage> {
           // Парсим CSV строку, учитывая кавычки
           final row = _parseCsvLine(line);
           
-          // Столбец E - это индекс 4 (5-й столбец)
-          if (row.length > 4) {
-            final name = row[4].trim().replaceAll('"', '');
+          // Столбец A (0) - имя клиента
+          // Столбец B (1) - телефон
+          // Столбец G (6) - имя сотрудника (если заполнено - сотрудник)
+          // Столбец H (7) - админ (если "1" - админ)
+          
+          if (row.length > 7) {
+            final clientName = row[0].trim().replaceAll('"', '');
+            final phone = row[1].trim().replaceAll('"', '');
+            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
+            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
             
-            if (name.isNotEmpty) {
-              employees.add(Employee(
-                name: name,
-                position: row.length > 0 ? row[0].trim().replaceAll('"', '') : null,
-                department: row.length > 1 ? row[1].trim().replaceAll('"', '') : null,
-                phone: row.length > 2 ? row[2].trim().replaceAll('"', '') : null,
-                email: row.length > 3 ? row[3].trim().replaceAll('"', '') : null,
-              ));
+            // Проверяем, является ли пользователь сотрудником или админом
+            final isEmployee = employeeName.isNotEmpty;
+            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
+            
+            if (isEmployee || isAdminUser) {
+              // Используем имя из столбца G, если оно заполнено, иначе из столбца A
+              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
+              
+              if (displayName.isNotEmpty) {
+                employees.add(Employee(
+                  name: displayName,
+                  phone: phone.isNotEmpty ? phone : null,
+                  // Для админов можно добавить пометку
+                  position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
+                ));
+              }
             }
           }
         } catch (e) {
@@ -169,7 +213,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
       result.sort((a, b) => a.name.compareTo(b.name));
 
       // ignore: avoid_print
-      print("👥 Загружено сотрудников: ${result.length}");
+      print("👥 Загружено сотрудников и админов: ${result.length}");
 
       return result;
     } catch (e) {
