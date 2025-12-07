@@ -159,6 +159,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   List<Widget> _getMenuItems() {
     final role = _userRole?.role ?? UserRole.client;
     final items = <Widget>[];
+    print('🔵 _getMenuItems() вызван, роль: ${role.name}');
 
     // Меню - видно всем
     items.add(_tile(context, Icons.local_cafe, 'Меню', () async {
@@ -335,6 +336,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
         MaterialPageRoute(builder: (context) => const RoleTestPage()),
       );
     }));
+    
+    print('🔵 Всего кнопок в меню: ${items.length}');
+    print('🔵 Кнопка "Тест ролей" добавлена');
 
     return items;
   }
