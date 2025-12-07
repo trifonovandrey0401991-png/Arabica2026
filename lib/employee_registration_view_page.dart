@@ -148,8 +148,11 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Widget _buildPhotoSection(String? photoUrl, String label) {
     if (photoUrl == null || photoUrl.isEmpty) {
+      print('⚠️ Фото не найдено для: $label');
       return const SizedBox.shrink();
     }
+
+    print('🖼️ Загрузка фото для $label: $photoUrl');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,9 +177,35 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             child: Image.network(
               photoUrl,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) {
+                  print('✅ Фото загружено: $photoUrl');
+                  return child;
+                }
                 return const Center(
-                  child: Icon(Icons.error, color: Colors.red),
+                  child: CircularProgressIndicator(),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                print('❌ Ошибка загрузки фото $photoUrl: $error');
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error, color: Colors.red),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ошибка загрузки',
+                        style: TextStyle(fontSize: 12, color: Colors.red[700]),
+                      ),
+                      Text(
+                        photoUrl,
+                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
