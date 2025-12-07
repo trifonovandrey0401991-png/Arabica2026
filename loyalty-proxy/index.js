@@ -468,4 +468,212 @@ app.get('/api/attendance', async (req, res) => {
   }
 });
 
+// Настройка multer для загрузки фото сотрудников
+const employeePhotoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = '/var/www/employee-photos';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const phone = req.body.phone || 'unknown';
+    const photoType = req.body.photoType || 'photo';
+    const safeName = `${phone}_${photoType}.jpg`;
+    cb(null, safeName);
+  }
+});
+
+const uploadEmployeePhoto = multer({ 
+  storage: employeePhotoStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
+// Эндпоинт для загрузки фото сотрудника
+app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Файл не загружен' });
+    }
+
+    const fileUrl = `https://arabica26.ru/employee-photos/${req.file.filename}`;
+    console.log('Фото сотрудника загружено:', req.file.filename);
+    
+    res.json({
+      success: true,
+      url: fileUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки фото сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Эндпоинт для сохранения регистрации сотрудника
+app.post('/api/employee-registration', async (req, res) => {
+  try {
+    console.log('POST /api/employee-registration:', JSON.stringify(req.body).substring(0, 200));
+    
+    const registrationDir = '/var/www/employee-registrations';
+    if (!fs.existsSync(registrationDir)) {
+      fs.mkdirSync(registrationDir, { recursive: true });
+    }
+    
+    const phone = req.body.phone;
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'Телефон не указан' });
+    }
+    
+    // Санитизируем телефон для имени файла
+    const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
+    
+    // Сохраняем регистрацию
+    const registrationData = {
+      ...req.body,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    // Если файл существует, сохраняем createdAt из старого файла
+    if (fs.existsSync(registrationFile)) {
+      try {
+        const oldContent = fs.readFileSync(registrationFile, 'utf8');
+        const oldData = JSON.parse(oldContent);
+        if (oldData.createdAt) {
+          registrationData.createdAt = oldData.createdAt;
+        }
+      } catch (e) {
+        console.error('Ошибка чтения старого файла:', e);
+      }
+    } else {
+      registrationData.createdAt = new Date().toISOString();
+    }
+    
+    fs.writeFileSync(registrationFile, JSON.stringify(registrationData, null, 2), 'utf8');
+    console.log('Регистрация сохранена:', registrationFile);
+    
+    res.json({
+      success: true,
+      message: 'Регистрация успешно сохранена'
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения регистрации:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при сохранении регистрации'
+    });
+  }
+});
+
+// Эндпоинт для получения регистрации по телефону
+app.get('/api/employee-registration/:phone', async (req, res) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    console.log('GET /api/employee-registration:', phone);
+    
+    const registrationDir = '/var/www/employee-registrations';
+    const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
+    
+    if (!fs.existsSync(registrationFile)) {
+      return res.json({ success: true, registration: null });
+    }
+    
+    const content = fs.readFileSync(registrationFile, 'utf8');
+    const registration = JSON.parse(content);
+    
+    res.json({ success: true, registration });
+  } catch (error) {
+    console.error('Ошибка получения регистрации:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении регистрации'
+    });
+  }
+});
+
+// Эндпоинт для верификации/снятия верификации сотрудника
+app.post('/api/employee-registration/:phone/verify', async (req, res) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const { isVerified, verifiedBy } = req.body;
+    console.log('POST /api/employee-registration/:phone/verify:', phone, isVerified);
+    
+    const registrationDir = '/var/www/employee-registrations';
+    const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
+    
+    if (!fs.existsSync(registrationFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Регистрация не найдена'
+      });
+    }
+    
+    const content = fs.readFileSync(registrationFile, 'utf8');
+    const registration = JSON.parse(content);
+    
+    registration.isVerified = isVerified === true;
+    registration.verifiedAt = isVerified ? new Date().toISOString() : null;
+    registration.verifiedBy = isVerified ? verifiedBy : null;
+    registration.updatedAt = new Date().toISOString();
+    
+    fs.writeFileSync(registrationFile, JSON.stringify(registration, null, 2), 'utf8');
+    console.log('Статус верификации обновлен:', registrationFile);
+    
+    res.json({
+      success: true,
+      message: isVerified ? 'Сотрудник верифицирован' : 'Верификация снята'
+    });
+  } catch (error) {
+    console.error('Ошибка верификации:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при верификации'
+    });
+  }
+});
+
+// Эндпоинт для получения всех регистраций (для админа)
+app.get('/api/employee-registrations', async (req, res) => {
+  try {
+    console.log('GET /api/employee-registrations');
+    
+    const registrationDir = '/var/www/employee-registrations';
+    const registrations = [];
+    
+    if (fs.existsSync(registrationDir)) {
+      const files = fs.readdirSync(registrationDir).filter(f => f.endsWith('.json'));
+      
+      for (const file of files) {
+        try {
+          const filePath = path.join(registrationDir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const registration = JSON.parse(content);
+          registrations.push(registration);
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+      
+      // Сортируем по дате создания (новые первыми)
+      registrations.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+    }
+    
+    res.json({ success: true, registrations });
+  } catch (error) {
+    console.error('Ошибка получения регистраций:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении регистраций'
+    });
+  }
+});
+
 app.listen(3000, () => console.log("Proxy listening on port 3000"));

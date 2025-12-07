@@ -29,6 +29,8 @@ import 'role_test_page.dart';
 import 'attendance_shop_selection_page.dart';
 import 'attendance_reports_page.dart';
 import 'attendance_service.dart';
+import 'employee_registration_page.dart';
+import 'employee_registration_select_employee_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -271,6 +273,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const EmployeesPage()),
+        );
+      }));
+    }
+
+    // Регистрация сотрудника - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.person_add, 'Регистрация сотрудника', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EmployeeRegistrationSelectEmployeePage()),
         );
       }));
     }

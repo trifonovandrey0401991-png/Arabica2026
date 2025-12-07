@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'user_role_service.dart';
 import 'google_script_config.dart';
+import 'employee_registration_service.dart';
+import 'employee_registration_view_page.dart';
+import 'user_role_model.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -136,11 +139,42 @@ class EmployeesPage extends StatefulWidget {
 class _EmployeesPageState extends State<EmployeesPage> {
   late Future<List<Employee>> _employeesFuture;
   String _searchQuery = '';
+  Map<String, bool> _verificationStatus = {}; // Кэш статуса верификации по телефону
+  bool _isLoadingVerification = false;
 
   @override
   void initState() {
     super.initState();
     _employeesFuture = _loadEmployees();
+    _loadVerificationStatuses();
+  }
+
+  Future<void> _loadVerificationStatuses() async {
+    if (_isLoadingVerification) return;
+    setState(() {
+      _isLoadingVerification = true;
+    });
+
+    try {
+      final employees = await _loadEmployees();
+      for (var employee in employees) {
+        if (employee.phone != null && employee.phone!.isNotEmpty) {
+          final registration = await EmployeeRegistrationService.getRegistration(employee.phone!);
+          _verificationStatus[employee.phone!] = registration?.isVerified ?? false;
+        }
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Ошибка загрузки статусов верификации: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingVerification = false;
+        });
+      }
+    }
   }
 
   Future<List<Employee>> _loadEmployees() async {
@@ -370,28 +404,64 @@ class _EmployeesPageState extends State<EmployeesPage> {
                   itemCount: filteredEmployees.length,
                   itemBuilder: (context, index) {
                     final employee = filteredEmployees[index];
+                    final isVerified = employee.phone != null
+                        ? _verificationStatus[employee.phone!] ?? false
+                        : false;
                     
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFF004D40),
-                          child: Text(
-                            employee.name.isNotEmpty
-                                ? employee.name[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                        leading: Stack(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: const Color(0xFF004D40),
+                              child: Text(
+                                employee.name.isNotEmpty
+                                    ? employee.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
+                            if (isVerified)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                        title: Text(
-                          employee.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                employee.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            if (isVerified)
+                              const Icon(
+                                Icons.verified,
+                                color: Colors.green,
+                                size: 20,
+                              ),
+                          ],
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,6 +522,24 @@ class _EmployeesPageState extends State<EmployeesPage> {
                             employee.department != null ||
                             employee.phone != null ||
                             employee.email != null,
+                        onTap: employee.phone != null && employee.phone!.isNotEmpty
+                            ? () async {
+                                // Открываем страницу просмотра регистрации
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EmployeeRegistrationViewPage(
+                                      employeePhone: employee.phone!,
+                                      employeeName: employee.name,
+                                    ),
+                                  ),
+                                );
+                                // Обновляем статусы верификации после возврата
+                                if (result == true) {
+                                  await _loadVerificationStatuses();
+                                }
+                              }
+                            : null,
                       ),
                     );
                   },
