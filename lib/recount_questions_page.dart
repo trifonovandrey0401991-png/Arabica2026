@@ -654,6 +654,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               TextField(
                                 controller: _actualBalanceController,
                                 keyboardType: TextInputType.number,
+                                enabled: !_answerSaved, // Блокируем после сохранения
                                 decoration: const InputDecoration(
                                   hintText: 'Введите число',
                                   border: OutlineInputBorder(),
