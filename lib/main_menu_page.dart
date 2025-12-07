@@ -21,6 +21,8 @@ import 'recipes_list_page.dart';
 import 'review_type_selection_page.dart';
 import 'reviews_list_page.dart';
 import 'my_dialogs_page.dart';
+import 'recount_shop_selection_page.dart';
+import 'recount_reports_list_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -231,11 +233,27 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     );
                   }),
+                  _tile(context, Icons.inventory, 'Пересчет товаров', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RecountShopSelectionPage(),
+                      ),
+                    );
+                  }),
                   _tile(context, Icons.assessment, 'Отчет по пересменкам', () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const ShiftReportsListPage(),
+                      ),
+                    );
+                  }),
+                  _tile(context, Icons.inventory_2, 'Отчет по пересчету', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RecountReportsListPage(),
                       ),
                     );
                   }),
