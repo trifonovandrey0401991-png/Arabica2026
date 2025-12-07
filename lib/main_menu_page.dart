@@ -14,7 +14,7 @@ import 'loyalty_scanner_page.dart';
 import 'shop_model.dart';
 import 'training_page.dart';
 import 'test_page.dart';
-import 'shift_employee_selection_page.dart';
+import 'shift_shop_selection_page.dart';
 import 'shift_reports_list_page.dart';
 import 'shift_sync_service.dart';
 import 'recipes_list_page.dart';
@@ -307,10 +307,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Пересменка - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.work_history, 'Пересменка', () {
+      items.add(_tile(context, Icons.work_history, 'Пересменка', () async {
+        // Используем текущего пользователя (из роли или имени)
+        final employeeName = _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ShiftEmployeeSelectionPage()),
+          MaterialPageRoute(
+            builder: (context) => ShiftShopSelectionPage(
+              employeeName: employeeName,
+            ),
+          ),
         );
       }));
     }

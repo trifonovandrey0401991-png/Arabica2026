@@ -1,7 +1,9 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'order_provider.dart';
 import 'employees_page.dart';
+import 'user_role_service.dart';
 
 /// Сервис для работы с уведомлениями
 class NotificationService {
@@ -42,7 +44,7 @@ class NotificationService {
   }
 
   /// Обработка нажатия на уведомление
-  static void _onNotificationTapped(NotificationResponse response) {
+  static void _onNotificationTapped(NotificationResponse response) async {
     if (response.payload != null && _globalContext != null) {
       final orderId = response.payload!;
       final orderProvider = OrderProvider.of(_globalContext!);
@@ -51,65 +53,38 @@ class NotificationService {
         orElse: () => orderProvider.orders.first,
       );
 
-      // Показываем диалог выбора сотрудника
-      _showEmployeeSelectionDialog(_globalContext!, order);
+      // Используем текущего пользователя (из роли или имени)
+      final employeeName = await _getCurrentEmployeeName();
+      if (_globalContext != null && _globalContext!.mounted) {
+        await showAcceptOrderDialog(_globalContext!, order, employeeName);
+      }
     }
   }
 
-  /// Показать диалог выбора сотрудника для принятия заказа
-  static Future<void> _showEmployeeSelectionDialog(
-    BuildContext context,
-    Order order,
-  ) async {
+  /// Получить имя текущего сотрудника
+  static Future<String> _getCurrentEmployeeName() async {
     try {
-      final employees = await EmployeesPage.loadEmployeesForNotifications();
+      // Сначала пытаемся получить из роли
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('user_phone');
       
-      if (employees.isEmpty) {
-        // Если нет сотрудников, показываем простой диалог
-        await showAcceptOrderDialog(context, order, 'Сотрудник');
-        return;
+      if (phone != null && phone.isNotEmpty) {
+        try {
+          final roleData = await UserRoleService.getUserRole(phone);
+          if (roleData.displayName.isNotEmpty) {
+            return roleData.displayName;
+          }
+        } catch (e) {
+          print("⚠️ Ошибка получения роли: $e");
+        }
       }
-
-      // Показываем список сотрудников для выбора
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: const Text('Выберите сотрудника'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: employees.length,
-              itemBuilder: (context, index) {
-                final employee = employees[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF004D40),
-                    child: Text(
-                      employee.name.isNotEmpty
-                          ? employee.name[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  title: Text(employee.name),
-                  onTap: () {
-                    Navigator.of(dialogContext).pop();
-                    showAcceptOrderDialog(context, order, employee.name);
-                  },
-                );
-              },
-            ),
-          ),
-        ),
-      );
+      
+      // Если не получилось, используем сохраненное имя
+      final name = prefs.getString('user_name');
+      return name ?? 'Сотрудник';
     } catch (e) {
-      // ignore: avoid_print
-      print("Ошибка загрузки сотрудников: $e");
-      await showAcceptOrderDialog(context, order, 'Сотрудник');
+      print("⚠️ Ошибка получения имени сотрудника: $e");
+      return 'Сотрудник';
     }
   }
 
