@@ -102,10 +102,10 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   }
 
   Future<String?> _getEmployeePhone() async {
-    if (widget.employeePhone != null) {
+    if (widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
       return widget.employeePhone;
     }
-    // Получаем телефон из SharedPreferences
+    // Получаем телефон из SharedPreferences (для случая, когда сотрудник регистрирует себя)
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('userPhone');
   }
