@@ -1,83 +1,69 @@
-# Быстрое исправление ошибки JAVA_HOME
+# Быстрое исправление проблемы
 
-## Проблема: PowerShell блокирует выполнение скрипта
+## Выполните эти команды по порядку:
 
-Ошибка: `PSSecurityException: UnauthorizedAccess` означает, что выполнение скриптов отключено.
-
-## Решение 1: Разрешить выполнение скрипта (быстро)
-
-В PowerShell выполните:
+### 1. Сохраните и удалите конфликтующие файлы:
 
 ```powershell
-# Разрешить выполнение скрипта для текущей сессии
-Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+# Сохраняем локальные файлы
+Copy-Item fix-firebase-imports.ps1 fix-firebase-imports.ps1.backup -ErrorAction SilentlyContinue
+Copy-Item get-sha-certificates.ps1 get-sha-certificates.ps1.backup -ErrorAction SilentlyContinue
+Copy-Item run-sha-script.bat run-sha-script.bat.backup -ErrorAction SilentlyContinue
 
-# Теперь запустите скрипт
-.\setup_java_home.ps1
+# Временно удаляем
+Remove-Item fix-firebase-imports.ps1 -Force -ErrorAction SilentlyContinue
+Remove-Item get-sha-certificates.ps1 -Force -ErrorAction SilentlyContinue
+Remove-Item run-sha-script.bat -Force -ErrorAction SilentlyContinue
 ```
 
-## Решение 2: Выполнить команды вручную (рекомендуется, если не хотите менять политику)
-
-Просто скопируйте и выполните эти команды в PowerShell:
+### 2. Сбросьте изменения в сгенерированных файлах:
 
 ```powershell
-# 1. Установите JAVA_HOME для текущей сессии
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+git restore linux/flutter/generated_plugin_registrant.cc
+git restore linux/flutter/generated_plugin_registrant.h
+git restore linux/flutter/generated_plugins.cmake
+git restore macos/Flutter/GeneratedPluginRegistrant.swift
+git restore pubspec.lock
+git restore windows/flutter/generated_plugin_registrant.cc
+git restore windows/flutter/generated_plugin_registrant.h
+git restore windows/flutter/generated_plugins.cmake
+```
 
-# 2. Проверьте, что Java найдена
-java -version
+### 3. Обновите код:
 
-# 3. Очистите кэш Gradle (исправляет ошибку с JAR файлом)
-Remove-Item -Recurse -Force $env:USERPROFILE\.gradle\caches -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force $env:USERPROFILE\.gradle\daemon -ErrorAction SilentlyContinue
+```powershell
+git pull origin main
+```
 
-# 4. Очистите проект Flutter
-cd C:\Users\Admin\arabica_app
+### 4. Восстановите локальные файлы:
+
+```powershell
+Copy-Item fix-firebase-imports.ps1.backup fix-firebase-imports.ps1 -Force -ErrorAction SilentlyContinue
+Copy-Item get-sha-certificates.ps1.backup get-sha-certificates.ps1 -Force -ErrorAction SilentlyContinue
+Copy-Item run-sha-script.bat.backup run-sha-script.bat -Force -ErrorAction SilentlyContinue
+
+# Удаляем бэкапы
+Remove-Item *.backup -Force -ErrorAction SilentlyContinue
+```
+
+### 5. Исправьте импорты вручную:
+
+Откройте файл `lib\main_menu_page.dart` и:
+- Найдите строку: `import 'shift_employee_selection_page.dart';`
+- Удалите её
+- Убедитесь, что есть: `import 'shift_shop_selection_page.dart';`
+
+### 6. Пересоберите приложение:
+
+```powershell
 flutter clean
-
-# 5. Обновите зависимости
 flutter pub get
-
-# 6. Попробуйте собрать снова
 flutter run
 ```
 
-## Если путь к JDK другой
-
-Если Android Studio установлена в другом месте, найдите JDK:
+## Или используйте автоматический скрипт:
 
 ```powershell
-# Проверьте эти пути:
-Test-Path "C:\Program Files\Android\Android Studio\jbr"
-Test-Path "C:\Program Files\JetBrains\Android Studio\jbr"
-Test-Path "C:\Program Files (x86)\Android\Android Studio\jbr"
-
-# Или найдите вручную через Android Studio:
-# File -> Settings -> Build, Execution, Deployment -> Build Tools -> Gradle -> Gradle JDK
+# После обновления кода с GitHub
+.\FIX_AND_UPDATE.ps1
 ```
-
-Затем используйте найденный путь вместо `C:\Program Files\Android\Android Studio\jbr` в команде выше.
-
-## Постоянная установка JAVA_HOME (опционально)
-
-Если хотите установить JAVA_HOME постоянно:
-
-1. Нажмите `Win + R`, введите `sysdm.cpl`
-2. Перейдите на вкладку "Дополнительно" → "Переменные среды"
-3. В "Системные переменные" нажмите "Создать":
-   - Имя: `JAVA_HOME`
-   - Значение: `C:\Program Files\Android\Android Studio\jbr`
-4. Найдите `PATH` → "Изменить" → "Создать" → добавьте: `%JAVA_HOME%\bin`
-5. Перезапустите PowerShell/IDE
-
-## После исправления
-
-Проект должен собираться успешно. Если ошибка сохраняется, проверьте:
-
-1. Правильность пути к JDK
-2. Что Java версии 11 или выше установлена
-3. Что кэш Gradle полностью очищен
-
-
-
