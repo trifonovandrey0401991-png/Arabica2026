@@ -35,7 +35,10 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
   Future<void> _checkAdminRole() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final phone = prefs.getString('userPhone') ?? '';
+      // Пробуем оба варианта ключа
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+      print('🔍 Проверка роли админа для телефона: ${phone.isNotEmpty ? phone : "не найден"}');
+      
       if (phone.isEmpty) {
         setState(() {
           _isAdmin = false;
@@ -43,11 +46,13 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         return;
       }
       final roleData = await UserRoleService.getUserRole(phone);
+      final isAdmin = roleData.role == UserRole.admin;
+      print('👤 Роль пользователя: ${roleData.role}, isAdmin: $isAdmin');
       setState(() {
-        _isAdmin = roleData.role == UserRole.admin;
+        _isAdmin = isAdmin;
       });
     } catch (e) {
-      print('Ошибка проверки роли: $e');
+      print('❌ Ошибка проверки роли: $e');
       setState(() {
         _isAdmin = false;
       });
@@ -77,13 +82,19 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
   }
 
   Future<void> _toggleVerification() async {
-    if (!_isAdmin || _registration == null) return;
+    if (!_isAdmin || _registration == null) {
+      print('⚠️ Верификация невозможна: _isAdmin=$_isAdmin, _registration=${_registration != null}');
+      return;
+    }
 
     final newVerifiedStatus = !_registration!.isVerified;
-    print('🔄 Переключение статуса верификации: $newVerifiedStatus');
+    print('🔄 Переключение статуса верификации: $newVerifiedStatus (текущий: ${_registration!.isVerified})');
     
     final prefs = await SharedPreferences.getInstance();
-    final phone = prefs.getString('userPhone') ?? '';
+    // Пробуем оба варианта ключа
+    final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+    print('📞 Телефон администратора из SharedPreferences: ${phone.isNotEmpty ? phone : "не найден"}');
+    
     if (phone.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,6 +108,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     }
     final roleData = await UserRoleService.getUserRole(phone);
     final adminName = roleData.displayName.isNotEmpty ? roleData.displayName : 'Администратор';
+    print('👤 Имя администратора: $adminName');
 
     final success = await EmployeeRegistrationService.verifyEmployee(
       widget.employeePhone,
@@ -120,13 +132,8 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
           ),
         );
         
-        // Возвращаем true, чтобы обновить статус в списке сотрудников
-        // Делаем это после показа сообщения
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            Navigator.pop(context, true);
-          }
-        });
+        // НЕ закрываем страницу автоматически, чтобы пользователь мог видеть результат
+        // Статус обновится при возврате на страницу сотрудников
       }
     } else {
       if (mounted) {
@@ -321,7 +328,10 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                         trailing: _isAdmin
                             ? Switch(
                                 value: _registration!.isVerified,
-                                onChanged: (value) => _toggleVerification(),
+                                onChanged: (value) {
+                                  print('🔄 Switch изменен на: $value');
+                                  _toggleVerification();
+                                },
                               )
                             : null,
                       ),
