@@ -188,6 +188,10 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     }
 
     _answers[_currentQuestionIndex] = answer;
+    // Помечаем, что ответ сохранен
+    setState(() {
+      _answerSaved = true;
+    });
   }
 
   bool _canProceed() {
@@ -631,6 +635,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               TextField(
                                 controller: _programBalanceController,
                                 keyboardType: TextInputType.number,
+                                enabled: !_answerSaved, // Блокируем после сохранения
                                 decoration: const InputDecoration(
                                   hintText: 'Введите число',
                                   border: OutlineInputBorder(),
