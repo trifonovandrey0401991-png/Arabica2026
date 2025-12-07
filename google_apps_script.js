@@ -54,6 +54,8 @@ function doGet(e) {
   switch (action) {
     case 'getclient':
       return getClient(e.parameter);
+    case 'getuserrole':
+      return getUserRole(e.parameter);
     default:
       return buildResponse({ success: false, error: `Unknown GET action: ${action}` });
   }
@@ -191,6 +193,59 @@ function getClient(params) {
   return buildResponse({
     success: true,
     client: buildClientResponse(sheet, rowIndex),
+  });
+}
+
+/**
+ * Получение роли пользователя по номеру телефона
+ * Структура листа "Лист11":
+ *  A (1): Имя клиента
+ *  B (2): Номер телефона
+ *  G (7): Имя сотрудника (если заполнено, то сотрудник)
+ *  H (8): Админ (если "1", то админ)
+ * 
+ * Приоритет ролей: Admin > Employee > Client
+ */
+function getUserRole(params) {
+  const phone = params.phone ? params.phone.trim() : '';
+
+  if (!phone) {
+    return buildResponse({ success: false, error: 'Передайте номер телефона' });
+  }
+
+  const sheet = getSheet();
+  ensureStructure(sheet);
+  const rowIndex = findRow(sheet, COLS.PHONE, phone);
+
+  if (!rowIndex) {
+    // Если пользователь не найден, возвращаем роль клиента по умолчанию
+    return buildResponse({
+      success: true,
+      clientName: '',
+      employeeName: null,
+      isAdmin: 0,
+    });
+  }
+
+  // Читаем данные из строки
+  const clientName = sheet.getRange(rowIndex, COLS.NAME).getValue() || ''; // Столбец A
+  const employeeName = sheet.getRange(rowIndex, 7).getValue(); // Столбец G
+  const adminValue = sheet.getRange(rowIndex, 8).getValue(); // Столбец H
+
+  // Нормализуем значение админа (может быть число или строка)
+  const isAdmin = adminValue == 1 || adminValue == '1' ? 1 : 0;
+
+  // Нормализуем имя сотрудника (может быть пустым)
+  const normalizedEmployeeName = employeeName ? String(employeeName).trim() : null;
+  const finalEmployeeName = (normalizedEmployeeName && normalizedEmployeeName.length > 0) 
+    ? normalizedEmployeeName 
+    : null;
+
+  return buildResponse({
+    success: true,
+    clientName: String(clientName).trim(),
+    employeeName: finalEmployeeName,
+    isAdmin: isAdmin,
   });
 }
 
