@@ -103,7 +103,8 @@ class EmployeeRegistrationService {
       final response = await http.Response.fromStream(streamedResponse);
 
       print('   Статус ответа: ${response.statusCode}');
-      print('   Тело ответа: ${response.body.substring(0, 200)}');
+      final responseBody = response.body;
+      print('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -131,9 +132,10 @@ class EmployeeRegistrationService {
       final registrationToSave = registration.copyWith(phone: normalizedPhone);
       
       final url = '$serverUrl/api/employee-registration';
+      final jsonData = jsonEncode(registrationToSave.toJson());
       print('💾 Сохранение регистрации для телефона: $normalizedPhone');
       print('   URL: $url');
-      print('   Данные: ${jsonEncode(registrationToSave.toJson()).substring(0, 200)}...');
+      print('   Данные: ${jsonData.length > 200 ? jsonData.substring(0, 200) + "..." : jsonData}');
       
       final response = await http.post(
         Uri.parse(url),
@@ -144,7 +146,8 @@ class EmployeeRegistrationService {
       );
 
       print('   Статус ответа: ${response.statusCode}');
-      print('   Тело ответа: ${response.body.substring(0, 200)}');
+      final responseBody = response.body;
+      print('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -183,7 +186,8 @@ class EmployeeRegistrationService {
       
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        print('   Ответ сервера: ${jsonEncode(result).substring(0, 200)}');
+        final resultJson = jsonEncode(result);
+        print('   Ответ сервера: ${resultJson.length > 200 ? resultJson.substring(0, 200) + "..." : resultJson}');
         
         if (result['success'] == true && result['registration'] != null) {
           final registration = EmployeeRegistration.fromJson(result['registration']);
