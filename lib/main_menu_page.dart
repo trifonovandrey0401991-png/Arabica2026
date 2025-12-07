@@ -37,6 +37,7 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   String? _userName;
   UserRoleData? _userRole;
+  bool _isLoadingRole = false; // Флаг для предотвращения параллельных запросов
 
   @override
   void initState() {
@@ -55,41 +56,54 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('user_name');
-    final phone = prefs.getString('user_phone');
-    
-    // Загружаем роль пользователя из кэша (как fallback)
-    UserRoleData? cachedRole = await UserRoleService.loadUserRole();
-    UserRoleData? roleData = cachedRole;
-    
-    // Всегда проверяем роль через API (если есть телефон)
-    if (phone != null && phone.isNotEmpty) {
-      try {
-        print('🔄 Обновление роли через API...');
-        roleData = await UserRoleService.getUserRole(phone);
-        await UserRoleService.saveUserRole(roleData);
-        print('✅ Роль обновлена: ${roleData.role.name}');
-        // Обновляем имя, если нужно
-        if (roleData.displayName.isNotEmpty) {
-          await prefs.setString('user_name', roleData.displayName);
-        }
-      } catch (e) {
-        print('⚠️ Ошибка загрузки роли через API: $e');
-        print('📦 Используем кэшированную роль');
-        // Используем кэшированную роль, если API недоступен
-        roleData = cachedRole;
-      }
+    // Предотвращаем параллельные запросы
+    if (_isLoadingRole) {
+      print('⚠️ Загрузка роли уже выполняется, пропускаем...');
+      return;
     }
     
-    // Используем имя из роли, если есть
-    final displayName = roleData?.displayName ?? name;
+    _isLoadingRole = true;
     
-    if (mounted) {
-      setState(() {
-        _userName = displayName;
-        _userRole = roleData;
-      });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = prefs.getString('user_name');
+      final phone = prefs.getString('user_phone');
+      
+      // Загружаем роль пользователя из кэша (как fallback)
+      UserRoleData? cachedRole = await UserRoleService.loadUserRole();
+      UserRoleData? roleData = cachedRole;
+      
+      // Всегда проверяем роль через API (если есть телефон)
+      if (phone != null && phone.isNotEmpty) {
+        try {
+          print('🔄 Обновление роли через API...');
+          roleData = await UserRoleService.getUserRole(phone);
+          await UserRoleService.saveUserRole(roleData);
+          print('✅ Роль обновлена: ${roleData.role.name}');
+          // Обновляем имя, если нужно
+          if (roleData.displayName.isNotEmpty) {
+            await prefs.setString('user_name', roleData.displayName);
+          }
+        } catch (e) {
+          print('⚠️ Ошибка загрузки роли через API: $e');
+          print('📦 Используем кэшированную роль');
+          // Используем кэшированную роль, если API недоступен
+          roleData = cachedRole;
+        }
+      }
+      
+      // Используем имя из роли, если есть
+      final displayName = roleData?.displayName ?? name;
+      
+      if (mounted) {
+        setState(() {
+          _userName = displayName;
+          _userRole = roleData;
+        });
+        print('✅ Состояние обновлено: роль=${roleData?.role.name}, имя=$displayName');
+      }
+    } finally {
+      _isLoadingRole = false;
     }
   }
 
