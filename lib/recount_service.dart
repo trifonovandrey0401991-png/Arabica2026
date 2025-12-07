@@ -212,7 +212,9 @@ class RecountService {
   /// Поставить оценку отчету
   static Future<bool> rateReport(String reportId, int rating, String adminName) async {
     try {
-      final url = '$serverUrl/api/recount-reports/$reportId/rating';
+      // URL-кодируем reportId для безопасной передачи в URL
+      final encodedReportId = Uri.encodeComponent(reportId);
+      final url = '$serverUrl/api/recount-reports/$encodedReportId/rating';
       final body = {
         'rating': rating,
         'adminName': adminName,
@@ -223,7 +225,7 @@ class RecountService {
       print('   Оценка: $rating');
       print('   Админ: $adminName');
 
-      final response = await http.put(
+      final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),

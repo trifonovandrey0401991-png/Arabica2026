@@ -249,13 +249,39 @@ app.get('/api/recount-reports', async (req, res) => {
 // Эндпоинт для оценки отчета
 app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
   try {
-    const { reportId } = req.params;
+    let { reportId } = req.params;
+    // Декодируем URL-кодированный reportId
+    reportId = decodeURIComponent(reportId);
+    // Санитизируем имя файла (как при сохранении)
+    const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
+    console.log(`Санитизированный ID: ${sanitizedId}`);
     
     const reportsDir = '/var/www/recount-reports';
-    const reportFile = path.join(reportsDir, `${reportId}.json`);
+    const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
     
     if (!fs.existsSync(reportFile)) {
+      console.error(`Файл не найден: ${reportFile}`);
+      // Попробуем найти файл по частичному совпадению
+      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+      const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+      if (matchingFile) {
+        console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
+        const actualFile = path.join(reportsDir, matchingFile);
+        const content = fs.readFileSync(actualFile, 'utf8');
+        const report = JSON.parse(content);
+        
+        // Обновляем оценку
+        report.adminRating = req.body.rating;
+        report.adminName = req.body.adminName;
+        report.ratedAt = new Date().toISOString();
+        
+        // Сохраняем обновленный отчет
+        fs.writeFileSync(actualFile, JSON.stringify(report, null, 2), 'utf8');
+        console.log('Оценка сохранена для отчета:', matchingFile);
+        
+        return res.json({ success: true, message: 'Оценка успешно сохранена' });
+      }
       return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
     
