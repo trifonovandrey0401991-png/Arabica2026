@@ -23,6 +23,9 @@ import 'reviews_list_page.dart';
 import 'my_dialogs_page.dart';
 import 'recount_shop_selection_page.dart';
 import 'recount_reports_list_page.dart';
+import 'user_role_service.dart';
+import 'user_role_model.dart';
+import 'role_test_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -33,11 +36,12 @@ class MainMenuPage extends StatefulWidget {
 
 class _MainMenuPageState extends State<MainMenuPage> {
   String? _userName;
+  UserRoleData? _userRole;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _loadUserData();
     // Синхронизация отчетов при открытии главного меню
     _syncReports();
   }
@@ -50,12 +54,35 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  Future<void> _loadUserName() async {
+  Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('user_name');
+    final phone = prefs.getString('user_phone');
+    
+    // Загружаем роль пользователя
+    UserRoleData? roleData = await UserRoleService.loadUserRole();
+    
+    // Если роли нет в кэше, проверяем через API
+    if (roleData == null && phone != null && phone.isNotEmpty) {
+      try {
+        roleData = await UserRoleService.getUserRole(phone);
+        await UserRoleService.saveUserRole(roleData);
+        // Обновляем имя, если нужно
+        if (roleData.displayName.isNotEmpty) {
+          await prefs.setString('user_name', roleData.displayName);
+        }
+      } catch (e) {
+        print('⚠️ Ошибка загрузки роли: $e');
+      }
+    }
+    
+    // Используем имя из роли, если есть
+    final displayName = roleData?.displayName ?? name;
+    
     if (mounted) {
       setState(() {
-        _userName = name;
+        _userName = displayName;
+        _userRole = roleData;
       });
     }
   }
@@ -118,154 +145,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
                 childAspectRatio: 1,         // делает плитки квадратными
-                children: [
-                  _tile(context, Icons.local_cafe, 'Меню', () async {
-                    // Сначала показываем диалог выбора магазина
-                    final shop = await _showShopSelectionDialog(context);
-                    if (!context.mounted || shop == null) return;
-                    
-                    // После выбора магазина загружаем категории для этого магазина
-                    final categories = await _loadCategoriesForShop(context, shop.address);
-                    if (!context.mounted) return;
-                    
-                    // Открываем страницу категорий с выбранным магазином
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MenuGroupsPage(
-                          groups: categories,
-                          selectedShop: shop.address,
-                        ),
-                      ),
-                    );
-                  }),
-
-                  _tile(context, Icons.shopping_cart, 'Корзина', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CartPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.receipt_long, 'Мои заказы', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const OrdersPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.people, 'Сотрудники', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EmployeesPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.qr_code, 'Карта лояльности', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoyaltyPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.qr_code_scanner, 'Списать бонусы', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoyaltyScannerPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.rate_review, 'Отзывы', () {
-                    print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
-                    if (!context.mounted) {
-                      print('❌ Context не mounted');
-                      return;
-                    }
-                    print('🔵 Context mounted, открываем ReviewTypeSelectionPage');
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) {
-                          print('🔵 Builder вызван, создаем ReviewTypeSelectionPage');
-                          return const ReviewTypeSelectionPage();
-                        },
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.chat, 'Мои диалоги', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MyDialogsPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.feedback, 'Отзывы покупателей', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ReviewsListPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.search, 'Наличие товара', () {}),
-                  _tile(context, Icons.menu_book, 'Обучение', () {
-                    _showTrainingDialog(context);
-                  }),
-                  _tile(context, Icons.quiz, 'Тестирование', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const TestNotificationsPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.work_history, 'Пересменка', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ShiftEmployeeSelectionPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.inventory, 'Пересчет товаров', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RecountShopSelectionPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.assessment, 'Отчет по пересменкам', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ShiftReportsListPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.inventory_2, 'Отчет по пересчету', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RecountReportsListPage(),
-                      ),
-                    );
-                  }),
-                  _tile(context, Icons.restaurant_menu, 'Рецепты', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RecipesListPage(),
-                      ),
-                    );
-                  }),
-                ],
+                children: _getMenuItems(),
               ),
             ),
           ),
@@ -273,6 +153,190 @@ class _MainMenuPageState extends State<MainMenuPage> {
         ),
       ),
     );
+  }
+
+  /// Получить список кнопок меню в зависимости от роли пользователя
+  List<Widget> _getMenuItems() {
+    final role = _userRole?.role ?? UserRole.client;
+    final items = <Widget>[];
+
+    // Меню - видно всем
+    items.add(_tile(context, Icons.local_cafe, 'Меню', () async {
+      final shop = await _showShopSelectionDialog(context);
+      if (!context.mounted || shop == null) return;
+      final categories = await _loadCategoriesForShop(context, shop.address);
+      if (!context.mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MenuGroupsPage(
+            groups: categories,
+            selectedShop: shop.address,
+          ),
+        ),
+      );
+    }));
+
+    // Корзина - видно всем
+    items.add(_tile(context, Icons.shopping_cart, 'Корзина', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const CartPage()),
+      );
+    }));
+
+    // Мои заказы - видно всем
+    items.add(_tile(context, Icons.receipt_long, 'Мои заказы', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const OrdersPage()),
+      );
+    }));
+
+    // Сотрудники - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.people, 'Сотрудники', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const EmployeesPage()),
+        );
+      }));
+    }
+
+    // Карта лояльности - видно всем
+    items.add(_tile(context, Icons.qr_code, 'Карта лояльности', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoyaltyPage()),
+      );
+    }));
+
+    // Списать бонусы - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.qr_code_scanner, 'Списать бонусы', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoyaltyScannerPage()),
+        );
+      }));
+    }
+
+    // Отзывы - видно всем
+    items.add(_tile(context, Icons.rate_review, 'Отзывы', () {
+      print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
+      if (!context.mounted) {
+        print('❌ Context не mounted');
+        return;
+      }
+      print('🔵 Context mounted, открываем ReviewTypeSelectionPage');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) {
+            print('🔵 Builder вызван, создаем ReviewTypeSelectionPage');
+            return const ReviewTypeSelectionPage();
+          },
+        ),
+      );
+    }));
+
+    // Мои диалоги - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.chat, 'Мои диалоги', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MyDialogsPage()),
+        );
+      }));
+    }
+
+    // Отзывы покупателей - видно всем
+    items.add(_tile(context, Icons.feedback, 'Отзывы покупателей', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ReviewsListPage()),
+      );
+    }));
+
+    // Наличие товара - видно всем
+    items.add(_tile(context, Icons.search, 'Наличие товара', () {}));
+
+    // Обучение - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.menu_book, 'Обучение', () {
+        _showTrainingDialog(context);
+      }));
+    }
+
+    // Тестирование - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.quiz, 'Тестирование', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
+        );
+      }));
+    }
+
+    // Пересменка - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.work_history, 'Пересменка', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ShiftEmployeeSelectionPage()),
+        );
+      }));
+    }
+
+    // Пересчет товаров - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.inventory, 'Пересчет товаров', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RecountShopSelectionPage()),
+        );
+      }));
+    }
+
+    // Отчет по пересменкам - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.assessment, 'Отчет по пересменкам', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ShiftReportsListPage()),
+        );
+      }));
+    }
+
+    // Отчет по пересчету - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.inventory_2, 'Отчет по пересчету', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RecountReportsListPage()),
+        );
+      }));
+    }
+
+    // Рецепты - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.restaurant_menu, 'Рецепты', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RecipesListPage()),
+        );
+      }));
+    }
+
+    // Тест ролей - всегда видно (для тестирования)
+    items.add(_tile(context, Icons.science, 'Тест ролей', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const RoleTestPage()),
+      );
+    }));
+
+    return items;
   }
 
   Widget _tile(

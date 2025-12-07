@@ -9,8 +9,10 @@ import 'loyalty_service.dart';
 import 'loyalty_storage.dart';
 import 'shift_sync_service.dart';
 import 'firebase_wrapper.dart';
-// Условный импорт Firebase Core для проверки инициализации
-import 'firebase_core_stub.dart' as firebase_core if (dart.library.io) 'package:firebase_core/firebase_core.dart';
+import 'user_role_service.dart';
+// Прямой импорт Firebase Core - доступен на мобильных платформах
+// На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
+import 'package:firebase_core/firebase_core.dart' as firebase_core;
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'firebase_service.dart' if (dart.library.html) 'firebase_service_stub.dart';
@@ -181,6 +183,9 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           await prefs.setString('user_phone', loyaltyInfo.phone);
           await LoyaltyStorage.save(loyaltyInfo);
           
+          // Проверяем роль пользователя
+          await _checkUserRole(loyaltyInfo.phone);
+          
           if (mounted) {
             setState(() {
               _isRegistered = true;
@@ -250,6 +255,36 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       // Игнорируем ошибки в фоновой проверке
       // ignore: avoid_print
       print('⚠️ Фоновая проверка регистрации не удалась: $e');
+    }
+  }
+
+  /// Проверка роли пользователя
+  Future<void> _checkUserRole(String phone) async {
+    try {
+      print('🔍 Проверка роли пользователя...');
+      final roleData = await UserRoleService.getUserRole(phone);
+      
+      // Сохраняем роль
+      await UserRoleService.saveUserRole(roleData);
+      
+      // Обновляем имя пользователя, если нужно
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_name', roleData.displayName);
+      
+      print('✅ Роль пользователя определена: ${roleData.role.name}');
+      print('   Имя для отображения: ${roleData.displayName}');
+    } catch (e) {
+      print('⚠️ Ошибка проверки роли: $e');
+      // Продолжаем работу без роли (по умолчанию клиент)
+    }
+  }
+
+  /// Проверка роли пользователя в фоне (без блокировки UI)
+  Future<void> _checkUserRoleInBackground(String phone) async {
+    try {
+      await _checkUserRole(phone);
+    } catch (e) {
+      print('⚠️ Фоновая проверка роли не удалась: $e');
     }
   }
 

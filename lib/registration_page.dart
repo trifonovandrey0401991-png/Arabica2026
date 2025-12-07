@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import 'registration_service.dart';
 import 'loyalty_storage.dart';
 import 'loyalty_service.dart';
+import 'user_role_service.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {
@@ -56,6 +57,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
           await prefs.setString('user_phone', existingUser.phone);
           await LoyaltyStorage.save(existingUser);
 
+          // Проверяем роль пользователя
+          try {
+            final roleData = await UserRoleService.getUserRole(existingUser.phone);
+            await UserRoleService.saveUserRole(roleData);
+            // Обновляем имя, если нужно (из столбца G для сотрудников/админов)
+            await prefs.setString('user_name', roleData.displayName);
+          } catch (e) {
+            print('⚠️ Ошибка проверки роли: $e');
+            // Продолжаем без роли (по умолчанию клиент)
+          }
+
           // Показываем сообщение и переходим в приложение
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -90,6 +102,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
         await prefs.setString('user_name', loyaltyInfo.name);
         await prefs.setString('user_phone', loyaltyInfo.phone);
         await LoyaltyStorage.save(loyaltyInfo);
+
+        // Проверяем роль пользователя после регистрации
+        try {
+          final roleData = await UserRoleService.getUserRole(loyaltyInfo.phone);
+          await UserRoleService.saveUserRole(roleData);
+          // Обновляем имя, если нужно (из столбца G для сотрудников/админов)
+          await prefs.setString('user_name', roleData.displayName);
+        } catch (e) {
+          print('⚠️ Ошибка проверки роли при регистрации: $e');
+          // Продолжаем без роли (по умолчанию клиент)
+        }
 
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/home');
