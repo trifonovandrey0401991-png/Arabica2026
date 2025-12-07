@@ -361,7 +361,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                     Text('Фактический остаток: ${answer.actualBalance}'),
                                   if (answer.difference != null)
                                     Text(
-                                      'Разница: ${answer.difference > 0 ? '+' : ''}${answer.difference}',
+                                      'Разница: ${answer.difference! > 0 ? '+' : ''}${answer.difference}',
                                       style: TextStyle(
                                         color: answer.difference! > 0
                                             ? Colors.red
