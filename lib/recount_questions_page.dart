@@ -41,6 +41,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   bool _isSubmitting = false;
   DateTime? _startedAt;
   DateTime? _completedAt;
+  bool _answerSaved = false; // Флаг, что ответ сохранен и заблокирован для изменения
 
   @override
   void initState() {
@@ -105,39 +106,10 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
   Future<void> _takePhoto() async {
     try {
-      ImageSource? source;
-      
-      if (kIsWeb) {
-        source = ImageSource.gallery;
-      } else {
-        source = await showDialog<ImageSource>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Выберите источник'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.camera_alt),
-                  title: const Text('Камера'),
-                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library),
-                  title: const Text('Галерея'),
-                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      if (source == null) return;
-
+      // Только камера, без выбора из галереи
       final ImagePicker picker = ImagePicker();
       final XFile? photo = await picker.pickImage(
-        source: source,
+        source: ImageSource.camera, // Только камера
         imageQuality: kIsWeb ? 60 : 85,
         maxWidth: kIsWeb ? 1920 : null,
         maxHeight: kIsWeb ? 1080 : null,
@@ -223,48 +195,90 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       return false;
     }
 
-    if (_selectedAnswer == null) {
-      return false;
+    // Если ответ еще не сохранен, проверяем только базовые поля
+    if (!_answerSaved) {
+      if (_selectedAnswer == null) {
+        return false;
+      }
+
+      if (_selectedAnswer == 'сходится') {
+        final quantity = int.tryParse(_quantityController.text.trim());
+        if (quantity == null || quantity < 0 || quantity > 1000) {
+          return false;
+        }
+      } else if (_selectedAnswer == 'не сходится') {
+        final programBalance = int.tryParse(_programBalanceController.text.trim());
+        final actualBalance = int.tryParse(_actualBalanceController.text.trim());
+        if (programBalance == null || actualBalance == null) {
+          return false;
+        }
+      }
+      return true;
     }
 
-    if (_selectedAnswer == 'сходится') {
-      final quantity = int.tryParse(_quantityController.text.trim());
-      if (quantity == null || quantity < 0 || quantity > 1000) {
-        return false;
-      }
-      
-      // Если требуется фото, проверяем наличие
-      if (_photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null) {
-        return false;
-      }
-    } else if (_selectedAnswer == 'не сходится') {
-      final programBalance = int.tryParse(_programBalanceController.text.trim());
-      final actualBalance = int.tryParse(_actualBalanceController.text.trim());
-      if (programBalance == null || actualBalance == null) {
-        return false;
-      }
-      
-      // Если требуется фото, проверяем наличие
-      if (_photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null) {
-        return false;
-      }
+    // Если ответ сохранен, проверяем фото (если требуется)
+    final isPhotoRequired = _photoRequiredIndices.contains(_currentQuestionIndex);
+    if (isPhotoRequired && _photoPath == null) {
+      return false;
     }
 
     return true;
   }
 
   Future<void> _nextQuestion() async {
-    if (!_canProceed()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Пожалуйста, заполните все поля'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
+    // Если ответ еще не сохранен, сохраняем его
+    if (!_answerSaved) {
+      if (!_canProceed()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Пожалуйста, заполните все поля'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      _saveAnswer();
+      
+      // Если требуется фото, показываем запрос и не переходим дальше
+      final isPhotoRequired = _photoRequiredIndices.contains(_currentQuestionIndex);
+      if (isPhotoRequired) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Пожалуйста, сделайте фото для подтверждения'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return; // Остаемся на этом вопросе, пока не сделают фото
+      }
+    } else {
+      // Ответ сохранен, проверяем фото (если требуется)
+      if (!_canProceed()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Пожалуйста, сделайте фото для подтверждения'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
     }
 
-    _saveAnswer();
+    // Обновляем фото в сохраненном ответе
+    if (_answerSaved && _photoPath != null) {
+      final answer = _answers[_currentQuestionIndex];
+      _answers[_currentQuestionIndex] = RecountAnswer(
+        question: answer.question,
+        grade: answer.grade,
+        answer: answer.answer,
+        quantity: answer.quantity,
+        programBalance: answer.programBalance,
+        actualBalance: answer.actualBalance,
+        difference: answer.difference,
+        photoPath: _photoPath,
+        photoRequired: answer.photoRequired,
+      );
+    }
 
     if (_currentQuestionIndex < _selectedQuestions!.length - 1) {
       setState(() {
@@ -274,18 +288,23 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         _programBalanceController.clear();
         _actualBalanceController.clear();
         _photoPath = null;
+        _answerSaved = false; // Сбрасываем флаг для нового вопроса
         
         // Загружаем сохраненный ответ, если есть
         if (_currentQuestionIndex < _answers.length) {
           final savedAnswer = _answers[_currentQuestionIndex];
-          _selectedAnswer = savedAnswer.answer;
-          if (savedAnswer.answer == 'сходится') {
-            _quantityController.text = savedAnswer.quantity?.toString() ?? '';
-          } else if (savedAnswer.answer == 'не сходится') {
-            _programBalanceController.text = savedAnswer.programBalance?.toString() ?? '';
-            _actualBalanceController.text = savedAnswer.actualBalance?.toString() ?? '';
+          if (savedAnswer.answer.isNotEmpty) {
+            // Если ответ уже сохранен, показываем его как заблокированный
+            _selectedAnswer = savedAnswer.answer;
+            _answerSaved = true; // Помечаем как сохраненный
+            if (savedAnswer.answer == 'сходится') {
+              _quantityController.text = savedAnswer.quantity?.toString() ?? '';
+            } else if (savedAnswer.answer == 'не сходится') {
+              _programBalanceController.text = savedAnswer.programBalance?.toString() ?? '';
+              _actualBalanceController.text = savedAnswer.actualBalance?.toString() ?? '';
+            }
+            _photoPath = savedAnswer.photoPath;
           }
-          _photoPath = savedAnswer.photoPath;
         }
       });
     } else {
@@ -511,7 +530,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               children: [
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () {
+                                    onPressed: _answerSaved ? null : () {
                                       setState(() {
                                         _selectedAnswer = 'сходится';
                                       });
@@ -534,7 +553,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: () {
+                                    onPressed: _answerSaved ? null : () {
                                       setState(() {
                                         _selectedAnswer = 'не сходится';
                                       });
@@ -582,6 +601,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               TextField(
                                 controller: _quantityController,
                                 keyboardType: TextInputType.number,
+                                enabled: !_answerSaved, // Блокируем после сохранения
                                 decoration: const InputDecoration(
                                   hintText: 'Введите количество (0-1000)',
                                   border: OutlineInputBorder(),
@@ -638,8 +658,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                           ),
                         ),
                       ),
-                    // Фото (если требуется)
-                    if (isPhotoRequired)
+                    // Фото (показываем только после сохранения ответа, если требуется)
+                    if (_answerSaved && isPhotoRequired)
                       Card(
                         color: Colors.white.withOpacity(0.95),
                         child: Padding(
@@ -726,17 +746,21 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                             _programBalanceController.clear();
                             _actualBalanceController.clear();
                             _photoPath = null;
+                            _answerSaved = false; // Сбрасываем флаг
                             
                             if (_currentQuestionIndex < _answers.length) {
                               final savedAnswer = _answers[_currentQuestionIndex];
-                              _selectedAnswer = savedAnswer.answer;
-                              if (savedAnswer.answer == 'сходится') {
-                                _quantityController.text = savedAnswer.quantity?.toString() ?? '';
-                              } else if (savedAnswer.answer == 'не сходится') {
-                                _programBalanceController.text = savedAnswer.programBalance?.toString() ?? '';
-                                _actualBalanceController.text = savedAnswer.actualBalance?.toString() ?? '';
+                              if (savedAnswer.answer.isNotEmpty) {
+                                _selectedAnswer = savedAnswer.answer;
+                                _answerSaved = true; // Помечаем как сохраненный
+                                if (savedAnswer.answer == 'сходится') {
+                                  _quantityController.text = savedAnswer.quantity?.toString() ?? '';
+                                } else if (savedAnswer.answer == 'не сходится') {
+                                  _programBalanceController.text = savedAnswer.programBalance?.toString() ?? '';
+                                  _actualBalanceController.text = savedAnswer.actualBalance?.toString() ?? '';
+                                }
+                                _photoPath = savedAnswer.photoPath;
                               }
-                              _photoPath = savedAnswer.photoPath;
                             }
                           });
                         },
@@ -749,7 +773,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _nextQuestion,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
+                        backgroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
+                            ? Colors.orange
+                            : const Color(0xFF004D40),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: _isSubmitting
@@ -762,9 +788,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                               ),
                             )
                           : Text(
-                              _currentQuestionIndex < _selectedQuestions!.length - 1
-                                  ? 'Следующий вопрос'
-                                  : 'Завершить пересчет',
+                              !_answerSaved
+                                  ? 'Сохранить ответ'
+                                  : _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
+                                      ? 'Сделать фото'
+                                      : _currentQuestionIndex < _selectedQuestions!.length - 1
+                                          ? 'Следующий вопрос'
+                                          : 'Завершить пересчет',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
