@@ -140,12 +140,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: GridView.count(
-                crossAxisCount: 2,           // 2 кнопки в строке
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1,         // делает плитки квадратными
-                children: _getMenuItems(),
+              child: Builder(
+                builder: (context) {
+                  final menuItems = _getMenuItems();
+                  print('🔵 GridView.build: получено ${menuItems.length} кнопок');
+                  return GridView.count(
+                    crossAxisCount: 2,           // 2 кнопки в строке
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1,         // делает плитки квадратными
+                    children: menuItems,
+                  );
+                },
               ),
             ),
           ),
