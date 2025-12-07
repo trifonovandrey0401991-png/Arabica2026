@@ -7,8 +7,8 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// URL Google Apps Script для загрузки фото в Google Drive
-const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbz0ROkJVhliPpWSTlXqJbfqu4LXbRzvMxmWqWZv6jR2K14pBbxvVGsf8PBR-3mYzgda/exec";
+// URL Google Apps Script для регистрации, лояльности и ролей
+const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
 
 app.post('/', async (req, res) => {
   try {
