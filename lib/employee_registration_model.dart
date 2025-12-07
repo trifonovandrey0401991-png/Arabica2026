@@ -71,6 +71,7 @@ class EmployeeRegistration {
   }
 
   EmployeeRegistration copyWith({
+    String? phone,
     String? fullName,
     String? passportSeries,
     String? passportNumber,
@@ -85,7 +86,7 @@ class EmployeeRegistration {
     DateTime? updatedAt,
   }) {
     return EmployeeRegistration(
-      phone: phone,
+      phone: phone ?? this.phone,
       fullName: fullName ?? this.fullName,
       passportSeries: passportSeries ?? this.passportSeries,
       passportNumber: passportNumber ?? this.passportNumber,

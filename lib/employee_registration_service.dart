@@ -76,10 +76,16 @@ class EmployeeRegistrationService {
         bytes = await file.readAsBytes();
       }
 
+      // Нормализуем телефон
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      
       final uri = Uri.parse('$serverUrl/upload-employee-photo');
       final request = http.MultipartRequest('POST', uri);
       
-      final fileName = '${phone}_$photoType.jpg';
+      final fileName = '${normalizedPhone}_$photoType.jpg';
+      print('📤 Загрузка фото: $fileName');
+      print('   Размер: ${bytes.length} байт');
+      
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
@@ -87,7 +93,7 @@ class EmployeeRegistrationService {
           filename: fileName,
         ),
       );
-      request.fields['phone'] = phone;
+      request.fields['phone'] = normalizedPhone;
       request.fields['photoType'] = photoType;
 
       final streamedResponse = await request.send().timeout(
@@ -96,10 +102,17 @@ class EmployeeRegistrationService {
 
       final response = await http.Response.fromStream(streamedResponse);
 
+      print('   Статус ответа: ${response.statusCode}');
+      print('   Тело ответа: ${response.body.substring(0, 200)}');
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
-          return result['url'] as String?;
+          final url = result['url'] as String?;
+          print('   ✅ Фото загружено, URL: $url');
+          return url;
+        } else {
+          print('   ❌ Ошибка загрузки: ${result['error']}');
         }
       }
 
@@ -113,20 +126,38 @@ class EmployeeRegistrationService {
   /// Сохранить регистрацию сотрудника
   static Future<bool> saveRegistration(EmployeeRegistration registration) async {
     try {
+      // Нормализуем телефон перед сохранением
+      final normalizedPhone = registration.phone.replaceAll(RegExp(r'[\s\+]'), '');
+      final registrationToSave = registration.copyWith(phone: normalizedPhone);
+      
       final url = '$serverUrl/api/employee-registration';
+      print('💾 Сохранение регистрации для телефона: $normalizedPhone');
+      print('   URL: $url');
+      print('   Данные: ${jsonEncode(registrationToSave.toJson()).substring(0, 200)}...');
+      
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(registration.toJson()),
+        body: jsonEncode(registrationToSave.toJson()),
       ).timeout(
         const Duration(seconds: 30),
       );
 
+      print('   Статус ответа: ${response.statusCode}');
+      print('   Тело ответа: ${response.body.substring(0, 200)}');
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        return result['success'] == true;
+        final success = result['success'] == true;
+        if (success) {
+          print('   ✅ Регистрация успешно сохранена');
+        } else {
+          print('   ❌ Ошибка сохранения: ${result['error']}');
+        }
+        return success;
       }
 
+      print('   ❌ HTTP ошибка: ${response.statusCode}');
       return false;
     } catch (e) {
       print('❌ Ошибка сохранения регистрации: $e');
@@ -137,16 +168,33 @@ class EmployeeRegistrationService {
   /// Получить регистрацию по телефону
   static Future<EmployeeRegistration?> getRegistration(String phone) async {
     try {
-      final url = '$serverUrl/api/employee-registration/${Uri.encodeComponent(phone)}';
+      // Нормализуем телефон (убираем пробелы и +)
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      final url = '$serverUrl/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}';
+      
+      print('🔍 Запрос регистрации для телефона: $normalizedPhone');
+      print('   URL: $url');
+      
       final response = await http.get(Uri.parse(url)).timeout(
         const Duration(seconds: 10),
       );
 
+      print('   Статус ответа: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        print('   Ответ сервера: ${jsonEncode(result).substring(0, 200)}');
+        
         if (result['success'] == true && result['registration'] != null) {
-          return EmployeeRegistration.fromJson(result['registration']);
+          final registration = EmployeeRegistration.fromJson(result['registration']);
+          print('   ✅ Регистрация найдена, isVerified: ${registration.isVerified}');
+          return registration;
+        } else {
+          print('   ⚠️ Регистрация не найдена или success=false');
         }
+      } else {
+        print('   ❌ Ошибка HTTP: ${response.statusCode}');
+        print('   Тело ответа: ${response.body.substring(0, 200)}');
       }
 
       return null;

@@ -158,17 +158,22 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
     try {
       final employees = await _loadEmployees();
+      print('🔍 Загрузка статусов верификации для ${employees.length} сотрудников');
       for (var employee in employees) {
         if (employee.phone != null && employee.phone!.isNotEmpty) {
+          print('  📞 Проверка сотрудника: ${employee.name}, телефон: ${employee.phone}');
           final registration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-          _verificationStatus[employee.phone!] = registration?.isVerified ?? false;
+          final isVerified = registration?.isVerified ?? false;
+          _verificationStatus[employee.phone!] = isVerified;
+          print('  ✅ Статус верификации для ${employee.name}: $isVerified (регистрация: ${registration != null ? "найдена" : "не найдена"})');
         }
       }
+      print('✅ Загружено статусов верификации: ${_verificationStatus.length}');
       if (mounted) {
         setState(() {});
       }
     } catch (e) {
-      print('Ошибка загрузки статусов верификации: $e');
+      print('❌ Ошибка загрузки статусов верификации: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -220,9 +225,14 @@ class _EmployeesPageState extends State<EmployeesPage> {
               final displayName = employeeName.isNotEmpty ? employeeName : clientName;
               
               if (displayName.isNotEmpty) {
+                // Нормализуем телефон (убираем пробелы и +)
+                final normalizedPhone = phone.isNotEmpty 
+                    ? phone.replaceAll(RegExp(r'[\s\+]'), '') 
+                    : null;
+                
                 employees.add(Employee(
                   name: displayName,
-                  phone: phone.isNotEmpty ? phone : null,
+                  phone: normalizedPhone,
                   // Для админов можно добавить пометку
                   position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
                 ));
