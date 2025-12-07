@@ -40,22 +40,28 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
       print('🔍 Проверка роли админа для телефона: ${phone.isNotEmpty ? phone : "не найден"}');
       
       if (phone.isEmpty) {
-        setState(() {
-          _isAdmin = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isAdmin = false;
+          });
+        }
         return;
       }
       final roleData = await UserRoleService.getUserRole(phone);
       final isAdmin = roleData.role == UserRole.admin;
       print('👤 Роль пользователя: ${roleData.role}, isAdmin: $isAdmin');
-      setState(() {
-        _isAdmin = isAdmin;
-      });
+      if (mounted) {
+        setState(() {
+          _isAdmin = isAdmin;
+        });
+      }
     } catch (e) {
       print('❌ Ошибка проверки роли: $e');
-      setState(() {
-        _isAdmin = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isAdmin = false;
+        });
+      }
     }
   }
 
