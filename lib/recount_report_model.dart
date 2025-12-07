@@ -61,20 +61,60 @@ class RecountReport {
     'ratedAt': ratedAt?.toIso8601String(),
   };
 
-  factory RecountReport.fromJson(Map<String, dynamic> json) => RecountReport(
-    id: json['id'] ?? '',
-    employeeName: json['employeeName'] ?? '',
-    shopAddress: json['shopAddress'] ?? '',
-    startedAt: DateTime.parse(json['startedAt']),
-    completedAt: DateTime.parse(json['completedAt']),
-    duration: Duration(seconds: json['duration'] ?? 0),
-    answers: (json['answers'] as List<dynamic>?)
-        ?.map((a) => RecountAnswer.fromJson(a))
-        .toList() ?? [],
-    adminRating: json['adminRating'],
-    adminName: json['adminName'],
-    ratedAt: json['ratedAt'] != null ? DateTime.parse(json['ratedAt']) : null,
-  );
+  factory RecountReport.fromJson(Map<String, dynamic> json) {
+    // Обрабатываем даты с fallback на createdAt/savedAt
+    DateTime parseDateTime(dynamic value, DateTime? fallback) {
+      if (value == null) {
+        if (fallback != null) return fallback;
+        return DateTime.now(); // Последний fallback
+      }
+      if (value is String) {
+        try {
+          return DateTime.parse(value);
+        } catch (e) {
+          return fallback ?? DateTime.now();
+        }
+      }
+      return fallback ?? DateTime.now();
+    }
+
+    final createdAt = json['createdAt'] != null 
+        ? (json['createdAt'] is String ? DateTime.parse(json['createdAt']) : null)
+        : null;
+    final savedAt = json['savedAt'] != null
+        ? (json['savedAt'] is String ? DateTime.parse(json['savedAt']) : null)
+        : null;
+
+    final startedAt = parseDateTime(json['startedAt'], createdAt);
+    final completedAt = parseDateTime(json['completedAt'], savedAt ?? createdAt);
+
+    // Вычисляем duration, если его нет
+    Duration duration;
+    if (json['duration'] != null) {
+      duration = Duration(seconds: json['duration'] is int ? json['duration'] : 0);
+    } else if (startedAt != null && completedAt != null) {
+      duration = completedAt.difference(startedAt);
+    } else {
+      duration = Duration.zero;
+    }
+
+    return RecountReport(
+      id: json['id']?.toString() ?? '',
+      employeeName: json['employeeName']?.toString() ?? '',
+      shopAddress: json['shopAddress']?.toString() ?? '',
+      startedAt: startedAt,
+      completedAt: completedAt,
+      duration: duration,
+      answers: (json['answers'] as List<dynamic>?)
+          ?.map((a) => RecountAnswer.fromJson(a as Map<String, dynamic>))
+          .toList() ?? [],
+      adminRating: json['adminRating'] is int ? json['adminRating'] : null,
+      adminName: json['adminName']?.toString(),
+      ratedAt: json['ratedAt'] != null && json['ratedAt'] is String
+          ? DateTime.tryParse(json['ratedAt'])
+          : null,
+    );
+  }
 
   /// Создать копию с обновленной оценкой
   RecountReport copyWith({
