@@ -122,31 +122,58 @@ app.post('/api/recount-reports', async (req, res) => {
   try {
     console.log('POST /api/recount-reports:', JSON.stringify(req.body).substring(0, 200));
     
-    // Отправляем данные в Google Apps Script
-    const response = await fetch(SCRIPT_URL, {
-      method: 'post',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'createRecountReport',
-        ...req.body
-      }),
-    });
-
-    const contentType = response.headers.get('content-type');
-    
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
-      // Если скрипт не поддерживает, сохраняем локально
-      return res.json({ success: true, message: 'Отчет сохранен локально' });
+    // Сохраняем отчет локально в файл
+    const reportsDir = '/var/www/recount-reports';
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
     }
+    
+    const reportId = req.body.id || `report_${Date.now()}`;
+    const reportFile = path.join(reportsDir, `${reportId}.json`);
+    
+    // Сохраняем отчет с временной меткой
+    const reportData = {
+      ...req.body,
+      createdAt: new Date().toISOString(),
+      savedAt: new Date().toISOString()
+    };
+    
+    fs.writeFileSync(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
+    console.log('Отчет сохранен:', reportFile);
+    
+    // Пытаемся также отправить в Google Apps Script (опционально)
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: 'post',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'createRecountReport',
+          ...req.body
+        }),
+      });
 
-    const data = await response.json();
-    res.json(data);
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        if (data.success) {
+          console.log('Отчет также отправлен в Google Apps Script');
+        }
+      }
+    } catch (scriptError) {
+      console.log('Google Apps Script не поддерживает это действие, отчет сохранен локально');
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Отчет успешно сохранен',
+      reportId: reportId
+    });
   } catch (error) {
     console.error('Ошибка создания отчета:', error);
-    // В случае ошибки все равно возвращаем успех (данные сохраняются локально)
-    res.json({ success: true, message: 'Отчет обработан' });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Ошибка при сохранении отчета' 
+    });
   }
 });
 
@@ -155,23 +182,56 @@ app.get('/api/recount-reports', async (req, res) => {
   try {
     console.log('GET /api/recount-reports:', req.query);
     
-    const queryString = new URLSearchParams({
-      action: 'getRecountReports',
-      ...req.query
-    }).toString();
-    const url = `${SCRIPT_URL}?${queryString}`;
-
-    const response = await fetch(url);
-    const contentType = response.headers.get('content-type');
+    const reportsDir = '/var/www/recount-reports';
+    const reports = [];
     
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response:", text.substring(0, 200));
-      return res.json({ success: true, reports: [] });
+    // Читаем отчеты из локальной директории
+    if (fs.existsSync(reportsDir)) {
+      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+      
+      for (const file of files) {
+        try {
+          const filePath = path.join(reportsDir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const report = JSON.parse(content);
+          reports.push(report);
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+      
+      // Сортируем по дате создания (новые первыми)
+      reports.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.savedAt || 0);
+        const dateB = new Date(b.createdAt || b.savedAt || 0);
+        return dateB - dateA;
+      });
+      
+      // Применяем фильтры из query параметров
+      let filteredReports = reports;
+      if (req.query.shopAddress) {
+        filteredReports = filteredReports.filter(r => 
+          r.shopAddress && r.shopAddress.includes(req.query.shopAddress)
+        );
+      }
+      if (req.query.employeeName) {
+        filteredReports = filteredReports.filter(r => 
+          r.employeeName && r.employeeName.includes(req.query.employeeName)
+        );
+      }
+      if (req.query.date) {
+        const filterDate = new Date(req.query.date);
+        filteredReports = filteredReports.filter(r => {
+          const reportDate = new Date(r.completedAt || r.createdAt || r.savedAt);
+          return reportDate.toDateString() === filterDate.toDateString();
+        });
+      }
+      
+      return res.json({ success: true, reports: filteredReports });
     }
-
-    const data = await response.json();
-    res.json(data);
+    
+    // Если директории нет, возвращаем пустой список
+    res.json({ success: true, reports: [] });
   } catch (error) {
     console.error('Ошибка получения отчетов:', error);
     res.json({ success: true, reports: [] });
@@ -184,27 +244,30 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     const { reportId } = req.params;
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
     
-    const response = await fetch(SCRIPT_URL, {
-      method: 'post',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'rateRecountReport',
-        reportId: reportId,
-        ...req.body
-      }),
-    });
-
-    const contentType = response.headers.get('content-type');
+    const reportsDir = '/var/www/recount-reports';
+    const reportFile = path.join(reportsDir, `${reportId}.json`);
     
-    if (!contentType || !contentType.includes('application/json')) {
-      return res.json({ success: true, message: 'Оценка сохранена' });
+    if (!fs.existsSync(reportFile)) {
+      return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
-
-    const data = await response.json();
-    res.json(data);
+    
+    // Читаем отчет
+    const content = fs.readFileSync(reportFile, 'utf8');
+    const report = JSON.parse(content);
+    
+    // Обновляем оценку
+    report.adminRating = req.body.rating;
+    report.adminName = req.body.adminName;
+    report.ratedAt = new Date().toISOString();
+    
+    // Сохраняем обновленный отчет
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
+    console.log('Оценка сохранена для отчета:', reportId);
+    
+    res.json({ success: true, message: 'Оценка успешно сохранена' });
   } catch (error) {
     console.error('Ошибка оценки отчета:', error);
-    res.json({ success: true, message: 'Оценка обработана' });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
