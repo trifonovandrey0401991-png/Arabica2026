@@ -215,7 +215,16 @@ class EmployeeRegistrationService {
     String adminName,
   ) async {
     try {
-      final url = '$serverUrl/api/employee-registration/${Uri.encodeComponent(phone)}/verify';
+      // Нормализуем телефон
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      final url = '$serverUrl/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}/verify';
+      
+      print('🔐 Верификация сотрудника:');
+      print('   Телефон: $normalizedPhone');
+      print('   Статус: $isVerified');
+      print('   Админ: $adminName');
+      print('   URL: $url');
+      
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
@@ -227,14 +236,25 @@ class EmployeeRegistrationService {
         const Duration(seconds: 10),
       );
 
+      print('   Статус ответа: ${response.statusCode}');
+      final responseBody = response.body;
+      print('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        return result['success'] == true;
+        final success = result['success'] == true;
+        if (success) {
+          print('   ✅ Статус верификации успешно обновлен');
+        } else {
+          print('   ❌ Ошибка обновления статуса: ${result['error']}');
+        }
+        return success;
       }
 
+      print('   ❌ HTTP ошибка: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('❌ Ошибка верификации: $e');
+      print('❌ Ошибка верификации сотрудника: $e');
       return false;
     }
   }
