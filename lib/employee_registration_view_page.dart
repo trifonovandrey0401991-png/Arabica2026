@@ -104,6 +104,11 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
     if (success) {
       await _loadRegistration();
+      // Обновляем статус в локальном состоянии
+      setState(() {
+        // Статус уже обновлен в _loadRegistration
+      });
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -115,6 +120,11 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             backgroundColor: Colors.green,
           ),
         );
+      }
+      
+      // Возвращаем true, чтобы обновить статус в списке сотрудников
+      if (mounted) {
+        Navigator.pop(context, true);
       }
     } else {
       if (mounted) {
