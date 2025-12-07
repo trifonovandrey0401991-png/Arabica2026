@@ -73,6 +73,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
       UserRoleData? cachedRole = await UserRoleService.loadUserRole();
       UserRoleData? roleData = cachedRole;
       
+      // Сохраняем текущую роль перед запросом, чтобы не перезаписать при таймауте
+      final roleBeforeRequest = roleData;
+      
       // Всегда проверяем роль через API (если есть телефон)
       if (phone != null && phone.isNotEmpty) {
         try {
@@ -86,9 +89,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
           }
         } catch (e) {
           print('⚠️ Ошибка загрузки роли через API: $e');
-          print('📦 Используем кэшированную роль');
-          // Используем кэшированную роль, если API недоступен
-          roleData = cachedRole;
+          // При таймауте проверяем, не была ли роль уже успешно загружена другим запросом
+          final latestCachedRole = await UserRoleService.loadUserRole();
+          if (latestCachedRole != null) {
+            // Проверяем, изменилась ли роль (значит другой запрос успешно загрузил)
+            if (roleBeforeRequest == null || 
+                latestCachedRole.role != roleBeforeRequest.role ||
+                latestCachedRole.displayName != roleBeforeRequest.displayName) {
+              // Роль была обновлена другим запросом, используем её
+              print('📦 Используем обновленную роль из кэша (загружена другим запросом): ${latestCachedRole.role.name}');
+              roleData = latestCachedRole;
+            } else {
+              // Роль не изменилась, используем кэшированную
+              print('📦 Используем кэшированную роль: ${cachedRole?.role.name ?? "нет"}');
+              roleData = cachedRole;
+            }
+          } else {
+            // Используем кэшированную роль, если API недоступен
+            print('📦 Используем кэшированную роль: ${cachedRole?.role.name ?? "нет"}');
+            roleData = cachedRole;
+          }
         }
       }
       
