@@ -67,16 +67,32 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Future<void> _loadRegistration() async {
     try {
+      print('📥 Загрузка регистрации для телефона: ${widget.employeePhone}');
       final registration = await EmployeeRegistrationService.getRegistration(widget.employeePhone);
-      setState(() {
-        _registration = registration;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      
+      if (registration != null) {
+        print('✅ Регистрация найдена:');
+        print('   ФИО: ${registration.fullName}');
+        print('   Верифицирован: ${registration.isVerified}');
+        print('   Фото лицевой: ${registration.passportFrontPhotoUrl ?? "нет"}');
+        print('   Фото прописки: ${registration.passportRegistrationPhotoUrl ?? "нет"}');
+        print('   Доп фото: ${registration.additionalPhotoUrl ?? "нет"}');
+      } else {
+        print('⚠️ Регистрация не найдена для телефона: ${widget.employeePhone}');
+      }
+      
       if (mounted) {
+        setState(() {
+          _registration = registration;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Ошибка загрузки регистрации: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка загрузки данных: $e'),
