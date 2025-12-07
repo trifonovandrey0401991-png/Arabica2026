@@ -26,6 +26,9 @@ import 'recount_reports_list_page.dart';
 import 'user_role_service.dart';
 import 'user_role_model.dart';
 import 'role_test_page.dart';
+import 'attendance_shop_selection_page.dart';
+import 'attendance_reports_page.dart';
+import 'attendance_service.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -347,6 +350,41 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
+    // Я на работе - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.access_time, 'Я на работе', () async {
+        // Проверяем, была ли уже отметка сегодня
+        final employeeName = _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        try {
+          final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
+          
+          if (hasAttendance && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Вы уже отметились сегодня'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+        } catch (e) {
+          print('⚠️ Ошибка проверки отметки: $e');
+          // Продолжаем, даже если проверка не удалась
+        }
+        
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AttendanceShopSelectionPage(
+              employeeName: employeeName,
+            ),
+          ),
+        );
+      }));
+    }
+
     // Пересменка - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.work_history, 'Пересменка', () async {
@@ -390,6 +428,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const RecountReportsListPage()),
+        );
+      }));
+    }
+
+    // Отчеты по приходам - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.access_time_filled, 'Отчеты по приходам', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AttendanceReportsPage()),
         );
       }));
     }

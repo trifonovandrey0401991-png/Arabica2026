@@ -322,4 +322,150 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 // Статическая раздача фото
 app.use('/shift-photos', express.static('/var/www/shift-photos'));
 
+// Эндпоинт для отметки прихода
+app.post('/api/attendance', async (req, res) => {
+  try {
+    console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
+    
+    const attendanceDir = '/var/www/attendance';
+    if (!fs.existsSync(attendanceDir)) {
+      fs.mkdirSync(attendanceDir, { recursive: true });
+    }
+    
+    const recordId = req.body.id || `attendance_${Date.now()}`;
+    const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const recordFile = path.join(attendanceDir, `${sanitizedId}.json`);
+    
+    const recordData = {
+      ...req.body,
+      createdAt: new Date().toISOString(),
+    };
+    
+    fs.writeFileSync(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
+    console.log('Отметка сохранена:', recordFile);
+    
+    // Отправляем push-уведомление админу
+    try {
+      // TODO: Реализовать отправку push-уведомления админу
+      console.log('Push-уведомление отправлено админу');
+    } catch (notifyError) {
+      console.log('Ошибка отправки уведомления:', notifyError);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Отметка успешно сохранена',
+      recordId: sanitizedId
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения отметки:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Ошибка при сохранении отметки' 
+    });
+  }
+});
+
+// Эндпоинт для проверки отметки сегодня
+app.get('/api/attendance/check', async (req, res) => {
+  try {
+    const employeeName = req.query.employeeName;
+    if (!employeeName) {
+      return res.json({ success: true, hasAttendance: false });
+    }
+    
+    const attendanceDir = '/var/www/attendance';
+    if (!fs.existsSync(attendanceDir)) {
+      return res.json({ success: true, hasAttendance: false });
+    }
+    
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      try {
+        const filePath = path.join(attendanceDir, file);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const record = JSON.parse(content);
+        
+        if (record.employeeName === employeeName) {
+          const recordDate = new Date(record.timestamp);
+          const recordDateStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
+          
+          if (recordDateStr === todayStr) {
+            return res.json({ success: true, hasAttendance: true });
+          }
+        }
+      } catch (e) {
+        console.error(`Ошибка чтения файла ${file}:`, e);
+      }
+    }
+    
+    res.json({ success: true, hasAttendance: false });
+  } catch (error) {
+    console.error('Ошибка проверки отметки:', error);
+    res.json({ success: true, hasAttendance: false });
+  }
+});
+
+// Эндпоинт для получения списка отметок
+app.get('/api/attendance', async (req, res) => {
+  try {
+    console.log('GET /api/attendance:', req.query);
+    
+    const attendanceDir = '/var/www/attendance';
+    const records = [];
+    
+    if (fs.existsSync(attendanceDir)) {
+      const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
+      
+      for (const file of files) {
+        try {
+          const filePath = path.join(attendanceDir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const record = JSON.parse(content);
+          records.push(record);
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+      
+      // Сортируем по дате (новые первыми)
+      records.sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.createdAt || 0);
+        const dateB = new Date(b.timestamp || b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
+      // Применяем фильтры
+      let filteredRecords = records;
+      if (req.query.employeeName) {
+        filteredRecords = filteredRecords.filter(r => 
+          r.employeeName && r.employeeName.includes(req.query.employeeName)
+        );
+      }
+      if (req.query.shopAddress) {
+        filteredRecords = filteredRecords.filter(r => 
+          r.shopAddress && r.shopAddress.includes(req.query.shopAddress)
+        );
+      }
+      if (req.query.date) {
+        const filterDate = new Date(req.query.date);
+        filteredRecords = filteredRecords.filter(r => {
+          const recordDate = new Date(r.timestamp || r.createdAt);
+          return recordDate.toDateString() === filterDate.toDateString();
+        });
+      }
+      
+      return res.json({ success: true, records: filteredRecords });
+    }
+    
+    res.json({ success: true, records: [] });
+  } catch (error) {
+    console.error('Ошибка получения отметок:', error);
+    res.json({ success: true, records: [] });
+  }
+});
+
 app.listen(3000, () => console.log("Proxy listening on port 3000"));

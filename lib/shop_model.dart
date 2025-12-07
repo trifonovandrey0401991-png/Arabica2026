@@ -7,11 +7,15 @@ class Shop {
   final String name;
   final String address;
   final IconData icon;
+  final double? latitude;  // Широта
+  final double? longitude; // Долгота
 
   Shop({
     required this.name,
     required this.address,
     required this.icon,
+    this.latitude,
+    this.longitude,
   });
 
   /// Получить иконку по названию магазина
@@ -110,13 +114,20 @@ class Shop {
         Icons.local_dining,
       ];
 
+      // Получаем координаты магазинов
+      final coordinates = getShopCoordinates();
+      
       for (var address in uniqueAddresses.values) {
         // Извлекаем название магазина из адреса
         String shopName = _extractShopName(address);
+        // Получаем координаты для этого адреса
+        final coords = coordinates[address];
         shops.add(Shop(
           name: shopName,
           address: address, // Используем оригинальный адрес
           icon: shopIndex < icons.length ? icons[shopIndex] : Icons.store,
+          latitude: coords?['latitude'],
+          longitude: coords?['longitude'],
         ));
         shopIndex++;
       }
@@ -177,6 +188,44 @@ class Shop {
     // Если не нашли город, используем первые слова адреса
     final words = address.split(' ').take(3).join(' ');
     return 'Арабика $words';
+  }
+
+  /// Получить координаты магазинов по адресу
+  static Map<String, Map<String, double>> getShopCoordinates() {
+    return {
+      'с.Винсады,ул Подгорная 156д (На Выезде)': {
+        'latitude': 44.091173,
+        'longitude': 42.952451,
+      },
+      'Лермонтов,ул Пятигорская 19': {
+        'latitude': 44.100923,
+        'longitude': 42.967543,
+      },
+      'Лермонтов,Комсомольская 1 (На Площади)': {
+        'latitude': 44.104619,
+        'longitude': 42.970543,
+      },
+      'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )': {
+        'latitude': 44.105379,
+        'longitude': 42.978421,
+      },
+      'Ессентуки , ул пятигорская 149/1 (Золотушка)': {
+        'latitude': 44.055559,
+        'longitude': 42.911012,
+      },
+      'Иноземцево , ул Гагарина 1': {
+        'latitude': 44.080153,
+        'longitude': 43.081593,
+      },
+      'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)': {
+        'latitude': 44.061053,
+        'longitude': 43.063672,
+      },
+      'Пятигорск,ул Коллективная 26а': {
+        'latitude': 44.032997,
+        'longitude': 43.042525,
+      },
+    };
   }
 
   /// Получить список магазинов по умолчанию (fallback)
