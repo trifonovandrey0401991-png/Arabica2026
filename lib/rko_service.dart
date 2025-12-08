@@ -20,7 +20,7 @@ class RKOService {
           .where((r) => r.employeeName.toLowerCase() == employeeName.toLowerCase())
           .toList();
       
-      employeeReports.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      employeeReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
       if (employeeReports.isNotEmpty) {
         return employeeReports.first;
