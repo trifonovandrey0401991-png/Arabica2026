@@ -20,15 +20,22 @@ subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     
     // Инициализация свойства flutter для плагинов, которые его требуют
-    project.ext.flutter = [
-        compileSdkVersion: 35,
-        minSdkVersion: 21,
-        targetSdkVersion: 35
-    ]
+    beforeEvaluate { proj ->
+        proj.ext.flutter = [
+            compileSdkVersion: 35,
+            minSdkVersion: 21,
+            targetSdkVersion: 35
+        ]
+    }
     
     // Настройка для плагинов, которые требуют compileSdkVersion
     afterEvaluate { proj ->
         if (proj.hasProperty('android') && proj.name != 'app') {
+            // Добавляем свойство flutter в android extension
+            if (!proj.android.hasProperty('flutter')) {
+                proj.android.ext.flutter = proj.ext.flutter
+            }
+            
             proj.android {
                 if (proj.android.hasProperty('compileSdkVersion')) {
                     proj.android.compileSdkVersion = 35
