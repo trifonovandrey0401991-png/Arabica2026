@@ -114,11 +114,13 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
                               subtitle: Text(employee.position ?? ''),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () {
+                                // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
+                                final normalizedName = employee.name.toLowerCase().trim();
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => RKOEmployeeDetailPage(
-                                      employeeName: employee.name,
+                                      employeeName: normalizedName,
                                     ),
                                   ),
                                 );
