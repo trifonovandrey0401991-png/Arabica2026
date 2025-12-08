@@ -182,17 +182,11 @@ class RKOPDFService {
     // Загружаем шрифт с поддержкой кириллицы
     final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
     
-    // Преобразуем ByteData в Uint8List для правильной загрузки шрифта
-    // Это необходимо для корректной работы с пакетом pdf
-    final fontBytes = fontData.buffer.asUint8List(
-      fontData.offsetInBytes,
-      fontData.lengthInBytes,
-    );
+    // Создаем шрифт из ByteData
+    // pw.Font.ttf принимает ByteData напрямую
+    final ttf = pw.Font.ttf(fontData);
     
-    // Создаем шрифт из Uint8List
-    final ttf = pw.Font.ttf(fontBytes);
-    
-    print('✅ Шрифт Roboto успешно загружен, размер: ${fontBytes.length} байт');
+    print('✅ Шрифт Roboto успешно загружен, размер: ${fontData.lengthInBytes} байт');
     
     // Создаем стили текста с поддержкой кириллицы
     // ВАЖНО: Все стили должны использовать font: ttf для поддержки кириллицы
