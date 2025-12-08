@@ -24,13 +24,3 @@ plugins {
 }
 
 include ":app"
-
-gradle.projectsEvaluated {
-    subprojects.each { project ->
-        if (project.hasProperty('android') && project.name != 'app') {
-            project.android {
-                compileSdkVersion 35
-            }
-        }
-    }
-}
