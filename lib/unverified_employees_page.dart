@@ -62,19 +62,28 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
               
               // Показываем только тех, у кого была снята верификация
               // (есть регистрация, verifiedAt != null, но isVerified = false)
-              if (registration != null && 
-                  registration.verifiedAt != null && 
-                  !registration.isVerified) {
-                final displayName = employeeName.isNotEmpty ? employeeName : clientName;
+              if (registration != null) {
+                print('🔍 Проверка для не верифицированных: ${displayName.isNotEmpty ? employeeName : clientName}');
+                print('   isVerified: ${registration.isVerified}');
+                print('   verifiedAt: ${registration.verifiedAt}');
                 
-                if (displayName.isNotEmpty) {
-                  employees.add(Employee(
-                    name: displayName,
-                    phone: normalizedPhone,
-                    position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
-                  ));
-                  _registrations[normalizedPhone] = registration;
+                if (registration.verifiedAt != null && !registration.isVerified) {
+                  final displayName = employeeName.isNotEmpty ? employeeName : clientName;
+                  
+                  if (displayName.isNotEmpty) {
+                    print('   ✅ Добавлен в список не верифицированных');
+                    employees.add(Employee(
+                      name: displayName,
+                      phone: normalizedPhone,
+                      position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
+                    ));
+                    _registrations[normalizedPhone] = registration;
+                  }
+                } else {
+                  print('   ❌ Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
                 }
+              } else {
+                print('🔍 Регистрация не найдена для: ${employeeName.isNotEmpty ? employeeName : clientName}');
               }
             }
           }

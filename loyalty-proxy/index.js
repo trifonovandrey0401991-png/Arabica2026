@@ -618,18 +618,20 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     registration.isVerified = isVerified === true;
     // Сохраняем дату первой верификации, даже если верификация снята
     // Это нужно для отображения в списке "Не верифицированных сотрудников"
-    if (isVerified && !registration.verifiedAt) {
-      // Первая верификация - устанавливаем дату
-      registration.verifiedAt = new Date().toISOString();
+    if (isVerified) {
+      // Верификация - устанавливаем дату, если её еще нет
+      if (!registration.verifiedAt) {
+        registration.verifiedAt = new Date().toISOString();
+      }
       registration.verifiedBy = verifiedBy;
-    } else if (!isVerified && registration.verifiedAt) {
-      // Снятие верификации - оставляем дату первой верификации, но обновляем verifiedBy
-      // verifiedAt остается с датой первой верификации
-      registration.verifiedBy = null; // Можно оставить или очистить
-    } else if (isVerified && registration.verifiedAt) {
-      // Повторная верификация - можно обновить дату или оставить первую
-      // Оставляем первую дату верификации для истории
-      registration.verifiedBy = verifiedBy;
+    } else {
+      // Снятие верификации - устанавливаем дату, если её еще нет
+      // Это нужно для отображения в списке "Не верифицированных сотрудников"
+      if (!registration.verifiedAt) {
+        registration.verifiedAt = new Date().toISOString();
+      }
+      // verifiedAt остается с датой (первой верификации или текущей датой при снятии)
+      registration.verifiedBy = null;
     }
     registration.updatedAt = new Date().toISOString();
     
