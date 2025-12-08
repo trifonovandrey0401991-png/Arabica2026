@@ -88,7 +88,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       }
 
       // Регистрируем нового пользователя
-      final qrCode = const Uuid().v4();
+      final qrCode = Uuid().v4();
       final loyaltyInfo = await RegistrationService.registerUser(
         name: name,
         phone: phone,
