@@ -83,6 +83,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
   Future<bool> _saveShopSettings(ShopSettings settings) async {
     try {
       final url = 'https://arabica26.ru/api/shop-settings';
+      print('💾 Сохранение настроек магазина: ${settings.shopAddress}');
+      print('   Данные: ${jsonEncode(settings.toJson())}');
+      
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
@@ -91,13 +94,25 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
         const Duration(seconds: 10),
       );
 
+      print('   Статус ответа: ${response.statusCode}');
+      print('   Тело ответа: ${response.body}');
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        return result['success'] == true;
+        final success = result['success'] == true;
+        if (success) {
+          print('   ✅ Настройки успешно сохранены');
+        } else {
+          print('   ❌ Ошибка: ${result['error'] ?? 'Неизвестная ошибка'}');
+        }
+        return success;
+      } else {
+        print('   ❌ HTTP ошибка: ${response.statusCode}');
+        return false;
       }
-      return false;
-    } catch (e) {
-      print('Ошибка сохранения настроек магазина: $e');
+    } catch (e, stackTrace) {
+      print('❌ Ошибка сохранения настроек магазина: $e');
+      print('   Stack trace: $stackTrace');
       return false;
     }
   }
@@ -171,30 +186,46 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     );
 
     if (result != null) {
-      final settings = ShopSettings(
-        shopAddress: shop.address,
-        address: result['address'] ?? shop.address,
-        inn: result['inn'] ?? '',
-        directorName: result['directorName'] ?? '',
-        lastDocumentNumber: currentSettings?.lastDocumentNumber ?? 0,
-      );
+      try {
+        final settings = ShopSettings(
+          shopAddress: shop.address,
+          address: result['address'] ?? shop.address,
+          inn: result['inn'] ?? '',
+          directorName: result['directorName'] ?? '',
+          lastDocumentNumber: currentSettings?.lastDocumentNumber ?? 0,
+        );
 
-      final success = await _saveShopSettings(settings);
-      
-      if (mounted) {
-        if (success) {
+        final success = await _saveShopSettings(settings);
+        
+        if (mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Настройки успешно сохранены'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            await _loadShops();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ошибка сохранения настроек. Проверьте логи и убедитесь, что сервер работает.'),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        }
+      } catch (e, stackTrace) {
+        print('❌ Критическая ошибка при сохранении настроек: $e');
+        print('   Stack trace: $stackTrace');
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Настройки успешно сохранены'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          await _loadShops();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка сохранения настроек'),
+            SnackBar(
+              content: Text('Ошибка: $e'),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
             ),
           );
         }
