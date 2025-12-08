@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'shop_settings_model.dart';
 import 'employee_registration_model.dart';
+import 'rko_reports_service.dart';
 
 class RKOPDFService {
   /// Конвертировать число в пропись на русском языке
@@ -445,6 +446,27 @@ class RKOPDFService {
     await file.writeAsBytes(await pdf.save());
 
     return file;
+  }
+
+  /// Загрузить РКО на сервер после генерации
+  static Future<bool> uploadRKOToServer({
+    required File pdfFile,
+    required String fileName,
+    required String employeeName,
+    required String shopAddress,
+    required DateTime date,
+    required double amount,
+    required String rkoType,
+  }) async {
+    return await RKOReportsService.uploadRKO(
+      pdfFile: pdfFile,
+      fileName: fileName,
+      employeeName: employeeName,
+      shopAddress: shopAddress,
+      date: date,
+      amount: amount,
+      rkoType: rkoType,
+    );
   }
 
   static String _getMonthName(int month) {

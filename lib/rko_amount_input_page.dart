@@ -154,17 +154,42 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         rkoType: widget.rkoType,
       );
 
+      // Получаем имя файла
+      final fileName = pdfFile.path.split('/').last;
+      final now = DateTime.now();
+      
+      // Загружаем на сервер
+      final uploadSuccess = await RKOPDFService.uploadRKOToServer(
+        pdfFile: pdfFile,
+        fileName: fileName,
+        employeeName: employeeData.fullName,
+        shopAddress: _selectedShop!.address,
+        date: now,
+        amount: amount,
+        rkoType: widget.rkoType,
+      );
+
       // Обновляем номер документа на сервере
       await RKOService.updateDocumentNumber(_selectedShop!.address, documentNumber);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('РКО успешно создан: ${pdfFile.path}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        if (uploadSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('РКО успешно создан и загружен на сервер'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('РКО создан локально: ${pdfFile.path}, но не удалось загрузить на сервер'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
         Navigator.pop(context);
       }
     } catch (e) {

@@ -28,6 +28,7 @@ dependencies:
   permission_handler: ^11.0.0
   pdf: ^3.10.0
   printing: ^5.12.0
+  syncfusion_flutter_pdfviewer: ^27.1.45
 
 dev_dependencies:
   flutter_test:

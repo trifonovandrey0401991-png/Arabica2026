@@ -34,6 +34,7 @@ import 'employee_registration_select_employee_page.dart';
 import 'rko_type_selection_page.dart';
 import 'employee_registration_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'rko_reports_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -345,6 +346,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
             );
           }
         }
+      }));
+    }
+
+    // Отчеты по РКО - только для админов и верифицированных сотрудников
+    if (role == UserRole.admin || role == UserRole.employee) {
+      items.add(_tile(context, Icons.assessment, 'Отчеты по РКО', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RKOReportsPage()),
+        );
       }));
     }
 
