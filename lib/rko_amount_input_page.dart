@@ -75,8 +75,18 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       // Загружаем список всех магазинов для выбора
       final shops = await Shop.loadShopsFromGoogleSheets();
       
+      // Если был выбран магазин из последней пересменки, находим его в списке по адресу
+      Shop? selectedShopFromList;
+      if (_selectedShop != null) {
+        selectedShopFromList = shops.firstWhere(
+          (shop) => shop.address == _selectedShop!.address,
+          orElse: () => shops.isNotEmpty ? shops.first : _selectedShop!,
+        );
+      }
+      
       setState(() {
         _shops = shops;
+        _selectedShop = selectedShopFromList ?? (shops.isNotEmpty ? shops.first : null);
         _isLoading = false;
       });
     } catch (e) {
