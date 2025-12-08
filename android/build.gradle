@@ -18,6 +18,28 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+    
+    project.afterEvaluate {
+        if (project.hasProperty('android') && project.name != 'app') {
+            try {
+                // Устанавливаем свойство flutter в android extension
+                if (!project.android.ext.hasProperty('flutter')) {
+                    project.android.ext.flutter = project.ext.flutter
+                }
+                // Устанавливаем compileSdkVersion явно
+                if (project.android.hasProperty('compileSdkVersion')) {
+                    project.android.compileSdkVersion = 35
+                } else if (project.android.hasProperty('compileSdk')) {
+                    project.android.compileSdk = 35
+                }
+            } catch (e) {
+                // Игнорируем ошибки
+            }
+        }
+    }
+}
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {
