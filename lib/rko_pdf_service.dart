@@ -263,13 +263,13 @@ class RKOPDFService {
               pw.Table(
                 border: pw.TableBorder.all(),
                 columnWidths: {
-                  0: const pw.FlexColumnWidth(1.5),
+                  0: const pw.FlexColumnWidth(1.2),
                   1: const pw.FlexColumnWidth(1.5),
-                  2: const pw.FlexColumnWidth(1.5),
+                  2: const pw.FlexColumnWidth(1.8),
                   3: const pw.FlexColumnWidth(1.0),
                 },
                 children: [
-                  // Строка 1: Заголовки
+                  // Строка 1: Заголовки (первые 3 колонки, 4-я пустая)
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -286,16 +286,16 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
-                  // Строка 2: Значения
+                  // Строка 2: Значения (первые 3 колонки, 4-я пустая)
                   pw.TableRow(
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
@@ -310,7 +310,7 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
@@ -361,23 +361,23 @@ class RKOPDFService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
-                  // Строка 6: Выдать
+                  // Строка 6: Выдать (первые 3 колонки, 4-я пустая)
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -394,11 +394,11 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
-                  // Строка 7: Основание
+                  // Строка 7: Основание (первые 3 колонки, 4-я пустая)
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -411,11 +411,11 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
