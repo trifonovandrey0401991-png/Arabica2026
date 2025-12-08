@@ -148,9 +148,11 @@ class RKOPDFService {
     // Получаем фамилию сотрудника (первое слово из ФИО)
     final employeeLastName = employeeData.fullName.split(' ').first;
 
-    // Загружаем шрифт с поддержкой кириллицы
+    // Загружаем шрифты с поддержкой кириллицы
     final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+    final fontBoldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
     final ttf = pw.Font.ttf(fontData);
+    final ttfBold = pw.Font.ttf(fontBoldData);
     
     // Создаем стили текста с поддержкой кириллицы
     final textStyle = pw.TextStyle(
@@ -160,7 +162,7 @@ class RKOPDFService {
     final textStyleBold = pw.TextStyle(
       fontSize: 10,
       fontWeight: pw.FontWeight.bold,
-      font: ttf,
+      font: ttfBold,
     );
     final textStyleSmall = pw.TextStyle(
       fontSize: 8,
@@ -169,7 +171,7 @@ class RKOPDFService {
     final textStyleLarge = pw.TextStyle(
       fontSize: 14,
       fontWeight: pw.FontWeight.bold,
-      font: ttf,
+      font: ttfBold,
     );
 
     pdf.addPage(
