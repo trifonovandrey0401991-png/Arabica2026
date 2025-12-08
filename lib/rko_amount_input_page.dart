@@ -290,7 +290,9 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<Shop>(
-                            value: _selectedShop,
+                            value: _selectedShop != null && _shops.any((s) => s.address == _selectedShop!.address)
+                                ? _shops.firstWhere((s) => s.address == _selectedShop!.address)
+                                : null,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
                               labelText: 'Выберите магазин',
