@@ -24,30 +24,3 @@ plugins {
 }
 
 include ":app"
-
-// Инициализация свойства flutter для плагинов до их оценки
-gradle.projectsLoaded {
-    rootProject.allprojects { project ->
-        project.ext.flutter = [
-            compileSdkVersion: 35,
-            minSdkVersion: 21,
-            targetSdkVersion: 35
-        ]
-    }
-}
-
-gradle.projectsEvaluated {
-    rootProject.subprojects { project ->
-        if (project.name != 'app' && project.hasProperty('android')) {
-            try {
-                project.android.ext.flutter = [
-                    compileSdkVersion: 35,
-                    minSdkVersion: 21,
-                    targetSdkVersion: 35
-                ]
-            } catch (e) {
-                // Игнорируем ошибки, если свойство уже установлено
-            }
-        }
-    }
-}
