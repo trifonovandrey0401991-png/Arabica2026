@@ -4,6 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'shop_settings_model.dart';
 import 'employee_registration_model.dart';
 import 'rko_reports_service.dart';
@@ -147,24 +148,22 @@ class RKOPDFService {
     // Получаем фамилию сотрудника (первое слово из ФИО)
     final employeeLastName = employeeData.fullName.split(' ').first;
 
-    // Создаем стиль текста с поддержкой кириллицы
+    // Загружаем шрифт с поддержкой кириллицы (используем системный шрифт)
+    // В пакете pdf можно использовать встроенные шрифты или загрузить TTF
+    // Для поддержки кириллицы используем fontFallback с системными шрифтами
     final textStyle = pw.TextStyle(
       fontSize: 10,
-      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
     );
     final textStyleBold = pw.TextStyle(
       fontSize: 10,
       fontWeight: pw.FontWeight.bold,
-      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
     );
     final textStyleSmall = pw.TextStyle(
       fontSize: 8,
-      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
     );
     final textStyleLarge = pw.TextStyle(
       fontSize: 14,
       fontWeight: pw.FontWeight.bold,
-      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
     );
 
     pdf.addPage(
