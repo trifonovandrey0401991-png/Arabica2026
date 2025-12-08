@@ -39,14 +39,35 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     });
 
     try {
-      // Получаем имя сотрудника
-      final name = await RKOService.getEmployeeName();
+      // Получаем имя сотрудника из Google Sheets (для совместимости с поиском)
+      final employees = await EmployeesPage.loadEmployeesForNotifications();
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
       
-      // Получаем магазин из последней пересменки
-      if (name != null) {
-        final shop = await RKOService.getShopFromLastShift(name);
+      if (phone != null && employees.isNotEmpty) {
+        // Нормализуем телефон для поиска
+        final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+        // Ищем сотрудника по телефону
+        final currentEmployee = employees.firstWhere(
+          (e) => e.phone != null && e.phone!.replaceAll(RegExp(r'[\s\+]'), '') == normalizedPhone,
+          orElse: () => employees.first,
+        );
+        _employeeName = currentEmployee.name;
+        
+        // Получаем магазин из последней пересменки
+        final shop = await RKOService.getShopFromLastShift(_employeeName!);
         if (shop != null) {
           _selectedShop = shop;
+        }
+      } else {
+        // Fallback: получаем имя из регистрации
+        final name = await RKOService.getEmployeeName();
+        _employeeName = name;
+        if (name != null) {
+          final shop = await RKOService.getShopFromLastShift(name);
+          if (shop != null) {
+            _selectedShop = shop;
+          }
         }
       }
 
@@ -159,14 +180,22 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       final now = DateTime.now();
       
       // Загружаем на сервер
+      // Используем имя из Google Sheets (если есть), иначе из регистрации
       // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
-      final normalizedEmployeeName = employeeData.fullName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-      print('📤 Сохранение РКО для сотрудника: "$normalizedEmployeeName"');
-      print('📤 Оригинальное имя: "${employeeData.fullName}"');
+      String employeeNameForRKO;
+      if (_employeeName != null && _employeeName!.isNotEmpty) {
+        employeeNameForRKO = _employeeName!.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+        print('📤 Используем имя из Google Sheets: "$employeeNameForRKO"');
+      } else {
+        employeeNameForRKO = employeeData.fullName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+        print('📤 Используем имя из регистрации: "$employeeNameForRKO"');
+      }
+      print('📤 Оригинальное имя из регистрации: "${employeeData.fullName}"');
+      print('📤 Имя из Google Sheets: "$_employeeName"');
       final uploadSuccess = await RKOPDFService.uploadRKOToServer(
         pdfFile: pdfFile,
         fileName: fileName,
-        employeeName: normalizedEmployeeName,
+        employeeName: employeeNameForRKO,
         shopAddress: _selectedShop!.address,
         date: now,
         amount: amount,
