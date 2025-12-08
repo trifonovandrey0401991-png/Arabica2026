@@ -159,10 +159,12 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       final now = DateTime.now();
       
       // Загружаем на сервер
+      // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
+      final normalizedEmployeeName = employeeData.fullName.toLowerCase().trim();
       final uploadSuccess = await RKOPDFService.uploadRKOToServer(
         pdfFile: pdfFile,
         fileName: fileName,
-        employeeName: employeeData.fullName,
+        employeeName: normalizedEmployeeName,
         shopAddress: _selectedShop!.address,
         date: now,
         amount: amount,
