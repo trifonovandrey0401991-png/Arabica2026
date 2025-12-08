@@ -616,8 +616,21 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     const registration = JSON.parse(content);
     
     registration.isVerified = isVerified === true;
-    registration.verifiedAt = isVerified ? new Date().toISOString() : null;
-    registration.verifiedBy = isVerified ? verifiedBy : null;
+    // Сохраняем дату первой верификации, даже если верификация снята
+    // Это нужно для отображения в списке "Не верифицированных сотрудников"
+    if (isVerified && !registration.verifiedAt) {
+      // Первая верификация - устанавливаем дату
+      registration.verifiedAt = new Date().toISOString();
+      registration.verifiedBy = verifiedBy;
+    } else if (!isVerified && registration.verifiedAt) {
+      // Снятие верификации - оставляем дату первой верификации, но обновляем verifiedBy
+      // verifiedAt остается с датой первой верификации
+      registration.verifiedBy = null; // Можно оставить или очистить
+    } else if (isVerified && registration.verifiedAt) {
+      // Повторная верификация - можно обновить дату или оставить первую
+      // Оставляем первую дату верификации для истории
+      registration.verifiedBy = verifiedBy;
+    }
     registration.updatedAt = new Date().toISOString();
     
     fs.writeFileSync(registrationFile, JSON.stringify(registration, null, 2), 'utf8');
