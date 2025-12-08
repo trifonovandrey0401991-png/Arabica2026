@@ -76,7 +76,6 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       final shops = await Shop.loadShopsFromGoogleSheets();
       
       setState(() {
-        _employeeName = name;
         _shops = shops;
         _isLoading = false;
       });
