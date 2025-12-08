@@ -6,6 +6,7 @@ import 'google_script_config.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'user_role_model.dart';
+import 'unverified_employees_page.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -299,6 +300,18 @@ class _EmployeesPageState extends State<EmployeesPage> {
         backgroundColor: const Color(0xFF004D40),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_off),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UnverifiedEmployeesPage(),
+                ),
+              );
+            },
+            tooltip: 'Не верифицированные сотрудники',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               setState(() {
@@ -386,8 +399,20 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
                 final allEmployees = snapshot.data ?? [];
                 
-                // Фильтрация по поисковому запросу
+                // Фильтрация: показываем только верифицированных сотрудников
                 final filteredEmployees = allEmployees.where((employee) {
+                  // Показываем только верифицированных сотрудников
+                  if (employee.phone != null && employee.phone!.isNotEmpty) {
+                    final isVerified = _verificationStatus[employee.phone!] ?? false;
+                    if (!isVerified) {
+                      return false; // Исключаем не верифицированных
+                    }
+                  } else {
+                    // Если нет телефона, исключаем из списка
+                    return false;
+                  }
+                  
+                  // Фильтрация по поисковому запросу
                   if (_searchQuery.isEmpty) return true;
                   
                   final name = employee.name.toLowerCase();

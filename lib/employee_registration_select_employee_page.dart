@@ -17,6 +17,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
   late Future<List<Employee>> _employeesFuture;
   String _searchQuery = '';
   Map<String, bool> _verificationStatus = {};
+  Map<String, bool> _hasRegistration = {}; // Кэш наличия регистрации (независимо от статуса верификации)
 
   @override
   void initState() {
@@ -57,9 +58,11 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
               final displayName = employeeName.isNotEmpty ? employeeName : clientName;
               
               if (displayName.isNotEmpty && phone.isNotEmpty) {
+                // Нормализуем телефон (убираем пробелы и +)
+                final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
                 employees.add(Employee(
                   name: displayName,
-                  phone: phone,
+                  phone: normalizedPhone,
                   position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
                 ));
               }
@@ -114,8 +117,11 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
       final employees = await _loadEmployees();
       for (var employee in employees) {
         if (employee.phone != null && employee.phone!.isNotEmpty) {
-          final registration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-          _verificationStatus[employee.phone!] = registration?.isVerified ?? false;
+          // Нормализуем телефон для ключа
+          final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+          _verificationStatus[normalizedPhone] = registration?.isVerified ?? false;
+          _hasRegistration[normalizedPhone] = registration != null; // Отслеживаем наличие регистрации
         }
       }
       if (mounted) {
@@ -187,6 +193,14 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
 
                 final allEmployees = snapshot.data ?? [];
                 final filteredEmployees = allEmployees.where((employee) {
+                  // Исключаем сотрудников, у которых уже есть регистрация (даже если isVerified = false)
+                  if (employee.phone != null && employee.phone!.isNotEmpty) {
+                    final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+                    if (_hasRegistration[normalizedPhone] == true) {
+                      return false; // Скрываем сотрудников с регистрацией
+                    }
+                  }
+                  
                   if (_searchQuery.isEmpty) return true;
                   final name = employee.name.toLowerCase();
                   return name.contains(_searchQuery);
@@ -194,7 +208,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
 
                 if (filteredEmployees.isEmpty) {
                   return const Center(
-                    child: Text('Сотрудники не найдены'),
+                    child: Text('Все сотрудники зарегистрированы или не найдены'),
                   );
                 }
 
