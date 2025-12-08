@@ -160,7 +160,9 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       
       // Загружаем на сервер
       // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
-      final normalizedEmployeeName = employeeData.fullName.toLowerCase().trim();
+      final normalizedEmployeeName = employeeData.fullName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+      print('📤 Сохранение РКО для сотрудника: "$normalizedEmployeeName"');
+      print('📤 Оригинальное имя: "${employeeData.fullName}"');
       final uploadSuccess = await RKOPDFService.uploadRKOToServer(
         pdfFile: pdfFile,
         fileName: fileName,

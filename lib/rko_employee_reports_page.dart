@@ -115,7 +115,9 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () {
                                 // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
-                                final normalizedName = employee.name.toLowerCase().trim();
+                                final normalizedName = employee.name.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+                                print('🔍 Поиск РКО для сотрудника: "$normalizedName"');
+                                print('🔍 Оригинальное имя: "${employee.name}"');
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
