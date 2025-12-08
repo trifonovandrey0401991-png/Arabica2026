@@ -84,30 +84,49 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     try {
       final url = 'https://arabica26.ru/api/shop-settings';
       print('💾 Сохранение настроек магазина: ${settings.shopAddress}');
+      print('   URL: $url');
       print('   Данные: ${jsonEncode(settings.toJson())}');
       
+      final uri = Uri.parse(url);
+      print('   Parsed URI: $uri');
+      print('   Host: ${uri.host}, Path: ${uri.path}');
+      
+      final requestBody = jsonEncode(settings.toJson());
+      print('   Request body length: ${requestBody.length}');
+      
       final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(settings.toJson()),
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: requestBody,
       ).timeout(
         const Duration(seconds: 10),
       );
 
       print('   Статус ответа: ${response.statusCode}');
-      print('   Тело ответа: ${response.body}');
+      print('   Headers: ${response.headers}');
+      print('   Тело ответа (первые 500 символов): ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
 
       if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        final success = result['success'] == true;
-        if (success) {
-          print('   ✅ Настройки успешно сохранены');
-        } else {
-          print('   ❌ Ошибка: ${result['error'] ?? 'Неизвестная ошибка'}');
+        try {
+          final result = jsonDecode(response.body);
+          final success = result['success'] == true;
+          if (success) {
+            print('   ✅ Настройки успешно сохранены');
+          } else {
+            print('   ❌ Ошибка: ${result['error'] ?? 'Неизвестная ошибка'}');
+          }
+          return success;
+        } catch (e) {
+          print('   ❌ Ошибка парсинга JSON: $e');
+          print('   Тело ответа: ${response.body}');
+          return false;
         }
-        return success;
       } else {
         print('   ❌ HTTP ошибка: ${response.statusCode}');
+        print('   Тело ответа: ${response.body}');
         return false;
       }
     } catch (e, stackTrace) {
