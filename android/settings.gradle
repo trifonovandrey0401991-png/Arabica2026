@@ -24,3 +24,11 @@ plugins {
 }
 
 include ":app"
+
+gradle.beforeProject { project ->
+    if (project.name != 'app' && project.hasProperty('android')) {
+        project.android {
+            compileSdkVersion 35
+        }
+    }
+}
