@@ -56,6 +56,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
             if ((isEmployee || isAdminUser) && phone.isNotEmpty) {
               // Нормализуем телефон
               final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
               
               // Проверяем регистрацию
               final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
@@ -63,13 +64,11 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
               // Показываем только тех, у кого была снята верификация
               // (есть регистрация, verifiedAt != null, но isVerified = false)
               if (registration != null) {
-                print('🔍 Проверка для не верифицированных: ${displayName.isNotEmpty ? employeeName : clientName}');
+                print('🔍 Проверка для не верифицированных: $displayName');
                 print('   isVerified: ${registration.isVerified}');
                 print('   verifiedAt: ${registration.verifiedAt}');
                 
                 if (registration.verifiedAt != null && !registration.isVerified) {
-                  final displayName = employeeName.isNotEmpty ? employeeName : clientName;
-                  
                   if (displayName.isNotEmpty) {
                     print('   ✅ Добавлен в список не верифицированных');
                     employees.add(Employee(
@@ -83,7 +82,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                   print('   ❌ Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
                 }
               } else {
-                print('🔍 Регистрация не найдена для: ${employeeName.isNotEmpty ? employeeName : clientName}');
+                print('🔍 Регистрация не найдена для: $displayName');
               }
             }
           }
