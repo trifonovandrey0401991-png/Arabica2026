@@ -148,22 +148,28 @@ class RKOPDFService {
     // Получаем фамилию сотрудника (первое слово из ФИО)
     final employeeLastName = employeeData.fullName.split(' ').first;
 
-    // Загружаем шрифт с поддержкой кириллицы (используем системный шрифт)
-    // В пакете pdf можно использовать встроенные шрифты или загрузить TTF
-    // Для поддержки кириллицы используем fontFallback с системными шрифтами
+    // Загружаем шрифт с поддержкой кириллицы
+    final fontData = await rootBundle.load('assets/fonts/DejaVuSans.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    
+    // Создаем стили текста с поддержкой кириллицы
     final textStyle = pw.TextStyle(
       fontSize: 10,
+      font: ttf,
     );
     final textStyleBold = pw.TextStyle(
       fontSize: 10,
       fontWeight: pw.FontWeight.bold,
+      font: ttf,
     );
     final textStyleSmall = pw.TextStyle(
       fontSize: 8,
+      font: ttf,
     );
     final textStyleLarge = pw.TextStyle(
       fontSize: 14,
       fontWeight: pw.FontWeight.bold,
+      font: ttf,
     );
 
     pdf.addPage(
