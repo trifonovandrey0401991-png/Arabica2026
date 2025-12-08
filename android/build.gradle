@@ -19,6 +19,13 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     
+    // Инициализация свойства flutter для плагинов, которые его требуют
+    project.ext.flutter = [
+        compileSdkVersion: 35,
+        minSdkVersion: 21,
+        targetSdkVersion: 35
+    ]
+    
     // Настройка для плагинов, которые требуют compileSdkVersion
     afterEvaluate { proj ->
         if (proj.hasProperty('android') && proj.name != 'app') {
