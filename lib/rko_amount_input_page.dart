@@ -255,7 +255,11 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                             items: _shops.map((shop) {
                               return DropdownMenuItem<Shop>(
                                 value: shop,
-                                child: Text(shop.name),
+                                child: Text(
+                                  shop.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                ),
                               );
                             }).toList(),
                             onChanged: (shop) {
@@ -263,6 +267,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                                 _selectedShop = shop;
                               });
                             },
+                            isExpanded: true,
                           ),
                           if (_selectedShop != null) ...[
                             const SizedBox(height: 8),

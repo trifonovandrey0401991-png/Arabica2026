@@ -147,6 +147,26 @@ class RKOPDFService {
     // Получаем фамилию сотрудника (первое слово из ФИО)
     final employeeLastName = employeeData.fullName.split(' ').first;
 
+    // Создаем стиль текста с поддержкой кириллицы
+    final textStyle = pw.TextStyle(
+      fontSize: 10,
+      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
+    );
+    final textStyleBold = pw.TextStyle(
+      fontSize: 10,
+      fontWeight: pw.FontWeight.bold,
+      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
+    );
+    final textStyleSmall = pw.TextStyle(
+      fontSize: 8,
+      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
+    );
+    final textStyleLarge = pw.TextStyle(
+      fontSize: 14,
+      fontWeight: pw.FontWeight.bold,
+      fontFallback: ['Arial', 'DejaVu Sans', 'Liberation Sans'],
+    );
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -158,27 +178,27 @@ class RKOPDFService {
               // Заголовок формы
               pw.Text(
                 'Унифицированная форма № KO-2',
-                style: pw.TextStyle(fontSize: 10),
+                style: textStyle,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 'Утверждена постановлением Госкомстата России от 18.08.98 № 88',
-                style: pw.TextStyle(fontSize: 8),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 8),
               pw.Text(
                 '${shopSettings.directorName} ИНН: ${shopSettings.inn}',
-                style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                style: textStyleBold,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 'Форма по Код ОКУД 0310002',
-                style: pw.TextStyle(fontSize: 8),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 'Фактический адрес: ${shopSettings.address}',
-                style: pw.TextStyle(fontSize: 10),
+                style: textStyle,
               ),
               pw.SizedBox(height: 16),
               
@@ -186,7 +206,7 @@ class RKOPDFService {
               pw.Center(
                 child: pw.Text(
                   'РАСХОДНЫЙ КАССОВЫЙ ОРДЕР',
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+                  style: textStyleLarge,
                 ),
               ),
               pw.SizedBox(height: 16),
@@ -199,15 +219,15 @@ class RKOPDFService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('(отраженные подразделения)', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('(отраженные подразделения)', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Номер документа', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('Номер документа', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Дата составления', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('Дата составления', style: textStyleSmall),
                       ),
                     ],
                   ),
@@ -215,17 +235,17 @@ class RKOPDFService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('$documentNumber', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('$documentNumber', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
                           '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}',
-                          style: pw.TextStyle(fontSize: 9),
+                          style: textStyleSmall,
                         ),
                       ),
                     ],
@@ -234,31 +254,15 @@ class RKOPDFService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Дебет', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('Дебет', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Сумма, руб. коп.', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('Сумма, руб. коп.', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Код целевого назначения', style: pw.TextStyle(fontSize: 9)),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('код структурного подразделения', style: pw.TextStyle(fontSize: 9)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('код аналитического учета', style: pw.TextStyle(fontSize: 9)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('Код целевого назначения', style: textStyleSmall),
                       ),
                     ],
                   ),
@@ -266,31 +270,15 @@ class RKOPDFService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('код структурного подразделения', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('1000', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('код аналитического учета', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: pw.TextStyle(fontSize: 9)),
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Выдать', style: pw.TextStyle(fontSize: 9)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(employeeData.fullName, style: pw.TextStyle(fontSize: 9)),
-                      ),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('(фамилия, имя, отчество)', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('', style: textStyleSmall),
                       ),
                     ],
                   ),
@@ -298,15 +286,47 @@ class RKOPDFService {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('Основание', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(rkoType, style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('1000', style: textStyleSmall),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: pw.TextStyle(fontSize: 9)),
+                        child: pw.Text('', style: textStyleSmall),
+                      ),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text('Выдать', style: textStyleSmall),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text(employeeData.fullName, style: textStyleSmall),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text('(фамилия, имя, отчество)', style: textStyleSmall),
+                      ),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text('Основание', style: textStyleSmall),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text(rkoType, style: textStyleSmall),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text('', style: textStyleSmall),
                       ),
                     ],
                   ),
@@ -317,19 +337,19 @@ class RKOPDFService {
               // Сумма
               pw.Text(
                 'Сумма',
-                style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                style: textStyleBold,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 amountWords,
-                style: pw.TextStyle(fontSize: 10),
+                style: textStyle,
               ),
               pw.SizedBox(height: 16),
               
               // Приложение
               pw.Text(
                 'Приложение',
-                style: pw.TextStyle(fontSize: 10),
+                style: textStyle,
               ),
               pw.SizedBox(height: 8),
               
@@ -339,11 +359,11 @@ class RKOPDFService {
                 children: [
                   pw.Text(
                     'Руководитель организации ${shopSettings.directorName}',
-                    style: pw.TextStyle(fontSize: 9),
+                    style: textStyleSmall,
                   ),
                   pw.Text(
                     '(должность) (подпись) (расшифровка подписи)',
-                    style: pw.TextStyle(fontSize: 8),
+                    style: textStyleSmall,
                   ),
                 ],
               ),
@@ -352,34 +372,34 @@ class RKOPDFService {
               // Получил
               pw.Text(
                 'Получил: $amountWords',
-                style: pw.TextStyle(fontSize: 10),
+                style: textStyle,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 '${now.day} ${_getMonthName(now.month)} ${now.year} г. (сумма прописью) Подпись',
-                style: pw.TextStyle(fontSize: 9),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 16),
               
               // Паспортные данные
               pw.Text(
                 'По: Серия ${employeeData.passportSeries} Номер ${employeeData.passportNumber} Паспорт',
-                style: pw.TextStyle(fontSize: 9),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 'Выдан : ${employeeData.issuedBy}',
-                style: pw.TextStyle(fontSize: 9),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 'Дата выдачи : ${employeeData.issueDate}',
-                style: pw.TextStyle(fontSize: 9),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 4),
               pw.Text(
                 '(наименование, номер, дата и место выдачи документа, удостоверяющего личность получателя)',
-                style: pw.TextStyle(fontSize: 8),
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 16),
               
@@ -389,11 +409,11 @@ class RKOPDFService {
                 children: [
                   pw.Text(
                     shopSettings.directorName,
-                    style: pw.TextStyle(fontSize: 9),
+                    style: textStyleSmall,
                   ),
                   pw.Text(
                     'Выдал кассир (подпись) (расшифровка подписи)',
-                    style: pw.TextStyle(fontSize: 8),
+                    style: textStyleSmall,
                   ),
                 ],
               ),
