@@ -149,8 +149,35 @@ class RKOPDFService {
     final employeeLastName = employeeData.fullName.split(' ').first;
 
     // Загружаем шрифт с поддержкой кириллицы
-    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
-    final ttf = pw.Font.ttf(fontData);
+    pw.Font? ttf;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      ttf = pw.Font.ttf(fontData);
+      print('✅ Шрифт Roboto успешно загружен');
+    } catch (e) {
+      print('❌ Ошибка загрузки шрифта: $e');
+      // Продолжаем без шрифта (будут иероглифы, но не упадет)
+    }
+    
+    // Создаем стили текста с поддержкой кириллицы
+    final textStyle = pw.TextStyle(
+      fontSize: 10,
+      font: ttf,
+    );
+    final textStyleBold = pw.TextStyle(
+      fontSize: 10,
+      fontWeight: pw.FontWeight.bold,
+      font: ttf,
+    );
+    final textStyleSmall = pw.TextStyle(
+      fontSize: 8,
+      font: ttf,
+    );
+    final textStyleLarge = pw.TextStyle(
+      fontSize: 14,
+      fontWeight: pw.FontWeight.bold,
+      font: ttf,
+    );
     
     // Создаем стили текста с поддержкой кириллицы
     final textStyle = pw.TextStyle(
