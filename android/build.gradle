@@ -18,6 +18,40 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+    
+    // Инициализация свойства flutter для плагинов ДО их оценки
+    project.beforeEvaluate {
+        // Инициализируем ext.flutter для всех подпроектов
+        if (!project.hasProperty('ext')) {
+            project.ext = [:]
+        }
+        if (!project.ext.hasProperty('flutter')) {
+            project.ext.flutter = [
+                compileSdkVersion: 35,
+                minSdkVersion: 21,
+                targetSdkVersion: 35
+            ]
+        }
+    }
+    
+    project.afterEvaluate {
+        // Устанавливаем свойство flutter в android extension для плагинов
+        if (project.hasProperty('android') && project.name != 'app') {
+            try {
+                if (!project.android.ext.hasProperty('flutter')) {
+                    project.android.ext.flutter = project.ext.flutter
+                }
+                // Устанавливаем compileSdkVersion явно
+                if (project.android.hasProperty('compileSdkVersion')) {
+                    project.android.compileSdkVersion = 35
+                } else if (project.android.hasProperty('compileSdk')) {
+                    project.android.compileSdk = 35
+                }
+            } catch (e) {
+                // Игнорируем ошибки, если свойство уже установлено
+            }
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
