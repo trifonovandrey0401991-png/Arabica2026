@@ -180,17 +180,15 @@ class RKOPDFService {
     final directorShortName = shortenFullName(directorNameForSignature);
 
     // Загружаем шрифт с поддержкой кириллицы
-    pw.Font? ttf;
-    try {
-      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
-      ttf = pw.Font.ttf(fontData);
-      print('✅ Шрифт Roboto успешно загружен');
-    } catch (e) {
-      print('❌ Ошибка загрузки шрифта: $e');
-      // Продолжаем без шрифта (будут иероглифы, но не упадет)
-    }
+    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+    
+    // Создаем шрифт из ByteData (fontData уже является ByteData)
+    final ttf = pw.Font.ttf(fontData);
+    
+    print('✅ Шрифт Roboto успешно загружен, размер: ${fontData.lengthInBytes} байт');
     
     // Создаем стили текста с поддержкой кириллицы
+    // ВАЖНО: Все стили должны использовать font: ttf для поддержки кириллицы
     final textStyle = pw.TextStyle(
       fontSize: 10,
       font: ttf,
@@ -331,7 +329,7 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
