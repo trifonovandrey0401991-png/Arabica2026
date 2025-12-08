@@ -18,6 +18,19 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+    
+    // Настройка для плагинов, которые требуют compileSdkVersion
+    afterEvaluate { proj ->
+        if (proj.hasProperty('android') && proj.name != 'app') {
+            proj.android {
+                if (proj.android.hasProperty('compileSdkVersion')) {
+                    proj.android.compileSdkVersion = 35
+                } else if (proj.android.hasProperty('compileSdk')) {
+                    proj.android.compileSdk = 35
+                }
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
