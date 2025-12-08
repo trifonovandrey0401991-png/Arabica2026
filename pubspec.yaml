@@ -44,9 +44,9 @@ flutter:
     - assets/fonts/
 
   fonts:
-    - family: DejaVuSans
+    - family: Roboto
       fonts:
-        - asset: assets/fonts/DejaVuSans.ttf
+        - asset: assets/fonts/Roboto-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

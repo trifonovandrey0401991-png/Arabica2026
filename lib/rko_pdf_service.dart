@@ -149,7 +149,7 @@ class RKOPDFService {
     final employeeLastName = employeeData.fullName.split(' ').first;
 
     // Загружаем шрифт с поддержкой кириллицы
-    final fontData = await rootBundle.load('assets/fonts/DejaVuSans.ttf');
+    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
     
     // Создаем стили текста с поддержкой кириллицы
