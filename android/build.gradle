@@ -18,31 +18,6 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-    
-    // Инициализация свойства flutter для плагинов
-    project.ext.flutter = [
-        compileSdkVersion: 35,
-        minSdkVersion: 21,
-        targetSdkVersion: 35
-    ]
-    
-    afterEvaluate { proj ->
-        if (proj.hasProperty('android') && proj.name != 'app') {
-            try {
-                // Добавляем свойство flutter в android extension
-                proj.android.ext.flutter = proj.ext.flutter
-                
-                // Устанавливаем compileSdkVersion
-                if (proj.android.hasProperty('compileSdkVersion')) {
-                    proj.android.compileSdkVersion = 35
-                } else if (proj.android.hasProperty('compileSdk')) {
-                    proj.android.compileSdk = 35
-                }
-            } catch (e) {
-                // Игнорируем ошибки
-            }
-        }
-    }
 }
 
 tasks.register("clean", Delete) {
