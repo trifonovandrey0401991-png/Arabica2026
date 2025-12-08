@@ -352,7 +352,7 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('', style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                     ],
                   ),
