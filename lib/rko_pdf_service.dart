@@ -178,26 +178,6 @@ class RKOPDFService {
       fontWeight: pw.FontWeight.bold,
       font: ttf,
     );
-    
-    // Создаем стили текста с поддержкой кириллицы
-    final textStyle = pw.TextStyle(
-      fontSize: 10,
-      font: ttf,
-    );
-    final textStyleBold = pw.TextStyle(
-      fontSize: 10,
-      fontWeight: pw.FontWeight.bold,
-      font: ttf,
-    );
-    final textStyleSmall = pw.TextStyle(
-      fontSize: 8,
-      font: ttf,
-    );
-    final textStyleLarge = pw.TextStyle(
-      fontSize: 14,
-      fontWeight: pw.FontWeight.bold,
-      font: ttf,
-    );
 
     pdf.addPage(
       pw.Page(
