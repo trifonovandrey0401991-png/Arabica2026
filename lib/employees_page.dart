@@ -7,6 +7,7 @@ import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'user_role_model.dart';
 import 'unverified_employees_page.dart';
+import 'shops_management_page.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -294,36 +295,47 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Сотрудники'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_off),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UnverifiedEmployeesPage(),
-                ),
-              );
-            },
-            tooltip: 'Не верифицированные сотрудники',
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Сотрудники'),
+          backgroundColor: const Color(0xFF004D40),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Сотрудники', icon: Icon(Icons.people)),
+              Tab(text: 'Магазины', icon: Icon(Icons.store)),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _employeesFuture = _loadEmployees();
-                _loadVerificationStatuses();
-              });
-            },
-            tooltip: 'Обновить',
-          ),
-        ],
-      ),
-      body: Column(
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person_off),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UnverifiedEmployeesPage(),
+                  ),
+                );
+              },
+              tooltip: 'Не верифицированные сотрудники',
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                setState(() {
+                  _employeesFuture = _loadEmployees();
+                  _loadVerificationStatuses();
+                });
+              },
+              tooltip: 'Обновить',
+            ),
+          ],
+        ),
+        body: TabBarView(
+          children: [
+            // Вкладка "Сотрудники"
+            Column(
         children: [
           // Поиск
           Padding(
@@ -596,6 +608,11 @@ class _EmployeesPageState extends State<EmployeesPage> {
             ),
           ),
         ],
+      ),
+            // Вкладка "Магазины"
+            const ShopsManagementPage(),
+          ],
+        ),
       ),
     );
   }

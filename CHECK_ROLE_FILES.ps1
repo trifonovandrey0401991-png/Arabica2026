@@ -108,3 +108,4 @@ try {
 Write-Host ""
 Write-Host "✅ Проверка завершена!" -ForegroundColor Cyan
 
+

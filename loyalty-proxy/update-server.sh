@@ -49,3 +49,4 @@ echo ""
 echo "Проверьте логи:"
 echo "   pm2 logs loyalty-proxy"
 
+
