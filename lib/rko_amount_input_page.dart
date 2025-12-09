@@ -175,8 +175,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       // Получаем следующий номер документа
       final documentNumber = await RKOService.getNextDocumentNumber(_selectedShop!.address);
 
-      // Генерируем PDF
-      final pdfFile = await RKOPDFService.generateRKO(
+      // Генерируем PDF через .docx шаблон
+      final pdfFile = await RKOPDFService.generateRKOFromDocx(
         shopAddress: _selectedShop!.address,
         shopSettings: shopSettings,
         documentNumber: documentNumber,

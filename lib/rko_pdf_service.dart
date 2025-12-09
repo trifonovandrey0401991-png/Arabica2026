@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'shop_settings_model.dart';
 import 'employee_registration_model.dart';
 import 'rko_reports_service.dart';
@@ -150,7 +152,57 @@ class RKOPDFService {
     return '$surname ${initials.trim()}';
   }
 
-  /// Создать РКО PDF
+  /// Создать РКО PDF через .docx шаблон
+  static Future<File> generateRKOFromDocx({
+    required String shopAddress,
+    required ShopSettings shopSettings,
+    required int documentNumber,
+    required EmployeeRegistration employeeData,
+    required double amount,
+    required String rkoType,
+  }) async {
+    try {
+      final serverUrl = 'https://arabica26.ru';
+      final url = Uri.parse('$serverUrl/api/rko/generate-from-docx');
+      
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'shopAddress': shopAddress,
+          'shopSettings': shopSettings.toJson(),
+          'documentNumber': documentNumber,
+          'employeeData': employeeData.toJson(),
+          'amount': amount,
+          'rkoType': rkoType,
+        }),
+      ).timeout(const Duration(seconds: 60));
+      
+      if (response.statusCode == 200) {
+        // Сохраняем PDF во временный файл
+        final directory = await getTemporaryDirectory();
+        final fileName = 'rko_${documentNumber}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        final file = File('${directory.path}/$fileName');
+        await file.writeAsBytes(response.bodyBytes);
+        return file;
+      } else {
+        throw Exception('Ошибка генерации РКО: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Ошибка генерации РКО из .docx: $e');
+      // Fallback на старый метод
+      return generateRKO(
+        shopAddress: shopAddress,
+        shopSettings: shopSettings,
+        documentNumber: documentNumber,
+        employeeData: employeeData,
+        amount: amount,
+        rkoType: rkoType,
+      );
+    }
+  }
+
+  /// Создать РКО PDF (старый метод через генерацию)
   static Future<File> generateRKO({
     required String shopAddress,
     required ShopSettings shopSettings,
