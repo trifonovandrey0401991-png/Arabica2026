@@ -1312,7 +1312,7 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     
     // Форматируем данные для замены
     const now = new Date();
-    const dateStr = `${now.getDate().toString().padLeft(2, '0')}.${(now.getMonth() + 1).toString().padLeft(2, '0')}.${now.getFullYear()}`;
+    const dateStr = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`;
     
     // Форматируем имя директора
     let directorDisplayName = shopSettings.directorName;
@@ -1465,7 +1465,7 @@ function convertAmountToWords(amount) {
   if (rubles % 10 === 1 && rubles % 100 !== 11) rubleWord = 'рубль';
   else if ([2, 3, 4].includes(rubles % 10) && ![12, 13, 14].includes(rubles % 100)) rubleWord = 'рубля';
   
-  const kopecksStr = kopecks.toString().padLeft(2, '0');
+  const kopecksStr = kopecks.toString().padStart(2, '0');
   return `${rublesWord} ${rubleWord} ${kopecksStr} копеек`;
 }
 
