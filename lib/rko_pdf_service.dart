@@ -365,7 +365,7 @@ class RKOPDFService {
                     ],
                   ),
                   // Строка 4: Коды и сумма
-                  // В эталоне: код структурного подразделения | код аналитического учета + сумма | пусто
+                  // В эталоне: код структурного подразделения | код аналитического учета + сумма (в колонке "Сумма, руб. коп.") | пусто
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -487,9 +487,15 @@ class RKOPDFService {
                     'Руководитель организации',
                     style: textStyleSmall,
                   ),
+                  pw.Expanded(
+                    child: pw.SizedBox(),
+                  ),
                   pw.Text(
                     '$directorDisplayName',
                     style: textStyleSmall,
+                  ),
+                  pw.Expanded(
+                    child: pw.SizedBox(),
                   ),
                   pw.Text(
                     '(должность) (подпись) (расшифровка подписи)',
@@ -497,9 +503,6 @@ class RKOPDFService {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 2),
-              // Подсказки для руководителя (мелким шрифтом)
-              pw.SizedBox(height: 2),
               pw.SizedBox(height: 16),
               
               // Получил
@@ -558,13 +561,22 @@ class RKOPDFService {
                     'Выдал кассир',
                     style: textStyleSmall,
                   ),
+                  pw.Expanded(
+                    child: pw.SizedBox(),
+                  ),
                   pw.Text(
                     '(подпись)',
                     style: textStyleSmall,
                   ),
+                  pw.Expanded(
+                    child: pw.SizedBox(),
+                  ),
                   pw.Text(
                     directorShortName,
                     style: textStyleSmall,
+                  ),
+                  pw.Expanded(
+                    child: pw.SizedBox(),
                   ),
                   pw.Text(
                     '(расшифровка подписи)',
