@@ -197,7 +197,14 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
-        leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+        leading: Icon(
+          fileName.toLowerCase().endsWith('.docx') 
+            ? Icons.description 
+            : Icons.picture_as_pdf,
+          color: fileName.toLowerCase().endsWith('.docx') 
+            ? Colors.blue 
+            : Colors.red,
+        ),
         title: Text(employeeName),
         subtitle: Text('Дата: ${date.substring(0, 10)}'),
         trailing: const Icon(Icons.chevron_right),
