@@ -5,6 +5,9 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 const app = express();
 app.use(bodyParser.json());
@@ -690,5 +693,790 @@ app.get('/api/employee-registrations', async (req, res) => {
     });
   }
 });
+
+// ========== API для настроек магазинов (РКО) ==========
+
+// Получить настройки магазина
+app.get('/api/shop-settings/:shopAddress', async (req, res) => {
+  try {
+    const shopAddress = decodeURIComponent(req.params.shopAddress);
+    console.log('GET /api/shop-settings:', shopAddress);
+    
+    const settingsDir = '/var/www/shop-settings';
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
+    
+    const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
+    
+    if (!fs.existsSync(settingsFile)) {
+      return res.json({ 
+        success: true, 
+        settings: null 
+      });
+    }
+    
+    const content = fs.readFileSync(settingsFile, 'utf8');
+    const settings = JSON.parse(content);
+    
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Ошибка получения настроек магазина:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении настроек магазина'
+    });
+  }
+});
+
+// Сохранить настройки магазина
+app.post('/api/shop-settings', async (req, res) => {
+  try {
+    console.log('📝 POST /api/shop-settings');
+    console.log('   Тело запроса:', JSON.stringify(req.body, null, 2));
+    
+    const settingsDir = '/var/www/shop-settings';
+    console.log('   Проверка директории:', settingsDir);
+    
+    if (!fs.existsSync(settingsDir)) {
+      console.log('   Создание директории:', settingsDir);
+      fs.mkdirSync(settingsDir, { recursive: true });
+      console.log('   ✅ Директория создана');
+    } else {
+      console.log('   ✅ Директория существует');
+    }
+    
+    const shopAddress = req.body.shopAddress;
+    if (!shopAddress) {
+      console.log('   ❌ Адрес магазина не указан');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Адрес магазина не указан' 
+      });
+    }
+    
+    console.log('   Адрес магазина:', shopAddress);
+    const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    console.log('   Очищенный адрес:', sanitizedAddress);
+    
+    const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
+    console.log('   Файл настроек:', settingsFile);
+    
+    // Если файл существует, сохраняем lastDocumentNumber из старого файла
+    let lastDocumentNumber = req.body.lastDocumentNumber || 0;
+    if (fs.existsSync(settingsFile)) {
+      try {
+        console.log('   Чтение существующего файла...');
+        const oldContent = fs.readFileSync(settingsFile, 'utf8');
+        const oldSettings = JSON.parse(oldContent);
+        if (oldSettings.lastDocumentNumber !== undefined) {
+          lastDocumentNumber = oldSettings.lastDocumentNumber;
+          console.log('   Сохранен lastDocumentNumber:', lastDocumentNumber);
+        }
+      } catch (e) {
+        console.error('   ⚠️ Ошибка чтения старого файла:', e);
+      }
+    } else {
+      console.log('   Файл не существует, будет создан новый');
+    }
+    
+    const settings = {
+      shopAddress: shopAddress,
+      address: req.body.address || '',
+      inn: req.body.inn || '',
+      directorName: req.body.directorName || '',
+      lastDocumentNumber: lastDocumentNumber,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    if (fs.existsSync(settingsFile)) {
+      try {
+        const oldContent = fs.readFileSync(settingsFile, 'utf8');
+        const oldSettings = JSON.parse(oldContent);
+        if (oldSettings.createdAt) {
+          settings.createdAt = oldSettings.createdAt;
+          console.log('   Сохранена дата создания:', settings.createdAt);
+        }
+      } catch (e) {
+        console.error('   ⚠️ Ошибка при чтении createdAt:', e);
+      }
+    } else {
+      settings.createdAt = new Date().toISOString();
+      console.log('   Установлена новая дата создания:', settings.createdAt);
+    }
+    
+    console.log('   Сохранение настроек:', JSON.stringify(settings, null, 2));
+    
+    try {
+      fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+      console.log('   ✅ Настройки магазина сохранены:', settingsFile);
+      
+      res.json({
+        success: true,
+        message: 'Настройки успешно сохранены'
+      });
+    } catch (writeError) {
+      console.error('   ❌ Ошибка записи файла:', writeError);
+      throw writeError;
+    }
+  } catch (error) {
+    console.error('❌ Ошибка сохранения настроек магазина:', error);
+    console.error('   Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при сохранении настроек'
+    });
+  }
+});
+
+// Получить следующий номер документа для магазина
+app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
+  try {
+    const shopAddress = decodeURIComponent(req.params.shopAddress);
+    console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
+    
+    const settingsDir = '/var/www/shop-settings';
+    const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
+    
+    if (!fs.existsSync(settingsFile)) {
+      return res.json({ 
+        success: true, 
+        documentNumber: 1 
+      });
+    }
+    
+    const content = fs.readFileSync(settingsFile, 'utf8');
+    const settings = JSON.parse(content);
+    
+    let nextNumber = (settings.lastDocumentNumber || 0) + 1;
+    if (nextNumber > 50000) {
+      nextNumber = 1;
+    }
+    
+    res.json({ 
+      success: true, 
+      documentNumber: nextNumber 
+    });
+  } catch (error) {
+    console.error('Ошибка получения номера документа:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении номера документа'
+    });
+  }
+});
+
+// Обновить номер документа для магазина
+app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
+  try {
+    const shopAddress = decodeURIComponent(req.params.shopAddress);
+    const { documentNumber } = req.body;
+    console.log('POST /api/shop-settings/:shopAddress/document-number:', shopAddress, documentNumber);
+    
+    const settingsDir = '/var/www/shop-settings';
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
+    
+    const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
+    
+    let settings = {};
+    if (fs.existsSync(settingsFile)) {
+      const content = fs.readFileSync(settingsFile, 'utf8');
+      settings = JSON.parse(content);
+    } else {
+      settings.shopAddress = shopAddress;
+      settings.createdAt = new Date().toISOString();
+    }
+    
+    settings.lastDocumentNumber = documentNumber || 0;
+    settings.updatedAt = new Date().toISOString();
+    
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+    console.log('Номер документа обновлен:', settingsFile);
+    
+    res.json({
+      success: true,
+      message: 'Номер документа успешно обновлен'
+    });
+  } catch (error) {
+    console.error('Ошибка обновления номера документа:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при обновлении номера документа'
+    });
+  }
+});
+
+// ========== API для РКО отчетов ==========
+
+const rkoReportsDir = '/var/www/rko-reports';
+const rkoMetadataFile = path.join(rkoReportsDir, 'rko_metadata.json');
+
+// Инициализация директорий для РКО
+if (!fs.existsSync(rkoReportsDir)) {
+  fs.mkdirSync(rkoReportsDir, { recursive: true });
+}
+
+// Загрузить метаданные РКО
+function loadRKOMetadata() {
+  try {
+    if (fs.existsSync(rkoMetadataFile)) {
+      const content = fs.readFileSync(rkoMetadataFile, 'utf8');
+      return JSON.parse(content);
+    }
+    return { items: [] };
+  } catch (e) {
+    console.error('Ошибка загрузки метаданных РКО:', e);
+    return { items: [] };
+  }
+}
+
+// Сохранить метаданные РКО
+function saveRKOMetadata(metadata) {
+  try {
+    fs.writeFileSync(rkoMetadataFile, JSON.stringify(metadata, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Ошибка сохранения метаданных РКО:', e);
+    throw e;
+  }
+}
+
+// Очистка старых РКО для сотрудника (максимум 150)
+function cleanupEmployeeRKOs(employeeName) {
+  const metadata = loadRKOMetadata();
+  const employeeRKOs = metadata.items.filter(rko => rko.employeeName === employeeName);
+  
+  if (employeeRKOs.length > 150) {
+    // Сортируем по дате (старые первыми)
+    employeeRKOs.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Удаляем старые
+    const toDelete = employeeRKOs.slice(0, employeeRKOs.length - 150);
+    
+    for (const rko of toDelete) {
+      // Удаляем файл
+      const monthKey = new Date(rko.date).toISOString().substring(0, 7); // YYYY-MM
+      const sanitizedEmployee = employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const filePath = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey, rko.fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log('Удален старый РКО:', filePath);
+      }
+      
+      // Удаляем из метаданных
+      metadata.items = metadata.items.filter(item => 
+        !(item.employeeName === employeeName && item.fileName === rko.fileName)
+      );
+    }
+    
+    saveRKOMetadata(metadata);
+  }
+}
+
+// Очистка старых РКО для магазина (максимум 6 месяцев)
+function cleanupShopRKOs(shopAddress) {
+  const metadata = loadRKOMetadata();
+  const shopRKOs = metadata.items.filter(rko => rko.shopAddress === shopAddress);
+  
+  if (shopRKOs.length === 0) return;
+  
+  // Получаем уникальные месяцы
+  const months = [...new Set(shopRKOs.map(rko => new Date(rko.date).toISOString().substring(0, 7)))];
+  months.sort((a, b) => b.localeCompare(a)); // Новые первыми
+  
+  if (months.length > 6) {
+    const monthsToDelete = months.slice(6);
+    
+    for (const monthKey of monthsToDelete) {
+      const monthRKOs = shopRKOs.filter(rko => 
+        new Date(rko.date).toISOString().substring(0, 7) === monthKey
+      );
+      
+      for (const rko of monthRKOs) {
+        // Удаляем файл
+        const sanitizedEmployee = rko.employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const filePath = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey, rko.fileName);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('Удален старый РКО магазина:', filePath);
+        }
+        
+        // Удаляем из метаданных
+        metadata.items = metadata.items.filter(item => 
+          !(item.shopAddress === shopAddress && item.fileName === rko.fileName)
+        );
+      }
+    }
+    
+    saveRKOMetadata(metadata);
+  }
+}
+
+// Загрузка РКО на сервер
+app.post('/api/rko/upload', upload.single('pdf'), async (req, res) => {
+  try {
+    console.log('📤 POST /api/rko/upload');
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'PDF файл не загружен'
+      });
+    }
+    
+    const { fileName, employeeName, shopAddress, date, amount, rkoType } = req.body;
+    
+    if (!fileName || !employeeName || !shopAddress || !date) {
+      return res.status(400).json({
+        success: false,
+        error: 'Не все обязательные поля указаны'
+      });
+    }
+    
+    // Создаем структуру директорий
+    const monthKey = new Date(date).toISOString().substring(0, 7); // YYYY-MM
+    const sanitizedEmployee = employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeDir = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey);
+    
+    if (!fs.existsSync(employeeDir)) {
+      fs.mkdirSync(employeeDir, { recursive: true });
+    }
+    
+    // Сохраняем файл
+    const filePath = path.join(employeeDir, fileName);
+    fs.renameSync(req.file.path, filePath);
+    console.log('РКО сохранен:', filePath);
+    
+    // Добавляем метаданные
+    const metadata = loadRKOMetadata();
+    const newRKO = {
+      fileName: fileName,
+      employeeName: employeeName,
+      shopAddress: shopAddress,
+      date: date,
+      amount: parseFloat(amount) || 0,
+      rkoType: rkoType || '',
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Удаляем старую запись, если существует
+    metadata.items = metadata.items.filter(item => item.fileName !== fileName);
+    metadata.items.push(newRKO);
+    
+    saveRKOMetadata(metadata);
+    
+    // Очистка старых РКО
+    cleanupEmployeeRKOs(employeeName);
+    cleanupShopRKOs(shopAddress);
+    
+    res.json({
+      success: true,
+      message: 'РКО успешно загружен'
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки РКО:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при загрузке РКО'
+    });
+  }
+});
+
+// Получить список РКО сотрудника
+app.get('/api/rko/list/employee/:employeeName', async (req, res) => {
+  try {
+    const employeeName = decodeURIComponent(req.params.employeeName);
+    console.log('📋 GET /api/rko/list/employee:', employeeName);
+    
+    const metadata = loadRKOMetadata();
+    // Нормализуем имена для сравнения (приводим к нижнему регистру и убираем лишние пробелы)
+    const normalizedSearchName = employeeName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const employeeRKOs = metadata.items
+      .filter(rko => {
+        const normalizedRkoName = (rko.employeeName || '').toLowerCase().trim().replace(/\s+/g, ' ');
+        return normalizedRkoName === normalizedSearchName;
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Последние 25
+    const latest = employeeRKOs.slice(0, 25);
+    
+    // Группировка по месяцам
+    const monthsMap = {};
+    employeeRKOs.forEach(rko => {
+      const monthKey = new Date(rko.date).toISOString().substring(0, 7);
+      if (!monthsMap[monthKey]) {
+        monthsMap[monthKey] = [];
+      }
+      monthsMap[monthKey].push(rko);
+    });
+    
+    const months = Object.keys(monthsMap).sort((a, b) => b.localeCompare(a));
+    
+    res.json({
+      success: true,
+      latest: latest,
+      months: months.map(monthKey => ({
+        monthKey: monthKey,
+        items: monthsMap[monthKey],
+      })),
+    });
+  } catch (error) {
+    console.error('Ошибка получения списка РКО сотрудника:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении списка РКО'
+    });
+  }
+});
+
+// Получить список РКО магазина
+app.get('/api/rko/list/shop/:shopAddress', async (req, res) => {
+  try {
+    const shopAddress = decodeURIComponent(req.params.shopAddress);
+    console.log('📋 GET /api/rko/list/shop:', shopAddress);
+    
+    const metadata = loadRKOMetadata();
+    const now = new Date();
+    const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
+    
+    // РКО за текущий месяц
+    const currentMonthRKOs = metadata.items
+      .filter(rko => {
+        const rkoMonth = new Date(rko.date).toISOString().substring(0, 7);
+        return rko.shopAddress === shopAddress && rkoMonth === currentMonth;
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Группировка по месяцам
+    const monthsMap = {};
+    metadata.items
+      .filter(rko => rko.shopAddress === shopAddress)
+      .forEach(rko => {
+        const monthKey = new Date(rko.date).toISOString().substring(0, 7);
+        if (!monthsMap[monthKey]) {
+          monthsMap[monthKey] = [];
+        }
+        monthsMap[monthKey].push(rko);
+      });
+    
+    const months = Object.keys(monthsMap).sort((a, b) => b.localeCompare(a));
+    
+    res.json({
+      success: true,
+      currentMonth: currentMonthRKOs,
+      months: months.map(monthKey => ({
+        monthKey: monthKey,
+        items: monthsMap[monthKey],
+      })),
+    });
+  } catch (error) {
+    console.error('Ошибка получения списка РКО магазина:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении списка РКО'
+    });
+  }
+});
+
+// Получить PDF файл РКО
+app.get('/api/rko/file/:fileName', async (req, res) => {
+  try {
+    // Декодируем имя файла, обрабатывая возможные проблемы с кодировкой
+    let fileName;
+    try {
+      fileName = decodeURIComponent(req.params.fileName);
+    } catch (e) {
+      // Если декодирование не удалось, используем оригинальное имя
+      fileName = req.params.fileName;
+    }
+    console.log('📄 GET /api/rko/file:', fileName);
+    console.log('📄 Оригинальный параметр:', req.params.fileName);
+    
+    const metadata = loadRKOMetadata();
+    const rko = metadata.items.find(item => item.fileName === fileName);
+    
+    if (!rko) {
+      console.error('РКО не найден в метаданных для файла:', fileName);
+      return res.status(404).json({
+        success: false,
+        error: 'РКО не найден'
+      });
+    }
+    
+    const monthKey = new Date(rko.date).toISOString().substring(0, 7);
+    const sanitizedEmployee = rko.employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey, fileName);
+    
+    console.log('Ищем файл по пути:', filePath);
+    
+    if (!fs.existsSync(filePath)) {
+      console.error('Файл не найден по пути:', filePath);
+      // Попробуем найти файл в других местах
+      const allFiles = [];
+      function findFiles(dir, pattern) {
+        try {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            const filePath = path.join(dir, file);
+            const stat = fs.statSync(filePath);
+            if (stat.isDirectory()) {
+              findFiles(filePath, pattern);
+            } else if (file.includes(pattern) || file === pattern) {
+              allFiles.push(filePath);
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибки
+        }
+      }
+      findFiles(rkoReportsDir, fileName);
+      if (allFiles.length > 0) {
+        console.log('Найден файл в альтернативном месте:', allFiles[0]);
+        res.setHeader('Content-Type', 'application/pdf');
+        // Правильно кодируем имя файла для заголовка (RFC 5987)
+        const encodedFileName = encodeURIComponent(fileName);
+        res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedFileName}`);
+        return res.sendFile(allFiles[0]);
+      }
+      return res.status(404).json({
+        success: false,
+        error: 'Файл РКО не найден'
+      });
+    }
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    // Правильно кодируем имя файла для заголовка (RFC 5987)
+    const encodedFileName = encodeURIComponent(fileName);
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedFileName}`);
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('Ошибка получения файла РКО:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении файла РКО'
+    });
+  }
+});
+
+// Генерация РКО из .docx шаблона
+app.post('/api/rko/generate-from-docx', async (req, res) => {
+  try {
+    const {
+      shopAddress,
+      shopSettings,
+      documentNumber,
+      employeeData,
+      amount,
+      rkoType
+    } = req.body;
+    
+    console.log('📝 POST /api/rko/generate-from-docx');
+    console.log('Данные:', {
+      shopAddress,
+      documentNumber,
+      employeeName: employeeData?.fullName,
+      amount,
+      rkoType
+    });
+    
+    // Путь к шаблону
+    let templatePath = path.join(__dirname, '..', '.cursor', 'РКО.docx');
+    console.log('🔍 Ищем шаблон по пути:', templatePath);
+    if (!fs.existsSync(templatePath)) {
+      console.error('❌ Шаблон не найден по пути:', templatePath);
+      // Пробуем альтернативный путь
+      const altPath = '/root/.cursor/РКО.docx';
+      if (fs.existsSync(altPath)) {
+        console.log('✅ Найден альтернативный путь:', altPath);
+        templatePath = altPath;
+      } else {
+        return res.status(404).json({
+          success: false,
+          error: `Шаблон РКО.docx не найден. Проверенные пути: ${templatePath}, ${altPath}`
+        });
+      }
+    }
+    
+    // Создаем временную директорию для работы
+    const tempDir = '/tmp/rko_generation';
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const tempDocxPath = path.join(tempDir, `rko_${Date.now()}.docx`);
+    const tempPdfPath = path.join(tempDir, `rko_${Date.now()}.pdf`);
+    
+    // Форматируем данные для замены
+    const now = new Date();
+    const dateStr = `${now.getDate().toString().padLeft(2, '0')}.${(now.getMonth() + 1).toString().padLeft(2, '0')}.${now.getFullYear()}`;
+    
+    // Форматируем имя директора
+    let directorDisplayName = shopSettings.directorName;
+    if (!directorDisplayName.toUpperCase().startsWith('ИП ')) {
+      const nameWithoutIP = directorDisplayName.replace(/^ИП\s*/i, '');
+      directorDisplayName = `ИП ${nameWithoutIP}`;
+    }
+    
+    // Создаем короткое имя директора (первые буквы инициалов)
+    function shortenName(fullName) {
+      const parts = fullName.replace(/^ИП\s*/i, '').trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const lastName = parts[0];
+        const initials = parts.slice(1).map(p => p.charAt(0).toUpperCase() + '.').join(' ');
+        return `${lastName} ${initials}`;
+      }
+      return fullName;
+    }
+    
+    const directorShortName = shortenName(directorDisplayName);
+    
+    // Форматируем дату в слова (например, "2 декабря 2025 г.")
+    function formatDateWords(date) {
+      const months = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+      ];
+      const day = date.getDate();
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day} ${month} ${year} г.`;
+    }
+    
+    const dateWords = formatDateWords(now);
+    
+    // Конвертируем сумму в пропись (упрощенная версия)
+    const amountWords = convertAmountToWords(amount);
+    
+    // Подготавливаем данные для Python скрипта
+    const data = {
+      doc_number: documentNumber.toString(),
+      date: dateStr,
+      amount: amount.toString().split('.')[0],
+      employee_name: employeeData.fullName,
+      rko_type: rkoType,
+      amount_words: amountWords,
+      shop_address: shopSettings.address,
+      director_inn: `${directorDisplayName} ИНН: ${shopSettings.inn}`,
+      director_name: directorDisplayName,
+      director_short_name: directorShortName,
+      inn: shopSettings.inn,
+      passport_series: employeeData.passportSeries,
+      passport_number: employeeData.passportNumber,
+      passport_issued: employeeData.issuedBy,
+      passport_date: employeeData.issueDate,
+      date_words: dateWords
+    };
+    
+    // Вызываем Python скрипт для обработки шаблона
+    const scriptPath = path.join(__dirname, 'rko_docx_processor.py');
+    const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
+    
+    try {
+      // Шаг 1: Обработка шаблона
+      const { stdout: processOutput } = await execPromise(
+        `python3 "${scriptPath}" process "${templatePath}" "${tempDocxPath}" '${dataJson}'`
+      );
+      
+      const processResult = JSON.parse(processOutput);
+      if (!processResult.success) {
+        throw new Error(processResult.error || 'Ошибка обработки шаблона');
+      }
+      
+      // Шаг 2: Конвертация в PDF
+      const { stdout: convertOutput } = await execPromise(
+        `python3 "${scriptPath}" convert "${tempDocxPath}" "${tempPdfPath}"`
+      );
+      
+      const convertResult = JSON.parse(convertOutput);
+      if (!convertResult.success) {
+        throw new Error(convertResult.error || 'Ошибка конвертации в PDF');
+      }
+      
+      // Читаем PDF и отправляем
+      const pdfBuffer = fs.readFileSync(tempPdfPath);
+      
+      // Очищаем временные файлы
+      try {
+        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+      } catch (e) {
+        console.error('Ошибка очистки временных файлов:', e);
+      }
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.pdf"`);
+      res.send(pdfBuffer);
+      
+    } catch (error) {
+      console.error('Ошибка выполнения Python скрипта:', error);
+      // Очищаем временные файлы при ошибке
+      try {
+        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+      } catch (e) {}
+      
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Ошибка при генерации РКО из шаблона'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Ошибка генерации РКО из .docx:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при генерации РКО'
+    });
+  }
+});
+
+// Вспомогательная функция для конвертации суммы в пропись
+function convertAmountToWords(amount) {
+  const rubles = Math.floor(amount);
+  const kopecks = Math.round((amount - rubles) * 100);
+  
+  const ones = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+  const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+  const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+  const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+  
+  function numberToWords(n) {
+    if (n === 0) return 'ноль';
+    if (n < 10) return ones[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) {
+      const ten = Math.floor(n / 10);
+      const one = n % 10;
+      return tens[ten] + (one > 0 ? ' ' + ones[one] : '');
+    }
+    if (n < 1000) {
+      const hundred = Math.floor(n / 100);
+      const remainder = n % 100;
+      return hundreds[hundred] + (remainder > 0 ? ' ' + numberToWords(remainder) : '');
+    }
+    if (n < 1000000) {
+      const thousand = Math.floor(n / 1000);
+      const remainder = n % 1000;
+      let thousandWord = 'тысяч';
+      if (thousand % 10 === 1 && thousand % 100 !== 11) thousandWord = 'тысяча';
+      else if ([2, 3, 4].includes(thousand % 10) && ![12, 13, 14].includes(thousand % 100)) thousandWord = 'тысячи';
+      return numberToWords(thousand) + ' ' + thousandWord + (remainder > 0 ? ' ' + numberToWords(remainder) : '');
+    }
+    return n.toString();
+  }
+  
+  const rublesWord = numberToWords(rubles);
+  let rubleWord = 'рублей';
+  if (rubles % 10 === 1 && rubles % 100 !== 11) rubleWord = 'рубль';
+  else if ([2, 3, 4].includes(rubles % 10) && ![12, 13, 14].includes(rubles % 100)) rubleWord = 'рубля';
+  
+  const kopecksStr = kopecks.toString().padLeft(2, '0');
+  return `${rublesWord} ${rubleWord} ${kopecksStr} копеек`;
+}
 
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
