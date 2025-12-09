@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -63,13 +63,11 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
       print('✅ Файл сохранен: $filePath');
       
       // Открываем файл через системное приложение
-      final uri = Uri.file(filePath);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        print('✅ Файл открыт в системном приложении');
-      } else {
-        throw Exception('Не удалось открыть файл. Установите приложение для просмотра Word документов.');
+      final result = await OpenFile.open(filePath);
+      if (result.type != ResultType.done) {
+        throw Exception('Не удалось открыть файл: ${result.message}. Установите приложение для просмотра Word документов.');
       }
+      print('✅ Файл открыт в системном приложении');
     } catch (e) {
       print('❌ Ошибка открытия файла: $e');
       setState(() {
