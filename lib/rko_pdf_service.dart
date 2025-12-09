@@ -179,14 +179,15 @@ class RKOPDFService {
     String directorNameForSignature = shopSettings.directorName.replaceFirst(RegExp(r'^ИП\s*', caseSensitive: false), '');
     final directorShortName = shortenFullName(directorNameForSignature);
 
-    // Загружаем шрифт с поддержкой кириллицы
-    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+    // Загружаем шрифт LiberationSerif с поддержкой кириллицы
+    // Используем LiberationSerif, как в эталонном PDF
+    final fontData = await rootBundle.load('assets/fonts/LiberationSerif-Regular.ttf');
     
     // Создаем шрифт из ByteData
     // pw.Font.ttf принимает ByteData напрямую
     final ttf = pw.Font.ttf(fontData);
     
-    print('✅ Шрифт Roboto успешно загружен, размер: ${fontData.lengthInBytes} байт');
+    print('✅ Шрифт LiberationSerif успешно загружен, размер: ${fontData.lengthInBytes} байт');
     
     // Создаем стили текста с поддержкой кириллицы
     // ВАЖНО: Все стили должны использовать font: ttf для поддержки кириллицы

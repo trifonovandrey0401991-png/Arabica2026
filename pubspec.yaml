@@ -47,6 +47,9 @@ flutter:
     - family: Roboto
       fonts:
         - asset: assets/fonts/Roboto-Regular.ttf
+    - family: LiberationSerif
+      fonts:
+        - asset: assets/fonts/LiberationSerif-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
