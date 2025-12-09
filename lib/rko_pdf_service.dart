@@ -191,6 +191,7 @@ class RKOPDFService {
     
     // Создаем стили текста с поддержкой кириллицы
     // ВАЖНО: Все стили должны использовать font: ttf для поддержки кириллицы
+    // Размеры шрифтов из эталона: 6, 8, 9, 10
     final textStyle = pw.TextStyle(
       fontSize: 10,
       font: ttf,
@@ -204,8 +205,16 @@ class RKOPDFService {
       fontSize: 8,
       font: ttf,
     );
+    final textStyleTiny = pw.TextStyle(
+      fontSize: 6,
+      font: ttf,
+    );
+    final textStyleMedium = pw.TextStyle(
+      fontSize: 9,
+      font: ttf,
+    );
     final textStyleLarge = pw.TextStyle(
-      fontSize: 14,
+      fontSize: 10,
       fontWeight: pw.FontWeight.bold,
       font: ttf,
     );
@@ -213,7 +222,13 @@ class RKOPDFService {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
+        // Отступы из эталона: слева/справа ~10мм (28.5 точек), сверху/снизу стандартные
+        margin: const pw.EdgeInsets.only(
+          left: 28.5,
+          right: 28.5,
+          top: 40,
+          bottom: 40,
+        ),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
