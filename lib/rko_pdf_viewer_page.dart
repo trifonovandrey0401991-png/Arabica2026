@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:path/path.dart' as path;
 import 'rko_reports_service.dart';
 
 /// Страница просмотра РКО (PDF или DOCX)
@@ -42,14 +46,32 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
 
     try {
       final fileUrl = RKOReportsService.getPDFUrl(widget.fileName);
-      final uri = Uri.parse(fileUrl);
+      print('📥 Скачиваем файл: $fileUrl');
       
+      // Скачиваем файл
+      final response = await http.get(Uri.parse(fileUrl));
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка скачивания файла: ${response.statusCode}');
+      }
+      
+      // Сохраняем во временную директорию
+      final directory = await getTemporaryDirectory();
+      final filePath = path.join(directory.path, widget.fileName);
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      
+      print('✅ Файл сохранен: $filePath');
+      
+      // Открываем файл через системное приложение
+      final uri = Uri.file(filePath);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
+        print('✅ Файл открыт в системном приложении');
       } else {
-        throw Exception('Не удалось открыть файл');
+        throw Exception('Не удалось открыть файл. Установите приложение для просмотра Word документов.');
       }
     } catch (e) {
+      print('❌ Ошибка открытия файла: $e');
       setState(() {
         _errorMessage = 'Ошибка открытия файла: $e';
       });
