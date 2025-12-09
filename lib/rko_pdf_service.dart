@@ -474,80 +474,111 @@ class RKOPDFService {
                 ),
               ),
               
-              // Заголовки таблицы
-              // "Дебет" - Y=669.6, X=160.2
+              // Заголовки таблицы (строка 0)
+              // "Дебет" - Y=669.6, X=160.2 (колонка 0, центрирован)
               pw.Positioned(
                 left: 160.2,
                 top: 669.6,
                 child: pw.Text('Дебет', style: textStyleSmall),
               ),
               
-              // "Сумма,Код целевого" - на одной строке Y=674.2, X=337.8
+              // "Сумма, руб. коп." - Y=674.2, X=337.8 (колонка 3)
               pw.Positioned(
                 left: 337.8,
                 top: 674.2,
-                child: pw.Text('Сумма,Код целевого', style: textStyleSmall),
+                child: pw.Text('Сумма,', style: textStyleSmall),
               ),
               
-              // "руб. коп.назначения" - на одной строке Y=665.0, X=335.6
+              // "руб. коп." продолжение - Y=665.0, X=335.6 (колонка 3)
               pw.Positioned(
                 left: 335.6,
                 top: 665.0,
-                child: pw.Text('руб. коп.назначения', style: textStyleSmall),
+                child: pw.Text('руб. коп.', style: textStyleSmall),
               ),
               
-              // "код структурного код аналитического" - на одной строке Y=651.3, X=67.7
+              // "Код целевого назначения" - Y=674.2, X=400.0 (колонка 4)
+              pw.Positioned(
+                left: 400.0,
+                top: 674.2,
+                child: pw.Text('Код целевого', style: textStyleSmall),
+              ),
+              
+              // "назначения" продолжение - Y=665.0, X=400.0 (колонка 4)
+              pw.Positioned(
+                left: 400.0,
+                top: 665.0,
+                child: pw.Text('назначения', style: textStyleSmall),
+              ),
+              
+              // Строка 1: Коды
+              // "код структурного подразделения" - Y=651.3, X=67.7 (колонка 1)
               pw.Positioned(
                 left: 67.7,
                 top: 651.3,
-                child: pw.Text('код структурного код аналитического', style: textStyleSmall),
+                child: pw.Text('код структурного', style: textStyleSmall),
               ),
               
-              // "подразделенияучета" - отдельная строка Y=642.1, X=71.5
+              // "подразделения" продолжение - Y=642.1, X=71.5 (колонка 1)
               pw.Positioned(
                 left: 71.5,
                 top: 642.1,
-                child: pw.Text('подразделенияучета', style: textStyleSmall),
+                child: pw.Text('подразделения', style: textStyleSmall),
               ),
               
-              // Сумма - Y=627.6, X=324.8
+              // "код аналитического учета" - Y=651.3, X=200.0 (колонка 2)
+              pw.Positioned(
+                left: 200.0,
+                top: 651.3,
+                child: pw.Text('код аналитического', style: textStyleSmall),
+              ),
+              
+              // "учета" продолжение - Y=642.1, X=200.0 (колонка 2)
+              pw.Positioned(
+                left: 200.0,
+                top: 642.1,
+                child: pw.Text('учета', style: textStyleSmall),
+              ),
+              
+              // Сумма "1000" - Y=627.6, X=324.8 (колонка 3)
               pw.Positioned(
                 left: 324.8,
                 top: 627.6,
                 child: pw.Text(amount.toStringAsFixed(0), style: textStyle),
               ),
               
-              // "Выдать" - Y=610.2, X=28.5
+              // Строка "Выдать"
+              // "Выдать" - Y=610.2, X=28.5 (колонка 0)
               pw.Positioned(
                 left: 28.5,
                 top: 610.2,
                 child: pw.Text('Выдать', style: textStyle),
               ),
               
-              // ФИО сотрудника - Y=610.2, X=100.0
+              // ФИО сотрудника - Y=610.2, X=130.0 (колонка 1)
               pw.Positioned(
-                left: 100.0,
+                left: 130.0,
                 top: 610.2,
                 child: pw.Text(employeeData.fullName, style: textStyle),
               ),
               
-              // "(фамилия, имя, отчество)" - Y=582.9, X=253.5
+              // "(фамилия, имя, отчество)" - Y=582.9, X=253.5 (колонка 2)
               pw.Positioned(
                 left: 253.5,
                 top: 582.9,
                 child: pw.Text('(фамилия, имя, отчество)', style: textStyleTiny),
               ),
               
-              // "Основание" - Y=572.9, X=28.5
+              // Строка "Основание"
+              // "Основание" - Y=572.9, X=28.5 (колонка 0)
               pw.Positioned(
                 left: 28.5,
                 top: 572.9,
                 child: pw.Text('Основание', style: textStyle),
               ),
               
-              // Тип РКО - Y=572.9, X=120.0
+              // Тип РКО - Y=572.9, X=130.0 (колонка 1)
               pw.Positioned(
-                left: 120.0,
+                left: 130.0,
                 top: 572.9,
                 child: pw.Text(rkoType, style: textStyle),
               ),
