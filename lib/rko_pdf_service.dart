@@ -240,7 +240,7 @@ class RKOPDFService {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'Форма по Код ОКУД 0310002',
+                'Форма по ОКУД 0310002',
                 style: textStyleSmall,
               ),
               pw.SizedBox(height: 4),
@@ -336,6 +336,7 @@ class RKOPDFService {
                     ],
                   ),
                   // Строка 4: Коды и сумма
+                  // В эталоне: код структурного подразделения | код аналитического учета | сумма
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -447,7 +448,11 @@ class RKOPDFService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'Руководитель организации $directorDisplayName',
+                    'Руководитель организации',
+                    style: textStyleSmall,
+                  ),
+                  pw.Text(
+                    '$directorDisplayName',
                     style: textStyleSmall,
                   ),
                   pw.Text(
@@ -460,13 +465,22 @@ class RKOPDFService {
               
               // Получил
               pw.Text(
-                'Получил: $amountWords',
+                'Получил : $amountWords',
                 style: textStyle,
               ),
               pw.SizedBox(height: 4),
-              pw.Text(
-                '${now.day} ${_getMonthName(now.month)} ${now.year} г. Подпись',
-                style: textStyleSmall,
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    '${now.day} ${_getMonthName(now.month)} ${now.year} г.',
+                    style: textStyleSmall,
+                  ),
+                  pw.Text(
+                    'Подпись _____________________',
+                    style: textStyleSmall,
+                  ),
+                ],
               ),
               pw.SizedBox(height: 16),
               
@@ -497,11 +511,19 @@ class RKOPDFService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
+                    'Выдал кассир',
+                    style: textStyleSmall,
+                  ),
+                  pw.Text(
+                    '(подпись)',
+                    style: textStyleSmall,
+                  ),
+                  pw.Text(
                     directorShortName,
                     style: textStyleSmall,
                   ),
                   pw.Text(
-                    'Выдал кассир (подпись) (расшифровка подписи)',
+                    '(расшифровка подписи)',
                     style: textStyleSmall,
                   ),
                 ],
