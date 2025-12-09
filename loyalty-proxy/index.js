@@ -1017,14 +1017,14 @@ function cleanupShopRKOs(shopAddress) {
 }
 
 // Загрузка РКО на сервер
-app.post('/api/rko/upload', upload.single('pdf'), async (req, res) => {
+app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
   try {
     console.log('📤 POST /api/rko/upload');
     
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: 'PDF файл не загружен'
+        error: 'DOCX файл не загружен'
       });
     }
     
@@ -1183,7 +1183,7 @@ app.get('/api/rko/list/shop/:shopAddress', async (req, res) => {
   }
 });
 
-// Получить PDF файл РКО
+// Получить DOCX файл РКО
 app.get('/api/rko/file/:fileName', async (req, res) => {
   try {
     // Декодируем имя файла, обрабатывая возможные проблемы с кодировкой
@@ -1237,10 +1237,10 @@ app.get('/api/rko/file/:fileName', async (req, res) => {
       findFiles(rkoReportsDir, fileName);
       if (allFiles.length > 0) {
         console.log('Найден файл в альтернативном месте:', allFiles[0]);
-        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         // Правильно кодируем имя файла для заголовка (RFC 5987)
         const encodedFileName = encodeURIComponent(fileName);
-        res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedFileName}`);
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
         return res.sendFile(allFiles[0]);
       }
       return res.status(404).json({
@@ -1249,10 +1249,10 @@ app.get('/api/rko/file/:fileName', async (req, res) => {
       });
     }
     
-    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     // Правильно кодируем имя файла для заголовка (RFC 5987)
     const encodedFileName = encodeURIComponent(fileName);
-    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedFileName}`);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
     res.sendFile(filePath);
   } catch (error) {
     console.error('Ошибка получения файла РКО:', error);
@@ -1309,7 +1309,6 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     }
     
     const tempDocxPath = path.join(tempDir, `rko_${Date.now()}.docx`);
-    const tempPdfPath = path.join(tempDir, `rko_${Date.now()}.pdf`);
     
     // Форматируем данные для замены
     const now = new Date();
@@ -1369,7 +1368,7 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       passport_number: employeeData.passportNumber,
       passport_issued: employeeData.issuedBy,
       passport_date: employeeData.issueDate,
-      date_words: dateWords
+      date_words_formatted: dateWords
     };
     
     // Вызываем Python скрипт для обработки шаблона
@@ -1377,7 +1376,8 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
     
     try {
-      // Шаг 1: Обработка шаблона
+      // Обработка шаблона (без конвертации в PDF)
+      console.log(`Выполняем обработку шаблона: python3 "${scriptPath}" process "${templatePath}" "${tempDocxPath}" '${dataJson}'`);
       const { stdout: processOutput } = await execPromise(
         `python3 "${scriptPath}" process "${templatePath}" "${tempDocxPath}" '${dataJson}'`
       );
@@ -1387,37 +1387,27 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
         throw new Error(processResult.error || 'Ошибка обработки шаблона');
       }
       
-      // Шаг 2: Конвертация в PDF
-      const { stdout: convertOutput } = await execPromise(
-        `python3 "${scriptPath}" convert "${tempDocxPath}" "${tempPdfPath}"`
-      );
+      console.log('✅ Шаблон DOCX успешно обработан');
       
-      const convertResult = JSON.parse(convertOutput);
-      if (!convertResult.success) {
-        throw new Error(convertResult.error || 'Ошибка конвертации в PDF');
-      }
-      
-      // Читаем PDF и отправляем
-      const pdfBuffer = fs.readFileSync(tempPdfPath);
+      // Читаем .docx файл и отправляем
+      const docxBuffer = fs.readFileSync(tempDocxPath);
       
       // Очищаем временные файлы
       try {
         if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
-        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
       } catch (e) {
         console.error('Ошибка очистки временных файлов:', e);
       }
       
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.pdf"`);
-      res.send(pdfBuffer);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.docx"`);
+      res.send(docxBuffer);
       
     } catch (error) {
       console.error('Ошибка выполнения Python скрипта:', error);
       // Очищаем временные файлы при ошибке
       try {
         if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
-        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
       } catch (e) {}
       
       return res.status(500).json({

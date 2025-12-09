@@ -45,3 +45,5 @@ echo "2. Проверьте работу:"
 echo "   curl -X POST -F 'photo=@test.jpg' https://arabica26.ru/upload-photo"
 
 
+
+

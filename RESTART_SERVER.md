@@ -119,3 +119,5 @@ curl "https://arabica26.ru?action=getUserRole&phone=79054443224"
 - Проверьте, что URL в прокси-сервере совпадает с URL из Google Apps Script
 
 
+
+

@@ -89,3 +89,5 @@ Select-String -Path lib\main_menu_page.dart -Pattern "🔵" | Select-Object Line
 4. Посмотрите консоль и пришлите мне вывод
 
 
+
+

@@ -131,7 +131,7 @@ class RKOPDFService {
         .replaceAll('/', '_');
     final lastNameStr = employeeLastName.split(' ').first; // Берем только фамилию
     
-    return '${dateStr}_${addressStr}_$lastNameStr.pdf';
+    return '${dateStr}_${addressStr}_$lastNameStr.docx';
   }
 
   /// Сократить ФИО до формата "Фамилия И. О."
@@ -179,10 +179,14 @@ class RKOPDFService {
       ).timeout(const Duration(seconds: 60));
       
       if (response.statusCode == 200) {
-        // Сохраняем PDF во временный файл
+        // Сохраняем .docx во временный файл
         final directory = await getTemporaryDirectory();
-        final fileName = 'rko_${documentNumber}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-        final file = File('${directory.path}/$fileName');
+        final fileName = generateFileName(
+          date: DateTime.now(),
+          shopAddress: shopAddress,
+          employeeLastName: employeeData.fullName.split(' ').first,
+        );
+        final file = File(path.join(directory.path, fileName));
         await file.writeAsBytes(response.bodyBytes);
         return file;
       } else {

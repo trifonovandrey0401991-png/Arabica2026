@@ -22,9 +22,9 @@ class RKOReportsService {
       final url = '$serverUrl/api/rko/upload';
       final request = http.MultipartRequest('POST', Uri.parse(url));
       
-      // Добавляем файл
+      // Добавляем файл (.docx)
       request.files.add(
-        await http.MultipartFile.fromPath('pdf', pdfFile.path),
+        await http.MultipartFile.fromPath('docx', pdfFile.path),
       );
       
       // Добавляем метаданные
@@ -97,7 +97,7 @@ class RKOReportsService {
     }
   }
 
-  /// Получить URL для просмотра PDF
+  /// Получить URL для просмотра DOCX
   static String getPDFUrl(String fileName) {
     return '$serverUrl/api/rko/file/${Uri.encodeComponent(fileName)}';
   }
@@ -115,4 +115,6 @@ class RKOReportsService {
     }
   }
 }
+
+
 
