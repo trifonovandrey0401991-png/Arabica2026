@@ -269,22 +269,23 @@ class RKOPDFService {
                 ),
               ),
               
-              // 0310002 (справа под "Код") - Y=776.8, X=428.8
+              // Линия подчеркивания 1 - Y=775.1, X=29.2, width=355.5
+              pw.Positioned(
+                left: 29.2,
+                top: 775.1,
+                child: pw.Container(
+                  width: 355.5,
+                  height: 1,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Форма по ОКУД и 0310002 на одной строке - Y=776.8, X=428.8
               pw.Positioned(
                 left: 428.8,
                 top: 776.8,
                 child: pw.Text(
-                  '0310002',
-                  style: textStyleSmall,
-                ),
-              ),
-              
-              // Форма по ОКУД (справа) - Y=776.8, X=428.8
-              pw.Positioned(
-                left: 428.8,
-                top: 765.0,
-                child: pw.Text(
-                  'Форма по ОКУД',
+                  'Форма по ОКУД 0310002',
                   style: textStyleSmall,
                 ),
               ),
@@ -299,6 +300,27 @@ class RKOPDFService {
                 ),
               ),
               
+              // Линия подчеркивания 2 - Y=750.7, X=29.2, width=353.2
+              pw.Positioned(
+                left: 29.2,
+                top: 750.7,
+                child: pw.Container(
+                  width: 353.2,
+                  height: 1,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Подсказка "(организация)" - Y=737.0, X=192.5
+              pw.Positioned(
+                left: 192.5,
+                top: 737.0,
+                child: pw.Text(
+                  '(организация)',
+                  style: textStyleTiny,
+                ),
+              ),
+              
               // Фактический адрес (слева) - Y=762.9, X=29.2
               pw.Positioned(
                 left: 29.2,
@@ -306,6 +328,16 @@ class RKOPDFService {
                 child: pw.Text(
                   'Фактический адрес: ${shopSettings.address}',
                   style: textStyle,
+                ),
+              ),
+              
+              // Подсказка "(структурное подразделение)" - Y=714.3, X=208.7
+              pw.Positioned(
+                left: 208.7,
+                top: 714.3,
+                child: pw.Text(
+                  '(структурное подразделение)',
+                  style: textStyleTiny,
                 ),
               ),
               
@@ -339,22 +371,12 @@ class RKOPDFService {
                 ),
               ),
               
-              // Значение номера документа - Y=695.0, X=396.6
+              // Номер документа и дата на одной строке - Y=695.0, X=396.6
               pw.Positioned(
                 left: 396.6,
                 top: 695.0,
                 child: pw.Text(
-                  '$documentNumber',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Значение даты - Y=695.0, X=396.6+ширина номера
-              pw.Positioned(
-                left: 396.6,
-                top: 683.0,
-                child: pw.Text(
-                  '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}',
+                  '$documentNumber${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}',
                   style: textStyle,
                 ),
               ),
@@ -373,6 +395,85 @@ class RKOPDFService {
                 ),
               ),
               
+              // Внутренние вертикальные линии таблицы (разделители колонок)
+              // Линия 1 (колонка 1-2): X≈130
+              pw.Positioned(
+                left: 130.0,
+                top: 572.9,
+                child: pw.Container(
+                  width: 1,
+                  height: 101.3,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Линия 2 (колонка 2-3): X≈280
+              pw.Positioned(
+                left: 280.0,
+                top: 572.9,
+                child: pw.Container(
+                  width: 1,
+                  height: 101.3,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Линия 3 (колонка 3-4): X≈400
+              pw.Positioned(
+                left: 400.0,
+                top: 572.9,
+                child: pw.Container(
+                  width: 1,
+                  height: 101.3,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Внутренние горизонтальные линии таблицы (разделители строк)
+              // Линия 1 (заголовки-данные): Y≈665.0
+              pw.Positioned(
+                left: 28.5,
+                top: 665.0,
+                child: pw.Container(
+                  width: 411.7,
+                  height: 1,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Линия 2 (коды-пустая): Y≈640.0
+              pw.Positioned(
+                left: 28.5,
+                top: 640.0,
+                child: pw.Container(
+                  width: 411.7,
+                  height: 1,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Линия 3 (пустая-Выдать): Y≈600.0
+              pw.Positioned(
+                left: 28.5,
+                top: 600.0,
+                child: pw.Container(
+                  width: 411.7,
+                  height: 1,
+                  color: PdfColors.black,
+                ),
+              ),
+              
+              // Линия 4 (Выдать-Основание): Y≈580.0
+              pw.Positioned(
+                left: 28.5,
+                top: 580.0,
+                child: pw.Container(
+                  width: 411.7,
+                  height: 1,
+                  color: PdfColors.black,
+                ),
+              ),
+              
               // Заголовки таблицы
               // "Дебет" - Y=669.6, X=160.2
               pw.Positioned(
@@ -381,32 +482,32 @@ class RKOPDFService {
                 child: pw.Text('Дебет', style: textStyleSmall),
               ),
               
-              // "Сумма, руб. коп." - Y=674.2, X=337.8
+              // "Сумма,Код целевого" - на одной строке Y=674.2, X=337.8
               pw.Positioned(
                 left: 337.8,
                 top: 674.2,
-                child: pw.Text('Сумма, руб. коп.', style: textStyleSmall),
+                child: pw.Text('Сумма,Код целевого', style: textStyleSmall),
               ),
               
-              // "Код целевого назначения" - Y=674.2, X=337.8+ширина
+              // "руб. коп.назначения" - на одной строке Y=665.0, X=335.6
               pw.Positioned(
-                left: 400.0,
-                top: 674.2,
-                child: pw.Text('Код целевого назначения', style: textStyleSmall),
+                left: 335.6,
+                top: 665.0,
+                child: pw.Text('руб. коп.назначения', style: textStyleSmall),
               ),
               
-              // "код структурного подразделения" - Y=651.3, X=67.7
+              // "код структурного код аналитического" - на одной строке Y=651.3, X=67.7
               pw.Positioned(
                 left: 67.7,
                 top: 651.3,
-                child: pw.Text('код структурного подразделения', style: textStyleSmall),
+                child: pw.Text('код структурного код аналитического', style: textStyleSmall),
               ),
               
-              // "код аналитического учета" - Y=642.1, X=71.5
+              // "подразделенияучета" - отдельная строка Y=642.1, X=71.5
               pw.Positioned(
                 left: 71.5,
                 top: 642.1,
-                child: pw.Text('код аналитического учета', style: textStyleSmall),
+                child: pw.Text('подразделенияучета', style: textStyleSmall),
               ),
               
               // Сумма - Y=627.6, X=324.8
@@ -451,22 +552,12 @@ class RKOPDFService {
                 child: pw.Text(rkoType, style: textStyle),
               ),
               
-              // "Сумма" (после таблицы) - Y=527.3, X=28.5
+              // "Сумма" и сумма прописью на одной строке - Y=527.3, X=28.5
               pw.Positioned(
                 left: 28.5,
                 top: 527.3,
                 child: pw.Text(
-                  'Сумма',
-                  style: textStyleBold,
-                ),
-              ),
-              
-              // Сумма прописью - Y=527.3, X=28.5+ширина "Сумма"
-              pw.Positioned(
-                left: 100.0,
-                top: 527.3,
-                child: pw.Text(
-                  amountWords,
+                  'Сумма $amountWords',
                   style: textStyle,
                 ),
               ),
@@ -521,7 +612,7 @@ class RKOPDFService {
                 ),
               ),
               
-              // "Получил :" и сумма - Y=406.2, X=28.5
+              // "Получил :" и сумма прописью на одной строке - Y=406.2, X=28.5
               pw.Positioned(
                 left: 28.5,
                 top: 406.2,
@@ -541,22 +632,12 @@ class RKOPDFService {
                 ),
               ),
               
-              // Дата - Y=368.9, X=28.5
+              // Дата и подпись на одной строке - Y=368.9, X=28.5
               pw.Positioned(
                 left: 28.5,
                 top: 368.9,
                 child: pw.Text(
-                  '${now.day} ${_getMonthName(now.month)} ${now.year} г.',
-                  style: textStyle,
-                ),
-              ),
-              
-              // Подпись - Y=368.9, X=справа
-              pw.Positioned(
-                left: 350.0,
-                top: 368.9,
-                child: pw.Text(
-                  'Подпись _____________________',
+                  '${now.day} ${_getMonthName(now.month)} ${now.year} г.                                                      Подпись _____________________',
                   style: textStyle,
                 ),
               ),
