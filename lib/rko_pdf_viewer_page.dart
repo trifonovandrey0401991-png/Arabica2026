@@ -23,6 +23,17 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
   bool get _isDocx => widget.fileName.toLowerCase().endsWith('.docx');
   bool get _isPdf => widget.fileName.toLowerCase().endsWith('.pdf');
 
+  @override
+  void initState() {
+    super.initState();
+    // Автоматически открываем .docx файл при загрузке страницы
+    if (_isDocx) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openDocx();
+      });
+    }
+  }
+
   Future<void> _openDocx() async {
     setState(() {
       _isLoading = true;
