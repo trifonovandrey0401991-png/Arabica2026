@@ -229,24 +229,53 @@ class RKOPDFService {
                 style: textStyleSmall,
               ),
               pw.SizedBox(height: 8),
-              pw.Text(
-                '$directorDisplayName ИНН: ${shopSettings.inn}',
-                style: textStyleBold,
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'Код по ОКПО',
-                style: textStyleSmall,
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'Форма по ОКУД 0310002',
-                style: textStyleSmall,
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'Фактический адрес: ${shopSettings.address}',
-                style: textStyle,
+              // Организация и коды в одной строке
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          '$directorDisplayName ИНН: ${shopSettings.inn}',
+                          style: textStyleBold,
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Фактический адрес: ${shopSettings.address}',
+                          style: textStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(width: 20),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text(
+                        'Код',
+                        style: textStyleSmall,
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        '0310002',
+                        style: textStyleSmall,
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Форма по ОКУД',
+                        style: textStyleSmall,
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        'по ОКПО',
+                        style: textStyleSmall,
+                      ),
+                    ],
+                  ),
+                ],
               ),
               pw.SizedBox(height: 16),
               
@@ -336,7 +365,7 @@ class RKOPDFService {
                     ],
                   ),
                   // Строка 4: Коды и сумма
-                  // В эталоне: код структурного подразделения | код аналитического учета | сумма
+                  // В эталоне: код структурного подразделения | код аналитического учета + сумма | пусто
                   pw.TableRow(
                     children: [
                       pw.Padding(
@@ -345,11 +374,18 @@ class RKOPDFService {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text('код аналитического учета', style: textStyleSmall),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text('код аналитического учета', style: textStyleSmall),
+                            pw.SizedBox(height: 4),
+                            pw.Text(amount.toStringAsFixed(0), style: textStyleSmall),
+                          ],
+                        ),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(amount.toStringAsFixed(0), style: textStyleSmall),
+                        child: pw.SizedBox(),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
@@ -461,12 +497,20 @@ class RKOPDFService {
                   ),
                 ],
               ),
+              pw.SizedBox(height: 2),
+              // Подсказки для руководителя (мелким шрифтом)
+              pw.SizedBox(height: 2),
               pw.SizedBox(height: 16),
               
               // Получил
               pw.Text(
                 'Получил : $amountWords',
                 style: textStyle,
+              ),
+              pw.SizedBox(height: 2),
+              pw.Text(
+                '(сумма прописью)',
+                style: textStyleSmall,
               ),
               pw.SizedBox(height: 4),
               pw.Row(
