@@ -175,8 +175,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       // Получаем следующий номер документа
       final documentNumber = await RKOService.getNextDocumentNumber(_selectedShop!.address);
 
-      // Генерируем .docx через шаблон
-      final docxFile = await RKOPDFService.generateRKOFromDocx(
+      // Генерируем PDF через reportlab
+      final pdfFile = await RKOPDFService.generateRKOFromDocx(
         shopAddress: _selectedShop!.address,
         shopSettings: shopSettings,
         documentNumber: documentNumber,
@@ -186,7 +186,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       );
 
       // Получаем имя файла
-      final fileName = docxFile.path.split('/').last;
+      final fileName = pdfFile.path.split('/').last;
       final now = DateTime.now();
       
       // Загружаем на сервер
@@ -203,7 +203,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       print('📤 Оригинальное имя из регистрации: "${employeeData.fullName}"');
       print('📤 Имя из Google Sheets: "$_employeeName"');
       final uploadSuccess = await RKOPDFService.uploadRKOToServer(
-        pdfFile: docxFile,
+        pdfFile: pdfFile,
         fileName: fileName,
         employeeName: employeeNameForRKO,
         shopAddress: _selectedShop!.address,
@@ -227,7 +227,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('РКО создан локально: ${docxFile.path}, но не удалось загрузить на сервер'),
+              content: Text('РКО создан локально: ${pdfFile.path}, но не удалось загрузить на сервер'),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 5),
             ),

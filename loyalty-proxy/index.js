@@ -1284,20 +1284,20 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       rkoType
     });
     
-    // Путь к шаблону
-    let templatePath = path.join(__dirname, '..', '.cursor', 'РКО.docx');
-    console.log('🔍 Ищем шаблон по пути:', templatePath);
-    if (!fs.existsSync(templatePath)) {
-      console.error('❌ Шаблон не найден по пути:', templatePath);
+    // Путь к изображению шаблона
+    let templateImagePath = path.join(__dirname, '..', '.cursor', 'rko_template.jpg');
+    console.log('🔍 Ищем изображение шаблона по пути:', templateImagePath);
+    if (!fs.existsSync(templateImagePath)) {
+      console.error('❌ Изображение шаблона не найдено по пути:', templateImagePath);
       // Пробуем альтернативный путь
-      const altPath = '/root/.cursor/РКО.docx';
+      const altPath = '/root/.cursor/rko_template.jpg';
       if (fs.existsSync(altPath)) {
         console.log('✅ Найден альтернативный путь:', altPath);
-        templatePath = altPath;
+        templateImagePath = altPath;
       } else {
         return res.status(404).json({
           success: false,
-          error: `Шаблон РКО.docx не найден. Проверенные пути: ${templatePath}, ${altPath}`
+          error: `Изображение шаблона rko_template.jpg не найдено. Проверенные пути: ${templateImagePath}, ${altPath}`
         });
       }
     }
@@ -1308,7 +1308,7 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
-    const tempDocxPath = path.join(tempDir, `rko_${Date.now()}.docx`);
+    const tempPdfPath = path.join(tempDir, `rko_${Date.now()}.pdf`);
     
     // Форматируем данные для замены
     const now = new Date();
@@ -1351,73 +1351,73 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     // Конвертируем сумму в пропись (упрощенная версия)
     const amountWords = convertAmountToWords(amount);
     
-    // Подготавливаем данные для Python скрипта
+    // Подготавливаем данные для Python скрипта (reportlab формат)
     const data = {
+      org_name: `${directorDisplayName} ИНН: ${shopSettings.inn}`,
+      org_address: `Фактический адрес: ${shopSettings.address}`,
       doc_number: documentNumber.toString(),
-      date: dateStr,
-      amount: amount.toString().split('.')[0],
-      employee_name: employeeData.fullName,
-      rko_type: rkoType,
-      amount_words: amountWords,
-      shop_address: shopSettings.address,
-      director_inn: `${directorDisplayName} ИНН: ${shopSettings.inn}`,
-      director_name: directorDisplayName,
-      director_short_name: directorShortName,
-      inn: shopSettings.inn,
-      passport_series: employeeData.passportSeries,
-      passport_number: employeeData.passportNumber,
-      passport_issued: employeeData.issuedBy,
-      passport_date: employeeData.issueDate,
-      date_words_formatted: dateWords
+      doc_date: dateStr,
+      amount_numeric: amount.toString().split('.')[0],
+      fio_receiver: employeeData.fullName,
+      basis: rkoType,
+      amount_text: amountWords,
+      attachment: '', // Опционально
+      head_position: 'ИП',
+      head_name: directorShortName,
+      receiver_amount_text: amountWords,
+      date_text: dateWords,
+      passport_info: `По: Серия ${employeeData.passportSeries} Номер ${employeeData.passportNumber} Паспорт Выдан: ${employeeData.issuedBy}`,
+      passport_issuer: `${employeeData.issuedBy} Дата выдачи: ${employeeData.issueDate}`,
+      cashier_name: directorShortName
     };
     
-    // Вызываем Python скрипт для обработки шаблона
-    const scriptPath = path.join(__dirname, 'rko_docx_processor.py');
+    // Вызываем Python скрипт для генерации PDF
+    const scriptPath = path.join(__dirname, 'rko_pdf_generator.py');
     const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
     
     try {
-      // Обработка шаблона (без конвертации в PDF)
-      console.log(`Выполняем обработку шаблона: python3 "${scriptPath}" process "${templatePath}" "${tempDocxPath}" '${dataJson}'`);
+      // Генерация PDF через reportlab
+      console.log(`Выполняем генерацию PDF: python3 "${scriptPath}" "${templateImagePath}" "${tempPdfPath}" '${dataJson}'`);
       const { stdout: processOutput } = await execPromise(
-        `python3 "${scriptPath}" process "${templatePath}" "${tempDocxPath}" '${dataJson}'`
+        `python3 "${scriptPath}" "${templateImagePath}" "${tempPdfPath}" '${dataJson}'`
       );
       
       const processResult = JSON.parse(processOutput);
       if (!processResult.success) {
-        throw new Error(processResult.error || 'Ошибка обработки шаблона');
+        throw new Error(processResult.error || 'Ошибка генерации PDF');
       }
       
-      console.log('✅ Шаблон DOCX успешно обработан');
+      console.log('✅ PDF успешно сгенерирован');
       
-      // Читаем .docx файл и отправляем
-      const docxBuffer = fs.readFileSync(tempDocxPath);
+      // Читаем PDF файл и отправляем
+      const pdfBuffer = fs.readFileSync(tempPdfPath);
       
       // Очищаем временные файлы
       try {
-        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
       } catch (e) {
         console.error('Ошибка очистки временных файлов:', e);
       }
       
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.docx"`);
-      res.send(docxBuffer);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.pdf"`);
+      res.send(pdfBuffer);
       
-    } catch (error) {
+      } catch (error) {
       console.error('Ошибка выполнения Python скрипта:', error);
       // Очищаем временные файлы при ошибке
       try {
-        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
       } catch (e) {}
       
       return res.status(500).json({
         success: false,
-        error: error.message || 'Ошибка при генерации РКО из шаблона'
+        error: error.message || 'Ошибка при генерации РКО PDF'
       });
     }
     
   } catch (error) {
-    console.error('Ошибка генерации РКО из .docx:', error);
+    console.error('Ошибка генерации РКО PDF:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Ошибка при генерации РКО'
