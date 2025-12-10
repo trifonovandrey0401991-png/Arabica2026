@@ -14,24 +14,24 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 PAGE_WIDTH, PAGE_HEIGHT = A4
 
-# Координаты полей (настроены через интерактивный редактор)
+# Координаты полей (настроены через интерактивный редактор - исправленная версия)
 COORDS = {
-    "org_name": (86, PAGE_HEIGHT - 790),  # Организация и ИНН
-    "org_address": (51, PAGE_HEIGHT - 763),  # Фактический адрес
-    "doc_number": (410, PAGE_HEIGHT - 724),  # Номер документа
-    "doc_date": (476, PAGE_HEIGHT - 723),  # Дата составления
-    "amount_numeric": (273, PAGE_HEIGHT - 596),  # Сумма цифрами
-    "fio_receiver": (240, PAGE_HEIGHT - 639),  # ФИО получателя
-    "basis": (240, PAGE_HEIGHT - 615),  # Основание
-    "amount_text": (0, PAGE_HEIGHT - 48),  # Сумма прописью
-    "attachment": (488, PAGE_HEIGHT - 44),  # Приложение
-    "head_position": (192, PAGE_HEIGHT - 551),  # Должность руководителя
-    "head_name": (400, PAGE_HEIGHT - 551),  # ФИО руководителя
-    "receiver_amount_text": (203, PAGE_HEIGHT - 502),  # Сумма получателя
-    "date_text": (55, PAGE_HEIGHT - 469),  # Дата текстом
-    "passport_info": (50, PAGE_HEIGHT - 450),  # Паспортные данные
-    "passport_issuer": (221, PAGE_HEIGHT - 449),  # Выдан паспорт
-    "cashier_name": (237, PAGE_HEIGHT - 423),  # ФИО кассира
+    "org_name": (123, PAGE_HEIGHT - 778),  # Организация и ИНН
+    "org_address": (114, PAGE_HEIGHT - 753),  # Фактический адрес
+    "doc_number": (419, PAGE_HEIGHT - 712),  # Номер документа
+    "doc_date": (489, PAGE_HEIGHT - 713),  # Дата составления
+    "amount_numeric": (298, PAGE_HEIGHT - 573),  # Сумма цифрами
+    "fio_receiver": (278, PAGE_HEIGHT - 627),  # ФИО получателя
+    "basis": (282, PAGE_HEIGHT - 605),  # Основание
+    "amount_text": (261, PAGE_HEIGHT - 587),  # Сумма прописью
+    "attachment": (44, PAGE_HEIGHT - 305),  # Приложение
+    "head_position": (212, PAGE_HEIGHT - 540),  # Должность руководителя
+    "head_name": (405, PAGE_HEIGHT - 415),  # ФИО руководителя
+    "receiver_amount_text": (237, PAGE_HEIGHT - 492),  # Сумма получателя
+    "date_text": (66, PAGE_HEIGHT - 456),  # Дата текстом
+    "passport_info": (47, PAGE_HEIGHT - 438),  # Паспортные данные
+    "passport_issuer": (200, PAGE_HEIGHT - 438),  # Выдан паспорт
+    "cashier_name": (405, PAGE_HEIGHT - 550),  # ФИО кассира
 }
 
 
