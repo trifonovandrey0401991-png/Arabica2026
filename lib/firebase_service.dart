@@ -10,6 +10,7 @@ import 'my_dialogs_page.dart';
 import 'review_detail_page.dart';
 import 'review_service.dart';
 import 'review_model.dart';
+import 'utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
@@ -26,25 +27,25 @@ class FirebaseService {
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
   static FirebaseMessaging _getMessaging() {
     if (_messaging == null) {
-      print('🔵 Создание экземпляра FirebaseMessaging...');
+      Logger.debug('🔵 Создание экземпляра FirebaseMessaging...');
       
       // Проверяем, что Firebase App готов (только для мобильных платформ)
       if (!kIsWeb) {
         try {
           // ignore: avoid_dynamic_calls
           final app = firebase_core.Firebase.app();
-          print('✅ Firebase App найден перед созданием Messaging: ${app.name}');
+          Logger.debug('Firebase App найден: ${app.name}');
         } catch (e) {
-          print('❌ Firebase App не найден: $e');
+          Logger.error('Firebase App не найден', e);
           throw Exception('Firebase App не инициализирован. Невозможно создать FirebaseMessaging.');
         }
       }
       
       try {
         _messaging = FirebaseMessaging.instance;
-        print('✅ Экземпляр FirebaseMessaging создан');
+        Logger.success('Экземпляр FirebaseMessaging создан');
       } catch (e) {
-        print('❌ Ошибка создания FirebaseMessaging: $e');
+        Logger.error('Ошибка создания FirebaseMessaging', e);
         rethrow;
       }
     }
@@ -54,45 +55,38 @@ class FirebaseService {
   /// Инициализация Firebase Messaging
   static Future<void> initialize() async {
     if (_initialized) {
-      print('🔵 Firebase Messaging уже инициализирован');
+      Logger.debug('Firebase Messaging уже инициализирован');
       return;
     }
 
     try {
-      print('🔵 Проверка инициализации Firebase Core...');
+      Logger.debug('Проверка инициализации Firebase Core...');
       
       // Проверяем, что Firebase Core инициализирован (для мобильных платформ)
       // На веб это будет stub, который просто вернется
       if (!kIsWeb) {
-        // Дополнительная задержка для гарантии инициализации Firebase Core
-        print('🔵 Дополнительное ожидание инициализации Firebase Core...');
-        await Future.delayed(const Duration(milliseconds: 2000));
-        
-        // Пытаемся использовать Firebase Messaging - если Firebase не инициализирован,
-        // это вызовет ошибку, которую мы обработаем
+        // Проверяем готовность Firebase без задержки
         try {
           // Просто проверяем, что можем получить instance
           // Если Firebase не инициализирован, это вызовет ошибку при запросе токена
-          print('✅ Firebase Core готов к использованию');
+          Logger.debug('Firebase Core готов к использованию');
         } catch (e) {
-          print('⚠️ Предупреждение: $e');
+          Logger.warning('Предупреждение при проверке Firebase: $e');
           // Продолжаем - ошибка может быть не критичной
         }
       }
       
-      print('🔵 Запрос разрешений на уведомления...');
+      Logger.debug('Запрос разрешений на уведомления...');
       
-      // Дополнительная задержка перед запросом разрешений
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      // Получаем экземпляр FirebaseMessaging только после проверки готовности Firebase
-      print('🔵 Получение экземпляра FirebaseMessaging...');
+      // Получаем экземпляр FirebaseMessaging
+      Logger.debug('Получение экземпляра FirebaseMessaging...');
       FirebaseMessaging messaging;
       try {
         messaging = _getMessaging();
       } catch (e) {
-        print('❌ Ошибка получения FirebaseMessaging, повторная попытка через 2 секунды...');
-        await Future.delayed(const Duration(milliseconds: 2000));
+        Logger.warning('Ошибка получения FirebaseMessaging, повторная попытка...', e);
+        // Небольшая задержка только при ошибке
+        await Future.delayed(const Duration(milliseconds: 500));
         messaging = _getMessaging();
       }
       
@@ -106,11 +100,11 @@ class FirebaseService {
           provisional: false,
         );
       } catch (e) {
-        print('❌ Ошибка при запросе разрешений: $e');
+        Logger.error('Ошибка при запросе разрешений', e);
         // Если ошибка связана с отсутствием Firebase App, ждем еще
         if (e.toString().contains('no-app') || e.toString().contains('Firebase App')) {
-          print('🔵 Ожидание инициализации Firebase App...');
-          await Future.delayed(const Duration(milliseconds: 2000));
+          Logger.debug('Ожидание инициализации Firebase App...');
+          await Future.delayed(const Duration(milliseconds: 500)); // Уменьшено с 2000 до 500
           // Повторная попытка
           try {
             settings = await messaging.requestPermission(
@@ -120,37 +114,35 @@ class FirebaseService {
               provisional: false,
             );
           } catch (e2) {
-            print('❌ Повторная ошибка при запросе разрешений: $e2');
+            Logger.error('Повторная ошибка при запросе разрешений', e2);
             // Не бросаем исключение - продолжаем работу
             settings = null;
           }
         } else {
           // Не бросаем исключение - продолжаем работу
-          print('⚠️ Продолжаем работу без разрешений на уведомления');
+          Logger.warning('Продолжаем работу без разрешений на уведомления');
           settings = null;
         }
       }
 
       if (settings == null) {
-        print('⚠️ Не удалось получить разрешения, продолжаем работу');
+        Logger.warning('Не удалось получить разрешения, продолжаем работу');
         // Продолжаем работу даже без разрешений
         _initialized = true;
-        print('✅ Firebase Messaging инициализирован (без разрешений)');
+        Logger.success('Firebase Messaging инициализирован (без разрешений)');
         return;
       }
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        print('✅ Пользователь разрешил уведомления');
+        Logger.success('Пользователь разрешил уведомления');
       } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-        print('⚠️ Пользователь разрешил временные уведомления');
+        Logger.warning('Пользователь разрешил временные уведомления');
       } else {
-        print('❌ Пользователь не разрешил уведомления');
+        Logger.warning('Пользователь не разрешил уведомления');
         _initialized = true;
-        print('✅ Firebase Messaging инициализирован (без разрешений)');
+        Logger.success('Firebase Messaging инициализирован (без разрешений)');
         return;
       }
-
-      print('🔵 КРИТИЧЕСКИЙ МОМЕНТ: После получения разрешений, перед Future.microtask');
       
       // Выполняем дальнейшую инициализацию в отдельной функции,
       // чтобы ошибки не перехватывались общим catch блоком
@@ -158,38 +150,33 @@ class FirebaseService {
       try {
         Future.microtask(() async {
           try {
-            print('🔵 ВНУТРИ Future.microtask: Начало выполнения');
+            Logger.debug('Начало инициализации после разрешений');
             await _initializeAfterPermissions(messaging);
             _initialized = true;
-            print('✅ Firebase Messaging инициализирован');
+            Logger.success('Firebase Messaging инициализирован');
           } catch (e) {
-            print('⚠️ Ошибка в _initializeAfterPermissions: $e');
-            print('⚠️ Приложение продолжит работу, но push-уведомления могут не работать');
+            Logger.warning('Ошибка в _initializeAfterPermissions: $e');
+            Logger.warning('Приложение продолжит работу, но push-уведомления могут не работать');
             _initialized = true; // Все равно помечаем как инициализированный
-            print('✅ Firebase Messaging инициализирован (с ограничениями)');
+            Logger.success('Firebase Messaging инициализирован (с ограничениями)');
           }
         });
-        print('🔵 Future.microtask создан, код продолжает выполнение');
       } catch (e) {
-        print('⚠️ Ошибка при создании Future.microtask: $e');
+        Logger.warning('Ошибка при создании Future.microtask: $e');
         // Продолжаем работу
         _initialized = true;
-        print('✅ Firebase Messaging инициализирован (с ограничениями)');
+        Logger.success('Firebase Messaging инициализирован (с ограничениями)');
       }
     } catch (e) {
-      print('❌ Ошибка инициализации Firebase Messaging: $e');
+      Logger.error('Ошибка инициализации Firebase Messaging', e);
     }
   }
 
   /// Инициализация после получения разрешений (выполняется в отдельном микротаске)
   static Future<void> _initializeAfterPermissions(FirebaseMessaging messaging) async {
-    print('🔵 Шаг 1: Начало инициализации после получения разрешений');
+    Logger.debug('Начало инициализации после получения разрешений');
     
-    // Добавляем задержку после получения разрешений, чтобы дать Firebase время обработать ошибки
-    print('🔵 Ожидание после получения разрешений (1 секунда)...');
-    await Future.delayed(const Duration(seconds: 1));
-    
-    print('🔵 Начало инициализации локальных уведомлений...');
+    Logger.debug('Начало инициализации локальных уведомлений...');
     // Инициализация локальных уведомлений
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -208,117 +195,112 @@ class FirebaseService {
         initSettings,
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
-      print('✅ Локальные уведомления инициализированы');
+      Logger.success('Локальные уведомления инициализированы');
     } catch (e) {
-      print('⚠️ Ошибка инициализации локальных уведомлений: $e');
+      Logger.warning('Ошибка инициализации локальных уведомлений: $e');
       // Продолжаем работу даже если локальные уведомления не инициализированы
     }
 
     // Получаем FCM токен с повторными попытками и обработкой ошибок
-    print('🔵 Начало получения FCM токена...');
+    Logger.debug('Начало получения FCM токена...');
     String? token;
     try {
       token = await _getTokenWithRetries(messaging);
-      print('🔵 Получение токена завершено, результат: ${token != null ? "успешно" : "не получен"}');
+      Logger.debug('Получение токена завершено: ${token != null ? "успешно" : "не получен"}');
     } catch (e) {
       // Если ошибка все равно произошла, логируем, но продолжаем работу
-      print('⚠️ Критическая ошибка при получении токена: $e');
-      print('⚠️ Приложение продолжит работу без push-уведомлений');
+      Logger.warning('Критическая ошибка при получении токена: $e');
+      Logger.warning('Приложение продолжит работу без push-уведомлений');
     }
 
     // Обработка уведомлений в foreground (когда приложение открыто)
     try {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print('📨 Получено сообщение в foreground: ${message.notification?.title}');
+        Logger.debug('Получено сообщение в foreground: ${message.notification?.title}');
         _showLocalNotification(message);
       });
     } catch (e) {
-      print('⚠️ Ошибка при настройке слушателя onMessage: $e');
+      Logger.warning('Ошибка при настройке слушателя onMessage: $e');
     }
 
     // Обработка нажатия на уведомление (когда приложение в фоне)
     try {
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        print('👆 Уведомление открыто из фона: ${message.data}');
+        Logger.debug('Уведомление открыто из фона');
         _handleNotificationTap(message);
       });
     } catch (e) {
-      print('⚠️ Ошибка при настройке слушателя onMessageOpenedApp: $e');
+      Logger.warning('Ошибка при настройке слушателя onMessageOpenedApp: $e');
     }
 
     // Обработка уведомления, которое открыло приложение (когда приложение было закрыто)
     try {
       RemoteMessage? initialMessage = await messaging.getInitialMessage();
       if (initialMessage != null) {
-        print('👆 Уведомление открыло приложение: ${initialMessage.data}');
+        Logger.debug('Уведомление открыло приложение');
         _handleNotificationTap(initialMessage);
       }
     } catch (e) {
-      print('⚠️ Ошибка при получении initialMessage: $e');
+      Logger.warning('Ошибка при получении initialMessage: $e');
       // Продолжаем работу даже если не удалось получить initialMessage
     }
 
     // Обновление токена при его изменении
     try {
       messaging.onTokenRefresh.listen((newToken) {
-        print('🔄 FCM Token обновлен: ${newToken.substring(0, 20)}...');
+        Logger.debug('FCM Token обновлен');
         _saveTokenToServer(newToken);
       });
     } catch (e) {
-      print('⚠️ Ошибка при настройке слушателя onTokenRefresh: $e');
+      Logger.warning('Ошибка при настройке слушателя onTokenRefresh: $e');
     }
   }
 
   /// Получить FCM токен с повторными попытками и обработкой ошибок
   static Future<String?> _getTokenWithRetries(FirebaseMessaging messaging) async {
-    print('🔵 Начало получения FCM токена с повторными попытками...');
+    Logger.debug('Начало получения FCM токена с повторными попытками...');
     String? token;
     int attempts = 0;
-    const maxAttempts = 5;
-    const delaySeconds = 3;
+    const maxAttempts = 3; // Уменьшено с 5 до 3
+    const delaySeconds = 2; // Уменьшено с 3 до 2
 
     while (token == null && attempts < maxAttempts) {
       try {
         attempts++;
-        print('🔵 Попытка $attempts/$maxAttempts получить FCM токен...');
+        Logger.debug('Попытка $attempts/$maxAttempts получить FCM токен...');
         
         // Пытаемся получить токен
         token = await messaging.getToken();
         
         if (token != null) {
-          print('📱 FCM Token получен: ${token.substring(0, 20)}...');
+          Logger.success('FCM Token получен');
           await _saveTokenToServer(token);
           return token;
         }
       } catch (e) {
         String errorMsg = e.toString();
-        print('⚠️ Ошибка получения токена (попытка $attempts/$maxAttempts): $errorMsg');
+        Logger.warning('Ошибка получения токена (попытка $attempts/$maxAttempts): $errorMsg');
         
         // Проверяем тип ошибки
         if (errorMsg.contains('FIS_AUTH_ERROR') || 
             errorMsg.contains('Firebase Installations Service') ||
             errorMsg.contains('firebase_messaging/unknown')) {
           if (attempts < maxAttempts) {
-            print('🔵 Ошибка аутентификации Firebase. Повторная попытка через $delaySeconds секунд...');
-            print('💡 Убедитесь, что SHA-сертификаты добавлены в Firebase Console');
+            Logger.debug('Ошибка аутентификации Firebase. Повторная попытка через $delaySeconds секунд...');
             await Future.delayed(Duration(seconds: delaySeconds));
           } else {
-            print('❌ Не удалось получить FCM токен после $maxAttempts попыток');
-            print('⚠️ Приложение продолжит работу, но push-уведомления не будут работать');
-            print('💡 Проверьте:');
-            print('   1. SHA-1 и SHA-256 сертификаты добавлены в Firebase Console');
-            print('   2. Package name совпадает: com.example.arabica_app');
-            print('   3. google-services.json актуален');
+            Logger.error('Не удалось получить FCM токен после $maxAttempts попыток');
+            Logger.warning('Приложение продолжит работу, но push-уведомления не будут работать');
             // Приложение продолжит работу без токена
             break;
           }
         } else {
           // Другая ошибка - пробуем еще раз
           if (attempts < maxAttempts) {
-            print('🔵 Повторная попытка через $delaySeconds секунд...');
+            Logger.debug('Повторная попытка через $delaySeconds секунд...');
             await Future.delayed(Duration(seconds: delaySeconds));
           } else {
-            print('❌ Не удалось получить FCM токен: $errorMsg');
+            Logger.error('Не удалось получить FCM токен: $errorMsg');
             break;
           }
         }
@@ -327,8 +309,7 @@ class FirebaseService {
 
     // Если токен не получен, логируем предупреждение
     if (token == null) {
-      print('⚠️ FCM токен не получен. Push-уведомления не будут работать.');
-      print('💡 Остальной функционал приложения работает нормально.');
+      Logger.warning('FCM токен не получен. Push-уведомления не будут работать.');
     }
     
     return token;
@@ -342,25 +323,19 @@ class FirebaseService {
   /// Сохранить FCM токен на сервере
   static Future<void> _saveTokenToServer(String token) async {
     try {
-      print('🔵 Начало сохранения FCM токена на сервере...');
+      Logger.debug('Начало сохранения FCM токена на сервере...');
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('user_phone');
       
-      print('🔵 Телефон из SharedPreferences: ${phone ?? "null"}');
-      
       if (phone == null || phone.isEmpty) {
-        print('⚠️ Телефон не найден, токен не сохранен');
-        print('   Проверьте, что пользователь авторизован');
+        Logger.warning('Телефон не найден, токен не сохранен');
         return;
       }
 
       // Нормализация номера телефона (убираем + и пробелы)
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
-      print('🔵 Нормализованный телефон: $normalizedPhone');
-      print('🔵 FCM токен (первые 30 символов): ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
 
       final url = 'https://arabica26.ru/api/fcm-tokens';
-      print('🔵 Отправка запроса на: $url');
       
       final response = await http.post(
         Uri.parse(url),
@@ -376,18 +351,13 @@ class FirebaseService {
         },
       );
 
-      print('🔵 Ответ сервера: ${response.statusCode}');
-      print('🔵 Тело ответа: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ FCM токен сохранен на сервере для телефона: $normalizedPhone');
+        Logger.success('FCM токен сохранен на сервере');
       } else {
-        print('⚠️ Ошибка сохранения токена: ${response.statusCode}');
-        print('   Ответ: ${response.body}');
+        Logger.warning('Ошибка сохранения токена: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Ошибка сохранения FCM токена: $e');
-      print('   Stack trace: ${StackTrace.current}');
+      Logger.error('Ошибка сохранения FCM токена', e);
     }
   }
 
@@ -429,7 +399,7 @@ class FirebaseService {
         final data = jsonDecode(response.payload!) as Map<String, dynamic>;
         _handleNotificationNavigation(data);
       } catch (e) {
-        print('❌ Ошибка обработки уведомления: $e');
+        Logger.error('Ошибка обработки уведомления', e);
       }
     }
   }

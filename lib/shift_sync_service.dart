@@ -1,11 +1,32 @@
 import 'shift_report_model.dart';
 import 'google_drive_service.dart';
+import 'utils/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис синхронизации отчетов
 class ShiftSyncService {
-  /// Синхронизировать все отчеты
+  static const String _lastSyncKey = 'last_sync_timestamp';
+  static const Duration _syncInterval = Duration(hours: 1); // Синхронизировать не чаще раза в час
+  
+  /// Синхронизировать все отчеты (с проверкой интервала)
   static Future<void> syncAllReports() async {
     try {
+      // Проверяем, нужно ли синхронизировать
+      final prefs = await SharedPreferences.getInstance();
+      final lastSyncTimestamp = prefs.getInt(_lastSyncKey);
+      
+      if (lastSyncTimestamp != null) {
+        final lastSync = DateTime.fromMillisecondsSinceEpoch(lastSyncTimestamp);
+        final now = DateTime.now();
+        final timeSinceLastSync = now.difference(lastSync);
+        
+        if (timeSinceLastSync < _syncInterval) {
+          Logger.debug('Синхронизация пропущена: прошло только ${timeSinceLastSync.inMinutes} минут');
+          return;
+        }
+      }
+      
+      Logger.debug('Начало синхронизации отчетов...');
       final reports = await ShiftReport.loadAllReports();
       
       // Удаляем старые отчеты (старше недели) и их фото из Google Drive
@@ -17,7 +38,7 @@ class ShiftSyncService {
             try {
               await GoogleDriveService.deletePhoto(answer.photoDriveId!);
             } catch (e) {
-              print('⚠️ Ошибка удаления фото ${answer.photoDriveId}: $e');
+              Logger.warning('Ошибка удаления фото ${answer.photoDriveId}: $e');
             }
           }
         }
@@ -27,6 +48,8 @@ class ShiftSyncService {
 
       // Синхронизируем несинхронизированные отчеты
       final unsyncedReports = reports.where((r) => !r.isSynced && !r.isOlderThanWeek).toList();
+      Logger.debug('Найдено несинхронизированных отчетов: ${unsyncedReports.length}');
+      
       for (var report in unsyncedReports) {
         try {
           // Загружаем фото, которые еще не загружены
@@ -67,11 +90,15 @@ class ShiftSyncService {
 
           await ShiftReport.updateReport(syncedReport);
         } catch (e) {
-          print('⚠️ Ошибка синхронизации отчета ${report.id}: $e');
+          Logger.warning('Ошибка синхронизации отчета ${report.id}: $e');
         }
       }
+      
+      // Сохраняем время последней синхронизации
+      await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
+      Logger.success('Синхронизация завершена');
     } catch (e) {
-      print('❌ Ошибка синхронизации отчетов: $e');
+      Logger.error('Ошибка синхронизации отчетов', e);
     }
   }
 }

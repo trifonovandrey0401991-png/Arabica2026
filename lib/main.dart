@@ -10,6 +10,7 @@ import 'loyalty_storage.dart';
 import 'shift_sync_service.dart';
 import 'firebase_wrapper.dart';
 import 'user_role_service.dart';
+import 'utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
@@ -22,44 +23,36 @@ void main() async {
   
   // Инициализация Firebase (только для мобильных платформ)
   try {
-    print('🔵 Начало инициализации Firebase Core...');
+    Logger.debug('🔵 Начало инициализации Firebase Core...');
     await FirebaseWrapper.initializeApp();
-    print('✅ Firebase Core инициализирован');
+    Logger.success('Firebase Core инициализирован');
     
-    // Увеличиваем задержку для завершения инициализации Firebase Core
-    print('🔵 Ожидание завершения инициализации Firebase Core...');
-    await Future.delayed(const Duration(milliseconds: 3000));
-    
-    // Проверяем, что Firebase действительно инициализирован
-    // Используем FirebaseWrapper для проверки, так как условный импорт может не работать
-    try {
-      // Дополнительная проверка через задержку
-      print('🔵 Проверка готовности Firebase...');
-    } catch (e) {
-      print('⚠️ Предупреждение при проверке Firebase: $e');
-    }
+    // Проверяем готовность Firebase без задержки
+    Logger.debug('🔵 Проверка готовности Firebase...');
     
     // Инициализация Firebase Messaging
-    print('🔵 Начало инициализации Firebase Messaging...');
+    Logger.debug('🔵 Начало инициализации Firebase Messaging...');
     await FirebaseService.initialize();
-    print('✅ Firebase Messaging инициализирован');
+    Logger.success('Firebase Messaging инициализирован');
   } catch (e) {
     // Firebase недоступен (веб-платформа или пакеты не установлены)
-    print('⚠️ Firebase не доступен: $e');
-    print('   Push-уведомления будут работать только на мобильных устройствах');
+    Logger.warning('Firebase не доступен: $e');
+    Logger.info('Push-уведомления будут работать только на мобильных устройствах');
     // Инициализируем заглушку для веб
     try {
       await FirebaseService.initialize();
     } catch (e2) {
-      print('⚠️ Ошибка инициализации Firebase Service: $e2');
+      Logger.warning('Ошибка инициализации Firebase Service: $e2');
     }
   }
   
   await NotificationService.initialize();
   
-  // Синхронизация отчетов пересменки при запуске приложения
-  ShiftSyncService.syncAllReports().catchError((e) {
-    print('⚠️ Ошибка синхронизации при запуске: $e');
+  // Синхронизация отчетов пересменки в фоне (не блокирует запуск)
+  Future.microtask(() {
+    ShiftSyncService.syncAllReports().catchError((e) {
+      Logger.warning('Ошибка синхронизации при запуске: $e');
+    });
   });
   
   runApp(const ArabicaApp());
@@ -213,8 +206,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
         } catch (e) {
           // Пользователь не найден в базе или сервер недоступен
           // Очищаем данные и показываем регистрацию
-          // ignore: avoid_print
-          print('⚠️ Пользователь не найден или сервер недоступен: $e');
+          Logger.warning('Пользователь не найден или сервер недоступен: $e');
           await prefs.remove('is_registered');
           await prefs.remove('user_name');
           await prefs.remove('user_phone');
@@ -229,8 +221,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
         });
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('❌ Ошибка при проверке регистрации: $e');
+      Logger.error('Ошибка при проверке регистрации', e);
       if (mounted) {
         setState(() {
           _isRegistered = false;
@@ -253,15 +244,14 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       await LoyaltyStorage.save(loyaltyInfo);
     } catch (e) {
       // Игнорируем ошибки в фоновой проверке
-      // ignore: avoid_print
-      print('⚠️ Фоновая проверка регистрации не удалась: $e');
+      Logger.warning('Фоновая проверка регистрации не удалась: $e');
     }
   }
 
   /// Проверка роли пользователя
   Future<void> _checkUserRole(String phone) async {
     try {
-      print('🔍 Проверка роли пользователя...');
+      Logger.debug('🔍 Проверка роли пользователя...');
       final roleData = await UserRoleService.getUserRole(phone);
       
       // Сохраняем роль
@@ -271,10 +261,10 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_name', roleData.displayName);
       
-      print('✅ Роль пользователя определена: ${roleData.role.name}');
-      print('   Имя для отображения: ${roleData.displayName}');
+      Logger.success('Роль пользователя определена: ${roleData.role.name}');
+      Logger.info('Имя для отображения: ${roleData.displayName}');
     } catch (e) {
-      print('⚠️ Ошибка проверки роли: $e');
+      Logger.warning('Ошибка проверки роли: $e');
       // Продолжаем работу без роли (по умолчанию клиент)
     }
   }
@@ -284,7 +274,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
     try {
       await _checkUserRole(phone);
     } catch (e) {
-      print('⚠️ Фоновая проверка роли не удалась: $e');
+      Logger.warning('Фоновая проверка роли не удалась: $e');
     }
   }
 

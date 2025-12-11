@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'google_script_config.dart';
+import 'utils/logger.dart';
 
 class LoyaltyInfo {
   final String name;
@@ -55,8 +56,7 @@ class LoyaltyService {
     
     // Если есть сообщение о том, что пользователь уже существует, это нормально
     if (response['message'] != null) {
-      // ignore: avoid_print
-      print('ℹ️ ${response['message']}');
+      Logger.info(response['message']);
     }
     
     return LoyaltyInfo.fromJson(response['client']);
@@ -70,66 +70,50 @@ class LoyaltyService {
       '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
     );
     
-    print('📞 Поиск пользователя с номером: $normalizedPhone (исходный: $phone)');
-    print('🔗 URL запроса: $uri');
-    print('⏰ Время начала запроса: ${DateTime.now().toIso8601String()}');
-    print('🌐 Платформа: ${Uri.base.scheme}');
-    print('🔍 Пробуем подключиться к серверу...');
+    Logger.debug('📞 Поиск пользователя с номером: $normalizedPhone');
 
     http.Response response;
     try {
       final stopwatch = Stopwatch()..start();
       response = await http.get(uri).timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 15), // Уменьшен таймаут с 30 до 15 секунд
         onTimeout: () {
           stopwatch.stop();
-          print('⏱️ ТАЙМАУТ: Запрос не завершился за 30 секунд');
-          print('⏱️ Прошло времени: ${stopwatch.elapsedMilliseconds}ms');
+          Logger.error('ТАЙМАУТ: Запрос не завершился за 15 секунд', Exception('Таймаут'));
           throw Exception('Таймаут при получении данных клиента');
         },
       );
       stopwatch.stop();
-      print('⏱️ Время подключения: ${stopwatch.elapsedMilliseconds}ms');
-      print('✅ Ответ получен: статус ${response.statusCode}');
-      print('📦 Размер ответа: ${response.body.length} байт');
-      print('⏰ Время получения ответа: ${DateTime.now().toIso8601String()}');
+      Logger.debug('⏱️ Время подключения: ${stopwatch.elapsedMilliseconds}ms');
     } on http.ClientException catch (e) {
-      print('❌ Сетевая ошибка (ClientException): $e');
-      print('   Это может быть из-за:');
-      print('   1. Проблем с сетью на устройстве');
-      print('   2. Сервер недоступен');
-      print('   3. Проблем с DNS');
+      Logger.error('Сетевая ошибка (ClientException)', e);
       rethrow;
     } on Exception catch (e) {
-      print('❌ Ошибка запроса: $e');
+      Logger.error('Ошибка запроса', e);
       rethrow;
     }
       
       if (response.statusCode != 200) {
-        print('❌ Неожиданный статус ответа: ${response.statusCode}');
-        print('📄 Тело ответа: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+        Logger.error('Неожиданный статус ответа: ${response.statusCode}');
         throw Exception('Ошибка сервера: ${response.statusCode}');
       }
 
     final data = _decode(response.body);
-    print('📋 Данные ответа: success=${data['success']}, client=${data['client'] != null ? "найден" : "не найден"}');
     
     if (data['success'] != true) {
-      print('❌ Сервер вернул success: false');
-      print('   Ошибка: ${data['error']}');
+      Logger.error('Сервер вернул success: false. Ошибка: ${data['error']}');
       throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
     }
 
       if (data['client'] == null) {
-        print('❌ Клиент не найден в ответе сервера');
+        Logger.error('Клиент не найден в ответе сервера');
         throw Exception('Клиент не найден в базе данных');
       }
 
-    print('✅ Пользователь найден: ${data['client']['name']}');
+    Logger.success('Пользователь найден: ${data['client']['name']}');
     return LoyaltyInfo.fromJson(data['client']);
     } catch (e, stackTrace) {
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА в fetchByPhone: $e');
-      print('📚 Stack trace: $stackTrace');
+      Logger.error('КРИТИЧЕСКАЯ ОШИБКА в fetchByPhone', e, stackTrace);
       if (e is Exception) {
         rethrow;
       }

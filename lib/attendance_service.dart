@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'attendance_model.dart';
 import 'shop_model.dart';
+import 'utils/logger.dart';
 
 class AttendanceService {
   static const String serverUrl = 'https://arabica26.ru';
@@ -106,7 +107,7 @@ class AttendanceService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(record.toJson()),
       ).timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 15), // Уменьшено с 30 до 15
         onTimeout: () {
           throw Exception('Таймаут при отправке отметки');
         },
@@ -119,7 +120,7 @@ class AttendanceService {
 
       return false;
     } catch (e) {
-      print('❌ Ошибка отметки прихода: $e');
+      Logger.error('Ошибка отметки прихода', e);
       return false;
     }
   }
@@ -139,7 +140,7 @@ class AttendanceService {
 
       return false;
     } catch (e) {
-      print('❌ Ошибка проверки отметки: $e');
+      Logger.error('Ошибка проверки отметки', e);
       return false;
     }
   }
@@ -167,7 +168,7 @@ class AttendanceService {
       url += params.join('&');
 
       final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 15), // Уменьшено с 30 до 15
       );
 
       if (response.statusCode == 200) {
@@ -182,7 +183,7 @@ class AttendanceService {
 
       return [];
     } catch (e) {
-      print('❌ Ошибка загрузки отметок: $e');
+      Logger.error('Ошибка загрузки отметок', e);
       return [];
     }
   }

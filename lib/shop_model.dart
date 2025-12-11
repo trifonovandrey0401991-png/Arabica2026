@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'utils/logger.dart';
+import 'utils/cache_manager.dart';
 
 /// Модель магазина
 class Shop {
@@ -32,22 +34,32 @@ class Shop {
   }
 
   /// Загрузить список магазинов из Google Sheets (столбец D)
+  /// Использует кэширование на 10 минут для уменьшения запросов
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
+    // Проверяем кэш
+    const cacheKey = 'shops_list';
+    final cached = CacheManager.get<List<Shop>>(cacheKey);
+    if (cached != null) {
+      Logger.debug('📥 Магазины загружены из кэша');
+      return cached;
+    }
+    
     try {
       const sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
       
-      print('📥 Загружаем адреса магазинов из Google Sheets...');
-      print('   URL: $sheetUrl');
+      Logger.debug('📥 Загружаем адреса магазинов из Google Sheets...');
       
-      final response = await http.get(Uri.parse(sheetUrl));
+      final response = await http.get(Uri.parse(sheetUrl)).timeout(
+        const Duration(seconds: 10), // Таймаут для запроса
+      );
       if (response.statusCode != 200) {
-        print('❌ Ошибка загрузки: ${response.statusCode}');
+        Logger.error('Ошибка загрузки: ${response.statusCode}');
         throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
       }
 
       final lines = const LineSplitter().convert(response.body);
-      print('📊 Всего строк получено из CSV: ${lines.length}');
+      Logger.debug('📊 Всего строк получено из CSV: ${lines.length}');
       
       final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
       int processedRows = 0;
@@ -78,27 +90,15 @@ class Shop {
               // Сохраняем оригинальный адрес (первое вхождение)
               if (!uniqueAddresses.containsKey(normalizedAddress)) {
                 uniqueAddresses[normalizedAddress] = address;
-                print('✅ Строка $i: добавлен новый адрес "$address"');
               }
             }
-          } else if (i <= 10) {
-            print('⚠️ Строка $i: недостаточно колонок (${row.length} < 4)');
           }
         } catch (e) {
-          print('❌ Ошибка парсинга строки $i: $e');
+          Logger.warning('Ошибка парсинга строки $i: $e');
         }
       }
 
-      print('📊 Статистика обработки:');
-      print('   Обработано строк: $processedRows');
-      print('   Пустых адресов: $emptyRows');
-      print('   Валидных адресов: $validAddresses');
-      print('   Уникальных адресов: ${uniqueAddresses.length}');
-      
-      print('📋 Найдено уникальных адресов: ${uniqueAddresses.length}');
-      for (var addr in uniqueAddresses.values) {
-        print('  - $addr');
-      }
+      Logger.debug('📊 Статистика: обработано=$processedRows, валидных=$validAddresses, уникальных=${uniqueAddresses.length}');
 
       // Создаем список магазинов из уникальных адресов
       final shops = <Shop>[];
@@ -135,11 +135,13 @@ class Shop {
       // Сортируем по адресу
       shops.sort((a, b) => a.address.compareTo(b.address));
 
-      print('✅ Загружено магазинов: ${shops.length}');
+      // Сохраняем в кэш на 10 минут
+      CacheManager.set(cacheKey, shops, duration: const Duration(minutes: 10));
+      
+      Logger.success('Загружено магазинов: ${shops.length}');
       return shops;
     } catch (e) {
-      print('⚠️ Ошибка загрузки магазинов из Google Sheets: $e');
-      print('Stack trace: ${StackTrace.current}');
+      Logger.warning('Ошибка загрузки магазинов из Google Sheets: $e');
       // Возвращаем список по умолчанию при ошибке
       return _getDefaultShops();
     }

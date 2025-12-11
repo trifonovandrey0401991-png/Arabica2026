@@ -6,6 +6,8 @@ import 'employee_registration_service.dart';
 import 'employee_registration_model.dart';
 import 'shift_report_model.dart';
 import 'shop_model.dart';
+import 'utils/logger.dart';
+import 'utils/cache_manager.dart';
 
 class RKOService {
   static const String serverUrl = 'https://arabica26.ru';
@@ -28,13 +30,21 @@ class RKOService {
       
       return null;
     } catch (e) {
-      print('❌ Ошибка получения последней пересменки: $e');
+      Logger.error('Ошибка получения последней пересменки', e);
       return null;
     }
   }
 
-  /// Получить настройки магазина
+  /// Получить настройки магазина (с кэшированием)
   static Future<ShopSettings?> getShopSettings(String shopAddress) async {
+    // Проверяем кэш
+    final cacheKey = 'shop_settings_${Uri.encodeComponent(shopAddress)}';
+    final cached = CacheManager.get<ShopSettings>(cacheKey);
+    if (cached != null) {
+      Logger.debug('Настройки магазина загружены из кэша');
+      return cached;
+    }
+    
     try {
       final url = '$serverUrl/api/shop-settings/${Uri.encodeComponent(shopAddress)}';
       final response = await http.get(Uri.parse(url)).timeout(
@@ -44,12 +54,15 @@ class RKOService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true && result['settings'] != null) {
-          return ShopSettings.fromJson(result['settings']);
+          final settings = ShopSettings.fromJson(result['settings']);
+          // Сохраняем в кэш на 5 минут
+          CacheManager.set(cacheKey, settings, duration: const Duration(minutes: 5));
+          return settings;
         }
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения настроек магазина: $e');
+      Logger.error('Ошибка получения настроек магазина', e);
       return null;
     }
   }
@@ -70,7 +83,7 @@ class RKOService {
       }
       return 1;
     } catch (e) {
-      print('❌ Ошибка получения номера документа: $e');
+      Logger.error('Ошибка получения номера документа', e);
       return 1;
     }
   }
@@ -93,7 +106,7 @@ class RKOService {
       }
       return false;
     } catch (e) {
-      print('❌ Ошибка обновления номера документа: $e');
+      Logger.error('Ошибка обновления номера документа', e);
       return false;
     }
   }
@@ -112,7 +125,7 @@ class RKOService {
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
       return await EmployeeRegistrationService.getRegistration(normalizedPhone);
     } catch (e) {
-      print('❌ Ошибка получения данных сотрудника: $e');
+      Logger.error('Ошибка получения данных сотрудника', e);
       return null;
     }
   }
@@ -135,7 +148,7 @@ class RKOService {
 
       return null;
     } catch (e) {
-      print('❌ Ошибка получения имени сотрудника: $e');
+      Logger.error('Ошибка получения имени сотрудника', e);
       return null;
     }
   }
@@ -155,7 +168,7 @@ class RKOService {
         orElse: () => shops.first, // Если не найдено, возвращаем первый магазин
       );
     } catch (e) {
-      print('❌ Ошибка получения магазина из пересменки: $e');
+      Logger.error('Ошибка получения магазина из пересменки', e);
       return null;
     }
   }
