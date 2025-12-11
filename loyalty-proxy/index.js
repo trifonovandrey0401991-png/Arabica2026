@@ -1400,19 +1400,52 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       
       console.log('✅ Word документ успешно обработан');
       
-      // Читаем .docx файл и отправляем
-      const docxBuffer = fs.readFileSync(tempDocxPath);
+      // Конвертируем DOCX в PDF
+      const tempPdfPath = tempDocxPath.replace('.docx', '.pdf');
+      console.log(`Конвертируем DOCX в PDF: ${tempDocxPath} -> ${tempPdfPath}`);
       
-      // Очищаем временные файлы
       try {
-        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
-      } catch (e) {
-        console.error('Ошибка очистки временных файлов:', e);
+        const { stdout: convertOutput } = await execPromise(
+          `python3 "${scriptPath}" convert "${tempDocxPath}" "${tempPdfPath}"`
+        );
+        
+        const convertResult = JSON.parse(convertOutput);
+        if (!convertResult.success) {
+          throw new Error(convertResult.error || 'Ошибка конвертации в PDF');
+        }
+        
+        console.log('✅ DOCX успешно сконвертирован в PDF');
+        
+        // Читаем PDF файл и отправляем
+        const pdfBuffer = fs.readFileSync(tempPdfPath);
+        
+        // Очищаем временные файлы
+        try {
+          if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+          if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+        } catch (e) {
+          console.error('Ошибка очистки временных файлов:', e);
+        }
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.pdf"`);
+        res.send(pdfBuffer);
+      } catch (convertError) {
+        console.error('Ошибка конвертации в PDF:', convertError);
+        // Если конвертация не удалась, отправляем DOCX
+        console.log('Отправляем DOCX вместо PDF');
+        const docxBuffer = fs.readFileSync(tempDocxPath);
+        
+        try {
+          if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+        } catch (e) {
+          console.error('Ошибка очистки временных файлов:', e);
+        }
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.docx"`);
+        res.send(docxBuffer);
       }
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.docx"`);
-      res.send(docxBuffer);
       
       } catch (error) {
       console.error('Ошибка выполнения Python скрипта:', error);
@@ -1510,6 +1543,13 @@ app.get('/test_rko_final.pdf', (req, res) => {
 app.get('/test_rko_new_coords.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.sendFile('/var/www/html/test_rko_new_coords.pdf');
+});
+
+// Endpoint для тестового РКО КО-2 с фиксированными высотами
+app.get('/test_rko_ko2_fixed.docx', (req, res) => {
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  res.setHeader('Content-Disposition', 'inline; filename="test_rko_ko2_fixed.docx"');
+  res.sendFile('/var/www/html/test_rko_ko2_fixed.docx');
 });
 
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
