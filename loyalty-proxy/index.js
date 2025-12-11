@@ -13,6 +13,9 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
+// Статические файлы для редактора координат
+app.use('/static', express.static('/var/www/html'));
+
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -1284,20 +1287,20 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       rkoType
     });
     
-    // Путь к изображению шаблона
-    let templateImagePath = path.join(__dirname, '..', '.cursor', 'rko_template.jpg');
-    console.log('🔍 Ищем изображение шаблона по пути:', templateImagePath);
-    if (!fs.existsSync(templateImagePath)) {
-      console.error('❌ Изображение шаблона не найдено по пути:', templateImagePath);
+    // Путь к Word шаблону
+    let templateDocxPath = path.join(__dirname, '..', '.cursor', 'rko_template_new.docx');
+    console.log('🔍 Ищем Word шаблон по пути:', templateDocxPath);
+    if (!fs.existsSync(templateDocxPath)) {
+      console.error('❌ Word шаблон не найден по пути:', templateDocxPath);
       // Пробуем альтернативный путь
-      const altPath = '/root/.cursor/rko_template.jpg';
+      const altPath = '/root/.cursor/rko_template_new.docx';
       if (fs.existsSync(altPath)) {
         console.log('✅ Найден альтернативный путь:', altPath);
-        templateImagePath = altPath;
+        templateDocxPath = altPath;
       } else {
         return res.status(404).json({
           success: false,
-          error: `Изображение шаблона rko_template.jpg не найдено. Проверенные пути: ${templateImagePath}, ${altPath}`
+          error: `Word шаблон rko_template_new.docx не найден. Проверенные пути: ${templateDocxPath}, ${altPath}`
         });
       }
     }
@@ -1308,7 +1311,7 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
-    const tempPdfPath = path.join(tempDir, `rko_${Date.now()}.pdf`);
+    const tempDocxPath = path.join(tempDir, `rko_${Date.now()}.docx`);
     
     // Форматируем данные для замены
     const now = new Date();
@@ -1351,68 +1354,76 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     // Конвертируем сумму в пропись (упрощенная версия)
     const amountWords = convertAmountToWords(amount);
     
-    // Подготавливаем данные для Python скрипта (reportlab формат)
+    // Подготавливаем данные для Python скрипта (формат плейсхолдеров)
+    // Извлекаем адрес без префикса "Фактический адрес:" для плейсхолдера {SHOP}
+    const shopAddressClean = shopSettings.address.replace(/^Фактический адрес:\s*/i, '').trim();
+    
+    // Формируем паспортные данные в новом формате
+    const passportFormatted = `Серия ${employeeData.passportSeries} Номер ${employeeData.passportNumber} Кем Выдан: ${employeeData.issuedBy} Дата Выдачи: ${employeeData.issueDate}`;
+    
     const data = {
       org_name: `${directorDisplayName} ИНН: ${shopSettings.inn}`,
       org_address: `Фактический адрес: ${shopSettings.address}`,
+      shop_address: shopAddressClean, // Адрес без префикса для {SHOP}
+      inn: shopSettings.inn, // Отдельное поле для плейсхолдера {INN}
       doc_number: documentNumber.toString(),
       doc_date: dateStr,
       amount_numeric: amount.toString().split('.')[0],
       fio_receiver: employeeData.fullName,
-      basis: rkoType,
+      basis: 'Зароботная плата', // Всегда "Зароботная плата" для {BASIS}
       amount_text: amountWords,
       attachment: '', // Опционально
       head_position: 'ИП',
       head_name: directorShortName,
       receiver_amount_text: amountWords,
       date_text: dateWords,
-      passport_info: `По: Серия ${employeeData.passportSeries} Номер ${employeeData.passportNumber} Паспорт Выдан: ${employeeData.issuedBy}`,
+      passport_info: passportFormatted, // Новый формат: "Серия ... Номер ... Кем Выдан: ... Дата Выдачи: ..."
       passport_issuer: `${employeeData.issuedBy} Дата выдачи: ${employeeData.issueDate}`,
       cashier_name: directorShortName
     };
     
-    // Вызываем Python скрипт для генерации PDF
-    const scriptPath = path.join(__dirname, 'rko_pdf_generator.py');
+    // Вызываем Python скрипт для обработки Word шаблона
+    const scriptPath = path.join(__dirname, 'rko_docx_processor.py');
     const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
     
     try {
-      // Генерация PDF через reportlab
-      console.log(`Выполняем генерацию PDF: python3 "${scriptPath}" "${templateImagePath}" "${tempPdfPath}" '${dataJson}'`);
+      // Обработка Word шаблона через python-docx
+      console.log(`Выполняем обработку Word шаблона: python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`);
       const { stdout: processOutput } = await execPromise(
-        `python3 "${scriptPath}" "${templateImagePath}" "${tempPdfPath}" '${dataJson}'`
+        `python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`
       );
       
       const processResult = JSON.parse(processOutput);
       if (!processResult.success) {
-        throw new Error(processResult.error || 'Ошибка генерации PDF');
+        throw new Error(processResult.error || 'Ошибка обработки Word шаблона');
       }
       
-      console.log('✅ PDF успешно сгенерирован');
+      console.log('✅ Word документ успешно обработан');
       
-      // Читаем PDF файл и отправляем
-      const pdfBuffer = fs.readFileSync(tempPdfPath);
+      // Читаем .docx файл и отправляем
+      const docxBuffer = fs.readFileSync(tempDocxPath);
       
       // Очищаем временные файлы
       try {
-        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
       } catch (e) {
         console.error('Ошибка очистки временных файлов:', e);
       }
       
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.pdf"`);
-      res.send(pdfBuffer);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="rko_${documentNumber}.docx"`);
+      res.send(docxBuffer);
       
       } catch (error) {
       console.error('Ошибка выполнения Python скрипта:', error);
       // Очищаем временные файлы при ошибке
       try {
-        if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
       } catch (e) {}
       
       return res.status(500).json({
         success: false,
-        error: error.message || 'Ошибка при генерации РКО PDF'
+        error: error.message || 'Ошибка при генерации РКО'
       });
     }
     
@@ -1468,5 +1479,37 @@ function convertAmountToWords(amount) {
   const kopecksStr = kopecks.toString().padStart(2, '0');
   return `${rublesWord} ${rubleWord} ${kopecksStr} копеек`;
 }
+
+// Endpoint для редактора координат
+app.get('/rko_coordinates_editor.html', (req, res) => {
+  res.sendFile('/var/www/html/rko_coordinates_editor.html');
+});
+
+// Endpoint для координат HTML
+app.get('/coordinates.html', (req, res) => {
+  res.sendFile('/var/www/html/coordinates.html');
+});
+
+// Endpoint для тестового PDF
+app.get('/test_rko_corrected.pdf', (req, res) => {
+  res.sendFile('/var/www/html/test_rko_corrected.pdf');
+});
+
+// Endpoint для изображения шаблона
+app.get('/rko_template.jpg', (req, res) => {
+  res.sendFile('/var/www/html/rko_template.jpg');
+});
+
+// Endpoint для финального тестового PDF
+app.get('/test_rko_final.pdf', (req, res) => {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.sendFile('/var/www/html/test_rko_final.pdf');
+});
+
+// Endpoint для нового тестового PDF с исправленными координатами
+app.get('/test_rko_new_coords.pdf', (req, res) => {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.sendFile('/var/www/html/test_rko_new_coords.pdf');
+});
 
 app.listen(3000, () => console.log("Proxy listening on port 3000"));

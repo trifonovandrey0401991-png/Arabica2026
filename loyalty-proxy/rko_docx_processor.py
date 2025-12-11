@@ -7,163 +7,131 @@
 import sys
 import json
 import os
+import re
 from docx import Document
 from datetime import datetime
 
 def process_rko_template(template_path, output_path, data):
     """
-    Обрабатывает шаблон РКО .docx и заменяет поля
+    Обрабатывает шаблон РКО .docx и заменяет плейсхолдеры {field_name} на реальные данные
     
     Args:
         template_path: путь к шаблону .docx
         output_path: путь для сохранения отредактированного .docx
-        data: словарь с данными для замены
+        data: словарь с данными для замены (ключи соответствуют плейсхолдерам)
     """
     try:
         # Загружаем шаблон
         doc = Document(template_path)
         
-        # Заменяем поля в параграфах
-        for para in doc.paragraphs:
-            text = para.text
-            
-            # Номер документа
-            if '173' in text:
-                text = text.replace('173', str(data.get('doc_number', '')))
-            
-            # Дата составления
-            if '02.12.2025' in text:
-                text = text.replace('02.12.2025', data.get('date', ''))
-            
-            # ФИО сотрудника
-            if 'Бородина Ирина Валентиновна' in text:
-                text = text.replace('Бородина Ирина Валентиновна', data.get('employee_name', ''))
-            
-            # Тип РКО
-            if 'Зароботная плата' in text:
-                text = text.replace('Зароботная плата', data.get('rko_type', ''))
-            elif 'Зароботная' in text:
-                # Заменяем только если есть "плата" рядом
-                if 'плата' in text:
-                    text = text.replace('Зароботная', data.get('rko_type', '').split()[0] if data.get('rko_type') else 'Зароботная')
-                    text = text.replace('плата', data.get('rko_type', '').split()[1] if data.get('rko_type') and len(data.get('rko_type', '').split()) > 1 else 'плата')
-            
-            # Сумма прописью
-            if 'одна тысяча рублей 00 копеек' in text:
-                text = text.replace('одна тысяча рублей 00 копеек', data.get('amount_words', ''))
-            
-            # Адрес магазина (полный)
-            if 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )' in text:
-                text = text.replace('Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', data.get('shop_address', ''))
-            elif 'Лермонтов,пр' in text and 'Лермонтова 1стр1' in text:
-                # Заменяем части адреса
-                text = text.replace('Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', data.get('shop_address', ''))
-            
-            # Директор и ИНН (полный)
-            if 'Горовой Роман Владимирович ИНН: 263201995651' in text:
-                text = text.replace('Горовой Роман Владимирович ИНН: 263201995651', data.get('director_inn', ''))
-            elif 'Горовой Роман Владимирович' in text and 'ИНН:' in text:
-                # Заменяем имя директора
-                text = text.replace('Горовой Роман Владимирович', data.get('director_name', ''))
-                # Заменяем ИНН
-                if '263201995651' in text:
-                    text = text.replace('263201995651', data.get('inn', ''))
-            
-            # Паспортные данные
-            if '0724' in text:
-                text = text.replace('0724', data.get('passport_series', ''))
-            if '248651' in text:
-                text = text.replace('248651', data.get('passport_number', ''))
-            if 'ГУ МВД РОССИИ ПО СТАВРОПОЛЬСКОМУ КРАЮ' in text:
-                text = text.replace('ГУ МВД РОССИИ ПО СТАВРОПОЛЬСКОМУ КРАЮ', data.get('passport_issued', ''))
-            if '11.04.2025' in text and 'Дата выдачи' in text:
-                text = text.replace('11.04.2025', data.get('passport_date', ''))
-            
-            para.text = text
+        # Маппинг плейсхолдеров из шаблона в данные системы
+        # Поддерживаем оба формата: старый (field_name) и новый (FIELD_NAME)
+        placeholder_mapping = {
+            # Новые плейсхолдеры (из заполненного шаблона)
+            'FIO': 'fio_receiver',
+            'BASIS': 'basis',
+            'AMOUNT_WORDS': 'amount_text',
+            'RECEIVED_DATE': 'date_text',
+            'PASSPORT': 'passport_info',
+            'PASSPORT2': 'passport_issuer',
+            'IP_SHORT': 'head_name',  # Короткое имя директора с инициалами
+            'IP': 'org_name',  # Полное имя директора (будет обработано отдельно для извлечения только имени)
+            'INN': 'inn',  # Только ИНН
+            'DOC_ID': 'doc_number',
+            'DATE': 'doc_date',
+            'AMOUNT': 'amount_numeric',
+            'SHOP': 'shop_address',  # Адрес без префикса "Фактический адрес:"
+            # Старые плейсхолдеры (для обратной совместимости)
+            'org_name': 'org_name',
+            'org_address': 'org_address',
+            'shop_address': 'shop_address',
+            'doc_number': 'doc_number',
+            'doc_date': 'doc_date',
+            'amount_numeric': 'amount_numeric',
+            'fio_receiver': 'fio_receiver',
+            'basis': 'basis',
+            'amount_text': 'amount_text',
+            'attachment': 'attachment',
+            'head_position': 'head_position',
+            'head_name': 'head_name',
+            'receiver_amount_text': 'receiver_amount_text',
+            'date_text': 'date_text',
+            'passport_info': 'passport_info',
+            'passport_issuer': 'passport_issuer',
+            'cashier_name': 'cashier_name',
+        }
         
-        # Заменяем поля в таблицах
-        # Таблица 1: Номер документа и дата
-        if len(doc.tables) > 1:
-            table1 = doc.tables[1]
-            if len(table1.rows) > 1:
-                # Номер документа
-                if len(table1.rows[1].cells) > 0:
-                    cell = table1.rows[1].cells[0]
-                    if '173' in cell.text:
-                        cell.text = cell.text.replace('173', str(data.get('doc_number', '')))
+        # Извлекаем ИНН из org_name, если нужно
+        if 'inn' not in data and 'org_name' in data:
+            inn_match = re.search(r'ИНН:\s*(\d+)', data.get('org_name', ''))
+            if inn_match:
+                data['inn'] = inn_match.group(1)
+        
+        # Извлекаем только имя ИП из org_name для плейсхолдера {IP}
+        if 'org_name' in data:
+            org_name_full = data['org_name']
+            # Убираем "ИНН: ..." для получения только имени
+            ip_name = re.sub(r'\s*ИНН:\s*\d+.*', '', org_name_full).strip()
+            data['ip_name'] = ip_name
+        
+        # Функция для замены плейсхолдеров в тексте
+        def replace_placeholders(text):
+            """Заменяет все плейсхолдеры {field_name} или {{field_name}} на значения из data"""
+            # Ищем все плейсхолдеры в формате {field_name} или {{field_name}}
+            # Сначала обрабатываем двойные скобки {{...}}, потом одинарные {...}
+            pattern_double = r'\{\{(\w+)\}\}'
+            pattern_single = r'\{(\w+)\}'
+            
+            # Заменяем двойные скобки
+            matches_double = re.findall(pattern_double, text)
+            for placeholder_name in matches_double:
+                placeholder = f'{{{{{placeholder_name}}}}}'
+                # Получаем ключ данных через маппинг
+                data_key = placeholder_mapping.get(placeholder_name, placeholder_name)
+                value = data.get(data_key, '')  # Если поле не найдено, заменяем на пустую строку
                 
-                # Дата
-                if len(table1.rows[1].cells) > 1:
-                    cell = table1.rows[1].cells[1]
-                    if '02.12.2025' in cell.text:
-                        cell.text = cell.text.replace('02.12.2025', data.get('date', ''))
+                # Специальная обработка для {IP} - используем только имя без ИНН
+                if placeholder_name == 'IP' and 'ip_name' in data:
+                    value = data['ip_name']
+                
+                text = text.replace(placeholder, str(value))
+            
+            # Заменяем одинарные скобки
+            matches_single = re.findall(pattern_single, text)
+            for placeholder_name in matches_single:
+                placeholder = f'{{{placeholder_name}}}'
+                # Получаем ключ данных через маппинг
+                data_key = placeholder_mapping.get(placeholder_name, placeholder_name)
+                value = data.get(data_key, '')  # Если поле не найдено, заменяем на пустую строку
+                
+                # Специальная обработка для {IP} - используем только имя без ИНН
+                if placeholder_name == 'IP' and 'ip_name' in data:
+                    value = data['ip_name']
+                
+                text = text.replace(placeholder, str(value))
+            
+            return text
         
-        # Таблица 2: Сумма
-        if len(doc.tables) > 2:
-            table2 = doc.tables[2]
-            if len(table2.rows) > 2:
-                if len(table2.rows[2].cells) > 3:
-                    cell = table2.rows[2].cells[3]
-                    if '1000' in cell.text:
-                        cell.text = cell.text.replace('1000', str(data.get('amount', '')))
-        
-        # Таблица 0: Директор, ИНН, адрес
-        if len(doc.tables) > 0:
-            table0 = doc.tables[0]
-            for row in table0.rows:
-                for cell in row.cells:
-                    cell_text = cell.text
-                    # Директор и ИНН (полный)
-                    if 'Горовой Роман Владимирович ИНН: 263201995651' in cell_text:
-                        cell.text = cell_text.replace('Горовой Роман Владимирович ИНН: 263201995651', data.get('director_inn', ''))
-                    elif 'Горовой Роман Владимирович' in cell_text:
-                        cell.text = cell_text.replace('Горовой Роман Владимирович', data.get('director_name', ''))
-                    if '263201995651' in cell_text:
-                        cell.text = cell_text.replace('263201995651', data.get('inn', ''))
-                    
-                    # Адрес (в той же ячейке, после директора)
-                    if 'Фактический адрес: Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )' in cell_text:
-                        cell.text = cell_text.replace('Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', data.get('shop_address', ''))
-                    elif 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )' in cell_text:
-                        cell.text = cell_text.replace('Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', data.get('shop_address', ''))
-        
-        # Дополнительные замены в параграфах
+        # Заменяем плейсхолдеры в параграфах
         for para in doc.paragraphs:
-            text = para.text
-            
-            # Адрес магазина (в параграфе "Фактический адрес")
-            if 'Фактический адрес' in text:
-                # Заменяем адрес после "Фактический адрес:"
-                if 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )' in text:
-                    text = text.replace('Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', data.get('shop_address', ''))
-                elif 'Лермонтов,пр' in text:
-                    # Находим и заменяем адрес
-                    import re
-                    pattern = r'Лермонтов,пр[^\n]*Остановке[^\)]*\)'
-                    if re.search(pattern, text):
-                        text = re.sub(pattern, data.get('shop_address', ''), text)
-            
-            # Короткое имя директора (Горовой Р. В.)
-            if 'Горовой Р. В.' in text:
-                # Извлекаем короткое имя из полного
-                director_short = data.get('director_short_name', '')
-                if director_short:
-                    text = text.replace('Горовой Р. В.', director_short)
-            
-            # Дата в "Получил" (2 декабря 2025 г.)
-            if '2 декабря 2025 г.' in text:
-                date_words = data.get('date_words', '')
-                if date_words:
-                    text = text.replace('2 декабря 2025 г.', date_words)
-            elif 'декабря 2025' in text:
-                # Более общий паттерн
-                import re
-                pattern = r'\d+\s+декабря\s+\d+\s+г\.'
-                date_words = data.get('date_words', '')
-                if date_words:
-                    text = re.sub(pattern, date_words, text)
-            
-            para.text = text
+            original_text = para.text
+            new_text = replace_placeholders(original_text)
+            if new_text != original_text:
+                # Очищаем параграф и добавляем новый текст
+                para.clear()
+                para.add_run(new_text)
+        
+        # Заменяем плейсхолдеры в таблицах
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    # Обрабатываем параграфы внутри ячейки
+                    for para in cell.paragraphs:
+                        original_text = para.text
+                        new_text = replace_placeholders(original_text)
+                        if new_text != original_text:
+                            para.clear()
+                            para.add_run(new_text)
         
         # Сохраняем отредактированный документ
         doc.save(output_path)
