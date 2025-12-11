@@ -113,8 +113,12 @@ def process_rko_template(template_path, output_path, data):
             return text
         
         # Функция для замены плейсхолдеров в параграфе с сохранением структуры
+        # УЛУЧШЕННАЯ ВЕРСИЯ: НЕ использует para.clear(), что сохраняет выравнивание, отступы и табуляцию
         def replace_in_paragraph(para):
-            """Заменяет плейсхолдеры в параграфе, сохраняя структуру и форматирование"""
+            """
+            УЛУЧШЕННАЯ версия: заменяет плейсхолдеры БЕЗ использования para.clear()
+            Это сохраняет ВСЮ структуру параграфа: выравнивание, отступы, табуляцию
+            """
             # Собираем весь текст параграфа
             full_text = para.text
             
@@ -125,46 +129,50 @@ def process_rko_template(template_path, output_path, data):
             # Заменяем плейсхолдеры в тексте
             new_text = replace_placeholders(full_text)
             
-            # Если текст изменился, заменяем содержимое
-            if new_text != full_text:
-                # Пытаемся заменить текст внутри существующих runs, чтобы максимально сохранить структуру
-                # Находим run, который содержит плейсхолдер
-                placeholder_found = False
-                for run in para.runs:
-                    if re.search(r'\{(\w+)\}', run.text):
-                        # Заменяем плейсхолдеры в этом run
-                        run_text = run.text
-                        new_run_text = replace_placeholders(run_text)
-                        if new_run_text != run_text:
-                            run.text = new_run_text
-                            placeholder_found = True
+            # Если текст не изменился, ничего не делаем
+            if new_text == full_text:
+                return
+            
+            # КЛЮЧЕВОЕ ОТЛИЧИЕ: НЕ используем para.clear()!
+            # Вместо этого заменяем текст внутри существующих runs
+            
+            # Сначала пытаемся заменить в каждом run отдельно
+            for run in para.runs:
+                if re.search(r'\{(\w+)\}', run.text):
+                    run_text = run.text
+                    new_run_text = replace_placeholders(run_text)
+                    if new_run_text != run_text:
+                        run.text = new_run_text
+                        # После замены проверяем, что весь параграф заменен
+                        if para.text == new_text:
+                            return
+            
+            # Если плейсхолдер разбит на несколько runs или замена неполная,
+            # заменяем весь текст первого run, остальные очищаем (но НЕ удаляем параграф!)
+            if para.runs:
+                # Сохраняем форматирование первого run
+                first_run = para.runs[0]
+                saved_formatting = {
+                    'name': first_run.font.name,
+                    'size': first_run.font.size,
+                    'bold': first_run.font.bold,
+                    'italic': first_run.font.italic,
+                }
                 
-                # Если не нашли плейсхолдер в runs (может быть разбит на несколько runs),
-                # или если замена не удалась, используем стандартный метод
-                if not placeholder_found or para.text != new_text:
-                    # Сохраняем форматирование первого run (если есть)
-                    saved_formatting = None
-                    if para.runs:
-                        first_run = para.runs[0]
-                        saved_formatting = {
-                            'name': first_run.font.name,
-                            'size': first_run.font.size,
-                            'bold': first_run.font.bold,
-                            'italic': first_run.font.italic,
-                        }
-                    
-                    # Очищаем параграф и добавляем новый текст
-                    para.clear()
-                    new_run = para.add_run(new_text)
-                    
-                    # Восстанавливаем форматирование (если было сохранено)
-                    if saved_formatting:
-                        if saved_formatting['name']:
-                            new_run.font.name = saved_formatting['name']
-                        if saved_formatting['size']:
-                            new_run.font.size = saved_formatting['size']
-                        new_run.font.bold = saved_formatting['bold']
-                        new_run.font.italic = saved_formatting['italic']
+                # Заменяем текст первого run
+                first_run.text = new_text
+                
+                # Очищаем остальные runs (но НЕ удаляем их и НЕ очищаем параграф!)
+                for run in para.runs[1:]:
+                    run.text = ''
+                
+                # Восстанавливаем форматирование
+                if saved_formatting['name']:
+                    first_run.font.name = saved_formatting['name']
+                if saved_formatting['size']:
+                    first_run.font.size = saved_formatting['size']
+                first_run.font.bold = saved_formatting['bold']
+                first_run.font.italic = saved_formatting['italic']
         
         # Заменяем плейсхолдеры в параграфах
         for para in doc.paragraphs:
