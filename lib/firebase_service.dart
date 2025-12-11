@@ -84,7 +84,7 @@ class FirebaseService {
       try {
         messaging = _getMessaging();
       } catch (e) {
-        Logger.warning('Ошибка получения FirebaseMessaging, повторная попытка...', e);
+        Logger.error('Ошибка получения FirebaseMessaging, повторная попытка...', e);
         // Небольшая задержка только при ошибке
         await Future.delayed(const Duration(milliseconds: 500));
         messaging = _getMessaging();
