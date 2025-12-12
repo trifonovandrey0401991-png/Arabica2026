@@ -375,14 +375,14 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                       },
                       calendarFormat: _calendarFormat,
                       startingDayOfWeek: StartingDayOfWeek.monday,
-                      calendarBuilders: CalendarBuilders(
+                      calendarBuilders: CalendarBuilders<KPIShopDayData>(
                         defaultBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
                           return _buildDayCell(
                             context: context,
                             date: date,
-                            events: events,
+                            events: events ?? [],
                             isSelected: false,
                             isToday: false,
                             dayData: dayData,
@@ -395,7 +395,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                           return _buildDayCell(
                             context: context,
                             date: date,
-                            events: events,
+                            events: events ?? [],
                             isSelected: isSelected,
                             isToday: true,
                             dayData: dayData,
@@ -407,7 +407,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                           return _buildDayCell(
                             context: context,
                             date: date,
-                            events: events,
+                            events: events ?? [],
                             isSelected: true,
                             isToday: false,
                             dayData: dayData,
