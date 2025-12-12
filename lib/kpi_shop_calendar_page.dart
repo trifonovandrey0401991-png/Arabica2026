@@ -229,12 +229,12 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     );
   }
 
-  Widget _buildDayCell(
-    BuildContext context,
-    DateTime date,
-    List<KPIShopDayData> events,
-    bool isSelected,
-    bool isToday, {
+  Widget _buildDayCell({
+    required BuildContext context,
+    required DateTime date,
+    required List<KPIShopDayData> events,
+    required bool isSelected,
+    required bool isToday,
     KPIShopDayData? dayData,
   }) {
     // Определяем наличие утренних/вечерних отметок
@@ -379,18 +379,25 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                         defaultBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
-                          return _buildDayCell(context, date, events, false, false, dayData: dayData);
+                          return _buildDayCell(
+                            context: context,
+                            date: date,
+                            events: events,
+                            isSelected: false,
+                            isToday: false,
+                            dayData: dayData,
+                          );
                         },
                         todayBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
                           final isSelected = isSameDay(_selectedDay, date);
                           return _buildDayCell(
-                            context,
-                            date,
-                            events,
-                            isSelected,
-                            true,
+                            context: context,
+                            date: date,
+                            events: events,
+                            isSelected: isSelected,
+                            isToday: true,
                             dayData: dayData,
                           );
                         },
@@ -398,11 +405,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
                           return _buildDayCell(
-                            context,
-                            date,
-                            events,
-                            true,
-                            false,
+                            context: context,
+                            date: date,
+                            events: events,
+                            isSelected: true,
+                            isToday: false,
                             dayData: dayData,
                           );
                         },
