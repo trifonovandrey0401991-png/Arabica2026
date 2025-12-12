@@ -59,7 +59,10 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   child: SingleChildScrollView(
                     child: DataTable(
-                      columnSpacing: 20,
+                      columnSpacing: 12,
+                      headingRowHeight: 40,
+                      dataRowMinHeight: 36,
+                      dataRowMaxHeight: 36,
                       headingRowColor: MaterialStateColor.resolveWith(
                         (states) => const Color(0xFF004D40).withOpacity(0.1),
                       ),
@@ -67,58 +70,93 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                         DataColumn(
                           label: Text(
                             'ФИО',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         DataColumn(
                           label: Text(
                             'Приход',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         DataColumn(
                           label: Text(
-                            'Пересменка',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            'Смена',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         DataColumn(
                           label: Text(
                             'Пересчет',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         DataColumn(
                           label: Text(
                             'РКО',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
                       rows: tableRows.map((row) {
                         return DataRow(
                           cells: [
-                            DataCell(Text(row.employeeName)),
-                            DataCell(Text(row.attendanceTime ?? '-')),
+                            DataCell(
+                              Text(
+                                row.employeeName,
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                row.attendanceTime ?? '-',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: row.attendanceTime != null 
+                                      ? Colors.green 
+                                      : Colors.grey,
+                                  fontWeight: row.attendanceTime != null 
+                                      ? FontWeight.bold 
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
                             DataCell(
                               Icon(
                                 row.hasShift ? Icons.check : Icons.close,
                                 color: row.hasShift ? Colors.green : Colors.red,
-                                size: 20,
+                                size: 18,
                               ),
                             ),
                             DataCell(
                               Icon(
                                 row.hasRecount ? Icons.check : Icons.close,
                                 color: row.hasRecount ? Colors.green : Colors.red,
-                                size: 20,
+                                size: 18,
                               ),
                             ),
                             DataCell(
                               Icon(
                                 row.hasRKO ? Icons.check : Icons.close,
                                 color: row.hasRKO ? Colors.green : Colors.red,
-                                size: 20,
+                                size: 18,
                               ),
                             ),
                           ],
@@ -139,6 +177,8 @@ class KPIShopDayDetailDialog extends StatelessWidget {
     );
   }
 }
+
+
 
 
 

@@ -40,6 +40,11 @@ class KPIService {
         shopAddress: shopAddress,
         date: normalizedDate,
       );
+      
+      Logger.debug('📊 Загружено отметок прихода: ${attendanceRecords.length}');
+      if (attendanceRecords.isNotEmpty) {
+        Logger.debug('   Первая отметка: ${attendanceRecords.first.employeeName} в ${attendanceRecords.first.timestamp}');
+      }
 
       // Получаем пересменки за день (из локальных данных)
       // Пересменки хранятся локально, но нужно проверить, есть ли API endpoint
@@ -82,6 +87,7 @@ class KPIService {
       // Добавляем данные из отметок прихода
       for (var record in attendanceRecords) {
         final key = record.employeeName;
+        Logger.debug('   Обработка отметки: $key в ${record.timestamp}');
         if (!employeesDataMap.containsKey(key)) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
@@ -89,18 +95,29 @@ class KPIService {
             shopAddress: shopAddress,
             attendanceTime: record.timestamp,
           );
+          Logger.debug('   ✅ Создана новая запись для $key с временем прихода');
         } else {
+          // Обновляем время прихода, если его еще нет или если новое время раньше
+          final existingTime = employeesDataMap[key]!.attendanceTime;
+          final newTime = record.timestamp;
+          final finalTime = existingTime == null || newTime.isBefore(existingTime) 
+              ? newTime 
+              : existingTime;
+          
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
             employeeName: record.employeeName,
             shopAddress: shopAddress,
-            attendanceTime: record.timestamp,
+            attendanceTime: finalTime,
             hasShift: employeesDataMap[key]!.hasShift,
             hasRecount: employeesDataMap[key]!.hasRecount,
             hasRKO: employeesDataMap[key]!.hasRKO,
           );
+          Logger.debug('   ✅ Обновлена запись для $key с временем прихода: $finalTime');
         }
       }
+      
+      Logger.debug('📊 Всего уникальных сотрудников после обработки прихода: ${employeesDataMap.length}');
 
       // Добавляем данные из пересменок
       for (var shift in dayShifts) {
