@@ -104,35 +104,53 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
         previousMonth = DateTime(now.year, now.month - 1, 1);
       }
 
-      // Загружаем данные за текущий месяц
+      // Собираем все даты для загрузки
+      final datesToLoad = <DateTime>[];
+      
+      // Добавляем даты текущего месяца
       for (int day = 1; day <= 31; day++) {
-        try {
-          final date = DateTime(currentMonth.year, currentMonth.month, day);
-          if (date.month != currentMonth.month) break;
-          
-          final dayData = await KPIService.getShopDayData(
-            _selectedShop!.address,
-            date,
-          );
-          _dayDataCache[date] = dayData;
-        } catch (e) {
-          Logger.warning('Ошибка загрузки данных за $day число');
+        final date = DateTime(currentMonth.year, currentMonth.month, day);
+        if (date.month != currentMonth.month) break;
+        // Загружаем только если данных еще нет
+        if (!_dayDataCache.containsKey(date)) {
+          datesToLoad.add(date);
         }
       }
 
-      // Загружаем данные за предыдущий месяц
+      // Добавляем даты предыдущего месяца
       for (int day = 1; day <= 31; day++) {
-        try {
-          final date = DateTime(previousMonth.year, previousMonth.month, day);
-          if (date.month != previousMonth.month) break;
-          
-          final dayData = await KPIService.getShopDayData(
+        final date = DateTime(previousMonth.year, previousMonth.month, day);
+        if (date.month != previousMonth.month) break;
+        // Загружаем только если данных еще нет
+        if (!_dayDataCache.containsKey(date)) {
+          datesToLoad.add(date);
+        }
+      }
+
+      // Загружаем данные параллельно (пакетами по 5 для снижения нагрузки)
+      const batchSize = 5;
+      for (int i = 0; i < datesToLoad.length; i += batchSize) {
+        final batch = datesToLoad.skip(i).take(batchSize).toList();
+        final results = await Future.wait(
+          batch.map((date) => KPIService.getShopDayData(
             _selectedShop!.address,
             date,
-          );
-          _dayDataCache[date] = dayData;
-        } catch (e) {
-          Logger.warning('Ошибка загрузки данных за $day число');
+          ).catchError((e) {
+            Logger.warning('Ошибка загрузки данных за ${date.year}-${date.month}-${date.day}');
+            return null;
+          })),
+        );
+
+        // Сохраняем результаты в кэш
+        for (int j = 0; j < batch.length; j++) {
+          if (results[j] != null) {
+            _dayDataCache[batch[j]] = results[j]!;
+          }
+        }
+
+        // Обновляем UI после каждого пакета
+        if (mounted) {
+          setState(() {});
         }
       }
 
@@ -173,7 +191,10 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
   Future<void> _loadDayData(DateTime date) async {
     if (_selectedShop == null) return;
 
-    setState(() => _isLoading = true);
+    // Показываем индикатор загрузки только если данных совсем нет
+    if (_dayDataCache.isEmpty) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       final dayData = await KPIService.getShopDayData(
@@ -192,6 +213,8 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       Logger.error('Ошибка загрузки данных за день', e);
       if (mounted) {
         setState(() => _isLoading = false);
+        // Показываем диалог даже при ошибке (может быть пустым)
+        _showDayDetail(date);
       }
     }
   }
@@ -244,13 +267,15 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                       selectedDayPredicate: (day) {
                         return isSameDay(_selectedDay, day);
                       },
-                      eventLoader: (day) {
-                        final dayData = _dayDataCache[day];
-                        if (dayData != null && dayData.employeesWorkedCount > 0) {
-                          return [dayData];
-                        }
-                        return [];
-                      },
+                        eventLoader: (day) {
+                          // Нормализуем дату для поиска в кэше
+                          final normalizedDay = DateTime(day.year, day.month, day.day);
+                          final dayData = _dayDataCache[normalizedDay];
+                          if (dayData != null && dayData.employeesWorkedCount > 0) {
+                            return [dayData];
+                          }
+                          return [];
+                        },
                       calendarFormat: _calendarFormat,
                       startingDayOfWeek: StartingDayOfWeek.monday,
                       calendarStyle: CalendarStyle(

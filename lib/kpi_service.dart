@@ -22,20 +22,23 @@ class KPIService {
     DateTime date,
   ) async {
     try {
+      // Нормализуем дату (убираем время)
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      
       // Проверяем кэш
-      final cacheKey = 'kpi_shop_day_${shopAddress}_${date.year}_${date.month}_${date.day}';
+      final cacheKey = 'kpi_shop_day_${shopAddress}_${normalizedDate.year}_${normalizedDate.month}_${normalizedDate.day}';
       final cached = CacheManager.get<KPIShopDayData>(cacheKey);
       if (cached != null) {
         Logger.debug('KPI данные магазина загружены из кэша');
         return cached;
       }
 
-      Logger.debug('Загрузка KPI данных для магазина $shopAddress за ${date.year}-${date.month}-${date.day}');
+      Logger.debug('Загрузка KPI данных для магазина $shopAddress за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
 
       // Получаем отметки прихода за день
       final attendanceRecords = await AttendanceService.getAttendanceRecords(
         shopAddress: shopAddress,
-        date: date,
+        date: normalizedDate,
       );
 
       // Получаем пересменки за день (из локальных данных)
@@ -48,15 +51,14 @@ class KPIService {
           shift.createdAt.month,
           shift.createdAt.day,
         );
-        final targetDate = DateTime(date.year, date.month, date.day);
-        return shiftDate == targetDate && 
+        return shiftDate == normalizedDate && 
                shift.shopAddress.toLowerCase() == shopAddress.toLowerCase();
       }).toList();
 
       // Получаем пересчеты за день
       final recounts = await RecountService.getReports(
         shopAddress: shopAddress,
-        date: date,
+        date: normalizedDate,
       );
 
       // Получаем РКО за день (нужно получить список и отфильтровать)
@@ -70,8 +72,7 @@ class KPIService {
             rko.date.month,
             rko.date.day,
           );
-          final targetDate = DateTime(date.year, date.month, date.day);
-          return rkoDate == targetDate;
+          return rkoDate == normalizedDate;
         }));
       }
 
@@ -83,14 +84,14 @@ class KPIService {
         final key = record.employeeName;
         if (!employeesDataMap.containsKey(key)) {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: record.employeeName,
             shopAddress: shopAddress,
             attendanceTime: record.timestamp,
           );
         } else {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: record.employeeName,
             shopAddress: shopAddress,
             attendanceTime: record.timestamp,
@@ -106,14 +107,14 @@ class KPIService {
         final key = shift.employeeName;
         if (!employeesDataMap.containsKey(key)) {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: shift.employeeName,
             shopAddress: shopAddress,
             hasShift: true,
           );
         } else {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: shift.employeeName,
             shopAddress: shopAddress,
             attendanceTime: employeesDataMap[key]!.attendanceTime,
@@ -129,14 +130,14 @@ class KPIService {
         final key = recount.employeeName;
         if (!employeesDataMap.containsKey(key)) {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: recount.employeeName,
             shopAddress: shopAddress,
             hasRecount: true,
           );
         } else {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: recount.employeeName,
             shopAddress: shopAddress,
             attendanceTime: employeesDataMap[key]!.attendanceTime,
@@ -152,14 +153,14 @@ class KPIService {
         final key = rko.employeeName;
         if (!employeesDataMap.containsKey(key)) {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: rko.employeeName,
             shopAddress: shopAddress,
             hasRKO: true,
           );
         } else {
           employeesDataMap[key] = KPIDayData(
-            date: date,
+            date: normalizedDate,
             employeeName: rko.employeeName,
             shopAddress: shopAddress,
             attendanceTime: employeesDataMap[key]!.attendanceTime,
@@ -171,7 +172,7 @@ class KPIService {
       }
 
       final result = KPIShopDayData(
-        date: date,
+        date: normalizedDate,
         shopAddress: shopAddress,
         employeesData: employeesDataMap.values.toList(),
       );

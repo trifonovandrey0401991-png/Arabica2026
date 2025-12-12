@@ -53,12 +53,6 @@ class _KPIEmployeeDetailPageState extends State<KPIEmployeeDetailPage> {
     }
   }
 
-  List<KPIDayData> get _sortedDaysData {
-    if (_employeeData == null) return [];
-    return _employeeData!.daysData.values.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
   List<KPIDayData> get _currentMonthData {
     if (_employeeData == null) return [];
     final now = DateTime.now();
