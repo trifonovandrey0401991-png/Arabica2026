@@ -25,22 +25,22 @@ class KPIService {
       // Нормализуем дату (убираем время)
       final normalizedDate = DateTime(date.year, date.month, date.day);
       
-      // Проверяем, не является ли это текущей или недавней датой (в пределах последних 7 дней)
+      // Для всех дат проверяем кэш, но для недавних дат (последние 7 дней) всегда очищаем кэш перед загрузкой
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final daysDiff = normalizedDate.difference(today).inDays;
       
-      // Для текущей и недавних дат (последние 7 дней) не используем кэш, чтобы видеть свежие данные
       final cacheKey = 'kpi_shop_day_${shopAddress}_${normalizedDate.year}_${normalizedDate.month}_${normalizedDate.day}';
+      
+      // Для недавних дат (последние 7 дней) всегда очищаем кэш, чтобы видеть свежие данные
       if (daysDiff >= -7 && daysDiff <= 0) {
-        // Очищаем кэш для недавних дат
         CacheManager.remove(cacheKey);
-        Logger.debug('🔄 Кэш очищен для недавней даты: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+        Logger.debug('🔄 Кэш очищен для недавней даты: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day} (разница: $daysDiff дней)');
       } else {
-        // Для старых дат используем кэш
+        // Для старых дат используем кэш, если он есть
         final cached = CacheManager.get<KPIShopDayData>(cacheKey);
         if (cached != null) {
-          Logger.debug('KPI данные магазина загружены из кэша');
+          Logger.debug('KPI данные магазина загружены из кэша для даты: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
           return cached;
         }
       }
@@ -58,12 +58,36 @@ class KPIService {
       
       Logger.debug('📊 Загружено отметок прихода: ${attendanceRecords.length}');
       if (attendanceRecords.isNotEmpty) {
+        Logger.debug('   📋 Список всех отметок:');
         for (var record in attendanceRecords) {
-          Logger.debug('   ✅ Отметка: ${record.employeeName} в ${record.timestamp} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')})');
+          final recordDate = DateTime(record.timestamp.year, record.timestamp.month, record.timestamp.day);
+          final isSameDate = recordDate == normalizedDate;
+          Logger.debug('   ✅ Отметка: ${record.employeeName} в ${record.timestamp} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}), дата записи: ${recordDate.year}-${recordDate.month}-${recordDate.day}, совпадает с запрошенной: $isSameDate, магазин: ${record.shopAddress}');
         }
       } else {
         Logger.debug('   ⚠️ Отметок прихода не найдено для этой даты');
       }
+
+      // Фильтруем отметки по дате и магазину (на случай, если API вернул лишние данные)
+      // Нормализуем адрес магазина для сравнения (убираем лишние пробелы, приводим к нижнему регистру)
+      final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+      Logger.debug('   🔍 Нормализованный адрес магазина для фильтрации: "$normalizedShopAddress"');
+      
+      final filteredAttendanceRecords = attendanceRecords.where((record) {
+        final recordDate = DateTime(record.timestamp.year, record.timestamp.month, record.timestamp.day);
+        final isSameDate = recordDate == normalizedDate;
+        final normalizedRecordAddress = record.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+        final isSameShop = normalizedRecordAddress == normalizedShopAddress;
+        
+        if (!isSameDate || !isSameShop) {
+          Logger.debug('   ⚠️ Отметка отфильтрована: ${record.employeeName}, дата: ${recordDate.year}-${recordDate.month}-${recordDate.day} (совпадает: $isSameDate), магазин: "${record.shopAddress}" (нормализован: "$normalizedRecordAddress", совпадает: $isSameShop)');
+        } else {
+          Logger.debug('   ✅ Отметка прошла фильтрацию: ${record.employeeName}, дата: ${recordDate.year}-${recordDate.month}-${recordDate.day}, магазин: "${record.shopAddress}"');
+        }
+        return isSameDate && isSameShop;
+      }).toList();
+      
+      Logger.debug('📊 После фильтрации осталось отметок: ${filteredAttendanceRecords.length}');
 
       // Получаем пересменки за день (из локальных данных)
       // Пересменки хранятся локально, но нужно проверить, есть ли API endpoint
@@ -107,7 +131,7 @@ class KPIService {
       const int eveningBoundaryHour = 15;
 
       // Добавляем данные из отметок прихода
-      for (var record in attendanceRecords) {
+      for (var record in filteredAttendanceRecords) {
         final key = record.employeeName.trim(); // Убираем пробелы для нормализации
         final recordTime = record.timestamp;
         final isMorning = recordTime.hour < eveningBoundaryHour;
@@ -241,8 +265,20 @@ class KPIService {
       Logger.debug('   Сотрудников: ${result.employeesWorkedCount}');
       Logger.debug('   Утренние отметки: ${result.hasMorningAttendance}');
       Logger.debug('   Вечерние отметки: ${result.hasEveningAttendance}');
-      for (var emp in result.employeesData) {
-        Logger.debug('   - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}');
+      Logger.debug('   Всего записей сотрудников: ${result.employeesData.length}');
+      if (result.employeesData.isEmpty) {
+        Logger.debug('   ⚠️ ВНИМАНИЕ: Список сотрудников пуст!');
+        Logger.debug('   📋 Обработано отметок прихода: ${filteredAttendanceRecords.length}');
+        if (filteredAttendanceRecords.isNotEmpty) {
+          Logger.debug('   📋 Детали отметок:');
+          for (var record in filteredAttendanceRecords) {
+            Logger.debug('      - ${record.employeeName} в ${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}');
+          }
+        }
+      } else {
+        for (var emp in result.employeesData) {
+          Logger.debug('   - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
+        }
       }
 
       // Сохраняем в кэш

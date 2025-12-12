@@ -166,6 +166,8 @@ class AttendanceService {
       }
 
       url += params.join('&');
+      
+      Logger.debug('📥 Запрос отметок прихода: $url');
 
       final response = await http.get(Uri.parse(url)).timeout(
         const Duration(seconds: 15), // Уменьшено с 30 до 15
@@ -173,12 +175,17 @@ class AttendanceService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        Logger.debug('📥 Ответ API: success=${result['success']}, records count=${(result['records'] as List<dynamic>?)?.length ?? 0}');
         if (result['success'] == true) {
           final recordsJson = result['records'] as List<dynamic>;
-          return recordsJson
+          final records = recordsJson
               .map((json) => AttendanceRecord.fromJson(json))
               .toList();
+          Logger.debug('📥 Загружено отметок: ${records.length}');
+          return records;
         }
+      } else {
+        Logger.warning('📥 Ошибка API: statusCode=${response.statusCode}, body=${response.body}');
       }
 
       return [];
