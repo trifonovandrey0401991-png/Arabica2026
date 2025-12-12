@@ -379,7 +379,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                         defaultBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
-                          final eventsList = (events as List<KPIShopDayData>?) ?? <KPIShopDayData>[];
+                          // Безопасное приведение типа для events
+                          List<KPIShopDayData> eventsList = [];
+                          if (events is List<KPIShopDayData>) {
+                            eventsList = events;
+                          }
                           return _buildDayCell(
                             context: context,
                             date: date,
@@ -393,7 +397,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
                           final isSelected = isSameDay(_selectedDay, date);
-                          final eventsList = (events as List<KPIShopDayData>?) ?? <KPIShopDayData>[];
+                          // Безопасное приведение типа для events
+                          List<KPIShopDayData> eventsList = [];
+                          if (events is List<KPIShopDayData>) {
+                            eventsList = events;
+                          }
                           return _buildDayCell(
                             context: context,
                             date: date,
@@ -406,7 +414,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                         selectedBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
-                          final eventsList = (events as List<KPIShopDayData>?) ?? <KPIShopDayData>[];
+                          // Безопасное приведение типа для events
+                          List<KPIShopDayData> eventsList = [];
+                          if (events is List<KPIShopDayData>) {
+                            eventsList = events;
+                          }
                           return _buildDayCell(
                             context: context,
                             date: date,
