@@ -420,15 +420,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Тестирование - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.quiz, 'Тестирование', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
-        );
-      }));
-    }
+    // Тест - доступно для всех ролей
+    items.add(_tile(context, Icons.science, 'Тест', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
+      );
+    }));
 
     // Я на работе - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
