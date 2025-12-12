@@ -72,17 +72,21 @@ class KPIService {
       // Нормализуем адрес магазина для сравнения (убираем лишние пробелы, приводим к нижнему регистру)
       final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
       Logger.debug('   🔍 Нормализованный адрес магазина для фильтрации: "$normalizedShopAddress"');
+      Logger.debug('   🔍 Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
       
       final filteredAttendanceRecords = attendanceRecords.where((record) {
+        // Нормализуем дату отметки (убираем время)
         final recordDate = DateTime(record.timestamp.year, record.timestamp.month, record.timestamp.day);
-        final isSameDate = recordDate == normalizedDate;
+        final isSameDate = recordDate.year == normalizedDate.year && 
+                          recordDate.month == normalizedDate.month && 
+                          recordDate.day == normalizedDate.day;
         final normalizedRecordAddress = record.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         final isSameShop = normalizedRecordAddress == normalizedShopAddress;
         
         if (!isSameDate || !isSameShop) {
-          Logger.debug('   ⚠️ Отметка отфильтрована: ${record.employeeName}, дата: ${recordDate.year}-${recordDate.month}-${recordDate.day} (совпадает: $isSameDate), магазин: "${record.shopAddress}" (нормализован: "$normalizedRecordAddress", совпадает: $isSameShop)');
+          Logger.debug('   ⚠️ Отметка отфильтрована: ${record.employeeName}, дата отметки: ${recordDate.year}-${recordDate.month}-${recordDate.day}, запрошенная дата: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day} (совпадает: $isSameDate), магазин: "${record.shopAddress}" (нормализован: "$normalizedRecordAddress", совпадает: $isSameShop)');
         } else {
-          Logger.debug('   ✅ Отметка прошла фильтрацию: ${record.employeeName}, дата: ${recordDate.year}-${recordDate.month}-${recordDate.day}, магазин: "${record.shopAddress}"');
+          Logger.debug('   ✅ Отметка прошла фильтрацию: ${record.employeeName}, дата: ${recordDate.year}-${recordDate.month}-${recordDate.day}, магазин: "${record.shopAddress}", время: ${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}');
         }
         return isSameDate && isSameShop;
       }).toList();
@@ -261,6 +265,20 @@ class KPIService {
       );
 
       // Логирование для отладки
+      final isTargetDate = normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12;
+      if (isTargetDate) {
+        Logger.debug('🔍 === СПЕЦИАЛЬНАЯ ПРОВЕРКА ДЛЯ 12.12.2025 ===');
+        Logger.debug('   📋 Загружено отметок прихода: ${attendanceRecords.length}');
+        Logger.debug('   📋 После фильтрации: ${filteredAttendanceRecords.length}');
+        Logger.debug('   📋 Пересменок: ${dayShifts.length}');
+        Logger.debug('   📋 Пересчетов: ${recounts.length}');
+        Logger.debug('   📋 РКО: ${dayRKOs.length}');
+        Logger.debug('   📋 Всего записей сотрудников в employeesDataMap: ${employeesDataMap.length}');
+        for (var entry in employeesDataMap.entries) {
+          Logger.debug('      - ${entry.key}: утро=${entry.value.hasMorningAttendance}, вечер=${entry.value.hasEveningAttendance}, время=${entry.value.attendanceTime?.hour}:${entry.value.attendanceTime?.minute.toString().padLeft(2, '0')}');
+        }
+      }
+      
       Logger.debug('📊 KPIShopDayData создан: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
       Logger.debug('   Сотрудников: ${result.employeesWorkedCount}');
       Logger.debug('   Утренние отметки: ${result.hasMorningAttendance}');
@@ -279,6 +297,11 @@ class KPIService {
         for (var emp in result.employeesData) {
           Logger.debug('   - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
         }
+      }
+      
+      if (isTargetDate) {
+        Logger.debug('🔍 === КОНЕЦ ПРОВЕРКИ ДЛЯ 12.12.2025 ===');
+        Logger.debug('   ✅ ИТОГОВЫЕ ФЛАГИ: утро=${result.hasMorningAttendance}, вечер=${result.hasEveningAttendance}');
       }
 
       // Сохраняем в кэш

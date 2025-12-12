@@ -143,7 +143,18 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
         // Сохраняем результаты в кэш
         for (int j = 0; j < batch.length; j++) {
           if (results[j] != null) {
-            _dayDataCache[batch[j]] = results[j]!;
+            final date = batch[j];
+            final isTargetDate = date.year == 2025 && date.month == 12 && date.day == 12;
+            final normalizedDate = DateTime(date.year, date.month, date.day);
+            _dayDataCache[normalizedDate] = results[j]!;
+            if (isTargetDate) {
+              Logger.debug('🔍 === Сохранение в кэш для 12.12.2025 ===');
+              Logger.debug('   Ключ в кэше: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+              Logger.debug('   employeesWorkedCount: ${results[j]!.employeesWorkedCount}');
+              Logger.debug('   hasMorningAttendance: ${results[j]!.hasMorningAttendance}');
+              Logger.debug('   hasEveningAttendance: ${results[j]!.hasEveningAttendance}');
+              Logger.debug('   === КОНЕЦ сохранения в кэш для 12.12.2025 ===');
+            }
           }
         }
 
@@ -208,6 +219,15 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       );
 
       if (mounted) {
+        final isTargetDate = normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12;
+        if (isTargetDate) {
+          Logger.debug('🔍 === Сохранение в кэш при загрузке дня для 12.12.2025 ===');
+          Logger.debug('   Ключ в кэше: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+          Logger.debug('   employeesWorkedCount: ${dayData.employeesWorkedCount}');
+          Logger.debug('   hasMorningAttendance: ${dayData.hasMorningAttendance}');
+          Logger.debug('   hasEveningAttendance: ${dayData.hasEveningAttendance}');
+          Logger.debug('   === КОНЕЦ сохранения в кэш для 12.12.2025 ===');
+        }
         setState(() {
           _dayDataCache[normalizedDate] = dayData;
           _isLoading = false;
@@ -246,15 +266,37 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     bool hasMorning = false;
     bool hasEvening = false;
     
+    final isTargetDate = date.year == 2025 && date.month == 12 && date.day == 12;
+    
     if (dayData != null) {
       hasMorning = dayData.hasMorningAttendance;
       hasEvening = dayData.hasEveningAttendance;
+      if (isTargetDate) {
+        Logger.debug('🔍 === ОТРИСОВКА 12.12.2025 ===');
+        Logger.debug('   dayData не null');
+        Logger.debug('   Сотрудников: ${dayData.employeesWorkedCount}');
+        Logger.debug('   Утро: $hasMorning, Вечер: $hasEvening');
+        Logger.debug('   Всего записей сотрудников: ${dayData.employeesData.length}');
+        for (var emp in dayData.employeesData) {
+          Logger.debug('      - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}');
+        }
+        Logger.debug('   === КОНЕЦ ОТРИСОВКИ 12.12.2025 ===');
+      }
       Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: dayData не null, утро=$hasMorning, вечер=$hasEvening, сотрудников=${dayData.employeesWorkedCount}');
     } else if (events.isNotEmpty) {
       hasMorning = events.first.hasMorningAttendance;
       hasEvening = events.first.hasEveningAttendance;
+      if (isTargetDate) {
+        Logger.debug('🔍 === ОТРИСОВКА 12.12.2025 (через events) ===');
+        Logger.debug('   events не пуст');
+        Logger.debug('   Утро: $hasMorning, Вечер: $hasEvening');
+        Logger.debug('   === КОНЕЦ ОТРИСОВКИ 12.12.2025 ===');
+      }
       Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: используем events, утро=$hasMorning, вечер=$hasEvening');
     } else {
+      if (isTargetDate) {
+        Logger.debug('🔍 === ОТРИСОВКА 12.12.2025: НЕТ ДАННЫХ ===');
+      }
       Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: нет данных');
     }
 
@@ -348,7 +390,19 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                       eventLoader: (day) {
                         // Нормализуем дату для поиска в кэше
                         final normalizedDay = DateTime(day.year, day.month, day.day);
+                        final isTargetDate = normalizedDay.year == 2025 && normalizedDay.month == 12 && normalizedDay.day == 12;
                         final dayData = _dayDataCache[normalizedDay];
+                        if (isTargetDate) {
+                          Logger.debug('🔍 === eventLoader для 12.12.2025 ===');
+                          Logger.debug('   normalizedDay: ${normalizedDay.year}-${normalizedDay.month}-${normalizedDay.day}');
+                          Logger.debug('   dayData в кэше: ${dayData != null}');
+                          if (dayData != null) {
+                            Logger.debug('   employeesWorkedCount: ${dayData.employeesWorkedCount}');
+                            Logger.debug('   hasMorningAttendance: ${dayData.hasMorningAttendance}');
+                            Logger.debug('   hasEveningAttendance: ${dayData.hasEveningAttendance}');
+                          }
+                          Logger.debug('   === КОНЕЦ eventLoader для 12.12.2025 ===');
+                        }
                         if (dayData != null && dayData.employeesWorkedCount > 0) {
                           return [dayData];
                         }
