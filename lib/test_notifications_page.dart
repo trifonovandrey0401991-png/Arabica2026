@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'order_provider.dart';
 import 'notification_service.dart';
 import 'employees_page.dart';
@@ -36,7 +37,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   String? _kpiSelectedEmployee;
   String? _kpiSelectedShop;
   DateTime _kpiSelectedDate = DateTime.now();
-  TimeOfDay _kpiSelectedTime = TimeOfDay.now();
+  final TextEditingController _timeController = TextEditingController();
   List<EmployeeRegistration> _allEmployees = [];
   List<Shop> _allShops = [];
   bool _loadingKpiData = false;
@@ -47,8 +48,15 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   @override
   void initState() {
     super.initState();
+    _timeController.text = '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}';
     _loadEmployees();
     _loadKpiData();
+  }
+
+  @override
+  void dispose() {
+    _timeController.dispose();
+    super.dispose();
   }
 
   // ========== Загрузка данных ==========
@@ -231,14 +239,29 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     }
   }
 
-  Future<void> _selectKpiTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _kpiSelectedTime,
-    );
-    if (picked != null) {
-      setState(() => _kpiSelectedTime = picked);
+  TimeOfDay? _parseTime(String timeStr) {
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length != 2) return null;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) return null;
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (e) {
+      return null;
     }
+  }
+
+  String? _validateTime(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Введите время';
+    }
+    final time = _parseTime(value);
+    if (time == null) {
+      return 'Неверный формат. Используйте HH:mm (например, 14:30)';
+    }
+    return null;
   }
 
   Future<bool> _createTestAttendance() async {
@@ -362,13 +385,26 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         }
       }).toList();
 
+      // Парсим время из текстового поля
+      final time = _parseTime(_timeController.text);
+      if (time == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Неверный формат времени. Используйте HH:mm (например, 14:30)'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _creatingShift = false);
+        return false;
+      }
+
       // Создаем DateTime из выбранных даты и времени
       final dateTime = DateTime(
         _kpiSelectedDate.year,
         _kpiSelectedDate.month,
         _kpiSelectedDate.day,
-        _kpiSelectedTime.hour,
-        _kpiSelectedTime.minute,
+        time.hour,
+        time.minute,
       );
 
       // Создаем отчет
@@ -434,13 +470,26 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       // Выбираем 30 вопросов по алгоритму
       final selectedQuestions = RecountQuestion.selectQuestions(allQuestions);
 
+      // Парсим время из текстового поля
+      final time = _parseTime(_timeController.text);
+      if (time == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Неверный формат времени. Используйте HH:mm (например, 14:30)'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _creatingRecount = false);
+        return false;
+      }
+
       // Создаем DateTime из выбранных даты и времени
       final dateTime = DateTime(
         _kpiSelectedDate.year,
         _kpiSelectedDate.month,
         _kpiSelectedDate.day,
-        _kpiSelectedTime.hour,
-        _kpiSelectedTime.minute,
+        time.hour,
+        time.minute,
       );
 
       final startedAt = dateTime;
@@ -748,24 +797,37 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                 ),
                 const SizedBox(height: 16),
                 // Выбор даты
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _selectKpiDate,
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(_formatDate(_kpiSelectedDate)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _selectKpiTime,
-                        icon: const Icon(Icons.access_time),
-                        label: Text(_kpiSelectedTime.format(context)),
-                      ),
-                    ),
+                OutlinedButton.icon(
+                  onPressed: _selectKpiDate,
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(_formatDate(_kpiSelectedDate)),
+                ),
+                const SizedBox(height: 16),
+                // Ввод времени вручную (24-часовой формат)
+                TextFormField(
+                  controller: _timeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Время (24-часовой формат)',
+                    hintText: 'HH:mm (например, 14:30)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.access_time),
+                    helperText: 'Введите время в формате ЧЧ:мм (00:00 - 23:59)',
+                  ),
+                  keyboardType: TextInputType.datetime,
+                  validator: _validateTime,
+                  inputFormatters: [
+                    // Ограничиваем ввод только цифрами и двоеточием
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
                   ],
+                  onChanged: (value) {
+                    // Автоматически добавляем двоеточие после ввода 2 цифр
+                    if (value.length == 2 && !value.contains(':')) {
+                      _timeController.value = TextEditingValue(
+                        text: '$value:',
+                        selection: TextSelection.collapsed(offset: 3),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 24),
                 // Кнопки создания тестовых данных
