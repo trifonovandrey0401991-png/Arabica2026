@@ -25,25 +25,44 @@ class KPIService {
       // Нормализуем дату (убираем время)
       final normalizedDate = DateTime(date.year, date.month, date.day);
       
-      // Проверяем кэш
+      // Проверяем, не является ли это текущей или недавней датой (в пределах последних 7 дней)
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final daysDiff = normalizedDate.difference(today).inDays;
+      
+      // Для текущей и недавних дат (последние 7 дней) не используем кэш, чтобы видеть свежие данные
       final cacheKey = 'kpi_shop_day_${shopAddress}_${normalizedDate.year}_${normalizedDate.month}_${normalizedDate.day}';
-      final cached = CacheManager.get<KPIShopDayData>(cacheKey);
-      if (cached != null) {
-        Logger.debug('KPI данные магазина загружены из кэша');
-        return cached;
+      if (daysDiff >= -7 && daysDiff <= 0) {
+        // Очищаем кэш для недавних дат
+        CacheManager.remove(cacheKey);
+        Logger.debug('🔄 Кэш очищен для недавней даты: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      } else {
+        // Для старых дат используем кэш
+        final cached = CacheManager.get<KPIShopDayData>(cacheKey);
+        if (cached != null) {
+          Logger.debug('KPI данные магазина загружены из кэша');
+          return cached;
+        }
       }
 
       Logger.debug('Загрузка KPI данных для магазина $shopAddress за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
 
       // Получаем отметки прихода за день
+      // Создаем дату с временем 00:00:00 для правильной фильтрации на сервере
+      final dateForQuery = DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 0, 0, 0);
+      Logger.debug('📥 Запрос отметок прихода для $shopAddress за ${dateForQuery.toIso8601String()}');
       final attendanceRecords = await AttendanceService.getAttendanceRecords(
         shopAddress: shopAddress,
-        date: normalizedDate,
+        date: dateForQuery,
       );
       
       Logger.debug('📊 Загружено отметок прихода: ${attendanceRecords.length}');
       if (attendanceRecords.isNotEmpty) {
-        Logger.debug('   Первая отметка: ${attendanceRecords.first.employeeName} в ${attendanceRecords.first.timestamp}');
+        for (var record in attendanceRecords) {
+          Logger.debug('   ✅ Отметка: ${record.employeeName} в ${record.timestamp} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')})');
+        }
+      } else {
+        Logger.debug('   ⚠️ Отметок прихода не найдено для этой даты');
       }
 
       // Получаем пересменки за день (из локальных данных)
