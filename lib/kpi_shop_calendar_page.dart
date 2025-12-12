@@ -379,10 +379,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                         defaultBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
+                          final eventsList = (events as List<KPIShopDayData>?) ?? <KPIShopDayData>[];
                           return _buildDayCell(
                             context: context,
                             date: date,
-                            events: events ?? [],
+                            events: eventsList,
                             isSelected: false,
                             isToday: false,
                             dayData: dayData,
@@ -392,10 +393,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
                           final isSelected = isSameDay(_selectedDay, date);
+                          final eventsList = (events as List<KPIShopDayData>?) ?? <KPIShopDayData>[];
                           return _buildDayCell(
                             context: context,
                             date: date,
-                            events: events ?? [],
+                            events: eventsList,
                             isSelected: isSelected,
                             isToday: true,
                             dayData: dayData,
@@ -404,10 +406,11 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                         selectedBuilder: (context, date, events) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
+                          final eventsList = (events as List<KPIShopDayData>?) ?? <KPIShopDayData>[];
                           return _buildDayCell(
                             context: context,
                             date: date,
-                            events: events ?? [],
+                            events: eventsList,
                             isSelected: true,
                             isToday: false,
                             dayData: dayData,
