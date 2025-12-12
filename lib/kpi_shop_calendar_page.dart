@@ -376,14 +376,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                       calendarFormat: _calendarFormat,
                       startingDayOfWeek: StartingDayOfWeek.monday,
                       calendarBuilders: CalendarBuilders<KPIShopDayData>(
-                        defaultBuilder: (context, date, events) {
+                        defaultBuilder: (context, date, focusedDay) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
-                          // Безопасное приведение типа для events
-                          List<KPIShopDayData> eventsList = [];
-                          if (events is List<KPIShopDayData>) {
-                            eventsList = events;
-                          }
+                          // Получаем события из кэша (как в eventLoader)
+                          final eventsList = dayData != null && dayData.employeesWorkedCount > 0
+                              ? [dayData]
+                              : <KPIShopDayData>[];
                           return _buildDayCell(
                             context: context,
                             date: date,
@@ -393,15 +392,14 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                             dayData: dayData,
                           );
                         },
-                        todayBuilder: (context, date, events) {
+                        todayBuilder: (context, date, focusedDay) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
                           final isSelected = isSameDay(_selectedDay, date);
-                          // Безопасное приведение типа для events
-                          List<KPIShopDayData> eventsList = [];
-                          if (events is List<KPIShopDayData>) {
-                            eventsList = events;
-                          }
+                          // Получаем события из кэша (как в eventLoader)
+                          final eventsList = dayData != null && dayData.employeesWorkedCount > 0
+                              ? [dayData]
+                              : <KPIShopDayData>[];
                           return _buildDayCell(
                             context: context,
                             date: date,
@@ -411,14 +409,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                             dayData: dayData,
                           );
                         },
-                        selectedBuilder: (context, date, events) {
+                        selectedBuilder: (context, date, focusedDay) {
                           final normalizedDay = DateTime(date.year, date.month, date.day);
                           final dayData = _dayDataCache[normalizedDay];
-                          // Безопасное приведение типа для events
-                          List<KPIShopDayData> eventsList = [];
-                          if (events is List<KPIShopDayData>) {
-                            eventsList = events;
-                          }
+                          // Получаем события из кэша (как в eventLoader)
+                          final eventsList = dayData != null && dayData.employeesWorkedCount > 0
+                              ? [dayData]
+                              : <KPIShopDayData>[];
                           return _buildDayCell(
                             context: context,
                             date: date,
