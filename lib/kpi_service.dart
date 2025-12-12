@@ -83,46 +83,61 @@ class KPIService {
 
       // Агрегируем данные по сотрудникам
       final Map<String, KPIDayData> employeesDataMap = {};
+      
+      // Константа для границы между утром и вечером (15:00)
+      const int eveningBoundaryHour = 15;
 
       // Добавляем данные из отметок прихода
       for (var record in attendanceRecords) {
-        final key = record.employeeName;
-        Logger.debug('   Обработка отметки: $key в ${record.timestamp}');
+        final key = record.employeeName.trim(); // Убираем пробелы для нормализации
+        final recordTime = record.timestamp;
+        final isMorning = recordTime.hour < eveningBoundaryHour;
+        final isEvening = recordTime.hour >= eveningBoundaryHour;
+        
+        Logger.debug('   Обработка отметки: "$key" в ${recordTime.hour}:${recordTime.minute.toString().padLeft(2, '0')} (${isMorning ? "утро" : "вечер"})');
+        
         if (!employeesDataMap.containsKey(key)) {
+          // Создаем новую запись
+          final earliestTime = recordTime;
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
             employeeName: record.employeeName,
             shopAddress: shopAddress,
-            attendanceTime: record.timestamp,
+            attendanceTime: earliestTime,
+            hasMorningAttendance: isMorning,
+            hasEveningAttendance: isEvening,
           );
-          Logger.debug('   ✅ Создана новая запись для $key с временем прихода');
+          Logger.debug('   ✅ Создана новая запись для "$key" с временем прихода: ${earliestTime.hour}:${earliestTime.minute.toString().padLeft(2, '0')}');
         } else {
-          // Обновляем время прихода, если его еще нет или если новое время раньше
-          final existingTime = employeesDataMap[key]!.attendanceTime;
-          final newTime = record.timestamp;
-          final finalTime = existingTime == null || newTime.isBefore(existingTime) 
-              ? newTime 
-              : existingTime;
+          // Обновляем существующую запись
+          final existing = employeesDataMap[key]!;
+          final earliestTime = existing.attendanceTime == null || recordTime.isBefore(existing.attendanceTime!)
+              ? recordTime
+              : existing.attendanceTime!;
           
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
             employeeName: record.employeeName,
             shopAddress: shopAddress,
-            attendanceTime: finalTime,
-            hasShift: employeesDataMap[key]!.hasShift,
-            hasRecount: employeesDataMap[key]!.hasRecount,
-            hasRKO: employeesDataMap[key]!.hasRKO,
+            attendanceTime: earliestTime,
+            hasMorningAttendance: existing.hasMorningAttendance || isMorning,
+            hasEveningAttendance: existing.hasEveningAttendance || isEvening,
+            hasShift: existing.hasShift,
+            hasRecount: existing.hasRecount,
+            hasRKO: existing.hasRKO,
           );
-          Logger.debug('   ✅ Обновлена запись для $key с временем прихода: $finalTime');
+          Logger.debug('   ✅ Обновлена запись для "$key": утро=${existing.hasMorningAttendance || isMorning}, вечер=${existing.hasEveningAttendance || isEvening}');
         }
       }
       
       Logger.debug('📊 Всего уникальных сотрудников после обработки прихода: ${employeesDataMap.length}');
+      Logger.debug('   Список сотрудников: ${employeesDataMap.keys.toList()}');
 
       // Добавляем данные из пересменок
       for (var shift in dayShifts) {
-        final key = shift.employeeName;
-        if (!employeesDataMap.containsKey(key)) {
+        final key = shift.employeeName.trim(); // Убираем пробелы для нормализации
+        final existing = employeesDataMap[key];
+        if (existing == null) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
             employeeName: shift.employeeName,
@@ -134,18 +149,21 @@ class KPIService {
             date: normalizedDate,
             employeeName: shift.employeeName,
             shopAddress: shopAddress,
-            attendanceTime: employeesDataMap[key]!.attendanceTime,
+            attendanceTime: existing.attendanceTime,
+            hasMorningAttendance: existing.hasMorningAttendance,
+            hasEveningAttendance: existing.hasEveningAttendance,
             hasShift: true,
-            hasRecount: employeesDataMap[key]!.hasRecount,
-            hasRKO: employeesDataMap[key]!.hasRKO,
+            hasRecount: existing.hasRecount,
+            hasRKO: existing.hasRKO,
           );
         }
       }
 
       // Добавляем данные из пересчетов
       for (var recount in recounts) {
-        final key = recount.employeeName;
-        if (!employeesDataMap.containsKey(key)) {
+        final key = recount.employeeName.trim(); // Убираем пробелы для нормализации
+        final existing = employeesDataMap[key];
+        if (existing == null) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
             employeeName: recount.employeeName,
@@ -157,18 +175,21 @@ class KPIService {
             date: normalizedDate,
             employeeName: recount.employeeName,
             shopAddress: shopAddress,
-            attendanceTime: employeesDataMap[key]!.attendanceTime,
-            hasShift: employeesDataMap[key]!.hasShift,
+            attendanceTime: existing.attendanceTime,
+            hasMorningAttendance: existing.hasMorningAttendance,
+            hasEveningAttendance: existing.hasEveningAttendance,
+            hasShift: existing.hasShift,
             hasRecount: true,
-            hasRKO: employeesDataMap[key]!.hasRKO,
+            hasRKO: existing.hasRKO,
           );
         }
       }
 
       // Добавляем данные из РКО
       for (var rko in dayRKOs) {
-        final key = rko.employeeName;
-        if (!employeesDataMap.containsKey(key)) {
+        final key = rko.employeeName.trim(); // Убираем пробелы для нормализации
+        final existing = employeesDataMap[key];
+        if (existing == null) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
             employeeName: rko.employeeName,
@@ -180,9 +201,11 @@ class KPIService {
             date: normalizedDate,
             employeeName: rko.employeeName,
             shopAddress: shopAddress,
-            attendanceTime: employeesDataMap[key]!.attendanceTime,
-            hasShift: employeesDataMap[key]!.hasShift,
-            hasRecount: employeesDataMap[key]!.hasRecount,
+            attendanceTime: existing.attendanceTime,
+            hasMorningAttendance: existing.hasMorningAttendance,
+            hasEveningAttendance: existing.hasEveningAttendance,
+            hasShift: existing.hasShift,
+            hasRecount: existing.hasRecount,
             hasRKO: true,
           );
         }

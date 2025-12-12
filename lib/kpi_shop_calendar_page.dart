@@ -229,6 +229,103 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     );
   }
 
+  Widget _buildDayCell(
+    BuildContext context,
+    DateTime date,
+    List<KPIShopDayData> events,
+    bool isSelected,
+    bool isToday, {
+    KPIShopDayData? dayData,
+  }) {
+    // Определяем наличие утренних/вечерних отметок
+    bool hasMorning = false;
+    bool hasEvening = false;
+    
+    if (dayData != null) {
+      hasMorning = dayData.hasMorningAttendance;
+      hasEvening = dayData.hasEveningAttendance;
+    } else if (events.isNotEmpty) {
+      hasMorning = events.first.hasMorningAttendance;
+      hasEvening = events.first.hasEveningAttendance;
+    }
+
+    // Определяем цвета
+    Color backgroundColor = Colors.white;
+    Color textColor = Colors.black;
+    
+    if (isSelected) {
+      backgroundColor = const Color(0xFF004D40);
+      textColor = Colors.white;
+    } else if (isToday) {
+      backgroundColor = Colors.blue.withOpacity(0.3);
+    }
+
+    // Создаем контейнер с кругом
+    return Container(
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: backgroundColor,
+        border: Border.all(
+          color: hasMorning || hasEvening ? Colors.green : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Зеленая левая половина (утро)
+          if (hasMorning && !hasEvening)
+            Positioned.fill(
+              child: ClipPath(
+                clipper: HalfCircleClipper(isLeft: true),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            )
+          else if (hasMorning && hasEvening)
+            // Весь круг зеленый, если есть обе отметки
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+              ),
+            ),
+          // Зеленая правая половина (вечер) - только если нет утренней
+          if (hasEvening && !hasMorning)
+            Positioned.fill(
+              child: ClipPath(
+                clipper: HalfCircleClipper(isLeft: false),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          // Текст с числом
+          Center(
+            child: Text(
+              '${date.day}',
+              style: TextStyle(
+                color: (hasMorning || hasEvening) && !isSelected
+                    ? Colors.white
+                    : textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -267,31 +364,57 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                       selectedDayPredicate: (day) {
                         return isSameDay(_selectedDay, day);
                       },
-                        eventLoader: (day) {
-                          // Нормализуем дату для поиска в кэше
-                          final normalizedDay = DateTime(day.year, day.month, day.day);
-                          final dayData = _dayDataCache[normalizedDay];
-                          if (dayData != null && dayData.employeesWorkedCount > 0) {
-                            return [dayData];
-                          }
-                          return [];
-                        },
+                      eventLoader: (day) {
+                        // Нормализуем дату для поиска в кэше
+                        final normalizedDay = DateTime(day.year, day.month, day.day);
+                        final dayData = _dayDataCache[normalizedDay];
+                        if (dayData != null && dayData.employeesWorkedCount > 0) {
+                          return [dayData];
+                        }
+                        return [];
+                      },
                       calendarFormat: _calendarFormat,
                       startingDayOfWeek: StartingDayOfWeek.monday,
+                      calendarBuilders: CalendarBuilders(
+                        defaultBuilder: (context, date, events) {
+                          final normalizedDay = DateTime(date.year, date.month, date.day);
+                          final dayData = _dayDataCache[normalizedDay];
+                          return _buildDayCell(context, date, events, false, false, dayData: dayData);
+                        },
+                        todayBuilder: (context, date, events) {
+                          final normalizedDay = DateTime(date.year, date.month, date.day);
+                          final dayData = _dayDataCache[normalizedDay];
+                          final isSelected = isSameDay(_selectedDay, date);
+                          return _buildDayCell(
+                            context,
+                            date,
+                            events,
+                            isSelected,
+                            true,
+                            dayData: dayData,
+                          );
+                        },
+                        selectedBuilder: (context, date, events) {
+                          final normalizedDay = DateTime(date.year, date.month, date.day);
+                          final dayData = _dayDataCache[normalizedDay];
+                          return _buildDayCell(
+                            context,
+                            date,
+                            events,
+                            true,
+                            false,
+                            dayData: dayData,
+                          );
+                        },
+                        markerBuilder: (context, date, events) {
+                          // Маркеры не нужны, используем цветные круги
+                          return const SizedBox.shrink();
+                        },
+                      ),
                       calendarStyle: CalendarStyle(
-                        todayDecoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        selectedDecoration: const BoxDecoration(
-                          color: Color(0xFF004D40),
-                          shape: BoxShape.circle,
-                        ),
-                        markerDecoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
                         outsideDaysVisible: false,
+                        cellPadding: const EdgeInsets.all(8),
+                        cellMargin: const EdgeInsets.all(2),
                       ),
                       headerStyle: const HeaderStyle(
                         formatButtonVisible: true,
@@ -309,18 +432,87 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
+                      child: Wrap(
+                        spacing: 24,
+                        runSpacing: 8,
                         children: [
-                          Container(
-                            width: 16,
-                            height: 16,
-                            decoration: const BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.green, width: 2),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: ClipPath(
+                                        clipper: HalfCircleClipper(isLeft: true),
+                                        child: Container(
+                                          decoration: const BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Утро (до 15:00)', style: TextStyle(fontSize: 12)),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Text('Рабочий день'),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.green, width: 2),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: ClipPath(
+                                        clipper: HalfCircleClipper(isLeft: false),
+                                        child: Container(
+                                          decoration: const BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Вечер (после 15:00)', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Обе отметки', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -328,5 +520,41 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                 ),
     );
   }
+}
+
+/// Клиппер для отрисовки половины круга
+class HalfCircleClipper extends CustomClipper<Path> {
+  final bool isLeft;
+
+  HalfCircleClipper({required this.isLeft});
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    if (isLeft) {
+      // Левая половина
+      path.addArc(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        -1.5708, // -90 градусов
+        3.14159, // 180 градусов
+      );
+      path.lineTo(0, size.height);
+      path.lineTo(0, 0);
+    } else {
+      // Правая половина
+      path.addArc(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        1.5708, // 90 градусов
+        3.14159, // 180 градусов
+      );
+      path.lineTo(size.width, size.height);
+      path.lineTo(size.width, 0);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(HalfCircleClipper oldClipper) => oldClipper.isLeft != isLeft;
 }
 

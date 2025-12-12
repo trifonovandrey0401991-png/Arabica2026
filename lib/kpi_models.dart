@@ -5,7 +5,9 @@ class KPIDayData {
   final DateTime date;
   final String employeeName;
   final String shopAddress;
-  final DateTime? attendanceTime; // Время прихода
+  final DateTime? attendanceTime; // Время прихода (самое раннее)
+  final bool hasMorningAttendance; // Есть ли отметка до 15:00
+  final bool hasEveningAttendance; // Есть ли отметка после 15:00
   final bool hasShift; // Есть ли пересменка
   final bool hasRecount; // Есть ли пересчет
   final bool hasRKO; // Есть ли РКО
@@ -15,6 +17,8 @@ class KPIDayData {
     required this.employeeName,
     required this.shopAddress,
     this.attendanceTime,
+    this.hasMorningAttendance = false,
+    this.hasEveningAttendance = false,
     this.hasShift = false,
     this.hasRecount = false,
     this.hasRKO = false,
@@ -28,6 +32,8 @@ class KPIDayData {
     'employeeName': employeeName,
     'shopAddress': shopAddress,
     'attendanceTime': attendanceTime?.toIso8601String(),
+    'hasMorningAttendance': hasMorningAttendance,
+    'hasEveningAttendance': hasEveningAttendance,
     'hasShift': hasShift,
     'hasRecount': hasRecount,
     'hasRKO': hasRKO,
@@ -40,6 +46,8 @@ class KPIDayData {
     attendanceTime: json['attendanceTime'] != null 
         ? DateTime.parse(json['attendanceTime']) 
         : null,
+    hasMorningAttendance: json['hasMorningAttendance'] ?? false,
+    hasEveningAttendance: json['hasEveningAttendance'] ?? false,
     hasShift: json['hasShift'] ?? false,
     hasRecount: json['hasRecount'] ?? false,
     hasRKO: json['hasRKO'] ?? false,
@@ -109,6 +117,16 @@ class KPIShopDayData {
   int get employeesWorkedCount {
     return employeesData.where((data) => data.workedToday).length;
   }
+
+  /// Проверить, есть ли утренние отметки в этот день
+  bool get hasMorningAttendance {
+    return employeesData.any((data) => data.hasMorningAttendance);
+  }
+
+  /// Проверить, есть ли вечерние отметки в этот день
+  bool get hasEveningAttendance {
+    return employeesData.any((data) => data.hasEveningAttendance);
+  }
 }
 
 /// Модель для отображения в таблице (для диалога дня)
@@ -144,6 +162,8 @@ class KPIDayTableRow {
     );
   }
 }
+
+
 
 
 
