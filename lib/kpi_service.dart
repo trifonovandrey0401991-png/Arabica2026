@@ -217,6 +217,15 @@ class KPIService {
         employeesData: employeesDataMap.values.toList(),
       );
 
+      // Логирование для отладки
+      Logger.debug('📊 KPIShopDayData создан: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      Logger.debug('   Сотрудников: ${result.employeesWorkedCount}');
+      Logger.debug('   Утренние отметки: ${result.hasMorningAttendance}');
+      Logger.debug('   Вечерние отметки: ${result.hasEveningAttendance}');
+      for (var emp in result.employeesData) {
+        Logger.debug('   - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}');
+      }
+
       // Сохраняем в кэш
       CacheManager.set(cacheKey, result, duration: cacheDuration);
 

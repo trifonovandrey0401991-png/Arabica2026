@@ -249,9 +249,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     if (dayData != null) {
       hasMorning = dayData.hasMorningAttendance;
       hasEvening = dayData.hasEveningAttendance;
+      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: dayData не null, утро=$hasMorning, вечер=$hasEvening, сотрудников=${dayData.employeesWorkedCount}');
     } else if (events.isNotEmpty) {
       hasMorning = events.first.hasMorningAttendance;
       hasEvening = events.first.hasEveningAttendance;
+      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: используем events, утро=$hasMorning, вечер=$hasEvening');
+    } else {
+      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: нет данных');
     }
 
     // Определяем цвета
@@ -265,68 +269,34 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       backgroundColor = Colors.blue.withOpacity(0.3);
     }
 
+    // Логирование для отладки
+    if (hasMorning || hasEvening) {
+      Logger.debug('🎨 Отрисовка ячейки ${date.year}-${date.month}-${date.day}: утро=$hasMorning, вечер=$hasEvening');
+    }
+    
     // Создаем контейнер с кругом
     return Container(
-      margin: const EdgeInsets.all(2),
+      margin: const EdgeInsets.all(6.0),
       decoration: BoxDecoration(
+        color: Colors.white, // Белый фон по умолчанию
         shape: BoxShape.circle,
-        color: backgroundColor,
         border: Border.all(
-          color: hasMorning || hasEvening ? Colors.green : Colors.transparent,
-          width: 2,
+          color: Colors.grey.shade300,
+          width: 1,
         ),
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Зеленая левая половина (утро)
-          if (hasMorning && !hasEvening)
-            Positioned.fill(
-              child: ClipPath(
-                clipper: HalfCircleClipper(isLeft: true),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            )
-          else if (hasMorning && hasEvening)
-            // Весь круг зеленый, если есть обе отметки
-            Container(
-              decoration: const BoxDecoration(
-                color: Colors.green,
-                shape: BoxShape.circle,
-              ),
-            ),
-          // Зеленая правая половина (вечер) - только если нет утренней
-          if (hasEvening && !hasMorning)
-            Positioned.fill(
-              child: ClipPath(
-                clipper: HalfCircleClipper(isLeft: false),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ),
-          // Текст с числом
-          Center(
-            child: Text(
-              '${date.day}',
-              style: TextStyle(
-                color: (hasMorning || hasEvening) && !isSelected
-                    ? Colors.white
-                    : textColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+      child: CustomPaint(
+        painter: _HalfCirclePainter(hasMorning: hasMorning, hasEvening: hasEvening),
+        child: Center(
+          child: Text(
+            '${date.day}',
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -394,6 +364,12 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                           final eventsList = dayData != null && dayData.employeesWorkedCount > 0
                               ? [dayData]
                               : <KPIShopDayData>[];
+                          
+                          // Логирование для отладки
+                          if (dayData != null && dayData.employeesWorkedCount > 0) {
+                            Logger.debug('📅 Календарь: ${date.year}-${date.month}-${date.day}, утро=${dayData.hasMorningAttendance}, вечер=${dayData.hasEveningAttendance}, сотрудников=${dayData.employeesWorkedCount}');
+                          }
+                          
                           return _buildDayCell(
                             context: context,
                             date: date,
@@ -549,6 +525,39 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                   ],
                 ),
     );
+  }
+}
+
+/// Painter для отрисовки половины круга
+class _HalfCirclePainter extends CustomPainter {
+  final bool hasMorning;
+  final bool hasEvening;
+
+  _HalfCirclePainter({required this.hasMorning, required this.hasEvening});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.green;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    if (hasMorning && hasEvening) {
+      // Весь круг зеленый
+      canvas.drawCircle(center, radius, paint);
+    } else if (hasMorning) {
+      // Левая половина (утро)
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawArc(rect, -1.5708, 3.14159, true, paint); // -90 до 90 градусов
+    } else if (hasEvening) {
+      // Правая половина (вечер)
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawArc(rect, 1.5708, 3.14159, true, paint); // 90 до 270 градусов
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HalfCirclePainter oldDelegate) {
+    return hasMorning != oldDelegate.hasMorning || hasEvening != oldDelegate.hasEvening;
   }
 }
 
