@@ -490,5 +490,19 @@ class KPIService {
     CacheManager.clear();
     Logger.debug('Кэш KPI данных очищен');
   }
+  
+  /// Очистить кэш для конкретной даты и магазина
+  static void clearCacheForDate(String shopAddress, DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final cacheKey = 'kpi_shop_day_${shopAddress}_${normalizedDate.year}_${normalizedDate.month}_${normalizedDate.day}';
+    CacheManager.remove(cacheKey);
+    Logger.debug('Кэш KPI данных очищен для $shopAddress за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+  }
+  
+  /// Очистить весь кэш KPI для магазина
+  static void clearCacheForShop(String shopAddress) {
+    CacheManager.clearByPattern('kpi_shop_day_${shopAddress}_');
+    Logger.debug('Кэш KPI данных очищен для магазина $shopAddress');
+  }
 }
 

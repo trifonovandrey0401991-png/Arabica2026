@@ -33,6 +33,16 @@ class CacheManager {
     _memoryCache.clear();
   }
   
+  /// Удалить конкретную запись из кэша
+  static void remove(String key) {
+    _memoryCache.remove(key);
+  }
+  
+  /// Очистить кэш по паттерну ключа
+  static void clearByPattern(String pattern) {
+    _memoryCache.removeWhere((key, entry) => key.contains(pattern));
+  }
+  
   /// Очистить устаревшие записи
   static void clearExpired() {
     final now = DateTime.now();
@@ -62,6 +72,8 @@ class CacheEntry {
   
   CacheEntry({required this.data, required this.expiresAt});
 }
+
+
 
 
 

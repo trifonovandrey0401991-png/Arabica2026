@@ -111,20 +111,19 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       for (int day = 1; day <= 31; day++) {
         final date = DateTime(currentMonth.year, currentMonth.month, day);
         if (date.month != currentMonth.month) break;
-        // Загружаем только если данных еще нет
-        if (!_dayDataCache.containsKey(date)) {
-          datesToLoad.add(date);
-        }
+        datesToLoad.add(date);
       }
 
       // Добавляем даты предыдущего месяца
       for (int day = 1; day <= 31; day++) {
         final date = DateTime(previousMonth.year, previousMonth.month, day);
         if (date.month != previousMonth.month) break;
-        // Загружаем только если данных еще нет
-        if (!_dayDataCache.containsKey(date)) {
-          datesToLoad.add(date);
-        }
+        datesToLoad.add(date);
+      }
+      
+      // Очищаем кэш KPIService для всех дат, которые будем загружать
+      for (final date in datesToLoad) {
+        KPIService.clearCacheForDate(_selectedShop!.address, date);
       }
 
       // Загружаем данные параллельно (пакетами по 5 для снижения нагрузки)
@@ -191,6 +190,12 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
   Future<void> _loadDayData(DateTime date) async {
     if (_selectedShop == null) return;
 
+    // Очищаем кэш для этой даты перед загрузкой
+    KPIService.clearCacheForDate(_selectedShop!.address, date);
+    // Удаляем из локального кэша
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    _dayDataCache.remove(normalizedDate);
+
     // Показываем индикатор загрузки только если данных совсем нет
     if (_dayDataCache.isEmpty) {
       setState(() => _isLoading = true);
@@ -204,17 +209,17 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
 
       if (mounted) {
         setState(() {
-          _dayDataCache[date] = dayData;
+          _dayDataCache[normalizedDate] = dayData;
           _isLoading = false;
         });
-        _showDayDetail(date);
+        _showDayDetail(normalizedDate);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки данных за день', e);
       if (mounted) {
         setState(() => _isLoading = false);
         // Показываем диалог даже при ошибке (может быть пустым)
-        _showDayDetail(date);
+        _showDayDetail(normalizedDate);
       }
     }
   }
@@ -336,7 +341,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
+              // Очищаем локальный кэш
               _dayDataCache.clear();
+              // Очищаем кэш в KPIService для выбранного магазина
+              if (_selectedShop != null) {
+                KPIService.clearCacheForShop(_selectedShop!.address);
+              }
+              // Перезагружаем данные
               _loadMonthData();
             },
           ),
