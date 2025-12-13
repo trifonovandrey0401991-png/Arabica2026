@@ -122,16 +122,53 @@ class KPIService {
       Logger.debug('📋 Ответ API getShopRKOs: ${shopRKOs != null ? "успешно" : "null"}');
       if (shopRKOs != null) {
         Logger.debug('📋 Структура ответа: keys=${shopRKOs.keys.toList()}');
-        Logger.debug('📋 success=${shopRKOs['success']}, items=${shopRKOs['items'] != null ? (shopRKOs['items'] as List?)?.length ?? 0 : "null"}');
+        Logger.debug('📋 success=${shopRKOs['success']}, currentMonth=${(shopRKOs['currentMonth'] as List?)?.length ?? 0}, months=${(shopRKOs['months'] as List?)?.length ?? 0}');
       }
       final dayRKOs = <RKOMetadata>[];
-      if (shopRKOs != null && shopRKOs['items'] != null) {
-        final rkoList = RKOMetadataList.fromJson(shopRKOs);
-        Logger.debug('📋 Всего РКО загружено: ${rkoList.items.length}');
-        if (rkoList.items.isNotEmpty) {
+      if (shopRKOs != null && shopRKOs['success'] == true) {
+        // API возвращает данные в формате: {success: true, currentMonth: [...], months: [{month: "...", items: [...]}, ...]}
+        // Нужно собрать все РКО из currentMonth и из всех months
+        final allRKOs = <RKOMetadata>[];
+        
+        // Добавляем РКО из currentMonth
+        if (shopRKOs['currentMonth'] != null) {
+          final currentMonthList = shopRKOs['currentMonth'] as List<dynamic>;
+          Logger.debug('📋 РКО в currentMonth: ${currentMonthList.length}');
+          for (var rkoJson in currentMonthList) {
+            try {
+              final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
+              allRKOs.add(rko);
+            } catch (e) {
+              Logger.debug('⚠️ Ошибка парсинга РКО из currentMonth: $e');
+            }
+          }
+        }
+        
+        // Добавляем РКО из всех months
+        if (shopRKOs['months'] != null) {
+          final monthsList = shopRKOs['months'] as List<dynamic>;
+          Logger.debug('📋 Месяцев с РКО: ${monthsList.length}');
+          for (var monthData in monthsList) {
+            if (monthData is Map<String, dynamic> && monthData['items'] != null) {
+              final itemsList = monthData['items'] as List<dynamic>;
+              Logger.debug('   📋 РКО в месяце ${monthData['month'] ?? 'unknown'}: ${itemsList.length}');
+              for (var rkoJson in itemsList) {
+                try {
+                  final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
+                  allRKOs.add(rko);
+                } catch (e) {
+                  Logger.debug('⚠️ Ошибка парсинга РКО из months: $e');
+                }
+              }
+            }
+          }
+        }
+        
+        Logger.debug('📋 Всего РКО собрано из всех источников: ${allRKOs.length}');
+        if (allRKOs.isNotEmpty) {
           Logger.debug('   📋 Первые 5 РКО:');
-          for (var i = 0; i < (rkoList.items.length > 5 ? 5 : rkoList.items.length); i++) {
-            final rko = rkoList.items[i];
+          for (var i = 0; i < (allRKOs.length > 5 ? 5 : allRKOs.length); i++) {
+            final rko = allRKOs[i];
             Logger.debug('      ${i + 1}. ${rko.employeeName}, дата: ${rko.date.year}-${rko.date.month}-${rko.date.day}, магазин: "${rko.shopAddress}"');
           }
         }
@@ -140,7 +177,7 @@ class KPIService {
         final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         Logger.debug('   🔍 Нормализованный адрес магазина для фильтрации РКО: "$normalizedShopAddress"');
         
-        dayRKOs.addAll(rkoList.items.where((rko) {
+        dayRKOs.addAll(allRKOs.where((rko) {
           final rkoDate = DateTime(
             rko.date.year,
             rko.date.month,
@@ -156,12 +193,12 @@ class KPIService {
           return isDateMatch && isShopMatch;
         }));
         Logger.debug('📋 РКО после фильтрации по дате и магазину: ${dayRKOs.length}');
-        if (dayRKOs.isEmpty && rkoList.items.isNotEmpty) {
+        if (dayRKOs.isEmpty && allRKOs.isNotEmpty) {
           Logger.debug('   ⚠️ ВНИМАНИЕ: РКО загружены, но ни одно не прошло фильтрацию!');
           Logger.debug('   🔍 Проверка: запрошенная дата=${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}, нормализованный адрес="$normalizedShopAddress"');
         }
       } else {
-        Logger.debug('⚠️ РКО не загружены: shopRKOs=${shopRKOs != null}, items=${shopRKOs?['items'] != null}');
+        Logger.debug('⚠️ РКО не загружены: shopRKOs=${shopRKOs != null}, success=${shopRKOs?['success']}');
         if (shopRKOs != null && shopRKOs['success'] == false) {
           Logger.debug('   ⚠️ API вернул success=false');
         }
