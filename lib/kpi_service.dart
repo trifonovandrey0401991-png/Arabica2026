@@ -434,7 +434,7 @@ class KPIService {
       );
 
       // Логирование для отладки
-      final isTargetDate = normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12;
+      // isTargetDate уже объявлена выше
       if (isTargetDate) {
         Logger.debug('🔍 === СПЕЦИАЛЬНАЯ ПРОВЕРКА ДЛЯ 12.12.2025 ===');
         Logger.debug('   📋 Загружено отметок прихода: ${attendanceRecords.length}');
