@@ -115,14 +115,28 @@ class KPIService {
 
       // Получаем РКО за день (нужно получить список и отфильтровать)
       Logger.debug('📋 Загрузка РКО для магазина: "$shopAddress"');
+      Logger.debug('📋 Запрошенная дата для РКО: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
       final shopRKOs = await RKOReportsService.getShopRKOs(shopAddress);
+      Logger.debug('📋 Ответ API getShopRKOs: ${shopRKOs != null ? "успешно" : "null"}');
+      if (shopRKOs != null) {
+        Logger.debug('📋 Структура ответа: keys=${shopRKOs.keys.toList()}');
+        Logger.debug('📋 success=${shopRKOs['success']}, items=${shopRKOs['items'] != null ? (shopRKOs['items'] as List?)?.length ?? 0 : "null"}');
+      }
       final dayRKOs = <RKOMetadata>[];
       if (shopRKOs != null && shopRKOs['items'] != null) {
         final rkoList = RKOMetadataList.fromJson(shopRKOs);
         Logger.debug('📋 Всего РКО загружено: ${rkoList.items.length}');
+        if (rkoList.items.isNotEmpty) {
+          Logger.debug('   📋 Первые 5 РКО:');
+          for (var i = 0; i < (rkoList.items.length > 5 ? 5 : rkoList.items.length); i++) {
+            final rko = rkoList.items[i];
+            Logger.debug('      ${i + 1}. ${rko.employeeName}, дата: ${rko.date.year}-${rko.date.month}-${rko.date.day}, магазин: "${rko.shopAddress}"');
+          }
+        }
         
         // Нормализуем адрес магазина для сравнения
         final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+        Logger.debug('   🔍 Нормализованный адрес магазина для фильтрации РКО: "$normalizedShopAddress"');
         
         dayRKOs.addAll(rkoList.items.where((rko) {
           final rkoDate = DateTime(
@@ -134,15 +148,21 @@ class KPIService {
           final isDateMatch = rkoDate == normalizedDate;
           final isShopMatch = rkoShopAddress == normalizedShopAddress;
           
-          if (normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12) {
-            Logger.debug('   🔍 РКО: "${rko.employeeName}", дата: ${rkoDate.year}-${rkoDate.month}-${rkoDate.day}, магазин: "${rko.shopAddress}" (нормализован: "$rkoShopAddress"), дата совпадает: $isDateMatch, магазин совпадает: $isShopMatch');
-          }
+          // Логируем для всех РКО, не только для 12.12.2025
+          Logger.debug('   🔍 РКО: "${rko.employeeName}", дата: ${rkoDate.year}-${rkoDate.month}-${rkoDate.day}, магазин: "${rko.shopAddress}" (нормализован: "$rkoShopAddress"), дата совпадает: $isDateMatch, магазин совпадает: $isShopMatch');
           
           return isDateMatch && isShopMatch;
         }));
         Logger.debug('📋 РКО после фильтрации по дате и магазину: ${dayRKOs.length}');
+        if (dayRKOs.isEmpty && rkoList.items.isNotEmpty) {
+          Logger.debug('   ⚠️ ВНИМАНИЕ: РКО загружены, но ни одно не прошло фильтрацию!');
+          Logger.debug('   🔍 Проверка: запрошенная дата=${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}, нормализованный адрес="$normalizedShopAddress"');
+        }
       } else {
         Logger.debug('⚠️ РКО не загружены: shopRKOs=${shopRKOs != null}, items=${shopRKOs?['items'] != null}');
+        if (shopRKOs != null && shopRKOs['success'] == false) {
+          Logger.debug('   ⚠️ API вернул success=false');
+        }
       }
 
       // Агрегируем данные по сотрудникам

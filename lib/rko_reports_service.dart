@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'rko_report_model.dart';
+import 'utils/logger.dart';
 
 class RKOReportsService {
   static const String serverUrl = 'https://arabica26.ru';
@@ -80,19 +81,27 @@ class RKOReportsService {
   static Future<Map<String, dynamic>?> getShopRKOs(String shopAddress) async {
     try {
       final url = '$serverUrl/api/rko/list/shop/${Uri.encodeComponent(shopAddress)}';
+      Logger.debug('📋 Запрос РКО для магазина: "$shopAddress"');
+      Logger.debug('📋 URL: $url');
       final response = await http.get(Uri.parse(url)).timeout(
         const Duration(seconds: 10),
       );
 
+      Logger.debug('📋 Ответ API: statusCode=${response.statusCode}');
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        Logger.debug('📋 Результат: success=${result['success']}, items count=${(result['items'] as List?)?.length ?? 0}');
         if (result['success'] == true) {
           return result;
+        } else {
+          Logger.debug('⚠️ API вернул success=false: ${result['error'] ?? 'неизвестная ошибка'}');
         }
+      } else {
+        Logger.debug('⚠️ HTTP статус не 200: ${response.statusCode}, body: ${response.body}');
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения списка РКО магазина: $e');
+      Logger.error('Ошибка получения списка РКО магазина', e);
       return null;
     }
   }
