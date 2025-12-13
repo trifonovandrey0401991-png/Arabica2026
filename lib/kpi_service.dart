@@ -45,7 +45,9 @@ class KPIService {
         }
       }
 
-      Logger.debug('Загрузка KPI данных для магазина $shopAddress за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      Logger.debug('═══════════════════════════════════════════════════════');
+      Logger.debug('🔄 НАЧАЛО ЗАГРУЗКИ KPI данных для магазина "$shopAddress" за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      Logger.debug('═══════════════════════════════════════════════════════');
 
       // Получаем отметки прихода за день
       // Создаем дату с временем 00:00:00 для правильной фильтрации на сервере
@@ -360,11 +362,13 @@ class KPIService {
         }
       }
       
+      Logger.debug('═══════════════════════════════════════════════════════');
       Logger.debug('📊 KPIShopDayData создан: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
       Logger.debug('   Сотрудников: ${result.employeesWorkedCount}');
       Logger.debug('   Утренние отметки: ${result.hasMorningAttendance}');
       Logger.debug('   Вечерние отметки: ${result.hasEveningAttendance}');
       Logger.debug('   Всего записей сотрудников: ${result.employeesData.length}');
+      Logger.debug('   📋 Загружено РКО: ${dayRKOs.length}');
       if (result.employeesData.isEmpty) {
         Logger.debug('   ⚠️ ВНИМАНИЕ: Список сотрудников пуст!');
         Logger.debug('   📋 Обработано отметок прихода: ${filteredAttendanceRecords.length}');
@@ -375,10 +379,12 @@ class KPIService {
           }
         }
       } else {
+        Logger.debug('   📋 Детали по сотрудникам:');
         for (var emp in result.employeesData) {
-          Logger.debug('   - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
+          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
         }
       }
+      Logger.debug('═══════════════════════════════════════════════════════');
       
       if (isTargetDate) {
         Logger.debug('🔍 === КОНЕЦ ПРОВЕРКИ ДЛЯ 12.12.2025 ===');

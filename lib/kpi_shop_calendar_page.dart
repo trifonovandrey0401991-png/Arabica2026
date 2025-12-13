@@ -244,14 +244,44 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     }
   }
 
-  void _showDayDetail(DateTime date) {
-    final dayData = _dayDataCache[date];
-    if (dayData == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => KPIShopDayDetailDialog(dayData: dayData),
-    );
+  void _showDayDetail(DateTime date) async {
+    // Всегда перезагружаем данные при открытии диалога, чтобы получить актуальные данные с РКО
+    Logger.debug('🔍 Открытие диалога для даты: ${date.year}-${date.month}-${date.day}');
+    if (_selectedShop == null) return;
+    
+    // Очищаем кэш для этой даты перед загрузкой
+    KPIService.clearCacheForDate(_selectedShop!.address, date);
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    _dayDataCache.remove(normalizedDate);
+    
+    try {
+      // Загружаем свежие данные
+      final dayData = await KPIService.getShopDayData(
+        _selectedShop!.address,
+        date,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _dayDataCache[normalizedDate] = dayData;
+        });
+        
+        showDialog(
+          context: context,
+          builder: (context) => KPIShopDayDetailDialog(dayData: dayData),
+        );
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки данных для диалога', e);
+      // Показываем диалог с данными из кэша, если они есть
+      final cachedDayData = _dayDataCache[normalizedDate];
+      if (cachedDayData != null && mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => KPIShopDayDetailDialog(dayData: cachedDayData),
+        );
+      }
+    }
   }
 
   Widget _buildDayCell({
