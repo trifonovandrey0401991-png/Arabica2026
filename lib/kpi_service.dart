@@ -116,8 +116,15 @@ class KPIService {
       );
 
       // Получаем РКО за день (нужно получить список и отфильтровать)
+      final isTargetDate = normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12;
+      if (isTargetDate) {
+        Logger.debug('═══════════════════════════════════════════════════════');
+        Logger.debug('🔍 СПЕЦИАЛЬНЫЙ АНАЛИЗ ДЛЯ 12.12.2025');
+        Logger.debug('═══════════════════════════════════════════════════════');
+      }
       Logger.debug('📋 Загрузка РКО для магазина: "$shopAddress"');
       Logger.debug('📋 Запрошенная дата для РКО: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      Logger.debug('📋 normalizedDate объект: ${normalizedDate.toIso8601String()}');
       final shopRKOs = await RKOReportsService.getShopRKOs(shopAddress);
       Logger.debug('📋 Ответ API getShopRKOs: ${shopRKOs != null ? "успешно" : "null"}');
       if (shopRKOs != null) {
@@ -166,10 +173,14 @@ class KPIService {
         
         Logger.debug('📋 Всего РКО собрано из всех источников: ${allRKOs.length}');
         if (allRKOs.isNotEmpty) {
-          Logger.debug('   📋 Первые 5 РКО:');
-          for (var i = 0; i < (allRKOs.length > 5 ? 5 : allRKOs.length); i++) {
+          Logger.debug('   📋 Первые 10 РКО (для анализа):');
+          for (var i = 0; i < (allRKOs.length > 10 ? 10 : allRKOs.length); i++) {
             final rko = allRKOs[i];
-            Logger.debug('      ${i + 1}. ${rko.employeeName}, дата: ${rko.date.year}-${rko.date.month}-${rko.date.day}, магазин: "${rko.shopAddress}"');
+            final rkoDateNormalized = DateTime(rko.date.year, rko.date.month, rko.date.day);
+            Logger.debug('      ${i + 1}. ${rko.employeeName}');
+            Logger.debug('         - date (оригинал из API): ${rko.date.toIso8601String()}');
+            Logger.debug('         - date (нормализован): ${rkoDateNormalized.year}-${rkoDateNormalized.month.toString().padLeft(2, '0')}-${rkoDateNormalized.day.toString().padLeft(2, '0')}');
+            Logger.debug('         - магазин: "${rko.shopAddress}"');
           }
         }
         
@@ -188,19 +199,27 @@ class KPIService {
           final isDateMatch = rkoDate == normalizedDate;
           final isShopMatch = rkoShopAddress == normalizedShopAddress;
           
-          // Логируем для всех РКО
-          Logger.debug('   🔍 РКО:');
-          Logger.debug('      - employeeName (оригинал): "${rko.employeeName}"');
-          Logger.debug('      - employeeName (нормализован): "$rkoEmployeeName"');
-          Logger.debug('      - date (оригинал): ${rko.date.toIso8601String()}');
-          Logger.debug('      - date (нормализован): ${rkoDate.year}-${rkoDate.month.toString().padLeft(2, '0')}-${rkoDate.day.toString().padLeft(2, '0')}');
-          Logger.debug('      - shopAddress (оригинал): "${rko.shopAddress}"');
-          Logger.debug('      - shopAddress (нормализован): "$rkoShopAddress"');
-          Logger.debug('      - Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
-          Logger.debug('      - Запрошенный магазин (нормализован): "$normalizedShopAddress"');
-          Logger.debug('      - Дата совпадает: $isDateMatch');
-          Logger.debug('      - Магазин совпадает: $isShopMatch');
-          Logger.debug('      - ПРОЙДЕТ ФИЛЬТРАЦИЮ: ${isDateMatch && isShopMatch}');
+          // Логируем для всех РКО, но более детально для целевой даты
+          final shouldLogDetail = isTargetDate || isDateMatch;
+          if (shouldLogDetail) {
+            Logger.debug('   🔍 РКО:');
+            Logger.debug('      - employeeName (оригинал): "${rko.employeeName}"');
+            Logger.debug('      - employeeName (нормализован): "$rkoEmployeeName"');
+            Logger.debug('      - date (оригинал из объекта): ${rko.date.toIso8601String()}');
+            Logger.debug('      - date (год/месяц/день): ${rko.date.year}/${rko.date.month}/${rko.date.day}');
+            Logger.debug('      - date (нормализован): ${rkoDate.year}-${rkoDate.month.toString().padLeft(2, '0')}-${rkoDate.day.toString().padLeft(2, '0')}');
+            Logger.debug('      - rkoDate объект: ${rkoDate.toIso8601String()}');
+            Logger.debug('      - shopAddress (оригинал): "${rko.shopAddress}"');
+            Logger.debug('      - shopAddress (нормализован): "$rkoShopAddress"');
+            Logger.debug('      - Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
+            Logger.debug('      - normalizedDate объект: ${normalizedDate.toIso8601String()}');
+            Logger.debug('      - Запрошенный магазин (нормализован): "$normalizedShopAddress"');
+            Logger.debug('      - Сравнение дат: rkoDate == normalizedDate: ${rkoDate == normalizedDate}');
+            Logger.debug('      - Сравнение по компонентам: год=${rkoDate.year == normalizedDate.year}, месяц=${rkoDate.month == normalizedDate.month}, день=${rkoDate.day == normalizedDate.day}');
+            Logger.debug('      - Дата совпадает: $isDateMatch');
+            Logger.debug('      - Магазин совпадает: $isShopMatch');
+            Logger.debug('      - ПРОЙДЕТ ФИЛЬТРАЦИЮ: ${isDateMatch && isShopMatch}');
+          }
           
           return isDateMatch && isShopMatch;
         }));

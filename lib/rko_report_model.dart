@@ -31,14 +31,32 @@ class RKOMetadata {
   };
 
   factory RKOMetadata.fromJson(Map<String, dynamic> json) {
+    // Парсим дату и нормализуем (убираем время и часовой пояс)
+    // Это важно, чтобы избежать проблем с часовыми поясами
+    DateTime parseAndNormalizeDate(String? dateStr) {
+      if (dateStr == null || dateStr.isEmpty) {
+        return DateTime.now();
+      }
+      try {
+        final parsed = DateTime.parse(dateStr);
+        // Нормализуем дату (убираем время и часовой пояс)
+        return DateTime(parsed.year, parsed.month, parsed.day);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    
+    final dateStr = json['date']?.toString();
+    final createdAtStr = json['createdAt']?.toString();
+    
     return RKOMetadata(
       fileName: json['fileName'] ?? '',
       employeeName: json['employeeName'] ?? '',
       shopAddress: json['shopAddress'] ?? '',
-      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      date: parseAndNormalizeDate(dateStr),
       amount: (json['amount'] ?? 0).toDouble(),
       rkoType: json['rkoType'] ?? '',
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: parseAndNormalizeDate(createdAtStr),
     );
   }
 
@@ -123,6 +141,8 @@ class RKOMetadataList {
     return items.map((rko) => rko.shopAddress).toSet().toList();
   }
 }
+
+
 
 
 
