@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'user_role_service.dart';
 import 'google_script_config.dart';
 import 'employee_registration_service.dart';
@@ -39,6 +40,41 @@ class Employee {
 /// Страница сотрудников
 class EmployeesPage extends StatefulWidget {
   const EmployeesPage({super.key});
+
+  /// Получить имя текущего сотрудника из меню "Сотрудники"
+  /// Это единый источник истины для имени сотрудника во всем приложении
+  static Future<String?> getCurrentEmployeeName() async {
+    try {
+      // Получаем телефон текущего пользователя
+      final prefs = await SharedPreferences.getInstance();
+      final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+      
+      if (phone == null || phone.isEmpty) {
+        return null;
+      }
+      
+      // Нормализуем телефон (убираем пробелы и +)
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      
+      // Загружаем список сотрудников
+      final employees = await loadEmployeesForNotifications();
+      
+      // Ищем сотрудника по телефону
+      for (var employee in employees) {
+        if (employee.phone != null) {
+          final employeePhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          if (employeePhone == normalizedPhone) {
+            return employee.name;
+          }
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      print('❌ Ошибка получения имени текущего сотрудника: $e');
+      return null;
+    }
+  }
 
   /// Загрузить сотрудников для уведомлений (статический метод)
   /// Загружает только сотрудников и админов из Лист11

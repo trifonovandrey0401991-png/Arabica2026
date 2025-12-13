@@ -432,9 +432,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
     // Я на работе - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.access_time, 'Я на работе', () async {
-        // ВАЖНО: Используем имя из регистрации (SharedPreferences), а не из Google Sheets
-        // Это гарантирует, что имя будет совпадать с тем, что используется в системе
-        final systemEmployeeName = await RKOService.getEmployeeName();
+        // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
+        // Это гарантирует, что имя будет совпадать с отображением в системе
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
         
         try {
@@ -470,9 +470,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
     // Пересменка - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.work_history, 'Пересменка', () async {
-        // ВАЖНО: Используем имя из регистрации (SharedPreferences), а не из Google Sheets
-        // Это гарантирует, что имя будет совпадать с тем, что используется в системе
-        final systemEmployeeName = await RKOService.getEmployeeName();
+        // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
+        // Это гарантирует, что имя будет совпадать с отображением в системе
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
         
         if (!context.mounted) return;

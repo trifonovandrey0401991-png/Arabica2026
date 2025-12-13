@@ -63,8 +63,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           _selectedShop = shop;
         }
       } else {
-        // Fallback: получаем имя из регистрации
-        final name = await RKOService.getEmployeeName();
+        // Fallback: получаем имя из меню "Сотрудники" (единый источник истины)
+        final name = await EmployeesPage.getCurrentEmployeeName();
         _employeeName = name;
         if (name != null) {
           final shop = await RKOService.getShopFromLastShift(name);
@@ -198,12 +198,13 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       // а в системе сотрудник называется "Андрей В"
       String employeeNameForRKO;
       
-      // Сначала пытаемся получить имя из SharedPreferences или регистрации (то же, что в системе)
-      final systemEmployeeName = await RKOService.getEmployeeName();
+      // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
+      // Это гарантирует, что имя будет совпадать с отображением в системе
+      final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
       if (systemEmployeeName != null && systemEmployeeName.isNotEmpty) {
-        // Используем имя из системы (то же, что используется в отметках прихода)
+        // Используем имя из меню "Сотрудники" (то же, что используется везде в системе)
         employeeNameForRKO = systemEmployeeName.trim().replaceAll(RegExp(r'\s+'), ' ');
-        Logger.debug('📤 Используем имя из системы (SharedPreferences/регистрация): "$employeeNameForRKO"');
+        Logger.debug('📤 Используем имя из меню "Сотрудники": "$employeeNameForRKO"');
       } else if (_employeeName != null && _employeeName!.isNotEmpty) {
         // Fallback: используем имя из Google Sheets, только убираем лишние пробелы
         employeeNameForRKO = _employeeName!.trim().replaceAll(RegExp(r'\s+'), ' ');

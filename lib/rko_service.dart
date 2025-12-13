@@ -6,6 +6,7 @@ import 'employee_registration_service.dart';
 import 'employee_registration_model.dart';
 import 'shift_report_model.dart';
 import 'shop_model.dart';
+import 'employees_page.dart';
 import 'utils/logger.dart';
 import 'utils/cache_manager.dart';
 
@@ -130,23 +131,12 @@ class RKOService {
     }
   }
 
-  /// Получить имя сотрудника из SharedPreferences или регистрации
+  /// Получить имя сотрудника из меню "Сотрудники" (единый источник истины)
+  /// Использует EmployeesPage.getCurrentEmployeeName() для получения правильного имени
   static Future<String?> getEmployeeName() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final employeeName = prefs.getString('employeeName');
-      
-      if (employeeName != null && employeeName.isNotEmpty) {
-        return employeeName;
-      }
-
-      // Пытаемся получить из регистрации
-      final registration = await getEmployeeData();
-      if (registration != null) {
-        return registration.fullName;
-      }
-
-      return null;
+      // Используем единый метод из EmployeesPage
+      return await EmployeesPage.getCurrentEmployeeName();
     } catch (e) {
       Logger.error('Ошибка получения имени сотрудника', e);
       return null;
