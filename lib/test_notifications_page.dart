@@ -38,7 +38,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   String? _kpiSelectedShop;
   DateTime _kpiSelectedDate = DateTime.now();
   final TextEditingController _timeController = TextEditingController();
-  List<EmployeeRegistration> _allEmployees = [];
+  List<Employee> _allEmployees = []; // Используем Employee вместо EmployeeRegistration
   List<Shop> _allShops = [];
   bool _loadingKpiData = false;
   bool _creatingAttendance = false;
@@ -82,7 +82,9 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
   Future<void> _loadKpiData() async {
     setState(() => _loadingKpiData = true);
     try {
-      final employees = await EmployeeRegistrationService.getAllRegistrations();
+      // Используем тот же метод, что и в меню "Сотрудники"
+      // Это гарантирует, что имена будут совпадать с отображением в системе
+      final employees = await EmployeesPage.loadEmployeesForNotifications();
       final shops = await Shop.loadShopsFromGoogleSheets();
       setState(() {
         _allEmployees = employees;
@@ -91,7 +93,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
           _kpiSelectedShop = _allShops.first.address;
         }
         if (_allEmployees.isNotEmpty && _kpiSelectedEmployee == null) {
-          _kpiSelectedEmployee = _allEmployees.first.fullName;
+          _kpiSelectedEmployee = _allEmployees.first.name; // Используем name вместо fullName
         }
         _loadingKpiData = false;
       });
@@ -787,8 +789,8 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                     border: OutlineInputBorder(),
                   ),
                   items: _allEmployees.map((emp) => DropdownMenuItem(
-                    value: emp.fullName,
-                    child: Text(emp.fullName),
+                    value: emp.name, // Используем name вместо fullName
+                    child: Text(emp.name), // Используем name вместо fullName
                   )).toList(),
                   onChanged: (value) {
                     setState(() => _kpiSelectedEmployee = value);
