@@ -127,6 +127,29 @@ class KPIShopDayData {
   bool get hasEveningAttendance {
     return employeesData.any((data) => data.hasEveningAttendance);
   }
+
+  /// Проверить, выполнены ли все действия для всех сотрудников
+  /// Возвращает true, если для всех сотрудников выполнены: приход, пересменка, пересчет, РКО
+  bool get allActionsCompleted {
+    if (employeesData.isEmpty) return false;
+    
+    // Проверяем, что для всех сотрудников, которые работали, выполнены все действия
+    final workingEmployees = employeesData.where((data) => data.workedToday).toList();
+    if (workingEmployees.isEmpty) return false;
+    
+    // Для каждого сотрудника проверяем наличие всех действий
+    return workingEmployees.every((data) => 
+      data.attendanceTime != null && // Приход
+      data.hasShift && // Пересменка
+      data.hasRecount && // Пересчет
+      data.hasRKO // РКО
+    );
+  }
+
+  /// Проверить, есть ли хотя бы один сотрудник, который работал
+  bool get hasWorkingEmployees {
+    return employeesData.any((data) => data.workedToday);
+  }
 }
 
 /// Модель для отображения в таблице (для диалога дня)

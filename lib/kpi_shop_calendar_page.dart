@@ -262,37 +262,39 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     required bool isToday,
     KPIShopDayData? dayData,
   }) {
-    // Определяем наличие утренних/вечерних отметок
-    bool hasMorning = false;
-    bool hasEvening = false;
+    // Определяем статус выполнения всех действий
+    bool allCompleted = false;
+    bool hasWorking = false;
     
     final isTargetDate = date.year == 2025 && date.month == 12 && date.day == 12;
     
     if (dayData != null) {
-      hasMorning = dayData.hasMorningAttendance;
-      hasEvening = dayData.hasEveningAttendance;
+      allCompleted = dayData.allActionsCompleted;
+      hasWorking = dayData.hasWorkingEmployees;
       if (isTargetDate) {
         Logger.debug('🔍 === ОТРИСОВКА 12.12.2025 ===');
         Logger.debug('   dayData не null');
         Logger.debug('   Сотрудников: ${dayData.employeesWorkedCount}');
-        Logger.debug('   Утро: $hasMorning, Вечер: $hasEvening');
+        Logger.debug('   Все действия выполнены: $allCompleted');
+        Logger.debug('   Есть работающие сотрудники: $hasWorking');
         Logger.debug('   Всего записей сотрудников: ${dayData.employeesData.length}');
         for (var emp in dayData.employeesData) {
-          Logger.debug('      - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}');
+          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}');
         }
         Logger.debug('   === КОНЕЦ ОТРИСОВКИ 12.12.2025 ===');
       }
-      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: dayData не null, утро=$hasMorning, вечер=$hasEvening, сотрудников=${dayData.employeesWorkedCount}');
+      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: все выполнено=$allCompleted, есть работающие=$hasWorking, сотрудников=${dayData.employeesWorkedCount}');
     } else if (events.isNotEmpty) {
-      hasMorning = events.first.hasMorningAttendance;
-      hasEvening = events.first.hasEveningAttendance;
+      allCompleted = events.first.allActionsCompleted;
+      hasWorking = events.first.hasWorkingEmployees;
       if (isTargetDate) {
         Logger.debug('🔍 === ОТРИСОВКА 12.12.2025 (через events) ===');
         Logger.debug('   events не пуст');
-        Logger.debug('   Утро: $hasMorning, Вечер: $hasEvening');
+        Logger.debug('   Все действия выполнены: $allCompleted');
+        Logger.debug('   Есть работающие сотрудники: $hasWorking');
         Logger.debug('   === КОНЕЦ ОТРИСОВКИ 12.12.2025 ===');
       }
-      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: используем events, утро=$hasMorning, вечер=$hasEvening');
+      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: используем events, все выполнено=$allCompleted, есть работающие=$hasWorking');
     } else {
       if (isTargetDate) {
         Logger.debug('🔍 === ОТРИСОВКА 12.12.2025: НЕТ ДАННЫХ ===');
@@ -300,7 +302,17 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: нет данных');
     }
 
-    // Определяем цвета
+    // Определяем цвет круга
+    Color circleColor = Colors.transparent;
+    if (hasWorking) {
+      if (allCompleted) {
+        circleColor = Colors.green; // Все выполнено - зеленый
+      } else {
+        circleColor = Colors.yellow; // Что-то не выполнено - желтый
+      }
+    }
+
+    // Определяем цвета фона и текста
     Color backgroundColor = Colors.white;
     Color textColor = Colors.black;
     
@@ -312,34 +324,48 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     }
 
     // Логирование для отладки
-    if (hasMorning || hasEvening) {
-      Logger.debug('🎨 Отрисовка ячейки ${date.year}-${date.month}-${date.day}: утро=$hasMorning, вечер=$hasEvening');
+    if (hasWorking) {
+      Logger.debug('🎨 Отрисовка ячейки ${date.year}-${date.month}-${date.day}: все выполнено=$allCompleted, цвет=${circleColor == Colors.green ? "зеленый" : circleColor == Colors.yellow ? "желтый" : "прозрачный"}');
     }
     
     // Создаем контейнер с кругом
     return Container(
       margin: const EdgeInsets.all(6.0),
       decoration: BoxDecoration(
-        color: Colors.white, // Белый фон по умолчанию
+        color: backgroundColor,
         shape: BoxShape.circle,
         border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1,
+          color: circleColor != Colors.transparent ? circleColor : Colors.grey.shade300,
+          width: circleColor != Colors.transparent ? 2 : 1,
         ),
       ),
-      child: CustomPaint(
-        painter: _HalfCirclePainter(hasMorning: hasMorning, hasEvening: hasEvening),
-        child: Center(
-          child: Text(
-            '${date.day}',
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+      child: circleColor != Colors.transparent
+          ? Container(
+              decoration: BoxDecoration(
+                color: circleColor,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+          : Center(
+              child: Text(
+                '${date.day}',
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -502,60 +528,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                               Container(
                                 width: 20,
                                 height: 20,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.green, width: 2),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Positioned.fill(
-                                      child: ClipPath(
-                                        clipper: HalfCircleClipper(isLeft: true),
-                                        child: Container(
-                                          decoration: const BoxDecoration(
-                                            color: Colors.green,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text('Утро (до 15:00)', style: TextStyle(fontSize: 12)),
-                            ],
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.green, width: 2),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Positioned.fill(
-                                      child: ClipPath(
-                                        clipper: HalfCircleClipper(isLeft: false),
-                                        child: Container(
-                                          decoration: const BoxDecoration(
-                                            color: Colors.green,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Вечер (после 15:00)', style: TextStyle(fontSize: 12)),
+                              const Text('Все выполнено', style: TextStyle(fontSize: 12)),
                             ],
                           ),
                           Row(
@@ -565,12 +544,12 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                                 width: 20,
                                 height: 20,
                                 decoration: const BoxDecoration(
-                                  color: Colors.green,
+                                  color: Colors.yellow,
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Text('Обе отметки', style: TextStyle(fontSize: 12)),
+                              const Text('Что-то не выполнено', style: TextStyle(fontSize: 12)),
                             ],
                           ),
                         ],
@@ -580,74 +559,5 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
                 ),
     );
   }
-}
-
-/// Painter для отрисовки половины круга
-class _HalfCirclePainter extends CustomPainter {
-  final bool hasMorning;
-  final bool hasEvening;
-
-  _HalfCirclePainter({required this.hasMorning, required this.hasEvening});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.green;
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    if (hasMorning && hasEvening) {
-      // Весь круг зеленый
-      canvas.drawCircle(center, radius, paint);
-    } else if (hasMorning) {
-      // Левая половина (утро)
-      final rect = Rect.fromCircle(center: center, radius: radius);
-      canvas.drawArc(rect, -1.5708, 3.14159, true, paint); // -90 до 90 градусов
-    } else if (hasEvening) {
-      // Правая половина (вечер)
-      final rect = Rect.fromCircle(center: center, radius: radius);
-      canvas.drawArc(rect, 1.5708, 3.14159, true, paint); // 90 до 270 градусов
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _HalfCirclePainter oldDelegate) {
-    return hasMorning != oldDelegate.hasMorning || hasEvening != oldDelegate.hasEvening;
-  }
-}
-
-/// Клиппер для отрисовки половины круга
-class HalfCircleClipper extends CustomClipper<Path> {
-  final bool isLeft;
-
-  HalfCircleClipper({required this.isLeft});
-
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    if (isLeft) {
-      // Левая половина
-      path.addArc(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        -1.5708, // -90 градусов
-        3.14159, // 180 градусов
-      );
-      path.lineTo(0, size.height);
-      path.lineTo(0, 0);
-    } else {
-      // Правая половина
-      path.addArc(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        1.5708, // 90 градусов
-        3.14159, // 180 градусов
-      );
-      path.lineTo(size.width, size.height);
-      path.lineTo(size.width, 0);
-    }
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(HalfCircleClipper oldClipper) => oldClipper.isLeft != isLeft;
 }
 
