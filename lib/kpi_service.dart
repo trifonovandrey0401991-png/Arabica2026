@@ -131,12 +131,17 @@ class KPIService {
       // Агрегируем данные по сотрудникам
       final Map<String, KPIDayData> employeesDataMap = {};
       
+      // Функция для нормализации имени сотрудника (приводим к нижнему регистру и убираем лишние пробелы)
+      String normalizeEmployeeName(String name) {
+        return name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      }
+      
       // Константа для границы между утром и вечером (15:00)
       const int eveningBoundaryHour = 15;
 
       // Добавляем данные из отметок прихода
       for (var record in filteredAttendanceRecords) {
-        final key = record.employeeName.trim(); // Убираем пробелы для нормализации
+        final key = normalizeEmployeeName(record.employeeName); // Нормализуем имя
         final recordTime = record.timestamp;
         final isMorning = recordTime.hour < eveningBoundaryHour;
         final isEvening = recordTime.hour >= eveningBoundaryHour;
@@ -181,9 +186,16 @@ class KPIService {
       Logger.debug('   Список сотрудников: ${employeesDataMap.keys.toList()}');
 
       // Добавляем данные из пересменок
+      Logger.debug('📋 Обработка пересменок: найдено ${dayShifts.length}');
       for (var shift in dayShifts) {
-        final key = shift.employeeName.trim(); // Убираем пробелы для нормализации
+        final key = normalizeEmployeeName(shift.employeeName); // Нормализуем имя
+        Logger.debug('   🔍 Обработка пересменки: "${shift.employeeName}" -> ключ: "$key"');
         final existing = employeesDataMap[key];
+        if (existing != null) {
+          Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasShift=true');
+        } else {
+          Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
+        }
         if (existing == null) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
@@ -207,9 +219,16 @@ class KPIService {
       }
 
       // Добавляем данные из пересчетов
+      Logger.debug('📋 Обработка пересчетов: найдено ${recounts.length}');
       for (var recount in recounts) {
-        final key = recount.employeeName.trim(); // Убираем пробелы для нормализации
+        final key = normalizeEmployeeName(recount.employeeName); // Нормализуем имя
+        Logger.debug('   🔍 Обработка пересчета: "${recount.employeeName}" -> ключ: "$key"');
         final existing = employeesDataMap[key];
+        if (existing != null) {
+          Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasRecount=true');
+        } else {
+          Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
+        }
         if (existing == null) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
@@ -233,9 +252,16 @@ class KPIService {
       }
 
       // Добавляем данные из РКО
+      Logger.debug('📋 Обработка РКО: найдено ${dayRKOs.length}');
       for (var rko in dayRKOs) {
-        final key = rko.employeeName.trim(); // Убираем пробелы для нормализации
+        final key = normalizeEmployeeName(rko.employeeName); // Нормализуем имя
+        Logger.debug('   🔍 Обработка РКО: "${rko.employeeName}" -> ключ: "$key"');
         final existing = employeesDataMap[key];
+        if (existing != null) {
+          Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasRKO=true');
+        } else {
+          Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
+        }
         if (existing == null) {
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
@@ -295,7 +321,7 @@ class KPIService {
         }
       } else {
         for (var emp in result.employeesData) {
-          Logger.debug('   - ${emp.employeeName}: утро=${emp.hasMorningAttendance}, вечер=${emp.hasEveningAttendance}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
+          Logger.debug('   - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
         }
       }
       
