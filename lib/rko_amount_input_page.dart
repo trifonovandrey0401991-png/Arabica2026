@@ -6,6 +6,7 @@ import 'shop_settings_model.dart';
 import 'rko_pdf_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'employees_page.dart';
+import 'kpi_service.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
@@ -217,6 +218,11 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
 
       if (mounted) {
         if (uploadSuccess) {
+          // Очищаем кэш KPI для этого магазина и даты, чтобы новые РКО отображались сразу
+          KPIService.clearCacheForDate(_selectedShop!.address, now);
+          // Также очищаем кэш для всего магазина на случай, если нужно обновить другие даты
+          KPIService.clearCacheForShop(_selectedShop!.address);
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('РКО успешно создан и загружен на сервер'),
