@@ -114,18 +114,35 @@ class KPIService {
       );
 
       // Получаем РКО за день (нужно получить список и отфильтровать)
+      Logger.debug('📋 Загрузка РКО для магазина: "$shopAddress"');
       final shopRKOs = await RKOReportsService.getShopRKOs(shopAddress);
       final dayRKOs = <RKOMetadata>[];
       if (shopRKOs != null && shopRKOs['items'] != null) {
         final rkoList = RKOMetadataList.fromJson(shopRKOs);
+        Logger.debug('📋 Всего РКО загружено: ${rkoList.items.length}');
+        
+        // Нормализуем адрес магазина для сравнения
+        final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+        
         dayRKOs.addAll(rkoList.items.where((rko) {
           final rkoDate = DateTime(
             rko.date.year,
             rko.date.month,
             rko.date.day,
           );
-          return rkoDate == normalizedDate;
+          final rkoShopAddress = rko.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+          final isDateMatch = rkoDate == normalizedDate;
+          final isShopMatch = rkoShopAddress == normalizedShopAddress;
+          
+          if (normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12) {
+            Logger.debug('   🔍 РКО: "${rko.employeeName}", дата: ${rkoDate.year}-${rkoDate.month}-${rkoDate.day}, магазин: "${rko.shopAddress}" (нормализован: "$rkoShopAddress"), дата совпадает: $isDateMatch, магазин совпадает: $isShopMatch');
+          }
+          
+          return isDateMatch && isShopMatch;
         }));
+        Logger.debug('📋 РКО после фильтрации по дате и магазину: ${dayRKOs.length}');
+      } else {
+        Logger.debug('⚠️ РКО не загружены: shopRKOs=${shopRKOs != null}, items=${shopRKOs?['items'] != null}');
       }
 
       // Агрегируем данные по сотрудникам
@@ -253,14 +270,29 @@ class KPIService {
 
       // Добавляем данные из РКО
       Logger.debug('📋 Обработка РКО: найдено ${dayRKOs.length}');
+      if (dayRKOs.isEmpty) {
+        Logger.debug('   ⚠️ РКО не найдено для даты ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      } else {
+        Logger.debug('   📋 Список всех РКО:');
+        for (var rko in dayRKOs) {
+          Logger.debug('      - ${rko.employeeName}, дата: ${rko.date.year}-${rko.date.month}-${rko.date.day}, магазин: "${rko.shopAddress}"');
+        }
+      }
       for (var rko in dayRKOs) {
         final key = normalizeEmployeeName(rko.employeeName); // Нормализуем имя
         Logger.debug('   🔍 Обработка РКО: "${rko.employeeName}" -> ключ: "$key"');
+        Logger.debug('   📋 Доступные ключи в employeesDataMap: ${employeesDataMap.keys.toList()}');
         final existing = employeesDataMap[key];
         if (existing != null) {
           Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasRKO=true');
         } else {
           Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
+          Logger.debug('   📋 Попытка найти похожие ключи...');
+          for (var existingKey in employeesDataMap.keys) {
+            if (existingKey.toLowerCase().contains(key.toLowerCase()) || key.toLowerCase().contains(existingKey.toLowerCase())) {
+              Logger.debug('      - Найден похожий ключ: "$existingKey" (искомый: "$key")');
+            }
+          }
         }
         if (existing == null) {
           employeesDataMap[key] = KPIDayData(
