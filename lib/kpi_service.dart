@@ -321,10 +321,12 @@ class KPIService {
             shopAddress: shopAddress,
             hasRKO: true,
           );
+          Logger.debug('   ✅ Создана новая запись для РКО: "$key"');
         } else {
+          // Используем имя из существующей записи, чтобы сохранить оригинальное имя
           employeesDataMap[key] = KPIDayData(
             date: normalizedDate,
-            employeeName: rko.employeeName,
+            employeeName: existing.employeeName, // Используем имя из существующей записи
             shopAddress: shopAddress,
             attendanceTime: existing.attendanceTime,
             hasMorningAttendance: existing.hasMorningAttendance,
@@ -333,6 +335,7 @@ class KPIService {
             hasRecount: existing.hasRecount,
             hasRKO: true,
           );
+          Logger.debug('   ✅ Обновлена запись для РКО: "$key", hasRKO=true');
         }
       }
 
