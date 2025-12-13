@@ -88,18 +88,21 @@ class AttendanceService {
     required double latitude,
     required double longitude,
     double? distance,
+    DateTime? timestamp, // Опциональный timestamp для тестирования
   }) async {
     try {
-      final timestamp = DateTime.now();
+      final finalTimestamp = timestamp ?? DateTime.now();
       final record = AttendanceRecord(
-        id: AttendanceRecord.generateId(employeeName, timestamp),
+        id: AttendanceRecord.generateId(employeeName, finalTimestamp),
         employeeName: employeeName,
         shopAddress: shopAddress,
-        timestamp: timestamp,
+        timestamp: finalTimestamp,
         latitude: latitude,
         longitude: longitude,
         distance: distance,
       );
+      
+      Logger.debug('📝 Создание отметки прихода: ${employeeName}, время: ${finalTimestamp.toIso8601String()}');
 
       final url = '$serverUrl/api/attendance';
       final response = await http.post(
@@ -179,9 +182,13 @@ class AttendanceService {
         if (result['success'] == true) {
           final recordsJson = result['records'] as List<dynamic>;
           final records = recordsJson
-              .map((json) => AttendanceRecord.fromJson(json))
+              .map((json) {
+                final record = AttendanceRecord.fromJson(json);
+                Logger.debug('📥 Загружена отметка: ${record.employeeName}, время: ${record.timestamp.toIso8601String()} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')})');
+                return record;
+              })
               .toList();
-          Logger.debug('📥 Загружено отметок: ${records.length}');
+          Logger.debug('📥 Всего загружено отметок: ${records.length}');
           return records;
         }
       } else {

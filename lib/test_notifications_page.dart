@@ -310,13 +310,15 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       final latitude = shop.latitude ?? 44.0433; // Координаты Пятигорска
       final longitude = shop.longitude ?? 43.0577;
 
-      // Создаем отметку прихода
+      // Создаем отметку прихода с указанным временем
+      Logger.debug('📝 Создание тестовой отметки прихода: ${_kpiSelectedEmployee}, дата/время: ${dateTime.toIso8601String()}');
       final success = await AttendanceService.markAttendance(
         employeeName: _kpiSelectedEmployee!,
         shopAddress: _kpiSelectedShop!,
         latitude: latitude,
         longitude: longitude,
         distance: 0.0,
+        timestamp: dateTime, // Передаем созданное время
       );
 
       if (mounted) {
