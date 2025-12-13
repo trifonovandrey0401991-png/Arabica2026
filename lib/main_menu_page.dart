@@ -17,6 +17,7 @@ import 'test_page.dart';
 import 'shift_shop_selection_page.dart';
 import 'shift_reports_list_page.dart';
 import 'shift_sync_service.dart';
+import 'rko_service.dart';
 import 'recipes_list_page.dart';
 import 'review_type_selection_page.dart';
 import 'reviews_list_page.dart';
@@ -431,8 +432,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
     // Я на работе - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.access_time, 'Я на работе', () async {
-        // Проверяем, была ли уже отметка сегодня
-        final employeeName = _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        // ВАЖНО: Используем имя из регистрации (SharedPreferences), а не из Google Sheets
+        // Это гарантирует, что имя будет совпадать с тем, что используется в системе
+        final systemEmployeeName = await RKOService.getEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        
         try {
           final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
           
@@ -466,8 +470,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
     // Пересменка - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.work_history, 'Пересменка', () async {
-        // Используем текущего пользователя (из роли или имени)
-        final employeeName = _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        // ВАЖНО: Используем имя из регистрации (SharedPreferences), а не из Google Sheets
+        // Это гарантирует, что имя будет совпадать с тем, что используется в системе
+        final systemEmployeeName = await RKOService.getEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        
         if (!context.mounted) return;
         Navigator.push(
           context,
