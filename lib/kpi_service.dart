@@ -184,11 +184,23 @@ class KPIService {
             rko.date.day,
           );
           final rkoShopAddress = rko.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+          final rkoEmployeeName = rko.employeeName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
           final isDateMatch = rkoDate == normalizedDate;
           final isShopMatch = rkoShopAddress == normalizedShopAddress;
           
-          // Логируем для всех РКО, не только для 12.12.2025
-          Logger.debug('   🔍 РКО: "${rko.employeeName}", дата: ${rkoDate.year}-${rkoDate.month}-${rkoDate.day}, магазин: "${rko.shopAddress}" (нормализован: "$rkoShopAddress"), дата совпадает: $isDateMatch, магазин совпадает: $isShopMatch');
+          // Логируем для всех РКО
+          Logger.debug('   🔍 РКО:');
+          Logger.debug('      - employeeName (оригинал): "${rko.employeeName}"');
+          Logger.debug('      - employeeName (нормализован): "$rkoEmployeeName"');
+          Logger.debug('      - date (оригинал): ${rko.date.toIso8601String()}');
+          Logger.debug('      - date (нормализован): ${rkoDate.year}-${rkoDate.month.toString().padLeft(2, '0')}-${rkoDate.day.toString().padLeft(2, '0')}');
+          Logger.debug('      - shopAddress (оригинал): "${rko.shopAddress}"');
+          Logger.debug('      - shopAddress (нормализован): "$rkoShopAddress"');
+          Logger.debug('      - Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
+          Logger.debug('      - Запрошенный магазин (нормализован): "$normalizedShopAddress"');
+          Logger.debug('      - Дата совпадает: $isDateMatch');
+          Logger.debug('      - Магазин совпадает: $isShopMatch');
+          Logger.debug('      - ПРОЙДЕТ ФИЛЬТРАЦИЮ: ${isDateMatch && isShopMatch}');
           
           return isDateMatch && isShopMatch;
         }));
@@ -328,29 +340,47 @@ class KPIService {
       }
 
       // Добавляем данные из РКО
-      Logger.debug('📋 Обработка РКО: найдено ${dayRKOs.length}');
+      Logger.debug('═══════════════════════════════════════════════════════');
+      Logger.debug('📋 ОБРАБОТКА РКО: найдено ${dayRKOs.length}');
+      Logger.debug('═══════════════════════════════════════════════════════');
       if (dayRKOs.isEmpty) {
         Logger.debug('   ⚠️ РКО не найдено для даты ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
       } else {
-        Logger.debug('   📋 Список всех РКО:');
+        Logger.debug('   📋 Список всех РКО для обработки:');
         for (var rko in dayRKOs) {
-          Logger.debug('      - ${rko.employeeName}, дата: ${rko.date.year}-${rko.date.month}-${rko.date.day}, магазин: "${rko.shopAddress}"');
+          Logger.debug('      - employeeName: "${rko.employeeName}"');
+          Logger.debug('        date: ${rko.date.year}-${rko.date.month}-${rko.date.day}');
+          Logger.debug('        shopAddress: "${rko.shopAddress}"');
         }
       }
+      Logger.debug('   📋 Доступные ключи в employeesDataMap: ${employeesDataMap.keys.toList()}');
+      Logger.debug('   📋 Детали записей в employeesDataMap:');
+      for (var entry in employeesDataMap.entries) {
+        Logger.debug('      - ключ: "$entry.key", имя: "${entry.value.employeeName}"');
+      }
+      
       for (var rko in dayRKOs) {
         final key = normalizeEmployeeName(rko.employeeName); // Нормализуем имя
-        Logger.debug('   🔍 Обработка РКО: "${rko.employeeName}" -> ключ: "$key"');
-        Logger.debug('   📋 Доступные ключи в employeesDataMap: ${employeesDataMap.keys.toList()}');
+        Logger.debug('   🔍 Обработка РКО:');
+        Logger.debug('      - Оригинальное имя: "${rko.employeeName}"');
+        Logger.debug('      - Нормализованный ключ: "$key"');
         final existing = employeesDataMap[key];
         if (existing != null) {
-          Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasRKO=true');
+          Logger.debug('      ✅ Найдена существующая запись для "$key"');
+          Logger.debug('         Имя в записи: "${existing.employeeName}"');
+          Logger.debug('         Обновляем hasRKO=true');
         } else {
-          Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
-          Logger.debug('   📋 Попытка найти похожие ключи...');
+          Logger.debug('      ⚠️ Запись для "$key" не найдена, создаем новую');
+          Logger.debug('      📋 Попытка найти похожие ключи...');
+          bool foundSimilar = false;
           for (var existingKey in employeesDataMap.keys) {
             if (existingKey.toLowerCase().contains(key.toLowerCase()) || key.toLowerCase().contains(existingKey.toLowerCase())) {
-              Logger.debug('      - Найден похожий ключ: "$existingKey" (искомый: "$key")');
+              Logger.debug('         - Найден похожий ключ: "$existingKey" (искомый: "$key")');
+              foundSimilar = true;
             }
+          }
+          if (!foundSimilar) {
+            Logger.debug('         - Похожих ключей не найдено');
           }
         }
         if (existing == null) {

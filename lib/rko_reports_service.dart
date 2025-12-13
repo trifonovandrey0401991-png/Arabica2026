@@ -18,7 +18,20 @@ class RKOReportsService {
     required String rkoType,
   }) async {
     try {
-      print('📤 Загрузка РКО на сервер: $fileName');
+      // Нормализуем дату (убираем время, оставляем только дату)
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      
+      Logger.debug('═══════════════════════════════════════════════════════');
+      Logger.debug('📤 ЗАГРУЗКА РКО НА СЕРВЕР');
+      Logger.debug('   fileName: $fileName');
+      Logger.debug('   employeeName: "$employeeName"');
+      Logger.debug('   shopAddress: "$shopAddress"');
+      Logger.debug('   date (оригинал): ${date.toIso8601String()}');
+      Logger.debug('   date (нормализован): ${normalizedDate.toIso8601String()}');
+      Logger.debug('   date (для отображения): ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
+      Logger.debug('   amount: $amount');
+      Logger.debug('   rkoType: $rkoType');
+      Logger.debug('═══════════════════════════════════════════════════════');
       
       final url = '$serverUrl/api/rko/upload';
       final request = http.MultipartRequest('POST', Uri.parse(url));
@@ -28,11 +41,11 @@ class RKOReportsService {
         await http.MultipartFile.fromPath('docx', pdfFile.path),
       );
       
-      // Добавляем метаданные
+      // Добавляем метаданные (используем нормализованную дату)
       request.fields['fileName'] = fileName;
       request.fields['employeeName'] = employeeName;
       request.fields['shopAddress'] = shopAddress;
-      request.fields['date'] = date.toIso8601String();
+      request.fields['date'] = normalizedDate.toIso8601String();
       request.fields['amount'] = amount.toString();
       request.fields['rkoType'] = rkoType;
       
@@ -43,15 +56,18 @@ class RKOReportsService {
       final responseBody = await response.stream.bytesToString();
       final result = jsonDecode(responseBody);
       
+      Logger.debug('📤 Ответ сервера: statusCode=${response.statusCode}');
+      Logger.debug('📤 Результат: success=${result['success']}, error=${result['error'] ?? 'нет'}');
+      
       if (response.statusCode == 200 && result['success'] == true) {
-        print('✅ РКО успешно загружен на сервер');
+        Logger.debug('✅ РКО успешно загружен на сервер');
         return true;
       } else {
-        print('❌ Ошибка загрузки РКО: ${result['error'] ?? 'Неизвестная ошибка'}');
+        Logger.debug('❌ Ошибка загрузки РКО: ${result['error'] ?? 'Неизвестная ошибка'}');
         return false;
       }
     } catch (e) {
-      print('❌ Ошибка загрузки РКО на сервер: $e');
+      Logger.error('Ошибка загрузки РКО на сервер', e);
       return false;
     }
   }
