@@ -278,13 +278,26 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     setState(() => _creatingAttendance = true);
 
     try {
+      // Парсим время из текстового поля
+      final time = _parseTime(_timeController.text);
+      if (time == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Неверный формат времени. Используйте HH:mm (например, 14:30)'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _creatingAttendance = false);
+        return false;
+      }
+
       // Создаем DateTime из выбранных даты и времени
       final dateTime = DateTime(
         _kpiSelectedDate.year,
         _kpiSelectedDate.month,
         _kpiSelectedDate.day,
-        _kpiSelectedTime.hour,
-        _kpiSelectedTime.minute,
+        time.hour,
+        time.minute,
       );
 
       // Находим магазин для получения координат
