@@ -7,6 +7,7 @@ import 'rko_pdf_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'employees_page.dart';
 import 'kpi_service.dart';
+import 'utils/logger.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
@@ -191,18 +192,30 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       final now = DateTime.now();
       
       // Загружаем на сервер
-      // Используем имя из Google Sheets (если есть), иначе из регистрации
-      // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
+      // ВАЖНО: Используем то же имя, которое используется в системе для отметок прихода и пересменок
+      // Это имя из SharedPreferences или регистрации, а НЕ из Google Sheets
+      // Google Sheets может содержать другое имя (например, "andrey tifonov vladimir"),
+      // а в системе сотрудник называется "Андрей В"
       String employeeNameForRKO;
-      if (_employeeName != null && _employeeName!.isNotEmpty) {
-        employeeNameForRKO = _employeeName!.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-        print('📤 Используем имя из Google Sheets: "$employeeNameForRKO"');
+      
+      // Сначала пытаемся получить имя из SharedPreferences или регистрации (то же, что в системе)
+      final systemEmployeeName = await RKOService.getEmployeeName();
+      if (systemEmployeeName != null && systemEmployeeName.isNotEmpty) {
+        // Используем имя из системы (то же, что используется в отметках прихода)
+        employeeNameForRKO = systemEmployeeName.trim().replaceAll(RegExp(r'\s+'), ' ');
+        Logger.debug('📤 Используем имя из системы (SharedPreferences/регистрация): "$employeeNameForRKO"');
+      } else if (_employeeName != null && _employeeName!.isNotEmpty) {
+        // Fallback: используем имя из Google Sheets, только убираем лишние пробелы
+        employeeNameForRKO = _employeeName!.trim().replaceAll(RegExp(r'\s+'), ' ');
+        Logger.debug('📤 Fallback: используем имя из Google Sheets: "$employeeNameForRKO"');
       } else {
-        employeeNameForRKO = employeeData.fullName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-        print('📤 Используем имя из регистрации: "$employeeNameForRKO"');
+        // Последний fallback: используем имя из регистрации
+        employeeNameForRKO = employeeData.fullName.trim().replaceAll(RegExp(r'\s+'), ' ');
+        Logger.debug('📤 Fallback: используем имя из регистрации: "$employeeNameForRKO"');
       }
-      print('📤 Оригинальное имя из регистрации: "${employeeData.fullName}"');
-      print('📤 Имя из Google Sheets: "$_employeeName"');
+      Logger.debug('📤 Оригинальное имя из регистрации: "${employeeData.fullName}"');
+      Logger.debug('📤 Имя из Google Sheets: "$_employeeName"');
+      Logger.debug('📤 Итоговое имя для РКО: "$employeeNameForRKO"');
       final uploadSuccess = await RKOPDFService.uploadRKOToServer(
         pdfFile: pdfFile,
         fileName: fileName,
