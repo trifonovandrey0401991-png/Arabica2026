@@ -79,12 +79,12 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
           _currentQuestionIndex < _questions!.length &&
           _questions![_currentQuestionIndex].isPhotoOnly;
       
-      // Если вопрос требует только фото, используем только камеру
+      // Если вопрос требует только фото, используем только камеру (даже на веб)
       if (isPhotoOnlyQuestion) {
         source = ImageSource.camera;
       } else {
         // Для других случаев (если фото опционально) показываем выбор
-        // На веб всегда используем галерею
+        // На веб используем галерею
         if (kIsWeb) {
           source = ImageSource.gallery;
         } else {
