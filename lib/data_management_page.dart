@@ -11,6 +11,7 @@ import 'employees_page.dart';
 import 'shift_questions_management_page.dart';
 import 'recount_questions_management_page.dart';
 import 'test_questions_management_page.dart';
+import 'training_articles_management_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -103,10 +104,10 @@ class DataManagementPage extends StatelessWidget {
             title: 'Статьи обучения',
             icon: Icons.article,
             onTap: () {
-              // TODO: Создать страницу управления статьями обучения
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Страница управления статьями обучения в разработке'),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TrainingArticlesManagementPage(),
                 ),
               );
             },
