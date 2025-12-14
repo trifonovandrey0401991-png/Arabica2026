@@ -3,6 +3,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'employee_registration_model.dart';
 import 'employee_registration_service.dart';
+import 'employee_service.dart';
+import 'employees_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EmployeeRegistrationPage extends StatefulWidget {
@@ -37,6 +39,10 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
   bool _isLoading = false;
   bool _isEditing = false;
+  
+  // Переменные для выбора роли
+  String? _selectedRole; // 'admin' или 'employee'
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -53,6 +59,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       _passportRegistrationPhotoUrl = reg.passportRegistrationPhotoUrl;
       _additionalPhotoUrl = reg.additionalPhotoUrl;
     }
+    // По умолчанию роль - сотрудник
+    _selectedRole = 'employee';
+    _isAdmin = false;
   }
 
   @override
@@ -108,6 +117,48 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     // Получаем телефон из SharedPreferences (для случая, когда сотрудник регистрирует себя)
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('userPhone');
+  }
+
+  /// Создать или обновить запись сотрудника с указанной ролью
+  Future<void> _createOrUpdateEmployee(String phone, String name, bool isAdmin) async {
+    try {
+      // Получаем всех сотрудников и ищем по телефону
+      final allEmployees = await EmployeeService.getEmployees();
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      
+      Employee? existingEmployee;
+      for (var emp in allEmployees) {
+        if (emp.phone != null) {
+          final empPhone = emp.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          if (empPhone == normalizedPhone) {
+            existingEmployee = emp;
+            break;
+          }
+        }
+      }
+
+      if (existingEmployee != null) {
+        // Обновляем существующего сотрудника
+        await EmployeeService.updateEmployee(
+          id: existingEmployee.id,
+          name: name,
+          phone: normalizedPhone,
+          isAdmin: isAdmin,
+        );
+        print('✅ Сотрудник обновлен: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
+      } else {
+        // Создаем нового сотрудника
+        await EmployeeService.createEmployee(
+          name: name,
+          phone: normalizedPhone,
+          isAdmin: isAdmin,
+        );
+        print('✅ Сотрудник создан: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
+      }
+    } catch (e) {
+      print('⚠️ Ошибка создания/обновления сотрудника: $e');
+      // Не прерываем процесс, так как регистрация уже сохранена
+    }
   }
 
   Future<void> _saveRegistration() async {
@@ -210,6 +261,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
       if (mounted) {
         if (success) {
+          // Создаем или обновляем запись сотрудника с указанной ролью
+          await _createOrUpdateEmployee(phone, _fullNameController.text.trim(), _isAdmin);
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Регистрация успешно сохранена'),
@@ -431,6 +485,39 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                   return 'Неверный формат даты. Используйте ДД.ММ.ГГГГ';
                 }
                 return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Роль сотрудника
+            const Text(
+              'Роль сотрудника',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            RadioListTile<String>(
+              title: const Text('Сотрудник'),
+              value: 'employee',
+              groupValue: _selectedRole,
+              onChanged: _isLoading ? null : (value) {
+                setState(() {
+                  _selectedRole = value;
+                  _isAdmin = false;
+                });
+              },
+            ),
+            RadioListTile<String>(
+              title: const Text('Администратор'),
+              value: 'admin',
+              groupValue: _selectedRole,
+              onChanged: _isLoading ? null : (value) {
+                setState(() {
+                  _selectedRole = value;
+                  _isAdmin = true;
+                });
               },
             ),
             const SizedBox(height: 16),
