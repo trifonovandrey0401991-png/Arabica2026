@@ -11,6 +11,7 @@ import 'shift_sync_service.dart';
 import 'firebase_wrapper.dart';
 import 'user_role_service.dart';
 import 'utils/logger.dart';
+import 'registration_service.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
@@ -178,6 +179,22 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           
           // Проверяем роль пользователя
           await _checkUserRole(loyaltyInfo.phone);
+          
+          // Сохраняем данные о клиенте на сервере (если это клиент)
+          try {
+            final roleData = await UserRoleService.getUserRole(loyaltyInfo.phone);
+            if (roleData.role.name == 'client') {
+              await RegistrationService.saveClientToServer(
+                phone: loyaltyInfo.phone,
+                name: loyaltyInfo.name,
+                clientName: loyaltyInfo.name,
+              );
+              Logger.debug('✅ Данные клиента сохранены на сервере при проверке регистрации');
+            }
+          } catch (e) {
+            Logger.warning('⚠️ Не удалось сохранить данные клиента на сервере: $e');
+            // Продолжаем без сохранения на сервере
+          }
           
           if (mounted) {
             setState(() {

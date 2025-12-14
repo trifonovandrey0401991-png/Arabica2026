@@ -6,6 +6,7 @@ import 'registration_service.dart';
 import 'loyalty_storage.dart';
 import 'loyalty_service.dart';
 import 'user_role_service.dart';
+import 'utils/logger.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {
@@ -63,9 +64,34 @@ class _RegistrationPageState extends State<RegistrationPage> {
             await UserRoleService.saveUserRole(roleData);
             // Обновляем имя, если нужно (из столбца G для сотрудников/админов)
             await prefs.setString('user_name', roleData.displayName);
+            
+            // Сохраняем данные о клиенте на сервере (если это клиент, а не админ/сотрудник)
+            if (roleData.role.name == 'client') {
+              try {
+                await RegistrationService.saveClientToServer(
+                  phone: existingUser.phone,
+                  name: existingUser.name,
+                  clientName: existingUser.name,
+                );
+                Logger.debug('✅ Данные существующего клиента сохранены на сервере');
+              } catch (e) {
+                Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e');
+              }
+            }
           } catch (e) {
             print('⚠️ Ошибка проверки роли: $e');
             // Продолжаем без роли (по умолчанию клиент)
+            // Сохраняем данные о клиенте на сервере (по умолчанию считаем клиентом)
+            try {
+              await RegistrationService.saveClientToServer(
+                phone: existingUser.phone,
+                name: existingUser.name,
+                clientName: existingUser.name,
+              );
+              Logger.debug('✅ Данные существующего клиента сохранены на сервере (без роли)');
+            } catch (e) {
+              Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e');
+            }
           }
 
           // Показываем сообщение и переходим в приложение

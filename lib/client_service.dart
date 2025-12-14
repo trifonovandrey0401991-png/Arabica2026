@@ -12,30 +12,62 @@ class ClientService {
   static Future<List<Client>> getClients() async {
     try {
       Logger.debug('📥 Загрузка списка клиентов с сервера...');
+      Logger.debug('📥 URL: $baseUrl');
       
       final response = await http.get(
         Uri.parse(baseUrl),
       ).timeout(const Duration(seconds: 15));
 
+      Logger.debug('📥 Response status: ${response.statusCode}');
+      Logger.debug('📥 Response body length: ${response.body.length}');
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        Logger.debug('📥 Response keys: ${result.keys.join(", ")}');
+        Logger.debug('📥 success: ${result['success']}');
+        
         if (result['success'] == true) {
-          final clientsJson = result['clients'] as List<dynamic>;
-          final clients = clientsJson
-              .map((json) => Client.fromJson(json as Map<String, dynamic>))
-              .toList();
-          Logger.debug('✅ Загружено клиентов: ${clients.length}');
-          return clients;
+          final clientsJson = result['clients'];
+          Logger.debug('📥 clients type: ${clientsJson.runtimeType}');
+          
+          if (clientsJson is List) {
+            Logger.debug('📥 clients count: ${clientsJson.length}');
+            final clients = clientsJson
+                .map((json) {
+                  try {
+                    return Client.fromJson(json as Map<String, dynamic>);
+                  } catch (e) {
+                    Logger.error('❌ Ошибка парсинга клиента: $e, json: $json');
+                    return null;
+                  }
+                })
+                .whereType<Client>()
+                .toList();
+            Logger.debug('✅ Загружено клиентов: ${clients.length}');
+            
+            // Логируем первых несколько клиентов для отладки
+            if (clients.isNotEmpty) {
+              Logger.debug('📥 Первый клиент: ${clients[0].name} (${clients[0].phone})');
+            }
+            
+            return clients;
+          } else {
+            Logger.error('❌ clients не является списком: ${clientsJson.runtimeType}');
+            Logger.error('❌ clients value: $clientsJson');
+            return [];
+          }
         } else {
           Logger.error('❌ Ошибка загрузки клиентов: ${result['error']}');
           return [];
         }
       } else {
         Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ Response body: ${response.body.substring(0, 500)}');
         return [];
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       Logger.error('❌ Ошибка загрузки клиентов: $e');
+      Logger.error('❌ Stack trace: $stackTrace');
       return [];
     }
   }
