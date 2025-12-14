@@ -261,21 +261,21 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       }
 
       // Отправляем данные на сервер
-      final result = await RecountQuestionService.bulkUploadQuestions(questions);
+      final uploadResult = await RecountQuestionService.bulkUploadQuestions(questions);
 
       // Закрываем индикатор
       if (mounted) {
         Navigator.pop(context);
       }
 
-      if (result != null) {
+      if (uploadResult != null) {
         // Обновляем список
         await _loadQuestions();
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Успешно загружено ${result.length} вопросов'),
+              content: Text('Успешно загружено ${uploadResult.length} вопросов'),
               backgroundColor: Colors.green,
             ),
           );
