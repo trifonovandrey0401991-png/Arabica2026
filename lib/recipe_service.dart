@@ -12,13 +12,17 @@ class RecipeService {
   static Future<List<Recipe>> getRecipes() async {
     try {
       Logger.debug('📥 Загрузка рецептов с сервера...');
+      Logger.debug('📥 URL: $baseUrl');
       
       final response = await http.get(
         Uri.parse(baseUrl),
       ).timeout(const Duration(seconds: 15));
 
+      Logger.debug('📥 Ответ сервера: statusCode=${response.statusCode}');
+      
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        Logger.debug('📥 Результат: success=${result['success']}, recipes count=${(result['recipes'] as List<dynamic>?)?.length ?? 0}');
         if (result['success'] == true) {
           final recipesJson = result['recipes'] as List<dynamic>;
           final recipes = recipesJson
@@ -31,7 +35,7 @@ class RecipeService {
           return [];
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, body=${response.body.substring(0, 200)}');
         return [];
       }
     } catch (e) {
