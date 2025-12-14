@@ -74,32 +74,43 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     try {
       ImageSource? source;
       
-      // На веб всегда используем галерею
-      if (kIsWeb) {
-        source = ImageSource.gallery;
+      // Проверяем, является ли текущий вопрос типом "только фото"
+      final isPhotoOnlyQuestion = _questions != null && 
+          _currentQuestionIndex < _questions!.length &&
+          _questions![_currentQuestionIndex].isPhotoOnly;
+      
+      // Если вопрос требует только фото, используем только камеру
+      if (isPhotoOnlyQuestion) {
+        source = ImageSource.camera;
       } else {
-        // На мобильных показываем диалог выбора
-        source = await showDialog<ImageSource>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Выберите источник'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.camera_alt),
-                  title: const Text('Камера'),
-                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library),
-                  title: const Text('Галерея'),
-                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                ),
-              ],
+        // Для других случаев (если фото опционально) показываем выбор
+        // На веб всегда используем галерею
+        if (kIsWeb) {
+          source = ImageSource.gallery;
+        } else {
+          // На мобильных показываем диалог выбора
+          source = await showDialog<ImageSource>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Выберите источник'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.camera_alt),
+                    title: const Text('Камера'),
+                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.photo_library),
+                    title: const Text('Галерея'),
+                    onTap: () => Navigator.pop(context, ImageSource.gallery),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
 
       if (source == null) return;
