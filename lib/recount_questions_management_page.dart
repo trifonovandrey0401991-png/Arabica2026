@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart';
+import 'dart:typed_data';
 import 'recount_question_model.dart';
 import 'recount_question_service.dart';
 
@@ -84,6 +87,208 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     }
   }
 
+  Future<void> _uploadFromExcel() async {
+    try {
+      // Выбор файла
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.single.path == null) {
+        return; // Пользователь отменил выбор
+      }
+
+      final filePath = result.files.single.path!;
+      final fileName = result.files.single.name;
+
+      // Показываем индикатор загрузки
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      // Читаем файл
+      final bytes = await result.files.single.readAsBytes();
+      final excel = Excel.decodeBytes(bytes);
+
+      // Получаем первый лист
+      if (excel.tables.isEmpty) {
+        if (mounted) {
+          Navigator.pop(context); // Закрываем индикатор
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Excel файл не содержит листов'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final sheet = excel.tables[excel.tables.keys.first]!;
+      final questions = <Map<String, dynamic>>[];
+
+      // Парсим данные (данные начинаются с первой строки, без заголовка)
+      for (var rowIndex = 0; rowIndex < sheet.maxRows; rowIndex++) {
+        final row = sheet.rows[rowIndex];
+        
+        // Пропускаем пустые строки
+        if (row.isEmpty || (row[0]?.value == null && row.length <= 1)) {
+          continue;
+        }
+
+        // Получаем текст вопроса из первого столбца
+        final questionText = row[0]?.value?.toString().trim();
+        if (questionText == null || questionText.isEmpty) {
+          continue; // Пропускаем строки без текста вопроса
+        }
+
+        // Получаем грейд из второго столбца
+        dynamic gradeValue = row.length > 1 ? row[1]?.value : null;
+        int? grade;
+
+        if (gradeValue != null) {
+          // Пытаемся преобразовать в число
+          if (gradeValue is int) {
+            grade = gradeValue;
+          } else if (gradeValue is double) {
+            grade = gradeValue.toInt();
+          } else {
+            final gradeStr = gradeValue.toString().trim();
+            grade = int.tryParse(gradeStr);
+          }
+        }
+
+        // Валидация грейда
+        if (grade == null || (grade != 1 && grade != 2 && grade != 3)) {
+          if (mounted) {
+            Navigator.pop(context); // Закрываем индикатор
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Ошибка в строке ${rowIndex + 1}: грейд должен быть 1, 2 или 3 (получено: $gradeValue)'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        questions.add({
+          'question': questionText,
+          'grade': grade,
+        });
+      }
+
+      if (questions.isEmpty) {
+        if (mounted) {
+          Navigator.pop(context); // Закрываем индикатор
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Excel файл не содержит валидных вопросов'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Закрываем индикатор загрузки
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Показываем диалог подтверждения
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Подтверждение загрузки'),
+          content: Text(
+            'Будет загружено ${questions.length} вопросов.\n\n'
+            'Внимание: все существующие вопросы будут удалены и заменены данными из Excel файла.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Загрузить'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) {
+        return;
+      }
+
+      // Показываем индикатор загрузки
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      // Отправляем данные на сервер
+      final result = await RecountQuestionService.bulkUploadQuestions(questions);
+
+      // Закрываем индикатор
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      if (result != null) {
+        // Обновляем список
+        await _loadQuestions();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Успешно загружено ${result.length} вопросов'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка загрузки вопросов'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Закрываем индикатор, если он открыт
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при обработке Excel файла: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteQuestion(RecountQuestion question) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -162,6 +367,11 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         title: const Text('Вопросы пересчета'),
         backgroundColor: const Color(0xFF004D40),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.upload_file),
+            onPressed: _uploadFromExcel,
+            tooltip: 'Загрузить из Excel',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadQuestions,

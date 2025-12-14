@@ -139,5 +139,45 @@ class RecountQuestionService {
       return false;
     }
   }
+
+  /// Массовая загрузка вопросов (заменяет все существующие)
+  static Future<List<RecountQuestion>?> bulkUploadQuestions(
+    List<Map<String, dynamic>> questions,
+  ) async {
+    try {
+      Logger.debug('📤 Массовая загрузка вопросов пересчета: ${questions.length} вопросов');
+      
+      final requestBody = <String, dynamic>{
+        'questions': questions,
+      };
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/bulk-upload'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final questionsJson = result['questions'] as List<dynamic>;
+          final createdQuestions = questionsJson
+              .map((json) => RecountQuestion.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Загружено вопросов: ${createdQuestions.length}');
+          return createdQuestions;
+        } else {
+          Logger.error('❌ Ошибка массовой загрузки: ${result['error']}');
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, error=${errorBody['error']}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка массовой загрузки вопросов пересчета', e);
+      return null;
+    }
+  }
 }
 
