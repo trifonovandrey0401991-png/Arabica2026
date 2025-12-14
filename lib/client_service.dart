@@ -98,7 +98,21 @@ class ClientService {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
           Logger.debug('✅ Сообщение отправлено');
-          return ClientMessage.fromJson(result['message'] as Map<String, dynamic>);
+          // Проверяем наличие поля message в ответе
+          if (result['message'] != null && result['message'] is Map) {
+            return ClientMessage.fromJson(result['message'] as Map<String, dynamic>);
+          } else {
+            // Если message не пришел, создаем сообщение из данных запроса
+            return ClientMessage(
+              id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+              clientPhone: clientPhone,
+              senderPhone: senderPhone ?? 'system',
+              text: text,
+              imageUrl: imageUrl,
+              timestamp: DateTime.now().toIso8601String(),
+              isRead: false,
+            );
+          }
         } else {
           Logger.error('❌ Ошибка отправки сообщения: ${result['error']}');
         }
