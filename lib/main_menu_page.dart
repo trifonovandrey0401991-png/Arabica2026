@@ -19,6 +19,7 @@ import 'shift_reports_list_page.dart';
 import 'shift_sync_service.dart';
 import 'rko_service.dart';
 import 'recipes_list_page.dart';
+import 'recipe_edit_page.dart';
 import 'review_type_selection_page.dart';
 import 'reviews_list_page.dart';
 import 'my_dialogs_page.dart';
@@ -543,6 +544,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const RecipesListPage()),
+        );
+      }));
+    }
+    
+    // Редактировать рецепты - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.edit_note, 'Редактировать рецепты', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RecipeEditPage()),
         );
       }));
     }

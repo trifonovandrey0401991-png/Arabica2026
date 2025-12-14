@@ -31,26 +31,64 @@ class RecipeViewPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Фото
-              if (recipe.photoId != null)
+              if (recipe.photoUrlOrId != null)
                 Card(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/images/${recipe.photoId}.jpg',
-                      height: 300,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Image.asset(
-                        'assets/images/no_photo.png',
-                        height: 300,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    child: recipe.photoUrlOrId!.startsWith('http')
+                        ? Image.network(
+                            recipe.photoUrlOrId!,
+                            height: 300,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Image.asset(
+                              'assets/images/no_photo.png',
+                              height: 300,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Image.asset(
+                            'assets/images/${recipe.photoId}.jpg',
+                            height: 300,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Image.asset(
+                              'assets/images/no_photo.png',
+                              height: 300,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                   ),
                 ),
               const SizedBox(height: 16),
-              // Рецепт
+              // Ингредиенты
+              if (recipe.ingredients.isNotEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Ингредиенты',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          recipe.ingredients.replaceAll('\\n', '\n'),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (recipe.ingredients.isNotEmpty) const SizedBox(height: 16),
+              // Последовательность приготовления
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -58,7 +96,7 @@ class RecipeViewPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Рецепт',
+                        'Последовательность приготовления',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -66,7 +104,9 @@ class RecipeViewPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        recipe.recipe.replaceAll('\\n', '\n'),
+                        recipe.steps.isNotEmpty
+                            ? recipe.steps.replaceAll('\\n', '\n')
+                            : recipe.recipeText.replaceAll('\\n', '\n'),
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],

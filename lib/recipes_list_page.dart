@@ -17,7 +17,7 @@ class _RecipesListPageState extends State<RecipesListPage> {
   @override
   void initState() {
     super.initState();
-    _recipesFuture = Recipe.loadRecipesFromGoogleSheets();
+    _recipesFuture = Recipe.loadRecipesFromServer();
   }
 
   @override
@@ -168,18 +168,34 @@ class _RecipesListPageState extends State<RecipesListPage> {
                           ...categoryRecipes.map((recipe) => Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              leading: recipe.photoId != null
-                                  ? Image.asset(
-                                      'assets/images/${recipe.photoId}.jpg',
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Image.asset(
-                                        'assets/images/no_photo.png',
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      ),
+                              leading: recipe.photoUrlOrId != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: recipe.photoUrlOrId!.startsWith('http')
+                                          ? Image.network(
+                                              recipe.photoUrlOrId!,
+                                              width: 50,
+                                              height: 50,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Image.asset(
+                                                'assets/images/no_photo.png',
+                                                width: 50,
+                                                height: 50,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            )
+                                          : Image.asset(
+                                              'assets/images/${recipe.photoId}.jpg',
+                                              width: 50,
+                                              height: 50,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Image.asset(
+                                                'assets/images/no_photo.png',
+                                                width: 50,
+                                                height: 50,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
                                     )
                                   : Image.asset(
                                       'assets/images/no_photo.png',
