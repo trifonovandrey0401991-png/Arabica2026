@@ -585,22 +585,54 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
       children: [
         Padding(
           padding: const EdgeInsets.all(12),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Поиск сотрудника...',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Поиск сотрудника...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.trim().toLowerCase();
+                    });
+                  },
+                ),
               ),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value.trim().toLowerCase();
-              });
-            },
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  // Открываем форму регистрации нового сотрудника
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EmployeeRegistrationPage(),
+                    ),
+                  );
+                  
+                  if (result == true) {
+                    // Обновляем список сотрудников и статусы
+                    setState(() {
+                      _employeesFuture = _loadEmployees();
+                      _loadVerificationStatuses();
+                    });
+                  }
+                },
+                icon: const Icon(Icons.person_add),
+                label: const Text('Новый'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004D40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
