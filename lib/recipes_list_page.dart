@@ -14,8 +14,8 @@ class RecipesListPage extends StatefulWidget {
   State<RecipesListPage> createState() => _RecipesListPageState();
 }
 
-class _RecipesListPageState extends State<RecipesListPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _RecipesListPageState extends State<RecipesListPage> with TickerProviderStateMixin {
+  TabController? _tabController;
   late Future<List<Recipe>> _recipesFuture;
   String _searchQuery = '';
   String? _selectedCategory;
@@ -27,18 +27,19 @@ class _RecipesListPageState extends State<RecipesListPage> with SingleTickerProv
     super.initState();
     _recipesFuture = Recipe.loadRecipesFromServer();
     _loadUserRole();
-    // Инициализируем TabController с 2 вкладками (будет обновлено после загрузки роли)
-    _tabController = TabController(length: 2, vsync: this);
   }
 
   Future<void> _loadUserRole() async {
     try {
       final roleData = await UserRoleService.loadUserRole();
       if (mounted) {
+        // Удаляем старый TabController, если он существует
+        _tabController?.dispose();
+        
         setState(() {
           _userRole = roleData?.role;
           _isLoadingRole = false;
-          // Обновляем TabController в зависимости от роли
+          // Создаем TabController в зависимости от роли
           if (_userRole == UserRole.admin) {
             _tabController = TabController(length: 2, vsync: this);
           } else {
@@ -49,6 +50,7 @@ class _RecipesListPageState extends State<RecipesListPage> with SingleTickerProv
     } catch (e) {
       Logger.error('❌ Ошибка загрузки роли', e);
       if (mounted) {
+        _tabController?.dispose();
         setState(() {
           _isLoadingRole = false;
           _tabController = TabController(length: 1, vsync: this);
@@ -59,7 +61,7 @@ class _RecipesListPageState extends State<RecipesListPage> with SingleTickerProv
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -81,9 +83,9 @@ class _RecipesListPageState extends State<RecipesListPage> with SingleTickerProv
       appBar: AppBar(
         title: const Text('Рецепты'),
         backgroundColor: const Color(0xFF004D40),
-        bottom: isAdmin
+        bottom: isAdmin && _tabController != null
             ? TabBar(
-                controller: _tabController,
+                controller: _tabController!,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 indicatorColor: Colors.white,
@@ -103,9 +105,9 @@ class _RecipesListPageState extends State<RecipesListPage> with SingleTickerProv
             opacity: 0.6,
           ),
         ),
-        child: isAdmin
+        child: isAdmin && _tabController != null
             ? TabBarView(
-                controller: _tabController,
+                controller: _tabController!,
                 children: [
                   _buildRecipesList(),
                   const RecipeListEditPage(),
