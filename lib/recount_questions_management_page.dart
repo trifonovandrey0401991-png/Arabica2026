@@ -90,18 +90,18 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   Future<void> _uploadFromExcel() async {
     try {
       // Выбор файла
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? pickerResult = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'xls'],
         allowMultiple: false,
       );
 
-      if (result == null || result.files.single.path == null) {
+      if (pickerResult == null || pickerResult.files.single.path == null) {
         return; // Пользователь отменил выбор
       }
 
-      final filePath = result.files.single.path!;
-      final fileName = result.files.single.name;
+      final filePath = pickerResult.files.single.path!;
+      final fileName = pickerResult.files.single.name;
 
       // Показываем индикатор загрузки
       if (mounted) {
@@ -115,7 +115,25 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       }
 
       // Читаем файл
-      final bytes = await result.files.single.readAsBytes();
+      final file = pickerResult.files.single;
+      Uint8List bytes;
+      if (file.bytes != null) {
+        bytes = file.bytes!;
+      } else if (file.path != null) {
+        bytes = await File(file.path!).readAsBytes();
+      } else {
+        if (mounted) {
+          Navigator.pop(context); // Закрываем индикатор
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Не удалось прочитать файл'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      
       final excel = Excel.decodeBytes(bytes);
 
       // Получаем первый лист
