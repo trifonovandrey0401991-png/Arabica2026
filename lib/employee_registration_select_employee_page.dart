@@ -61,6 +61,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                 // Нормализуем телефон (убираем пробелы и +)
                 final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
                 employees.add(Employee(
+                  id: 'employee_${displayName.hashCode}_${normalizedPhone.hashCode}',
                   name: displayName,
                   phone: normalizedPhone,
                   position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),

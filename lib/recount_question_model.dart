@@ -81,6 +81,7 @@ class RecountQuestion {
               final grade = int.tryParse(gradeStr);
               if (grade != null && grade >= 1 && grade <= 3) {
                 questions.add(RecountQuestion(
+                  id: 'recount_question_${i}_${question.hashCode}',
                   question: question,
                   grade: grade,
                 ));

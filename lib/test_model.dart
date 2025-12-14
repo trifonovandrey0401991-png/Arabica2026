@@ -109,6 +109,7 @@ class TestQuestion {
               
               if (options.isNotEmpty) {
                 questions.add(TestQuestion(
+                  id: 'test_question_${i}_${question.hashCode}',
                   question: question,
                   options: options,
                   correctAnswer: correctAnswer,

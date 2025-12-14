@@ -99,6 +99,7 @@ class ShiftQuestion {
             
             if (question.isNotEmpty) {
               questions.add(ShiftQuestion(
+                id: 'shift_question_${i}_${question.hashCode}',
                 question: question,
                 answerFormatB: formatB?.isEmpty == true ? null : formatB,
                 answerFormatC: formatC?.isEmpty == true ? null : formatC,

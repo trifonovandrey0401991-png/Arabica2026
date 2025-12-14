@@ -72,6 +72,7 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                   if (displayName.isNotEmpty) {
                     print('   ✅ Добавлен в список не верифицированных');
                     employees.add(Employee(
+                      id: 'employee_${displayName.hashCode}_${normalizedPhone.hashCode}',
                       name: displayName,
                       phone: normalizedPhone,
                       position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),

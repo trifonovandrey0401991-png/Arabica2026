@@ -76,6 +76,7 @@ class TrainingArticle {
             
             if (group.isNotEmpty && title.isNotEmpty && url.isNotEmpty) {
               articles.add(TrainingArticle(
+                id: 'training_article_${i}_${title.hashCode}',
                 group: group,
                 title: title,
                 url: url,

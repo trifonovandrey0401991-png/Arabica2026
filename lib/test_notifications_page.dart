@@ -117,6 +117,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     final testItems = [
       CartItem(
         menuItem: MenuItem(
+          id: 'test_item_1',
           name: 'Тестовый напиток',
           price: '150',
           category: 'Тест',
