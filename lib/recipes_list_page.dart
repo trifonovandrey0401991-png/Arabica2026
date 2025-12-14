@@ -291,6 +291,15 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
                                 style:
                                     const TextStyle(fontWeight: FontWeight.bold),
                               ),
+                              subtitle: recipe.price != null && recipe.price!.isNotEmpty
+                                  ? Text(
+                                      '${recipe.price} ₽',
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    )
+                                  : null,
                               trailing: const Icon(Icons.arrow_forward_ios),
                               onTap: () {
                                 Navigator.push(

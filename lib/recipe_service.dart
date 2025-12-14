@@ -70,6 +70,7 @@ class RecipeService {
   static Future<Recipe?> createRecipe({
     required String name,
     required String category,
+    String? price,
     String? ingredients,
     String? steps,
   }) async {
@@ -77,12 +78,15 @@ class RecipeService {
       Logger.debug('📤 Создание рецепта: $name');
       Logger.debug('📤 URL: $baseUrl');
       
-      final requestBody = {
+      final requestBody = <String, dynamic>{
         'name': name,
         'category': category,
         'ingredients': ingredients ?? '',
         'steps': steps ?? '',
       };
+      if (price != null && price.isNotEmpty) {
+        requestBody['price'] = price;
+      }
       Logger.debug('📤 Request body: ${jsonEncode(requestBody)}');
       
       final response = await http.post(
@@ -117,6 +121,7 @@ class RecipeService {
     required String id,
     String? name,
     String? category,
+    String? price,
     String? ingredients,
     String? steps,
     String? photoUrl,
@@ -127,6 +132,7 @@ class RecipeService {
       final body = <String, dynamic>{};
       if (name != null) body['name'] = name;
       if (category != null) body['category'] = category;
+      if (price != null) body['price'] = price;
       if (ingredients != null) body['ingredients'] = ingredients;
       if (steps != null) body['steps'] = steps;
       if (photoUrl != null) body['photoUrl'] = photoUrl;

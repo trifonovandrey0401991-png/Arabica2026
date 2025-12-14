@@ -63,6 +63,35 @@ class RecipeViewPage extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 16),
+              // Цена
+              if (recipe.price != null && recipe.price!.isNotEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Цена',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${recipe.price} ₽',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (recipe.price != null && recipe.price!.isNotEmpty)
+                const SizedBox(height: 16),
               // Ингредиенты
               if (recipe.ingredients.isNotEmpty)
                 Card(

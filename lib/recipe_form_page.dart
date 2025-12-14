@@ -21,6 +21,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
+  final _priceController = TextEditingController();
   final _ingredientsController = TextEditingController();
   final _stepsController = TextEditingController();
 
@@ -35,6 +36,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     if (widget.recipe != null) {
       _nameController.text = widget.recipe!.name;
       _categoryController.text = widget.recipe!.category;
+      _priceController.text = widget.recipe!.price ?? '';
       _ingredientsController.text = widget.recipe!.ingredients;
       _stepsController.text = widget.recipe!.steps;
       _photoUrl = widget.recipe!.photoUrl;
@@ -45,6 +47,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   void dispose() {
     _nameController.dispose();
     _categoryController.dispose();
+    _priceController.dispose();
     _ingredientsController.dispose();
     _stepsController.dispose();
     super.dispose();
@@ -126,6 +129,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         savedRecipe = await RecipeService.createRecipe(
           name: _nameController.text.trim(),
           category: _categoryController.text.trim(),
+          price: _priceController.text.trim().isNotEmpty ? _priceController.text.trim() : null,
           ingredients: _ingredientsController.text.trim(),
           steps: _stepsController.text.trim(),
         );
@@ -154,6 +158,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           id: widget.recipe!.id,
           name: _nameController.text.trim(),
           category: _categoryController.text.trim(),
+          price: _priceController.text.trim().isNotEmpty ? _priceController.text.trim() : null,
           ingredients: _ingredientsController.text.trim(),
           steps: _stepsController.text.trim(),
         );
@@ -318,6 +323,23 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         border: OutlineInputBorder(),
                         hintText: 'Например: Кофе, Чай, Десерты',
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Цена напитка
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: TextFormField(
+                      controller: _priceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Цена напитка',
+                        border: OutlineInputBorder(),
+                        hintText: 'Например: 150',
+                        prefixText: '₽ ',
+                      ),
+                      keyboardType: TextInputType.number,
                     ),
                   ),
                 ),
