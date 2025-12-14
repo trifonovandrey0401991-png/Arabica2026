@@ -49,14 +49,64 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
 
   Future<void> _openArticleUrl(String url) async {
     try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
+      // Очищаем URL от лишних пробелов
+      final cleanUrl = url.trim();
+      
+      // Проверяем, что URL не пустой
+      if (cleanUrl.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Не удалось открыть ссылку'),
+              content: Text('Ссылка не указана'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Парсим URL
+      Uri uri;
+      try {
+        uri = Uri.parse(cleanUrl);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Некорректный формат ссылки: $cleanUrl'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Если нет схемы, добавляем https://
+      if (!uri.hasScheme) {
+        uri = Uri.parse('https://$cleanUrl');
+      }
+
+      // Проверяем, можно ли открыть URL
+      if (await canLaunchUrl(uri)) {
+        // Пытаемся открыть в браузере
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        
+        if (!launched && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Не удалось открыть ссылку. Проверьте, установлен ли браузер.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Не удалось открыть ссылку: $uri'),
               backgroundColor: Colors.red,
             ),
           );
