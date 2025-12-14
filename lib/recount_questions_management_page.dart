@@ -196,75 +196,36 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
                   itemBuilder: (context, index) {
                     final question = _questions[index];
                     return Card(
+                      elevation: 2,
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF004D40),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
+                        leading: Icon(
+                          Icons.help_outline,
+                          color: _getGradeColor(question.grade),
                         ),
-                        title: Text(
-                          question.question,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Chip(
-                            label: Text(
-                              'Грейд ${question.grade}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            backgroundColor: _getGradeColor(question.grade),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
+                        title: Text(question.question),
+                        subtitle: Text(
+                          'Грейд ${question.grade}: ${_getGradeLabel(question.grade)}',
+                          style: TextStyle(
+                            color: _getGradeColor(question.grade),
+                            fontSize: 12,
                           ),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit, color: Color(0xFF004D40), size: 20),
+                              icon: const Icon(Icons.edit, color: Color(0xFF004D40)),
                               onPressed: () => _showEditQuestionDialog(question),
                               tooltip: 'Редактировать',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
                             ),
-                            const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                              icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () => _deleteQuestion(question),
                               tooltip: 'Удалить',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
                             ),
                           ],
                         ),
-                        isThreeLine: false,
-                        dense: true,
                         onTap: () => _showEditQuestionDialog(question),
                       ),
                     );
