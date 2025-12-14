@@ -6,6 +6,7 @@ import 'user_role_service.dart';
 import 'google_script_config.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
+import 'employee_registration_page.dart';
 import 'user_role_model.dart';
 import 'unverified_employees_page.dart';
 import 'shops_management_page.dart';
@@ -356,7 +357,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Сотрудники'),
@@ -364,6 +365,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Сотрудники', icon: Icon(Icons.people)),
+              Tab(text: 'Регистрация', icon: Icon(Icons.person_add)),
               Tab(text: 'Магазины', icon: Icon(Icons.store)),
             ],
           ),
@@ -395,7 +397,19 @@ class _EmployeesPageState extends State<EmployeesPage> {
         body: TabBarView(
           children: [
             // Вкладка "Сотрудники"
-            Column(
+            _buildEmployeesTab(),
+            // Вкладка "Регистрация"
+            _buildRegistrationTab(),
+            // Вкладка "Магазины"
+            const ShopsManagementPage(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmployeesTab() {
+    return Column(
         children: [
           // Поиск
           Padding(
@@ -668,12 +682,311 @@ class _EmployeesPageState extends State<EmployeesPage> {
             ),
           ),
         ],
-      ),
-            // Вкладка "Магазины"
-            const ShopsManagementPage(),
-          ],
+      );
+  }
+
+  Widget _buildRegistrationTab() {
+    return _EmployeeRegistrationTab();
+  }
+}
+
+/// Вкладка регистрации сотрудников
+class _EmployeeRegistrationTab extends StatefulWidget {
+  @override
+  State<_EmployeeRegistrationTab> createState() => _EmployeeRegistrationTabState();
+}
+
+class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
+  late Future<List<Employee>> _employeesFuture;
+  String _searchQuery = '';
+  Map<String, bool> _verificationStatus = {};
+  Map<String, bool> _hasRegistration = {}; // Кэш наличия регистрации (независимо от статуса верификации)
+
+  @override
+  void initState() {
+    super.initState();
+    _employeesFuture = _loadEmployees();
+    _loadVerificationStatuses();
+  }
+
+  Future<List<Employee>> _loadEmployees() async {
+    try {
+      const sheetUrl =
+          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
+      
+      final response = await http.get(Uri.parse(sheetUrl));
+      
+      if (response.statusCode != 200) {
+        throw Exception('Ошибка загрузки данных: ${response.statusCode}');
+      }
+
+      final lines = const LineSplitter().convert(response.body);
+      final List<Employee> employees = [];
+
+      for (var i = 1; i < lines.length; i++) {
+        try {
+          final line = lines[i];
+          final row = _parseCsvLine(line);
+          
+          if (row.length > 7) {
+            final clientName = row[0].trim().replaceAll('"', '');
+            final phone = row[1].trim().replaceAll('"', '');
+            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
+            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
+            
+            final isEmployee = employeeName.isNotEmpty;
+            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
+            
+            if (isEmployee || isAdminUser) {
+              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
+              
+              if (displayName.isNotEmpty && phone.isNotEmpty) {
+                // Нормализуем телефон (убираем пробелы и +)
+                final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+                employees.add(Employee(
+                  id: 'employee_${displayName.hashCode}_${normalizedPhone.hashCode}',
+                  name: displayName,
+                  phone: normalizedPhone,
+                  position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
+                ));
+              }
+            }
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      final Map<String, Employee> uniqueEmployees = {};
+      for (var employee in employees) {
+        if (!uniqueEmployees.containsKey(employee.phone)) {
+          uniqueEmployees[employee.phone!] = employee;
+        }
+      }
+
+      final result = uniqueEmployees.values.toList();
+      result.sort((a, b) => a.name.compareTo(b.name));
+      
+      return result;
+    } catch (e) {
+      print('Ошибка загрузки сотрудников: $e');
+      rethrow;
+    }
+  }
+
+  List<String> _parseCsvLine(String line) {
+    final List<String> result = [];
+    String current = '';
+    bool inQuotes = false;
+
+    for (var i = 0; i < line.length; i++) {
+      final char = line[i];
+      
+      if (char == '"') {
+        inQuotes = !inQuotes;
+      } else if (char == ',' && !inQuotes) {
+        result.add(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.add(current);
+    return result;
+  }
+
+  Future<void> _loadVerificationStatuses() async {
+    try {
+      final employees = await _loadEmployees();
+      for (var employee in employees) {
+        if (employee.phone != null && employee.phone!.isNotEmpty) {
+          // Нормализуем телефон для ключа
+          final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+          _verificationStatus[normalizedPhone] = registration?.isVerified ?? false;
+          _hasRegistration[normalizedPhone] = registration != null; // Отслеживаем наличие регистрации
+        }
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Ошибка загрузки статусов верификации: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Поиск сотрудника...',
+              prefixIcon: const Icon(Icons.search),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.trim().toLowerCase();
+              });
+            },
+          ),
         ),
-      ),
+        Expanded(
+          child: FutureBuilder<List<Employee>>(
+            future: _employeesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text('Ошибка загрузки данных'),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _employeesFuture = _loadEmployees();
+                          });
+                        },
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final allEmployees = snapshot.data ?? [];
+              final filteredEmployees = allEmployees.where((employee) {
+                // Исключаем сотрудников, у которых уже есть регистрация (даже если isVerified = false)
+                if (employee.phone != null && employee.phone!.isNotEmpty) {
+                  final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+                  if (_hasRegistration[normalizedPhone] == true) {
+                    return false; // Скрываем сотрудников с регистрацией
+                  }
+                }
+                
+                if (_searchQuery.isEmpty) return true;
+                final name = employee.name.toLowerCase();
+                return name.contains(_searchQuery);
+              }).toList();
+
+              if (filteredEmployees.isEmpty) {
+                return const Center(
+                  child: Text('Все сотрудники зарегистрированы или не найдены'),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: filteredEmployees.length,
+                itemBuilder: (context, index) {
+                  final employee = filteredEmployees[index];
+                  final isVerified = employee.phone != null
+                      ? _verificationStatus[employee.phone!] ?? false
+                      : false;
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    child: ListTile(
+                      leading: Stack(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: const Color(0xFF004D40),
+                            child: Text(
+                              employee.name.isNotEmpty
+                                  ? employee.name[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (isVerified)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              employee.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          if (isVerified)
+                            const Icon(
+                              Icons.verified,
+                              color: Colors.green,
+                              size: 20,
+                            ),
+                        ],
+                      ),
+                      subtitle: employee.phone != null
+                          ? Text(employee.phone!)
+                          : null,
+                      onTap: employee.phone != null && employee.phone!.isNotEmpty
+                          ? () async {
+                              // Загружаем существующую регистрацию, если есть
+                              final existingRegistration = await EmployeeRegistrationService.getRegistration(employee.phone!);
+                              
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EmployeeRegistrationPage(
+                                    employeePhone: employee.phone!,
+                                    existingRegistration: existingRegistration,
+                                  ),
+                                ),
+                              );
+                              
+                              if (result == true) {
+                                // Обновляем статусы верификации
+                                await _loadVerificationStatuses();
+                              }
+                            }
+                          : null,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

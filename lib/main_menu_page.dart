@@ -270,7 +270,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Сотрудники - только админ
+    // Сотрудники - только админ (включает вкладку регистрации)
     if (role == UserRole.admin) {
       items.add(_tile(context, Icons.people, 'Сотрудники', () async {
         await Navigator.push(
@@ -281,16 +281,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         if (mounted) {
           setState(() {});
         }
-      }));
-    }
-
-    // Регистрация сотрудника - только админ
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.person_add, 'Регистрация сотрудника', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const EmployeeRegistrationSelectEmployeePage()),
-        );
       }));
     }
 
