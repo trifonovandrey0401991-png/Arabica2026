@@ -10,6 +10,7 @@ import 'shops_management_page.dart';
 import 'employees_page.dart';
 import 'shift_questions_management_page.dart';
 import 'recount_questions_management_page.dart';
+import 'test_questions_management_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -88,10 +89,10 @@ class DataManagementPage extends StatelessWidget {
             title: 'Вопросы тестирования',
             icon: Icons.quiz,
             onTap: () {
-              // TODO: Создать страницу управления вопросами тестирования
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Страница управления вопросами тестирования в разработке'),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TestQuestionsManagementPage(),
                 ),
               );
             },
