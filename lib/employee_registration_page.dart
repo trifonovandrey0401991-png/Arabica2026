@@ -24,6 +24,7 @@ class EmployeeRegistrationPage extends StatefulWidget {
 class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
+  final _phoneController = TextEditingController(); // Добавляем контроллер для телефона
   final _passportSeriesController = TextEditingController();
   final _passportNumberController = TextEditingController();
   final _issuedByController = TextEditingController();
@@ -51,6 +52,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     if (widget.existingRegistration != null) {
       final reg = widget.existingRegistration!;
       _fullNameController.text = reg.fullName;
+      _phoneController.text = reg.phone; // Заполняем телефон из регистрации
       _passportSeriesController.text = reg.passportSeries;
       _passportNumberController.text = reg.passportNumber;
       _issuedByController.text = reg.issuedBy;
@@ -58,6 +60,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       _passportFrontPhotoUrl = reg.passportFrontPhotoUrl;
       _passportRegistrationPhotoUrl = reg.passportRegistrationPhotoUrl;
       _additionalPhotoUrl = reg.additionalPhotoUrl;
+    } else if (widget.employeePhone != null) {
+      // Если передан телефон, заполняем его
+      _phoneController.text = widget.employeePhone!;
     }
     // По умолчанию роль - сотрудник
     _selectedRole = 'employee';
@@ -106,6 +111,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   @override
   void dispose() {
     _fullNameController.dispose();
+    _phoneController.dispose();
     _passportSeriesController.dispose();
     _passportNumberController.dispose();
     _issuedByController.dispose();
@@ -150,8 +156,13 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   }
 
   Future<String?> _getEmployeePhone() async {
+    // Если телефон указан в виджете, используем его
     if (widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
       return widget.employeePhone;
+    }
+    // Если телефон введен в поле, используем его
+    if (_phoneController.text.trim().isNotEmpty) {
+      return _phoneController.text.trim();
     }
     // Получаем телефон из SharedPreferences (для случая, когда сотрудник регистрирует себя)
     final prefs = await SharedPreferences.getInstance();
@@ -445,6 +456,32 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
               },
             ),
             const SizedBox(height: 16),
+
+            // Телефон (показываем только если не указан в виджете)
+            if (widget.employeePhone == null)
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Введите номер телефона',
+                  border: OutlineInputBorder(),
+                  hintText: '79001234567',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+                enabled: !_isEditing, // Нельзя редактировать при редактировании существующей регистрации
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Пожалуйста, введите номер телефона';
+                  }
+                  // Простая валидация телефона (минимум 10 цифр)
+                  final phoneDigits = value.replaceAll(RegExp(r'[^\d]'), '');
+                  if (phoneDigits.length < 10) {
+                    return 'Номер телефона должен содержать минимум 10 цифр';
+                  }
+                  return null;
+                },
+              ),
+            if (widget.employeePhone == null) const SizedBox(height: 16),
 
             // Серия паспорта
             TextFormField(
