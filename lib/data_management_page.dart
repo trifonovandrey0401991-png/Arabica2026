@@ -8,6 +8,7 @@ import 'training_article_service.dart';
 import 'menu_service.dart';
 import 'shops_management_page.dart';
 import 'employees_page.dart';
+import 'shift_questions_management_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -58,10 +59,10 @@ class DataManagementPage extends StatelessWidget {
             title: 'Вопросы пересменки',
             icon: Icons.question_answer,
             onTap: () {
-              // TODO: Создать страницу управления вопросами пересменки
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Страница управления вопросами пересменки в разработке'),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ShiftQuestionsManagementPage(),
                 ),
               );
             },
