@@ -158,6 +158,13 @@ class RecountQuestionService {
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
+        // Проверяем, что ответ - JSON, а не HTML
+        final contentType = response.headers['content-type'] ?? '';
+        if (!contentType.contains('application/json')) {
+          Logger.error('❌ Сервер вернул не JSON: ${response.body.substring(0, 200)}');
+          return null;
+        }
+        
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
           final questionsJson = result['questions'] as List<dynamic>;
@@ -170,8 +177,13 @@ class RecountQuestionService {
           Logger.error('❌ Ошибка массовой загрузки: ${result['error']}');
         }
       } else {
-        final errorBody = jsonDecode(response.body);
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, error=${errorBody['error']}');
+        // Пытаемся распарсить как JSON, если не получается - показываем текст
+        try {
+          final errorBody = jsonDecode(response.body);
+          Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, error=${errorBody['error']}');
+        } catch (e) {
+          Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, body=${response.body.substring(0, 200)}');
+        }
       }
       return null;
     } catch (e) {

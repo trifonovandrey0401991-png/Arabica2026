@@ -605,6 +605,7 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
               const SizedBox(height: 12),
               RadioListTile<int>(
                 title: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 20,
@@ -615,7 +616,9 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('Грейд 1: Очень важный'),
+                    const Flexible(
+                      child: Text('Грейд 1: Очень важный'),
+                    ),
                   ],
                 ),
                 value: 1,
@@ -651,6 +654,7 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
               ),
               RadioListTile<int>(
                 title: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 20,
@@ -661,7 +665,9 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('Грейд 3: Не очень важный'),
+                    const Flexible(
+                      child: Text('Грейд 3: Не очень важный'),
+                    ),
                   ],
                 ),
                 value: 3,
