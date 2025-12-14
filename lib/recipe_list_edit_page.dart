@@ -339,7 +339,6 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
             ),
           ],
         ),
-      ),
     );
   }
 }
