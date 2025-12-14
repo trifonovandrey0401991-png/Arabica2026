@@ -62,6 +62,45 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     // По умолчанию роль - сотрудник
     _selectedRole = 'employee';
     _isAdmin = false;
+    
+    // Загружаем текущую роль сотрудника, если редактируем существующую регистрацию
+    if (widget.existingRegistration != null || widget.employeePhone != null) {
+      _loadEmployeeRole();
+    }
+  }
+
+  /// Загрузить текущую роль сотрудника по телефону
+  Future<void> _loadEmployeeRole() async {
+    try {
+      final phone = await _getEmployeePhone();
+      if (phone == null || phone.isEmpty) {
+        return;
+      }
+
+      // Получаем всех сотрудников и ищем по телефону
+      final allEmployees = await EmployeeService.getEmployees();
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      
+      for (var emp in allEmployees) {
+        if (emp.phone != null) {
+          final empPhone = emp.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+          if (empPhone == normalizedPhone) {
+            // Найден сотрудник, устанавливаем его роль
+            final isAdmin = emp.isAdmin == true;
+            if (mounted) {
+              setState(() {
+                _isAdmin = isAdmin;
+                _selectedRole = isAdmin ? 'admin' : 'employee';
+              });
+            }
+            print('✅ Загружена роль сотрудника: ${isAdmin ? "Админ" : "Сотрудник"}');
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      print('⚠️ Ошибка загрузки роли сотрудника: $e');
+    }
   }
 
   @override
