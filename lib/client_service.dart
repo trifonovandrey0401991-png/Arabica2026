@@ -35,7 +35,7 @@ class ClientService {
         return [];
       }
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки клиентов', e);
+      Logger.error('❌ Ошибка загрузки клиентов: $e');
       return [];
     }
   }
@@ -67,7 +67,7 @@ class ClientService {
         return [];
       }
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки сообщений', e);
+      Logger.error('❌ Ошибка загрузки сообщений: $e');
       return [];
     }
   }
@@ -107,7 +107,7 @@ class ClientService {
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка отправки сообщения', e);
+      Logger.error('❌ Ошибка отправки сообщения: $e');
       return null;
     }
   }
@@ -149,7 +149,7 @@ class ClientService {
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка отправки сообщения всем клиентам', e);
+      Logger.error('❌ Ошибка отправки сообщения всем клиентам: $e');
       return null;
     }
   }
@@ -163,9 +163,10 @@ class ClientService {
       // Пока возвращаем true
       return true;
     } catch (e) {
-      Logger.error('❌ Ошибка отметки сообщения', e);
+      Logger.error('❌ Ошибка отметки сообщения: $e');
       return false;
     }
   }
 }
+
 
