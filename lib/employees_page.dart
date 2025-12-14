@@ -12,28 +12,50 @@ import 'shops_management_page.dart';
 
 /// Модель сотрудника
 class Employee {
+  final String id;
   final String name;
   final String? position;
   final String? department;
   final String? phone;
   final String? email;
+  final bool? isAdmin;
+  final String? employeeName;
 
   Employee({
+    required this.id,
     required this.name,
     this.position,
     this.department,
     this.phone,
     this.email,
+    this.isAdmin,
+    this.employeeName,
   });
 
   factory Employee.fromJson(Map<String, dynamic> json) {
     return Employee(
+      id: json['id'] ?? '',
       name: (json['name'] ?? '').toString().trim(),
       position: json['position']?.toString().trim(),
       department: json['department']?.toString().trim(),
       phone: json['phone']?.toString().trim(),
       email: json['email']?.toString().trim(),
+      isAdmin: json['isAdmin'] == true || json['isAdmin'] == 1 || json['isAdmin'] == '1',
+      employeeName: json['employeeName']?.toString().trim(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'position': position,
+      'department': department,
+      'phone': phone,
+      'email': email,
+      'isAdmin': isAdmin,
+      'employeeName': employeeName,
+    };
   }
 }
 
@@ -119,6 +141,7 @@ class EmployeesPage extends StatefulWidget {
               
               if (displayName.isNotEmpty) {
                 employees.add(Employee(
+                  id: 'employee_${displayName.hashCode}_${phone.hashCode}',
                   name: displayName,
                   phone: phone.isNotEmpty ? phone : null,
                 ));
@@ -269,6 +292,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
                     : null;
                 
                 employees.add(Employee(
+                  id: 'employee_${displayName.hashCode}_${normalizedPhone?.hashCode ?? 0}',
                   name: displayName,
                   phone: normalizedPhone,
                   // Для админов можно добавить пометку

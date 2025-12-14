@@ -1,21 +1,57 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
+import 'test_question_service.dart';
 
 /// Модель вопроса теста
 class TestQuestion {
+  final String id;
   final String question;
   final List<String> options;
   final String correctAnswer;
 
   TestQuestion({
+    required this.id,
     required this.question,
     required this.options,
     required this.correctAnswer,
   });
 
-  /// Загрузить вопросы из Google Sheets
+  /// Создать TestQuestion из JSON
+  factory TestQuestion.fromJson(Map<String, dynamic> json) {
+    return TestQuestion(
+      id: json['id'] ?? '',
+      question: json['question'] ?? '',
+      options: json['options'] != null 
+          ? (json['options'] as List<dynamic>).map((e) => e.toString()).toList()
+          : [],
+      correctAnswer: json['correctAnswer'] ?? '',
+    );
+  }
+
+  /// Преобразовать TestQuestion в JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'question': question,
+      'options': options,
+      'correctAnswer': correctAnswer,
+    };
+  }
+
+  /// Загрузить вопросы с сервера
   static Future<List<TestQuestion>> loadQuestions() async {
+    try {
+      return await TestQuestionService.getQuestions();
+    } catch (e) {
+      print('❌ Ошибка загрузки вопросов тестирования: $e');
+      return [];
+    }
+  }
+
+  /// Загрузить вопросы из Google Sheets (устаревший метод)
+  @Deprecated('Используйте loadQuestions()')
+  static Future<List<TestQuestion>> loadQuestionsFromGoogleSheets() async {
     try {
       // Правильно кодируем название листа с кириллицей
       // Используем точное название листа: "Вопросы Тестирования" (с пробелом, БЕЗ подчеркивания)

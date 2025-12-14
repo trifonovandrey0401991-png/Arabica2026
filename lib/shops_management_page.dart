@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'shop_model.dart';
 import 'shop_settings_model.dart';
+import 'shop_service.dart';
 
 /// Страница управления магазинами для РКО
 class ShopsManagementPage extends StatefulWidget {
@@ -30,7 +31,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     });
 
     try {
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await ShopService.getShops();
       
       // Загружаем настройки для каждого магазина
       final Map<String, ShopSettings?> settings = {};

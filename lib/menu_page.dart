@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'cart_provider.dart';
 import 'cart_page.dart';
+import 'menu_service.dart';
 
 class MenuItem {
+  final String id;
   final String name;
   final String price;
   final String category;
@@ -12,6 +14,7 @@ class MenuItem {
   final String photoId;
 
   MenuItem({
+    required this.id,
     required this.name,
     required this.price,
     required this.category,
@@ -21,12 +24,24 @@ class MenuItem {
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
     return MenuItem(
+      id: json['id'] ?? '',
       name: (json['name'] ?? '').toString(),
       price: (json['price'] ?? '').toString(),
       category: (json['category'] ?? '').toString(),
       shop: (json['shop'] ?? '').toString(),
       photoId: (json['photo_id'] ?? '').toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'price': price,
+      'category': category,
+      'shop': shop,
+      'photo_id': photoId,
+    };
   }
 }
 
@@ -55,9 +70,39 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<List<MenuItem>> _loadMenu() async {
-    final jsonString = await rootBundle.loadString('assets/menu.json');
-    final List<dynamic> jsonData = json.decode(jsonString);
-    return jsonData.map((e) => MenuItem.fromJson(e)).toList();
+    try {
+      // Пытаемся загрузить с сервера
+      final items = await MenuService.getMenuItems();
+      if (items.isNotEmpty) {
+        return items;
+      }
+    } catch (e) {
+      print('⚠️ Ошибка загрузки меню с сервера: $e');
+    }
+    
+    // Fallback на локальный файл
+    try {
+      final jsonString = await rootBundle.loadString('assets/menu.json');
+      final List<dynamic> jsonData = json.decode(jsonString);
+      return jsonData.map((e) {
+        final item = MenuItem.fromJson(e);
+        // Добавляем временный ID, если его нет
+        if (item.id.isEmpty) {
+          return MenuItem(
+            id: 'menu_${item.name.hashCode}',
+            name: item.name,
+            price: item.price,
+            category: item.category,
+            shop: item.shop,
+            photoId: item.photoId,
+          );
+        }
+        return item;
+      }).toList();
+    } catch (e) {
+      print('❌ Ошибка загрузки меню из файла: $e');
+      return [];
+    }
   }
 
   String _normalizeCategory(String value) {

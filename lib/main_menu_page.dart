@@ -38,6 +38,7 @@ import 'employee_registration_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'rko_reports_page.dart';
 import 'kpi_type_selection_page.dart';
+import 'data_management_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -289,6 +290,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const EmployeeRegistrationSelectEmployeePage()),
+        );
+      }));
+    }
+
+    // Управление данными - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.settings_applications, 'Управление данными', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DataManagementPage()),
         );
       }));
     }

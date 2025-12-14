@@ -1,18 +1,50 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'recount_question_service.dart';
 
 /// Модель вопроса пересчета
 class RecountQuestion {
+  final String id;
   final String question;
   final int grade; // 1 - очень важный, 2 - средней важности, 3 - не очень важный
 
   RecountQuestion({
+    required this.id,
     required this.question,
     required this.grade,
   });
 
-  /// Загрузить вопросы из Google Sheets (лист "ПЕРЕСЧЕТ")
+  /// Создать RecountQuestion из JSON
+  factory RecountQuestion.fromJson(Map<String, dynamic> json) {
+    return RecountQuestion(
+      id: json['id'] ?? '',
+      question: json['question'] ?? '',
+      grade: json['grade'] is int ? json['grade'] : int.tryParse(json['grade'].toString()) ?? 1,
+    );
+  }
+
+  /// Преобразовать RecountQuestion в JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'question': question,
+      'grade': grade,
+    };
+  }
+
+  /// Загрузить вопросы с сервера
   static Future<List<RecountQuestion>> loadQuestions() async {
+    try {
+      return await RecountQuestionService.getQuestions();
+    } catch (e) {
+      print('❌ Ошибка загрузки вопросов пересчета: $e');
+      return [];
+    }
+  }
+
+  /// Загрузить вопросы из Google Sheets (устаревший метод)
+  @Deprecated('Используйте loadQuestions()')
+  static Future<List<RecountQuestion>> loadQuestionsFromGoogleSheets() async {
     try {
       const sheetName = 'ПЕРЕСЧЕТ';
       final encodedSheetName = Uri.encodeComponent(sheetName);

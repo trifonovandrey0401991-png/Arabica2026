@@ -1,17 +1,40 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'shift_question_service.dart';
 
 /// Модель вопроса пересменки
 class ShiftQuestion {
+  final String id;
   final String question;
   final String? answerFormatB; // Столбец B
   final String? answerFormatC; // Столбец C
 
   ShiftQuestion({
+    required this.id,
     required this.question,
     this.answerFormatB,
     this.answerFormatC,
   });
+
+  /// Создать ShiftQuestion из JSON
+  factory ShiftQuestion.fromJson(Map<String, dynamic> json) {
+    return ShiftQuestion(
+      id: json['id'] ?? '',
+      question: json['question'] ?? '',
+      answerFormatB: json['answerFormatB'],
+      answerFormatC: json['answerFormatC'],
+    );
+  }
+
+  /// Преобразовать ShiftQuestion в JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'question': question,
+      'answerFormatB': answerFormatB,
+      'answerFormatC': answerFormatC,
+    };
+  }
 
   /// Определить тип ответа
   bool get isNumberOnly => 
@@ -28,8 +51,19 @@ class ShiftQuestion {
 
   bool get isTextOnly => !isNumberOnly && !isPhotoOnly && !isYesNo;
 
-  /// Загрузить вопросы из Google Sheets
+  /// Загрузить вопросы с сервера
   static Future<List<ShiftQuestion>> loadQuestions() async {
+    try {
+      return await ShiftQuestionService.getQuestions();
+    } catch (e) {
+      print('❌ Ошибка загрузки вопросов пересменки: $e');
+      return [];
+    }
+  }
+
+  /// Загрузить вопросы из Google Sheets (устаревший метод)
+  @Deprecated('Используйте loadQuestions()')
+  static Future<List<ShiftQuestion>> loadQuestionsFromGoogleSheets() async {
     try {
       const sheetName = 'Пересменка';
       final encodedSheetName = Uri.encodeComponent(sheetName);

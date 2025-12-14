@@ -1,21 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'training_article_service.dart';
 
 /// Модель статьи обучения
 class TrainingArticle {
+  final String id;
   final String group;
   final String title;
   final String url;
 
   TrainingArticle({
+    required this.id,
     required this.group,
     required this.title,
     required this.url,
   });
 
-  /// Загрузить статьи обучения из Google Sheets
+  /// Создать TrainingArticle из JSON
+  factory TrainingArticle.fromJson(Map<String, dynamic> json) {
+    return TrainingArticle(
+      id: json['id'] ?? '',
+      group: json['group'] ?? '',
+      title: json['title'] ?? '',
+      url: json['url'] ?? '',
+    );
+  }
+
+  /// Преобразовать TrainingArticle в JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'group': group,
+      'title': title,
+      'url': url,
+    };
+  }
+
+  /// Загрузить статьи обучения с сервера
   static Future<List<TrainingArticle>> loadArticles() async {
+    try {
+      return await TrainingArticleService.getArticles();
+    } catch (e) {
+      print('❌ Ошибка загрузки статей обучения: $e');
+      return [];
+    }
+  }
+
+  /// Загрузить статьи обучения из Google Sheets (устаревший метод)
+  @Deprecated('Используйте loadArticles()')
+  static Future<List<TrainingArticle>> loadArticlesFromGoogleSheets() async {
     try {
       const sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Статьи_Обучения';

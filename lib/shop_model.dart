@@ -3,9 +3,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'utils/logger.dart';
 import 'utils/cache_manager.dart';
+import 'shop_service.dart';
 
 /// Модель магазина
 class Shop {
+  final String id;
   final String name;
   final String address;
   final IconData icon;
@@ -13,12 +15,36 @@ class Shop {
   final double? longitude; // Долгота
 
   Shop({
+    required this.id,
     required this.name,
     required this.address,
     required this.icon,
     this.latitude,
     this.longitude,
   });
+
+  /// Создать Shop из JSON
+  factory Shop.fromJson(Map<String, dynamic> json) {
+    return Shop(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      address: json['address'] ?? '',
+      icon: _getIconForShop(json['name'] ?? ''),
+      latitude: json['latitude'] != null ? (json['latitude'] is double ? json['latitude'] : double.tryParse(json['latitude'].toString())) : null,
+      longitude: json['longitude'] != null ? (json['longitude'] is double ? json['longitude'] : double.tryParse(json['longitude'].toString())) : null,
+    );
+  }
+
+  /// Преобразовать Shop в JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+  }
 
   /// Получить иконку по названию магазина
   /// Используем outlined иконки для лучшей видимости на темном фоне
@@ -33,9 +59,9 @@ class Shop {
     return Icons.store_outlined; // По умолчанию
   }
 
-  /// Загрузить список магазинов из Google Sheets (столбец D)
+  /// Загрузить список магазинов с сервера
   /// Использует кэширование на 10 минут для уменьшения запросов
-  static Future<List<Shop>> loadShopsFromGoogleSheets() async {
+  static Future<List<Shop>> loadShopsFromServer() async {
     // Проверяем кэш
     const cacheKey = 'shops_list';
     final cached = CacheManager.get<List<Shop>>(cacheKey);
@@ -45,106 +71,27 @@ class Shop {
     }
     
     try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
+      Logger.debug('📥 Загружаем магазины с сервера...');
       
-      Logger.debug('📥 Загружаем адреса магазинов из Google Sheets...');
+      // Загружаем магазины через сервис
+      final shops = await ShopService.getShops();
       
-      final response = await http.get(Uri.parse(sheetUrl)).timeout(
-        const Duration(seconds: 10), // Таймаут для запроса
-      );
-      if (response.statusCode != 200) {
-        Logger.error('Ошибка загрузки: ${response.statusCode}');
-        throw Exception('Ошибка загрузки данных из Google Sheets: ${response.statusCode}');
-      }
-
-      final lines = const LineSplitter().convert(response.body);
-      Logger.debug('📊 Всего строк получено из CSV: ${lines.length}');
-      
-      final Map<String, String> uniqueAddresses = {}; // Используем Map для сохранения оригинального адреса
-      int processedRows = 0;
-      int emptyRows = 0;
-      int validAddresses = 0;
-      
-      // Парсим CSV, столбец D - это индекс 3 (A=0, B=1, C=2, D=3)
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          // Правильный парсинг CSV с учетом кавычек
-          final row = _parseCsvLine(lines[i]);
-          processedRows++;
-          
-          if (row.length > 3) {
-            String address = row[3].trim().replaceAll('"', '').trim();
-            
-            // Пропускаем пустые адреса и заголовки
-            if (address.isEmpty) {
-              emptyRows++;
-            } else if (address.toLowerCase() != 'адрес' && 
-                       address.toLowerCase() != 'address' &&
-                       !address.toLowerCase().startsWith('столбец')) {
-              validAddresses++;
-              
-              // Нормализуем адрес для сравнения (убираем лишние пробелы)
-              String normalizedAddress = address.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-              
-              // Сохраняем оригинальный адрес (первое вхождение)
-              if (!uniqueAddresses.containsKey(normalizedAddress)) {
-                uniqueAddresses[normalizedAddress] = address;
-              }
-            }
-          }
-        } catch (e) {
-          Logger.warning('Ошибка парсинга строки $i: $e');
-        }
-      }
-
-      Logger.debug('📊 Статистика: обработано=$processedRows, валидных=$validAddresses, уникальных=${uniqueAddresses.length}');
-
-      // Создаем список магазинов из уникальных адресов
-      final shops = <Shop>[];
-      int shopIndex = 0;
-      final icons = [
-        Icons.store,
-        Icons.store_mall_directory,
-        Icons.local_cafe,
-        Icons.coffee,
-        Icons.restaurant,
-        Icons.shopping_bag,
-        Icons.bakery_dining,
-        Icons.local_dining,
-      ];
-
-      // Получаем координаты магазинов
-      final coordinates = getShopCoordinates();
-      
-      for (var address in uniqueAddresses.values) {
-        // Извлекаем название магазина из адреса
-        String shopName = _extractShopName(address);
-        // Получаем координаты для этого адреса
-        final coords = coordinates[address];
-        shops.add(Shop(
-          name: shopName,
-          address: address, // Используем оригинальный адрес
-          icon: shopIndex < icons.length ? icons[shopIndex] : Icons.store,
-          latitude: coords?['latitude'],
-          longitude: coords?['longitude'],
-        ));
-        shopIndex++;
-      }
-
-      // Сортируем по адресу
-      shops.sort((a, b) => a.address.compareTo(b.address));
-
       // Сохраняем в кэш на 10 минут
       CacheManager.set(cacheKey, shops, duration: const Duration(minutes: 10));
       
       Logger.success('Загружено магазинов: ${shops.length}');
       return shops;
     } catch (e) {
-      Logger.warning('Ошибка загрузки магазинов из Google Sheets: $e');
+      Logger.warning('Ошибка загрузки магазинов с сервера: $e');
       // Возвращаем список по умолчанию при ошибке
       return _getDefaultShops();
     }
+  }
+
+  /// Загрузить список магазинов из Google Sheets (устаревший метод, оставлен для обратной совместимости)
+  @Deprecated('Используйте loadShopsFromServer()')
+  static Future<List<Shop>> loadShopsFromGoogleSheets() async {
+    return loadShopsFromServer();
   }
 
   /// Парсинг CSV строки с учетом кавычек и запятых внутри кавычек
@@ -234,11 +181,13 @@ class Shop {
   static List<Shop> _getDefaultShops() {
     return [
       Shop(
+        id: 'shop_default_1',
         name: 'Арабика Пятигорск',
         address: 'г. Пятигорск, ул. Ленина, 10',
         icon: Icons.store,
       ),
       Shop(
+        id: 'shop_default_2',
         name: 'Арабика Ессентуки',
         address: 'г. Ессентуки, ул. Мира, 5',
         icon: Icons.store_mall_directory,
