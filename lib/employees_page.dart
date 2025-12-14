@@ -222,8 +222,8 @@ class _EmployeesPageState extends State<EmployeesPage> {
               onPressed: () {
                 setState(() {
                   _employeesFuture = _loadEmployees();
-                  _loadVerificationStatuses();
                 });
+                _loadVerificationStatuses();
               },
               tooltip: 'Обновить',
             ),
@@ -239,6 +239,17 @@ class _EmployeesPageState extends State<EmployeesPage> {
             const ShopsManagementPage(),
           ],
         ),
+      ),
+    );
+  }
+
+  // Метод для обновления данных после регистрации (вызывается из вкладки Регистрация)
+  void refreshEmployeesData() {
+    setState(() {
+      _employeesFuture = _loadEmployees();
+    });
+    _loadVerificationStatuses();
+  }
       ),
     );
   }
@@ -527,6 +538,12 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
 /// Вкладка регистрации сотрудников
 class _EmployeeRegistrationTab extends StatefulWidget {
+  final VoidCallback? onEmployeeRegistered;
+  
+  const _EmployeeRegistrationTab({
+    this.onEmployeeRegistered,
+  });
+
   @override
   State<_EmployeeRegistrationTab> createState() => _EmployeeRegistrationTabState();
 }
@@ -621,8 +638,12 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
                     // Обновляем список сотрудников и статусы
                     setState(() {
                       _employeesFuture = _loadEmployees();
-                      _loadVerificationStatuses();
                     });
+                    await _loadVerificationStatuses();
+                    // Уведомляем родительский виджет об обновлении
+                    if (widget.onEmployeeRegistered != null) {
+                      widget.onEmployeeRegistered!();
+                    }
                   }
                 },
                 icon: const Icon(Icons.person_add),
