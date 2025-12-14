@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'user_role_service.dart';
 import 'google_script_config.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'employee_registration_page.dart';
+import 'employee_service.dart';
 import 'user_role_model.dart';
 import 'unverified_employees_page.dart';
 import 'shops_management_page.dart';
@@ -100,99 +99,24 @@ class EmployeesPage extends StatefulWidget {
   }
 
   /// Загрузить сотрудников для уведомлений (статический метод)
-  /// Загружает только сотрудников и админов из Лист11
+  /// Загружает только сотрудников и админов с сервера
   static Future<List<Employee>> loadEmployeesForNotifications() async {
     try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
+      // Загружаем всех сотрудников с сервера
+      final allEmployees = await EmployeeService.getEmployees();
       
-      final response = await http.get(Uri.parse(sheetUrl));
+      // Фильтруем только сотрудников и админов (у которых есть phone или isAdmin = true)
+      final employees = allEmployees.where((emp) => 
+        emp.phone != null && emp.phone!.isNotEmpty
+      ).toList();
       
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки данных: ${response.statusCode}');
-      }
-
-      final lines = const LineSplitter().convert(response.body);
-      final List<Employee> employees = [];
-
-      // Пропускаем заголовок (первая строка)
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          final line = lines[i];
-          final row = _parseCsvLineStatic(line);
-          
-          // Столбец A (0) - имя клиента
-          // Столбец B (1) - телефон
-          // Столбец G (6) - имя сотрудника (если заполнено - сотрудник)
-          // Столбец H (7) - админ (если "1" - админ)
-          
-          if (row.length > 7) {
-            final clientName = row[0].trim().replaceAll('"', '');
-            final phone = row[1].trim().replaceAll('"', '');
-            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
-            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
-            
-            // Проверяем, является ли пользователь сотрудником или админом
-            final isEmployee = employeeName.isNotEmpty;
-            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
-            
-            if (isEmployee || isAdminUser) {
-              // Используем имя из столбца G, если оно заполнено, иначе из столбца A
-              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
-              
-              if (displayName.isNotEmpty) {
-                employees.add(Employee(
-                  id: 'employee_${displayName.hashCode}_${phone.hashCode}',
-                  name: displayName,
-                  phone: phone.isNotEmpty ? phone : null,
-                ));
-              }
-            }
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-
-      // Удаляем дубликаты по имени
-      final Map<String, Employee> uniqueEmployees = {};
-      for (var employee in employees) {
-        if (!uniqueEmployees.containsKey(employee.name)) {
-          uniqueEmployees[employee.name] = employee;
-        }
-      }
-
-      final result = uniqueEmployees.values.toList();
-      result.sort((a, b) => a.name.compareTo(b.name));
-      
-      return result;
+      return employees;
     } catch (e) {
       print('❌ Ошибка загрузки сотрудников: $e');
       return [];
     }
   }
 
-  static List<String> _parseCsvLineStatic(String line) {
-    final List<String> result = [];
-    String current = '';
-    bool inQuotes = false;
-
-    for (var i = 0; i < line.length; i++) {
-      final char = line[i];
-      
-      if (char == '"') {
-        inQuotes = !inQuotes;
-      } else if (char == ',' && !inQuotes) {
-        result.add(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.add(current);
-    return result;
-  }
 
   @override
   State<EmployeesPage> createState() => _EmployeesPageState();
@@ -247,83 +171,16 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
   Future<List<Employee>> _loadEmployees() async {
     try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
+      // Загружаем сотрудников с сервера
+      final employees = await EmployeeService.getEmployees();
       
-      final response = await http.get(Uri.parse(sheetUrl));
-      
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки данных: ${response.statusCode}');
-      }
-
-      final lines = const LineSplitter().convert(response.body);
-      final List<Employee> employees = [];
-
-      // Пропускаем заголовок (первая строка)
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          final line = lines[i];
-          
-          // Парсим CSV строку, учитывая кавычки
-          final row = _parseCsvLine(line);
-          
-          // Столбец A (0) - имя клиента
-          // Столбец B (1) - телефон
-          // Столбец G (6) - имя сотрудника (если заполнено - сотрудник)
-          // Столбец H (7) - админ (если "1" - админ)
-          
-          if (row.length > 7) {
-            final clientName = row[0].trim().replaceAll('"', '');
-            final phone = row[1].trim().replaceAll('"', '');
-            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
-            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
-            
-            // Проверяем, является ли пользователь сотрудником или админом
-            final isEmployee = employeeName.isNotEmpty;
-            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
-            
-            if (isEmployee || isAdminUser) {
-              // Используем имя из столбца G, если оно заполнено, иначе из столбца A
-              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
-              
-              if (displayName.isNotEmpty) {
-                // Нормализуем телефон (убираем пробелы и +)
-                final normalizedPhone = phone.isNotEmpty 
-                    ? phone.replaceAll(RegExp(r'[\s\+]'), '') 
-                    : null;
-                
-                employees.add(Employee(
-                  id: 'employee_${displayName.hashCode}_${normalizedPhone?.hashCode ?? 0}',
-                  name: displayName,
-                  phone: normalizedPhone,
-                  // Для админов можно добавить пометку
-                  position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
-                ));
-              }
-            }
-          }
-        } catch (e) {
-          // ignore: avoid_print
-          print("⚠️ Ошибка парсинга строки $i: $e");
-          continue;
-        }
-      }
-
-      // Удаляем дубликаты по имени
-      final Map<String, Employee> uniqueEmployees = {};
-      for (var employee in employees) {
-        if (!uniqueEmployees.containsKey(employee.name)) {
-          uniqueEmployees[employee.name] = employee;
-        }
-      }
-
-      final result = uniqueEmployees.values.toList();
-      result.sort((a, b) => a.name.compareTo(b.name));
+      // Сортируем по имени
+      employees.sort((a, b) => a.name.compareTo(b.name));
 
       // ignore: avoid_print
-      print("👥 Загружено сотрудников и админов: ${result.length}");
+      print("👥 Загружено сотрудников и админов: ${employees.length}");
 
-      return result;
+      return employees;
     } catch (e) {
       // ignore: avoid_print
       print("❌ Ошибка загрузки сотрудников: $e");
@@ -331,28 +188,6 @@ class _EmployeesPageState extends State<EmployeesPage> {
     }
   }
 
-  /// Парсинг CSV строки с учетом кавычек
-  List<String> _parseCsvLine(String line) {
-    final List<String> result = [];
-    String current = '';
-    bool inQuotes = false;
-
-    for (var i = 0; i < line.length; i++) {
-      final char = line[i];
-      
-      if (char == '"') {
-        inQuotes = !inQuotes;
-      } else if (char == ',' && !inQuotes) {
-        result.add(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.add(current); // Добавляем последнее поле
-    return result;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -711,89 +546,17 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
 
   Future<List<Employee>> _loadEmployees() async {
     try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
+      // Загружаем сотрудников с сервера
+      final employees = await EmployeeService.getEmployees();
       
-      final response = await http.get(Uri.parse(sheetUrl));
+      // Сортируем по имени
+      employees.sort((a, b) => a.name.compareTo(b.name));
       
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки данных: ${response.statusCode}');
-      }
-
-      final lines = const LineSplitter().convert(response.body);
-      final List<Employee> employees = [];
-
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          final line = lines[i];
-          final row = _parseCsvLine(line);
-          
-          if (row.length > 7) {
-            final clientName = row[0].trim().replaceAll('"', '');
-            final phone = row[1].trim().replaceAll('"', '');
-            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
-            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
-            
-            final isEmployee = employeeName.isNotEmpty;
-            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
-            
-            if (isEmployee || isAdminUser) {
-              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
-              
-              if (displayName.isNotEmpty && phone.isNotEmpty) {
-                // Нормализуем телефон (убираем пробелы и +)
-                final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-                employees.add(Employee(
-                  id: 'employee_${displayName.hashCode}_${normalizedPhone.hashCode}',
-                  name: displayName,
-                  phone: normalizedPhone,
-                  position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
-                ));
-              }
-            }
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-
-      final Map<String, Employee> uniqueEmployees = {};
-      for (var employee in employees) {
-        if (!uniqueEmployees.containsKey(employee.phone)) {
-          uniqueEmployees[employee.phone!] = employee;
-        }
-      }
-
-      final result = uniqueEmployees.values.toList();
-      result.sort((a, b) => a.name.compareTo(b.name));
-      
-      return result;
+      return employees;
     } catch (e) {
       print('Ошибка загрузки сотрудников: $e');
       rethrow;
     }
-  }
-
-  List<String> _parseCsvLine(String line) {
-    final List<String> result = [];
-    String current = '';
-    bool inQuotes = false;
-
-    for (var i = 0; i < line.length; i++) {
-      final char = line[i];
-      
-      if (char == '"') {
-        inQuotes = !inQuotes;
-      } else if (char == ',' && !inQuotes) {
-        result.add(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.add(current);
-    return result;
   }
 
   Future<void> _loadVerificationStatuses() async {
