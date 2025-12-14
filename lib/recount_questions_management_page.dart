@@ -285,8 +285,9 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Ошибка загрузки вопросов'),
+              content: Text('Ошибка загрузки вопросов. Проверьте, что сервер перезапущен и endpoint доступен.'),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
             ),
           );
         }
@@ -297,11 +298,17 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         Navigator.pop(context);
       }
       
+      String errorMessage = 'Ошибка при обработке Excel файла: $e';
+      if (e.toString().contains('FormatException') || e.toString().contains('DOCTYPE')) {
+        errorMessage = 'Сервер вернул HTML вместо JSON. Возможно, endpoint не найден. Убедитесь, что сервер перезапущен.';
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка при обработке Excel файла: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
