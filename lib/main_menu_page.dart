@@ -39,6 +39,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'rko_reports_page.dart';
 import 'kpi_type_selection_page.dart';
 import 'data_management_page.dart';
+import 'reports_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -280,6 +281,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
+    // Отчеты - для админов и верифицированных сотрудников
+    if (role == UserRole.admin || role == UserRole.employee) {
+      items.add(_tile(context, Icons.assessment, 'Отчеты', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ReportsPage()),
+        );
+      }));
+    }
+
     // РКО - только для верифицированных сотрудников
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.receipt_long, 'РКО', () async {
@@ -334,15 +345,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Отчеты по РКО - только для админов и верифицированных сотрудников
-    if (role == UserRole.admin || role == UserRole.employee) {
-      items.add(_tile(context, Icons.assessment, 'Отчеты по РКО', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RKOReportsPage()),
-        );
-      }));
-    }
 
     // Карта лояльности - видно всем
     items.add(_tile(context, Icons.qr_code, 'Карта лояльности', () {
@@ -485,35 +487,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Отчет по пересменкам - только админ
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.assessment, 'Отчет по пересменкам', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ShiftReportsListPage()),
-        );
-      }));
-    }
-
-    // Отчет по пересчету - только админ
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.inventory_2, 'Отчет по пересчету', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RecountReportsListPage()),
-        );
-      }));
-    }
-
-    // Отчеты по приходам - только админ
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.access_time_filled, 'Отчеты по приходам', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AttendanceReportsPage()),
-        );
-      }));
-    }
 
     // KPI - только админ
     if (role == UserRole.admin) {
