@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'employees_page.dart';
+import 'employee_service.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'employee_registration_model.dart';
@@ -27,68 +26,36 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
 
   Future<List<Employee>> _loadUnverifiedEmployees() async {
     try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Лист11';
-      
-      final response = await http.get(Uri.parse(sheetUrl));
-      
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки данных: ${response.statusCode}');
-      }
-
-      final lines = const LineSplitter().convert(response.body);
+      // Загружаем всех сотрудников с сервера
+      final allEmployees = await EmployeeService.getEmployees();
       final List<Employee> employees = [];
 
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          final line = lines[i];
-          final row = _parseCsvLine(line);
+      // Фильтруем только сотрудников с телефоном
+      for (var employee in allEmployees) {
+        if (employee.phone != null && employee.phone!.isNotEmpty) {
+          // Нормализуем телефон
+          final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
           
-          if (row.length > 7) {
-            final clientName = row[0].trim().replaceAll('"', '');
-            final phone = row[1].trim().replaceAll('"', '');
-            final employeeName = row.length > 6 ? row[6].trim().replaceAll('"', '') : '';
-            final isAdmin = row.length > 7 ? row[7].trim().replaceAll('"', '') : '';
+          // Проверяем регистрацию
+          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+          
+          // Показываем только тех, у кого была снята верификация
+          // (есть регистрация, verifiedAt != null, но isVerified = false)
+          if (registration != null) {
+            print('🔍 Проверка для не верифицированных: ${employee.name}');
+            print('   isVerified: ${registration.isVerified}');
+            print('   verifiedAt: ${registration.verifiedAt}');
             
-            final isEmployee = employeeName.isNotEmpty;
-            final isAdminUser = isAdmin == '1' || isAdmin == '1.0';
-            
-            if ((isEmployee || isAdminUser) && phone.isNotEmpty) {
-              // Нормализуем телефон
-              final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-              final displayName = employeeName.isNotEmpty ? employeeName : clientName;
-              
-              // Проверяем регистрацию
-              final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-              
-              // Показываем только тех, у кого была снята верификация
-              // (есть регистрация, verifiedAt != null, но isVerified = false)
-              if (registration != null) {
-                print('🔍 Проверка для не верифицированных: $displayName');
-                print('   isVerified: ${registration.isVerified}');
-                print('   verifiedAt: ${registration.verifiedAt}');
-                
-                if (registration.verifiedAt != null && !registration.isVerified) {
-                  if (displayName.isNotEmpty) {
-                    print('   ✅ Добавлен в список не верифицированных');
-                    employees.add(Employee(
-                      id: 'employee_${displayName.hashCode}_${normalizedPhone.hashCode}',
-                      name: displayName,
-                      phone: normalizedPhone,
-                      position: isAdminUser ? 'Администратор' : (isEmployee ? 'Сотрудник' : null),
-                    ));
-                    _registrations[normalizedPhone] = registration;
-                  }
-                } else {
-                  print('   ❌ Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
-                }
-              } else {
-                print('🔍 Регистрация не найдена для: $displayName');
-              }
+            if (registration.verifiedAt != null && !registration.isVerified) {
+              print('   ✅ Добавлен в список не верифицированных');
+              employees.add(employee);
+              _registrations[normalizedPhone] = registration;
+            } else {
+              print('   ❌ Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
             }
+          } else {
+            print('🔍 Регистрация не найдена для: ${employee.name}');
           }
-        } catch (e) {
-          continue;
         }
       }
 
@@ -99,28 +66,6 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
       print('Ошибка загрузки не верифицированных сотрудников: $e');
       rethrow;
     }
-  }
-
-  List<String> _parseCsvLine(String line) {
-    final List<String> result = [];
-    String current = '';
-    bool inQuotes = false;
-
-    for (var i = 0; i < line.length; i++) {
-      final char = line[i];
-      
-      if (char == '"') {
-        inQuotes = !inQuotes;
-      } else if (char == ',' && !inQuotes) {
-        result.add(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.add(current);
-    return result;
   }
 
   @override
