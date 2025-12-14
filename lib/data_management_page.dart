@@ -7,6 +7,7 @@ import 'test_question_service.dart';
 import 'training_article_service.dart';
 import 'menu_service.dart';
 import 'shops_management_page.dart';
+import 'employees_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -40,13 +41,15 @@ class DataManagementPage extends StatelessWidget {
             context,
             title: 'Сотрудники',
             icon: Icons.people,
-            onTap: () {
-              // TODO: Создать страницу управления сотрудниками
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Страница управления сотрудниками в разработке'),
-                ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EmployeesPage()),
               );
+              // Обновляем страницу после возврата (на случай, если были изменения)
+              if (context.mounted) {
+                // Можно добавить обновление данных, если нужно
+              }
             },
           ),
           const SizedBox(height: 8),

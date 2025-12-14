@@ -270,21 +270,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Сотрудники - только админ (включает вкладку регистрации)
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.people, 'Сотрудники', () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const EmployeesPage()),
-        );
-        // Обновляем страницу после возврата (на случай, если были изменения)
-        if (mounted) {
-          setState(() {});
-        }
-      }));
-    }
-
-    // Управление данными - только админ
+    // Управление данными - только админ (включает управление сотрудниками)
     if (role == UserRole.admin) {
       items.add(_tile(context, Icons.settings_applications, 'Управление данными', () {
         Navigator.push(
