@@ -40,6 +40,8 @@ import 'rko_reports_page.dart';
 import 'kpi_type_selection_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
+import 'registration_page.dart';
+import 'loyalty_storage.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -158,10 +160,84 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
+  /// Выход из аккаунта
+  Future<void> _logout() async {
+    // Показываем диалог подтверждения
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выход'),
+        content: const Text('Вы уверены, что хотите выйти? Вы сможете войти под другим номером телефона.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true) {
+      return; // Пользователь отменил выход
+    }
+
+    try {
+      // Очищаем все данные пользователя
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Очищаем данные регистрации
+      await prefs.remove('is_registered');
+      await prefs.remove('user_name');
+      await prefs.remove('user_phone');
+      
+      // Очищаем данные роли
+      await UserRoleService.clearUserRole();
+      
+      // Очищаем данные лояльности
+      await LoyaltyStorage.clear();
+      
+      // Перенаправляем на страницу регистрации
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const RegistrationPage(),
+          ),
+          (route) => false, // Удаляем все предыдущие маршруты
+        );
+      }
+    } catch (e) {
+      print('❌ Ошибка при выходе: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при выходе: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Арабика')),
+      appBar: AppBar(
+        title: const Text('Арабика'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Выход',
+            onPressed: _logout,
+          ),
+        ],
+      ),
       body: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
