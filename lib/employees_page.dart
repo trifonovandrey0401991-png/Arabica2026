@@ -328,16 +328,10 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
                 final allEmployees = snapshot.data ?? [];
                 
-                // Фильтрация: показываем только верифицированных сотрудников
+                // Фильтрация: показываем всех сотрудников (не только верифицированных)
                 final filteredEmployees = allEmployees.where((employee) {
-                  // Показываем только верифицированных сотрудников
-                  if (employee.phone != null && employee.phone!.isNotEmpty) {
-                    final isVerified = _verificationStatus[employee.phone!] ?? false;
-                    if (!isVerified) {
-                      return false; // Исключаем не верифицированных
-                    }
-                  } else {
-                    // Если нет телефона, исключаем из списка
+                  // Если нет телефона, исключаем из списка
+                  if (employee.phone == null || employee.phone!.isEmpty) {
                     return false;
                   }
                   
