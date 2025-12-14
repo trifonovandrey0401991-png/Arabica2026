@@ -250,9 +250,6 @@ class _EmployeesPageState extends State<EmployeesPage> {
     });
     _loadVerificationStatuses();
   }
-      ),
-    );
-  }
 
   Widget _buildEmployeesTab() {
     return Column(
@@ -532,7 +529,12 @@ class _EmployeesPageState extends State<EmployeesPage> {
   }
 
   Widget _buildRegistrationTab() {
-    return _EmployeeRegistrationTab();
+    return _EmployeeRegistrationTab(
+      onEmployeeRegistered: () {
+        // Обновляем данные в главном виджете после регистрации
+        refreshEmployeesData();
+      },
+    );
   }
 }
 
