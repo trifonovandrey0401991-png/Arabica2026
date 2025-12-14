@@ -75,17 +75,24 @@ class RecipeService {
   }) async {
     try {
       Logger.debug('📤 Создание рецепта: $name');
+      Logger.debug('📤 URL: $baseUrl');
+      
+      final requestBody = {
+        'name': name,
+        'category': category,
+        'ingredients': ingredients ?? '',
+        'steps': steps ?? '',
+      };
+      Logger.debug('📤 Request body: ${jsonEncode(requestBody)}');
       
       final response = await http.post(
         Uri.parse(baseUrl),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'category': category,
-          'ingredients': ingredients ?? '',
-          'steps': steps ?? '',
-        }),
+        body: jsonEncode(requestBody),
       ).timeout(const Duration(seconds: 15));
+
+      Logger.debug('📤 Ответ сервера: statusCode=${response.statusCode}');
+      Logger.debug('📤 Response body: ${response.body.substring(0, 200)}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -96,7 +103,7 @@ class RecipeService {
           Logger.error('❌ Ошибка создания рецепта: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, body=${response.body.substring(0, 200)}');
       }
       return null;
     } catch (e) {
