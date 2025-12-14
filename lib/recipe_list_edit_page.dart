@@ -153,21 +153,31 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
     return categories;
   }
 
+  Future<void> _addNewRecipe() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RecipeFormPage(),
+      ),
+    );
+    if (result != null) {
+      // Рецепт был создан, перезагружаем список
+      _loadRecipes();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Новый рецепт создан'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Редактировать рецепты'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadRecipes,
-            tooltip: 'Обновить',
-          ),
-        ],
-      ),
-      body: Container(
+    return Container(
         decoration: BoxDecoration(
           color: const Color(0xFF004D40),
           image: DecorationImage(
@@ -178,6 +188,24 @@ class _RecipeListEditPageState extends State<RecipeListEditPage> {
         ),
         child: Column(
           children: [
+            // Кнопка "Добавить новый рецепт"
+            Container(
+              margin: const EdgeInsets.all(16),
+              child: ElevatedButton.icon(
+                onPressed: _addNewRecipe,
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text(
+                  'Добавить новый рецепт',
+                  style: TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004D40),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
+            ),
             // Поиск и фильтр
             Container(
               padding: const EdgeInsets.all(16),

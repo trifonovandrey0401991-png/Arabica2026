@@ -538,7 +538,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Рецепты - только сотрудник и админ
+    // Рецепты - только сотрудник и админ (для админа есть вкладка редактирования внутри)
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.restaurant_menu, 'Рецепты', () {
         Navigator.push(
@@ -546,19 +546,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
           MaterialPageRoute(builder: (context) => const RecipesListPage()),
         );
       }));
-    }
-    
-    // Редактировать рецепты - только админ
-    if (role == UserRole.admin) {
-      print('🔵 Добавлена кнопка "Редактировать рецепты" для админа');
-      items.add(_tile(context, Icons.edit_note, 'Редактировать рецепты', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RecipeEditPage()),
-        );
-      }));
-    } else {
-      print('🔵 Кнопка "Редактировать рецепты" не добавлена: роль=${role.name}');
     }
 
     // Тест ролей - всегда видно (для тестирования)
