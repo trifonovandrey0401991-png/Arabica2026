@@ -359,6 +359,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                   final time = await showTimePicker(
                     context: context,
                     initialTime: startTime ?? const TimeOfDay(hour: 8, minute: 0),
+                    builder: (context, child) {
+                      return MediaQuery(
+                        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                        child: child!,
+                      );
+                    },
                   );
                   if (time != null) {
                     onChanged(time, endTime);
@@ -397,6 +403,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                   final time = await showTimePicker(
                     context: context,
                     initialTime: endTime ?? const TimeOfDay(hour: 18, minute: 0),
+                    builder: (context, child) {
+                      return MediaQuery(
+                        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                        child: child!,
+                      );
+                    },
                   );
                   if (time != null) {
                     onChanged(startTime, time);
