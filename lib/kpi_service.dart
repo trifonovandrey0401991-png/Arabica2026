@@ -73,8 +73,13 @@ class KPIService {
       // Фильтруем отметки по дате и магазину (на случай, если API вернул лишние данные)
       // Нормализуем адрес магазина для сравнения (убираем лишние пробелы, приводим к нижнему регистру)
       final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-      Logger.debug('   🔍 Нормализованный адрес магазина для фильтрации: "$normalizedShopAddress"');
-      Logger.debug('   🔍 Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      Logger.debug('═══════════════════════════════════════════════════════');
+      Logger.debug('🔍 ФИЛЬТРАЦИЯ ОТМЕТОК ПРИХОДА');
+      Logger.debug('   Запрошенный магазин: "$shopAddress"');
+      Logger.debug('   Нормализованный адрес: "$normalizedShopAddress"');
+      Logger.debug('   Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
+      Logger.debug('   Всего отметок до фильтрации: ${attendanceRecords.length}');
+      Logger.debug('═══════════════════════════════════════════════════════');
       
       final filteredAttendanceRecords = attendanceRecords.where((record) {
         // Нормализуем дату отметки (убираем время)
@@ -85,11 +90,31 @@ class KPIService {
         final normalizedRecordAddress = record.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         final isSameShop = normalizedRecordAddress == normalizedShopAddress;
         
+        // Детальное логирование для каждой отметки
+        Logger.debug('   🔍 Проверка отметки:');
+        Logger.debug('      - Сотрудник: "${record.employeeName}"');
+        Logger.debug('      - Время: ${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}');
+        Logger.debug('      - Дата отметки: ${recordDate.year}-${recordDate.month.toString().padLeft(2, '0')}-${recordDate.day.toString().padLeft(2, '0')}');
+        Logger.debug('      - Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
+        Logger.debug('      - Даты совпадают: $isSameDate (год: ${recordDate.year == normalizedDate.year}, месяц: ${recordDate.month == normalizedDate.month}, день: ${recordDate.day == normalizedDate.day})');
+        Logger.debug('      - Магазин (оригинал): "${record.shopAddress}"');
+        Logger.debug('      - Магазин (нормализован): "$normalizedRecordAddress"');
+        Logger.debug('      - Запрошенный магазин (нормализован): "$normalizedShopAddress"');
+        Logger.debug('      - Магазины совпадают: $isSameShop');
+        
         if (!isSameDate || !isSameShop) {
-          Logger.debug('   ⚠️ Отметка отфильтрована: ${record.employeeName}, дата отметки: ${recordDate.year}-${recordDate.month}-${recordDate.day}, запрошенная дата: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day} (совпадает: $isSameDate), магазин: "${record.shopAddress}" (нормализован: "$normalizedRecordAddress", совпадает: $isSameShop)');
+          final reasons = <String>[];
+          if (!isSameDate) {
+            reasons.add('дата не совпадает');
+          }
+          if (!isSameShop) {
+            reasons.add('магазин не совпадает');
+          }
+          Logger.debug('      ⚠️ ОТМЕТКА ОТФИЛЬТРОВАНА: ${reasons.join(', ')}');
         } else {
-          Logger.debug('   ✅ Отметка прошла фильтрацию: ${record.employeeName}, дата: ${recordDate.year}-${recordDate.month}-${recordDate.day}, магазин: "${record.shopAddress}", время: ${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}');
+          Logger.debug('      ✅ ОТМЕТКА ПРОШЛА ФИЛЬТРАЦИЮ');
         }
+        
         return isSameDate && isSameShop;
       }).toList();
       
