@@ -315,7 +315,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
       // Создаем отметку прихода с указанным временем
       Logger.debug('📝 Создание тестовой отметки прихода: ${_kpiSelectedEmployee}, дата/время: ${dateTime.toIso8601String()}');
-      final success = await AttendanceService.markAttendance(
+      final result = await AttendanceService.markAttendance(
         employeeName: _kpiSelectedEmployee!,
         shopAddress: _kpiSelectedShop!,
         latitude: latitude,
@@ -326,24 +326,37 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
 
       if (mounted) {
         setState(() => _creatingAttendance = false);
-        if (success) {
+        if (result.success) {
+          String message = '✅ Отметка прихода создана: ${_formatDateTime(dateTime)}';
+          Color backgroundColor = Colors.green;
+          
+          if (result.isOnTime == true) {
+            message += '\nВовремя';
+          } else if (result.isOnTime == false && result.lateMinutes != null) {
+            message += '\nОпоздал на ${result.lateMinutes} мин';
+            backgroundColor = Colors.orange;
+          } else if (result.isOnTime == null) {
+            message += '\nВне смены';
+            backgroundColor = Colors.amber;
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Отметка прихода создана: ${_formatDateTime(dateTime)}'),
-              backgroundColor: Colors.green,
+              content: Text(message),
+              backgroundColor: backgroundColor,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('❌ Ошибка создания отметки прихода'),
+            SnackBar(
+              content: Text('❌ Ошибка создания отметки прихода: ${result.error ?? "Неизвестная ошибка"}'),
               backgroundColor: Colors.red,
             ),
           );
         }
       }
 
-      return success;
+      return result.success;
     } catch (e) {
       Logger.error('Ошибка создания тестовой отметки прихода', e);
       if (mounted) {
