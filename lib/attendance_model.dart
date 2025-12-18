@@ -9,6 +9,9 @@ class AttendanceRecord {
   final double latitude;
   final double longitude;
   final double? distance; // Расстояние до магазина в метрах
+  final bool? isOnTime; // Пришел ли вовремя (true - вовремя, false - опоздал, null - вне смены)
+  final String? shiftType; // Тип смены: 'morning', 'day', 'night', или null если вне смены
+  final int? lateMinutes; // Количество минут опоздания (если опоздал)
 
   AttendanceRecord({
     required this.id,
@@ -18,6 +21,9 @@ class AttendanceRecord {
     required this.latitude,
     required this.longitude,
     this.distance,
+    this.isOnTime,
+    this.shiftType,
+    this.lateMinutes,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +34,9 @@ class AttendanceRecord {
     'latitude': latitude,
     'longitude': longitude,
     'distance': distance,
+    if (isOnTime != null) 'isOnTime': isOnTime,
+    if (shiftType != null) 'shiftType': shiftType,
+    if (lateMinutes != null) 'lateMinutes': lateMinutes,
   };
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) => AttendanceRecord(
@@ -38,6 +47,9 @@ class AttendanceRecord {
     latitude: (json['latitude'] as num).toDouble(),
     longitude: (json['longitude'] as num).toDouble(),
     distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
+    isOnTime: json['isOnTime'] as bool?,
+    shiftType: json['shiftType'] as String?,
+    lateMinutes: json['lateMinutes'] != null ? (json['lateMinutes'] as num).toInt() : null,
   );
 
   static String generateId(String employeeName, DateTime timestamp) {

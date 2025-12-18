@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'shop_model.dart';
@@ -149,59 +150,135 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     final directorController = TextEditingController(
       text: currentSettings?.directorName ?? '',
     );
+    
+    // Инициализация времени для смен
+    TimeOfDay? morningStart = currentSettings?.morningShiftStart;
+    TimeOfDay? morningEnd = currentSettings?.morningShiftEnd;
+    TimeOfDay? dayStart = currentSettings?.dayShiftStart;
+    TimeOfDay? dayEnd = currentSettings?.dayShiftEnd;
+    TimeOfDay? nightStart = currentSettings?.nightShiftStart;
+    TimeOfDay? nightEnd = currentSettings?.nightShiftEnd;
 
-    final result = await showDialog<Map<String, String>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Настройки магазина: ${shop.name}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Фактический адрес для РКО',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Настройки магазина: ${shop.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Основные настройки
+                const Text(
+                  'Основные данные',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: innController,
-                decoration: const InputDecoration(
-                  labelText: 'ИНН',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Фактический адрес для РКО',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: directorController,
-                decoration: const InputDecoration(
-                  labelText: 'Руководитель организации',
-                  hintText: 'Например: ИП Горовой Р. В.',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: innController,
+                  decoration: const InputDecoration(
+                    labelText: 'ИНН',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: directorController,
+                  decoration: const InputDecoration(
+                    labelText: 'Руководитель организации',
+                    hintText: 'Например: ИП Горовой Р. В.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Интервалы времени для смен
+                const Text(
+                  'Интервалы времени для отметки',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Если интервал не заполнен, смена не учитывается',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                // Утренняя смена
+                _buildShiftTimeSection(
+                  context,
+                  'Утренняя смена',
+                  morningStart,
+                  morningEnd,
+                  (start, end) {
+                    setState(() {
+                      morningStart = start;
+                      morningEnd = end;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Дневная смена
+                _buildShiftTimeSection(
+                  context,
+                  'Дневная смена',
+                  dayStart,
+                  dayEnd,
+                  (start, end) {
+                    setState(() {
+                      dayStart = start;
+                      dayEnd = end;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Ночная смена
+                _buildShiftTimeSection(
+                  context,
+                  'Ночная смена',
+                  nightStart,
+                  nightEnd,
+                  (start, end) {
+                    setState(() {
+                      nightStart = start;
+                      nightEnd = end;
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, {
+                  'address': addressController.text.trim(),
+                  'inn': innController.text.trim(),
+                  'directorName': directorController.text.trim(),
+                  'morningShiftStart': morningStart,
+                  'morningShiftEnd': morningEnd,
+                  'dayShiftStart': dayStart,
+                  'dayShiftEnd': dayEnd,
+                  'nightShiftStart': nightStart,
+                  'nightShiftEnd': nightEnd,
+                });
+              },
+              child: const Text('Сохранить'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, {
-                'address': addressController.text.trim(),
-                'inn': innController.text.trim(),
-                'directorName': directorController.text.trim(),
-              });
-            },
-            child: const Text('Сохранить'),
-          ),
-        ],
       ),
     );
 
@@ -213,6 +290,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
           inn: result['inn'] ?? '',
           directorName: result['directorName'] ?? '',
           lastDocumentNumber: currentSettings?.lastDocumentNumber ?? 0,
+          morningShiftStart: result['morningShiftStart'] as TimeOfDay?,
+          morningShiftEnd: result['morningShiftEnd'] as TimeOfDay?,
+          dayShiftStart: result['dayShiftStart'] as TimeOfDay?,
+          dayShiftEnd: result['dayShiftEnd'] as TimeOfDay?,
+          nightShiftStart: result['nightShiftStart'] as TimeOfDay?,
+          nightShiftEnd: result['nightShiftEnd'] as TimeOfDay?,
         );
 
         final success = await _saveShopSettings(settings);
@@ -251,6 +334,101 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
         }
       }
     }
+  }
+
+  Widget _buildShiftTimeSection(
+    BuildContext context,
+    String title,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
+    Function(TimeOfDay?, TimeOfDay?) onChanged,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: startTime ?? const TimeOfDay(hour: 8, minute: 0),
+                  );
+                  if (time != null) {
+                    onChanged(time, endTime);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        startTime != null
+                            ? '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}'
+                            : 'Не задано',
+                        style: TextStyle(
+                          color: startTime != null ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                      const Icon(Icons.access_time, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('—'),
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: endTime ?? const TimeOfDay(hour: 18, minute: 0),
+                  );
+                  if (time != null) {
+                    onChanged(startTime, time);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        endTime != null
+                            ? '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}'
+                            : 'Не задано',
+                        style: TextStyle(
+                          color: endTime != null ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                      const Icon(Icons.access_time, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   @override

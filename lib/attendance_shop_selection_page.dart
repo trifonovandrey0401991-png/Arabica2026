@@ -114,7 +114,7 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
         shop.longitude!,
       );
 
-      final success = await AttendanceService.markAttendance(
+      final result = await AttendanceService.markAttendance(
         employeeName: widget.employeeName,
         shopAddress: shop.address,
         latitude: position.latitude,
@@ -127,19 +127,77 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
           _isMarking = false;
         });
 
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Вы успешно отметились на работе!'),
-              backgroundColor: Colors.green,
+        if (result.success) {
+          // Показываем диалог с информацией о статусе
+          String title;
+          String message;
+          Color backgroundColor;
+          IconData icon;
+          
+          if (result.isOnTime == true) {
+            title = 'Вы пришли вовремя';
+            message = result.message ?? 'Отметка успешно сохранена';
+            backgroundColor = Colors.green;
+            icon = Icons.check_circle;
+          } else if (result.isOnTime == false && result.lateMinutes != null) {
+            title = 'Вы опоздали';
+            message = result.message ?? 'Вы опоздали на ${result.lateMinutes} минут';
+            backgroundColor = Colors.orange;
+            icon = Icons.warning;
+          } else if (result.isOnTime == null) {
+            title = 'Отметка вне смены';
+            message = result.message ?? 'Отметка сделана вне интервалов смены';
+            backgroundColor = Colors.amber;
+            icon = Icons.info;
+          } else {
+            title = 'Отметка сохранена';
+            message = result.message ?? 'Отметка успешно сохранена';
+            backgroundColor = Colors.blue;
+            icon = Icons.check_circle;
+          }
+          
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(icon, color: backgroundColor),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(title)),
+                ],
+              ),
+              content: Text(message),
+              backgroundColor: backgroundColor.withOpacity(0.1),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Закрываем диалог
+                    Navigator.pop(context); // Закрываем страницу выбора магазина
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
             ),
           );
-          Navigator.pop(context);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка при отметке. Попробуйте позже'),
-              backgroundColor: Colors.red,
+          // Показываем ошибку
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.error, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Ошибка'),
+                ],
+              ),
+              content: Text(result.error ?? 'Ошибка при отметке. Попробуйте позже'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
             ),
           );
         }

@@ -133,6 +133,7 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
                               vertical: 8,
                             ),
                             child: ListTile(
+                              leading: _buildStatusIcon(record),
                               title: Text(record.employeeName),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,6 +143,60 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
                                     '${record.timestamp.day}.${record.timestamp.month}.${record.timestamp.year} '
                                     '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}',
                                   ),
+                                  if (record.shiftType != null)
+                                    Text(
+                                      _getShiftTypeName(record.shiftType!),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  if (record.isOnTime == true)
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.check_circle, size: 16, color: Colors.green),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Вовремя',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  if (record.isOnTime == false && record.lateMinutes != null)
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.warning, size: 16, color: Colors.orange),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Опоздал на ${record.lateMinutes} мин',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.orange,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  if (record.isOnTime == null)
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.info, size: 16, color: Colors.grey),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Вне смены',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   if (record.distance != null)
                                     Text(
                                       'Расстояние: ${record.distance!.toStringAsFixed(0)} м',
@@ -179,6 +234,29 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildStatusIcon(AttendanceRecord record) {
+    if (record.isOnTime == true) {
+      return const Icon(Icons.check_circle, color: Colors.green, size: 32);
+    } else if (record.isOnTime == false) {
+      return const Icon(Icons.warning, color: Colors.orange, size: 32);
+    } else {
+      return const Icon(Icons.info, color: Colors.grey, size: 32);
+    }
+  }
+
+  String _getShiftTypeName(String shiftType) {
+    switch (shiftType) {
+      case 'morning':
+        return 'Утренняя смена';
+      case 'day':
+        return 'Дневная смена';
+      case 'night':
+        return 'Ночная смена';
+      default:
+        return shiftType;
+    }
   }
 }
 

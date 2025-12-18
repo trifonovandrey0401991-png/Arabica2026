@@ -1,8 +1,10 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/material.dart';
 import 'attendance_model.dart';
 import 'shop_model.dart';
+import 'shop_settings_model.dart';
 import 'utils/logger.dart';
 
 class AttendanceService {
@@ -81,8 +83,8 @@ class AttendanceService {
     return nearestShop;
   }
 
-  /// Отметить приход на работу
-  static Future<bool> markAttendance({
+  /// Результат отметки прихода
+  static Future<AttendanceResult> markAttendance({
     required String employeeName,
     required String shopAddress,
     required double latitude,
@@ -110,7 +112,7 @@ class AttendanceService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(record.toJson()),
       ).timeout(
-        const Duration(seconds: 15), // Уменьшено с 30 до 15
+        const Duration(seconds: 15),
         onTimeout: () {
           throw Exception('Таймаут при отправке отметки');
         },
@@ -118,13 +120,33 @@ class AttendanceService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        return result['success'] == true;
+        if (result['success'] == true) {
+          return AttendanceResult(
+            success: true,
+            isOnTime: result['isOnTime'] as bool?,
+            shiftType: result['shiftType'] as String?,
+            lateMinutes: result['lateMinutes'] != null ? (result['lateMinutes'] as num).toInt() : null,
+            message: result['message'] as String?,
+          );
+        } else {
+          return AttendanceResult(
+            success: false,
+            error: result['error'] as String? ?? 'Неизвестная ошибка',
+          );
+        }
+      } else {
+        final errorBody = jsonDecode(response.body);
+        return AttendanceResult(
+          success: false,
+          error: errorBody['error'] as String? ?? 'Ошибка сервера: ${response.statusCode}',
+        );
       }
-
-      return false;
     } catch (e) {
       Logger.error('Ошибка отметки прихода', e);
-      return false;
+      return AttendanceResult(
+        success: false,
+        error: e.toString(),
+      );
     }
   }
 
@@ -201,6 +223,25 @@ class AttendanceService {
       return [];
     }
   }
+}
+
+/// Результат отметки прихода
+class AttendanceResult {
+  final bool success;
+  final bool? isOnTime;
+  final String? shiftType;
+  final int? lateMinutes;
+  final String? message;
+  final String? error;
+
+  AttendanceResult({
+    required this.success,
+    this.isOnTime,
+    this.shiftType,
+    this.lateMinutes,
+    this.message,
+    this.error,
+  });
 }
 
 
