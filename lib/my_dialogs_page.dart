@@ -64,7 +64,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadReviews,
+            onPressed: _loadDialogs,
             tooltip: 'Обновить',
           ),
         ],
