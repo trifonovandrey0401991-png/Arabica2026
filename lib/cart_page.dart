@@ -174,32 +174,46 @@ class CartPage extends StatelessWidget {
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {
-                                // Создаем заказ без комментария
-                                final orderProvider = OrderProvider.of(context);
-                                orderProvider.createOrder(
-                                  cart.items,
-                                  cart.totalPrice,
-                                );
-                                
-                                // Очищаем корзину
-                                cart.clear();
-                                
-                                // Переходим в меню заказов
-                                Navigator.of(context).pop(); // Закрываем корзину
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => const OrdersPage(),
-                                  ),
-                                );
-                                
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Заказ добавлен!'),
-                                    backgroundColor: Color(0xFF004D40),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
+                              onPressed: () async {
+                                try {
+                                  // Создаем заказ без комментария
+                                  final orderProvider = OrderProvider.of(context);
+                                  await orderProvider.createOrder(
+                                    cart.items,
+                                    cart.totalPrice,
+                                  );
+                                  
+                                  // Очищаем корзину
+                                  cart.clear();
+                                  
+                                  // Переходим в меню заказов
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop(); // Закрываем корзину
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => const OrdersPage(),
+                                      ),
+                                    );
+                                    
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Заказ успешно создан!'),
+                                        backgroundColor: Color(0xFF004D40),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Ошибка создания заказа: $e'),
+                                        backgroundColor: Colors.red,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF004D40),
@@ -329,45 +343,59 @@ class CartPage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    orderProvider.createOrder(
-                      cart.items,
-                      cart.totalPrice,
-                      comment: comment,
-                    );
-                    
-                    // Получаем последний созданный заказ
-                    final newOrder = orderProvider.orders.first;
-                    
-                    // Отправляем уведомления сотрудникам
                     try {
-                      // Загружаем список сотрудников
-                      final employees = await EmployeesPage.loadEmployeesForNotifications();
-                      await NotificationService.notifyNewOrder(
-                        context,
-                        newOrder,
-                        employees,
+                      await orderProvider.createOrder(
+                        cart.items,
+                        cart.totalPrice,
+                        comment: comment,
                       );
+                      
+                      // Получаем последний созданный заказ
+                      final newOrder = orderProvider.orders.first;
+                      
+                      // Отправляем уведомления сотрудникам
+                      try {
+                        // Загружаем список сотрудников
+                        final employees = await EmployeesPage.loadEmployeesForNotifications();
+                        await NotificationService.notifyNewOrder(
+                          context,
+                          newOrder,
+                          employees,
+                        );
+                      } catch (e) {
+                        // ignore: avoid_print
+                        print("Ошибка отправки уведомлений: $e");
+                        // Все равно отправляем базовое уведомление
+                        await NotificationService.notifyNewOrder(
+                          context,
+                          newOrder,
+                          [],
+                        );
+                      }
+                      
+                      cart.clear();
+                      if (builderContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                        Navigator.of(context).pop(); // Закрываем корзину
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Заказ успешно оформлен!'),
+                            backgroundColor: Color(0xFF004D40),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
                     } catch (e) {
-                      // ignore: avoid_print
-                      print("Ошибка отправки уведомлений: $e");
-                      // Все равно отправляем базовое уведомление
-                      await NotificationService.notifyNewOrder(
-                        context,
-                        newOrder,
-                        [],
-                      );
+                      if (builderContext.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Ошибка создания заказа: $e'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
                     }
-                    
-                    cart.clear();
-                    Navigator.of(dialogContext).pop();
-                    Navigator.of(context).pop(); // Закрываем корзину
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Заказ успешно оформлен!'),
-                        backgroundColor: Color(0xFF004D40),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF004D40),
@@ -431,39 +459,53 @@ class CartPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Создаем заказ с комментарием
-                        final comment = controller.text.trim().isEmpty 
-                            ? null 
-                            : controller.text.trim();
-                        
-                        orderProvider.createOrder(
-                          cart.items,
-                          cart.totalPrice,
-                          comment: comment,
-                        );
-                        
-                        // Очищаем корзину
-                        cart.clear();
-                        
-                        // Закрываем диалог и корзину
-                        Navigator.of(dialogContext).pop();
-                        Navigator.of(context).pop(); // Закрываем корзину
-                        
-                        // Переходим в меню заказов
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const OrdersPage(),
-                          ),
-                        );
-                        
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Заказ добавлен!'),
-                            backgroundColor: Color(0xFF004D40),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
+                      onPressed: () async {
+                        try {
+                          // Создаем заказ с комментарием
+                          final comment = controller.text.trim().isEmpty 
+                              ? null 
+                              : controller.text.trim();
+                          
+                          await orderProvider.createOrder(
+                            cart.items,
+                            cart.totalPrice,
+                            comment: comment,
+                          );
+                          
+                          // Очищаем корзину
+                          cart.clear();
+                          
+                          // Закрываем диалог и корзину
+                          if (context.mounted) {
+                            Navigator.of(dialogContext).pop();
+                            Navigator.of(context).pop(); // Закрываем корзину
+                            
+                            // Переходим в меню заказов
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const OrdersPage(),
+                              ),
+                            );
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Заказ успешно создан!'),
+                                backgroundColor: Color(0xFF004D40),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Ошибка создания заказа: $e'),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF004D40),

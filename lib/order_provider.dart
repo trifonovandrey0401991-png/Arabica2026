@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'cart_provider.dart';
+import 'order_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Модель заказа
 class Order {
@@ -70,21 +72,38 @@ class OrderProvider with ChangeNotifier {
   int get orderCount => _orders.length;
 
   /// Создать новый заказ из корзины
-  void createOrder(List<CartItem> items, double totalPrice, {String? comment}) {
-    final order = Order(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      items: items.map((item) => CartItem(
-        menuItem: item.menuItem,
-        quantity: item.quantity,
-      )).toList(),
+  Future<void> createOrder(List<CartItem> items, double totalPrice, {String? comment}) async {
+    if (items.isEmpty) return;
+    
+    // Получаем shopAddress из первого товара (все товары должны быть из одного магазина)
+    final shopAddress = items.first.menuItem.shop;
+    
+    // Получаем данные клиента
+    final prefs = await SharedPreferences.getInstance();
+    final clientPhone = prefs.getString('user_phone') ?? '';
+    final clientName = prefs.getString('user_name') ?? 'Клиент';
+    
+    if (clientPhone.isEmpty) {
+      throw Exception('Не удалось определить телефон клиента');
+    }
+    
+    // Создаем заказ на сервере
+    final serverOrder = await OrderService.createOrder(
+      clientPhone: clientPhone,
+      clientName: clientName,
+      shopAddress: shopAddress,
+      items: items,
       totalPrice: totalPrice,
-      createdAt: DateTime.now(),
       comment: comment,
-      status: 'pending',
     );
-
-    _orders.add(order);
-    notifyListeners();
+    
+    if (serverOrder != null) {
+      // Добавляем заказ в локальный список
+      _orders.add(serverOrder);
+      notifyListeners();
+    } else {
+      throw Exception('Не удалось создать заказ на сервере');
+    }
   }
 
   /// Удалить заказ
