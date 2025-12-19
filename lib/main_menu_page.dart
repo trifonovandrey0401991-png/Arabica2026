@@ -470,13 +470,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Отзывы покупателей - видно всем
-    items.add(_tile(context, Icons.feedback, 'Отзывы покупателей', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ReviewsListPage()),
-      );
-    }));
+    // Отзывы покупателей - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.feedback, 'Отзывы покупателей', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ReviewsListPage()),
+        );
+      }));
+    }
 
     // Поиск товара - видно всем
     items.add(_tile(context, Icons.search, 'Поиск товара', () {
