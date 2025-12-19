@@ -13,6 +13,7 @@ import 'recount_questions_management_page.dart';
 import 'test_questions_management_page.dart';
 import 'training_articles_management_page.dart';
 import 'clients_management_page.dart';
+import 'product_questions_management_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -123,6 +124,20 @@ class DataManagementPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const ClientsManagementPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Ответы (поиск товара)',
+            icon: Icons.search,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProductQuestionsManagementPage(),
                 ),
               );
             },

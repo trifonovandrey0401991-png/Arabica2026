@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'review_model.dart';
-import 'review_service.dart';
-import 'review_detail_page.dart';
+import 'product_question_model.dart';
+import 'product_question_service.dart';
+import 'product_question_dialog_page.dart';
 
 /// Страница "Мои диалоги" для клиента
 class MyDialogsPage extends StatefulWidget {
@@ -13,28 +13,46 @@ class MyDialogsPage extends StatefulWidget {
 }
 
 class _MyDialogsPageState extends State<MyDialogsPage> {
-  late Future<List<Review>> _reviewsFuture;
+  late Future<List<ProductQuestionDialog>> _dialogsFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadReviews();
+    _loadDialogs();
   }
 
-  Future<void> _loadReviews() async {
+  Future<void> _loadDialogs() async {
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('user_phone') ?? '';
     
     if (phone.isEmpty) {
       setState(() {
-        _reviewsFuture = Future.value([]);
+        _dialogsFuture = Future.value([]);
       });
       return;
     }
 
     setState(() {
-      _reviewsFuture = ReviewService.getClientReviews(phone);
+      _dialogsFuture = ProductQuestionService.getClientQuestions(phone);
     });
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final date = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        return 'Сегодня ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      } else if (difference.inDays == 1) {
+        return 'Вчера ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      } else {
+        return '${date.day}.${date.month}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return timestamp;
+    }
   }
 
   @override
@@ -60,8 +78,8 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
             opacity: 0.6,
           ),
         ),
-        child: FutureBuilder<List<Review>>(
-          future: _reviewsFuture,
+        child: FutureBuilder<List<ProductQuestionDialog>>(
+          future: _dialogsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -84,7 +102,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Оставьте отзыв, чтобы начать диалог',
+                      'Задайте вопрос о товаре, чтобы начать диалог',
                       style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ],
@@ -92,28 +110,26 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
               );
             }
 
-            final reviews = snapshot.data!;
+            final dialogs = snapshot.data!;
 
             return ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: reviews.length,
+              itemCount: dialogs.length,
               itemBuilder: (context, index) {
-                final review = reviews[index];
-                final lastMessage = review.getLastMessage();
-                final unreadCount = review.getUnreadCountForClient();
-                final hasUnread = review.hasUnreadForClient();
+                final dialog = dialogs[index];
+                final lastMessage = dialog.lastMessage;
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: review.reviewType == 'positive'
+                      backgroundColor: dialog.isAnswered
                           ? Colors.green
-                          : Colors.red,
+                          : Colors.orange,
                       child: Icon(
-                        review.reviewType == 'positive'
-                            ? Icons.thumb_up
-                            : Icons.thumb_down,
+                        dialog.isAnswered
+                            ? Icons.check
+                            : Icons.warning,
                         color: Colors.white,
                       ),
                     ),
@@ -121,28 +137,15 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                       children: [
                         Expanded(
                           child: Text(
-                            review.shopAddress,
+                            dialog.shopAddress,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
-                        if (hasUnread)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              unreadCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        if (!dialog.isAnswered)
+                          const Icon(
+                            Icons.warning,
+                            color: Colors.orange,
+                            size: 20,
                           ),
                       ],
                     ),
@@ -150,14 +153,10 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          review.reviewType == 'positive'
-                              ? 'Положительный отзыв'
-                              : 'Отрицательный отзыв',
-                          style: TextStyle(
-                            color: review.reviewType == 'positive'
-                                ? Colors.green
-                                : Colors.red,
+                          _formatTimestamp(dialog.timestamp),
+                          style: const TextStyle(
                             fontSize: 12,
+                            color: Colors.grey,
                           ),
                         ),
                         if (lastMessage != null) ...[
@@ -167,8 +166,8 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: hasUnread ? Colors.blue : Colors.grey,
-                              fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                              color: dialog.isAnswered ? Colors.grey : Colors.blue,
+                              fontWeight: dialog.isAnswered ? FontWeight.normal : FontWeight.bold,
                             ),
                           ),
                         ],
@@ -176,18 +175,15 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                     ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () async {
-                      final result = await Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ReviewDetailPage(
-                            review: review,
-                            isAdmin: false,
+                          builder: (context) => ProductQuestionDialogPage(
+                            questionId: dialog.questionId,
                           ),
                         ),
                       );
-                      if (result == true) {
-                        _loadReviews();
-                      }
+                      _loadDialogs(); // Обновляем после возврата
                     },
                   ),
                 );

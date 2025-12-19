@@ -42,6 +42,7 @@ import 'data_management_page.dart';
 import 'reports_page.dart';
 import 'registration_page.dart';
 import 'loyalty_storage.dart';
+import 'product_search_shop_selection_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -477,8 +478,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Наличие товара - видно всем
-    items.add(_tile(context, Icons.search, 'Наличие товара', () {}));
+    // Поиск товара - видно всем
+    items.add(_tile(context, Icons.search, 'Поиск товара', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ProductSearchShopSelectionPage(),
+        ),
+      );
+    }));
 
     // Обучение - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {

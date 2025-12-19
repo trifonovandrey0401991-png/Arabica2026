@@ -10,6 +10,8 @@ import 'my_dialogs_page.dart';
 import 'review_detail_page.dart';
 import 'review_service.dart';
 import 'review_model.dart';
+import 'product_question_dialog_page.dart';
+import 'product_question_answer_page.dart';
 import 'utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
@@ -415,34 +417,67 @@ class FirebaseService {
   static void _handleNotificationNavigation(Map<String, dynamic> data) {
     if (_globalContext == null) return;
 
+    final type = data['type'] as String?;
+    
+    // Обработка уведомлений о вопросах о товаре
+    if (type == 'product_question') {
+      final questionId = data['questionId'] as String?;
+      if (questionId != null) {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionAnswerPage(
+              questionId: questionId,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    
+    // Обработка уведомлений об ответах на вопросы о товаре
+    if (type == 'product_answer') {
+      final questionId = data['questionId'] as String?;
+      if (questionId != null) {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionDialogPage(
+              questionId: questionId,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    // Обработка уведомлений об отзывах (старая логика)
     final reviewId = data['reviewId'] as String?;
-    if (reviewId == null) return;
+    if (reviewId != null) {
+      // Навигация к диалогу
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => FutureBuilder<Review?>(
+            future: ReviewService.getReviewById(reviewId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
 
-    // Навигация к диалогу
-    Navigator.of(_globalContext!).push(
-      MaterialPageRoute(
-        builder: (context) => FutureBuilder<Review?>(
-          future: ReviewService.getReviewById(reviewId),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
+              if (snapshot.hasData && snapshot.data != null) {
+                return ReviewDetailPage(
+                  review: snapshot.data!,
+                  isAdmin: false,
+                );
+              }
 
-            if (snapshot.hasData && snapshot.data != null) {
-              return ReviewDetailPage(
-                review: snapshot.data!,
-                isAdmin: false,
-              );
-            }
-
-            // Если отзыв не найден, переходим к списку диалогов
-            return const MyDialogsPage();
-          },
+              // Если отзыв не найден, переходим к списку диалогов
+              return const MyDialogsPage();
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 }
 
