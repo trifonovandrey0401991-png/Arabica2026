@@ -497,13 +497,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Тест - доступно для всех ролей
-    items.add(_tile(context, Icons.science, 'Тест', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
-      );
-    }));
+    // Тест - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.science, 'Тест', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
+        );
+      }));
+    }
 
     // Я на работе - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
@@ -594,13 +596,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Тест ролей - всегда видно (для тестирования)
-    items.add(_tile(context, Icons.science, 'Тест ролей', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const RoleTestPage()),
-      );
-    }));
+    // Тест ролей - только админ
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.science, 'Тест ролей', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RoleTestPage()),
+        );
+      }));
+    }
     
     print('🔵 Всего кнопок в меню: ${items.length}');
     print('🔵 Кнопка "Тест ролей" добавлена');
