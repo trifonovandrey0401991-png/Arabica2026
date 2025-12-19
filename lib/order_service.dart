@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'order_provider.dart';
+import 'cart_provider.dart';
 import 'utils/logger.dart';
 
 class OrderService {
