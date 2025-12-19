@@ -460,15 +460,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Мои диалоги - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.chat, 'Мои диалоги', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MyDialogsPage()),
-        );
-      }));
-    }
+    // Мои диалоги - видно всем (клиентам, сотрудникам и админам)
+    items.add(_tile(context, Icons.chat, 'Мои диалоги', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const MyDialogsPage()),
+      );
+    }));
 
     // Отзывы покупателей - видно всем
     items.add(_tile(context, Icons.feedback, 'Отзывы покупателей', () {
