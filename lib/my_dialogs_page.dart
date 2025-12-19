@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'product_question_model.dart';
-import 'product_question_service.dart';
-import 'product_question_dialog_page.dart';
+import 'client_dialog_model.dart';
+import 'client_dialog_service.dart';
+import 'client_dialog_page.dart';
 
 /// Страница "Мои диалоги" для клиента
 class MyDialogsPage extends StatefulWidget {
@@ -13,7 +13,7 @@ class MyDialogsPage extends StatefulWidget {
 }
 
 class _MyDialogsPageState extends State<MyDialogsPage> {
-  late Future<List<ProductQuestionDialog>> _dialogsFuture;
+  late Future<List<ClientDialog>> _dialogsFuture;
 
   @override
   void initState() {
@@ -33,7 +33,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     }
 
     setState(() {
-      _dialogsFuture = ProductQuestionService.getClientQuestions(phone);
+      _dialogsFuture = ClientDialogService.getClientDialogs(phone);
     });
   }
 
@@ -52,6 +52,29 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       }
     } catch (e) {
       return timestamp;
+    }
+  }
+
+  String _getMessagePreview(dynamic message) {
+    if (message == null) return '';
+    
+    try {
+      switch (message.type) {
+        case 'review':
+          return message.data['reviewText'] ?? 'Отзыв';
+        case 'product_question':
+          return message.data['questionText'] ?? 'Вопрос о товаре';
+        case 'order':
+          final orderId = message.data['orderId']?.toString() ?? message.id.toString();
+          final shortId = orderId.length > 6 ? orderId.substring(orderId.length - 6) : orderId;
+          return 'Заказ #$shortId';
+        case 'employee_response':
+          return message.data['text'] ?? 'Ответ от магазина';
+        default:
+          return 'Сообщение';
+      }
+    } catch (e) {
+      return 'Сообщение';
     }
   }
 
@@ -78,7 +101,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
             opacity: 0.6,
           ),
         ),
-        child: FutureBuilder<List<ProductQuestionDialog>>(
+        child: FutureBuilder<List<ClientDialog>>(
           future: _dialogsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -102,8 +125,9 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Задайте вопрос о товаре, чтобы начать диалог',
+                      'Оставьте отзыв, задайте вопрос или сделайте заказ',
                       style: TextStyle(color: Colors.white70, fontSize: 14),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -117,19 +141,19 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
               itemCount: dialogs.length,
               itemBuilder: (context, index) {
                 final dialog = dialogs[index];
-                final lastMessage = dialog.lastMessage;
+                final lastMessage = dialog.getLastMessage();
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: dialog.isAnswered
-                          ? Colors.green
-                          : Colors.orange,
+                      backgroundColor: dialog.hasUnread()
+                          ? Colors.orange
+                          : Colors.green,
                       child: Icon(
-                        dialog.isAnswered
-                            ? Icons.check
-                            : Icons.warning,
+                        dialog.hasUnread()
+                            ? Icons.warning
+                            : Icons.check,
                         color: Colors.white,
                       ),
                     ),
@@ -141,33 +165,57 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
-                        if (!dialog.isAnswered)
-                          const Icon(
-                            Icons.warning,
-                            color: Colors.orange,
-                            size: 20,
+                        if (dialog.hasUnread()) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              dialog.unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
+                        ],
                       ],
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _formatTimestamp(dialog.timestamp),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
                         if (lastMessage != null) ...[
+                          Text(
+                            _formatTimestamp(lastMessage.timestamp),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Text(
-                            lastMessage.text,
+                            _getMessagePreview(lastMessage),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: dialog.isAnswered ? Colors.grey : Colors.blue,
-                              fontWeight: dialog.isAnswered ? FontWeight.normal : FontWeight.bold,
+                              color: dialog.hasUnread() ? Colors.blue : Colors.grey,
+                              fontWeight: dialog.hasUnread() ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                        ] else ...[
+                          Text(
+                            dialog.lastMessageTime != null
+                                ? _formatTimestamp(dialog.lastMessageTime!)
+                                : 'Нет сообщений',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
                             ),
                           ),
                         ],
@@ -178,8 +226,8 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ProductQuestionDialogPage(
-                            questionId: dialog.questionId,
+                          builder: (context) => ClientDialogPage(
+                            shopAddress: dialog.shopAddress,
                           ),
                         ),
                       );
