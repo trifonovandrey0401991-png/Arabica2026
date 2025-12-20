@@ -24,10 +24,33 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage> {
     _loadData();
   }
 
+  Future<List<String>> _loadShopAddresses() async {
+    try {
+      // Загружаем отчеты с сервера для получения адресов магазинов
+      final serverReports = await ShiftReportService.getReports();
+      final localReports = await ShiftReport.loadAllReports();
+      
+      // Объединяем адреса
+      final addresses = <String>{};
+      for (var report in serverReports) {
+        addresses.add(report.shopAddress);
+      }
+      for (var report in localReports) {
+        addresses.add(report.shopAddress);
+      }
+      
+      final addressList = addresses.toList()..sort();
+      return addressList;
+    } catch (e) {
+      print('❌ Ошибка загрузки адресов магазинов: $e');
+      return await ShiftReport.getUniqueShopAddresses();
+    }
+  }
+
   Future<void> _loadData() async {
     print('📥 Загрузка отчетов пересменки...');
     setState(() {
-      _shopsFuture = ShiftReport.getUniqueShopAddresses();
+      _shopsFuture = _loadShopAddresses();
     });
     
     // Загружаем отчеты с сервера
