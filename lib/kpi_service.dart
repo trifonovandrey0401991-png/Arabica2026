@@ -592,9 +592,43 @@ class KPIService {
       // Получаем РКО за период
       final employeeRKOs = await RKOReportsService.getEmployeeRKOs(employeeName);
       final filteredRKOs = <RKOMetadata>[];
-      if (employeeRKOs != null && employeeRKOs['items'] != null) {
-        final rkoList = RKOMetadataList.fromJson(employeeRKOs);
-        filteredRKOs.addAll(rkoList.items.where((rko) {
+      if (employeeRKOs != null && employeeRKOs['success'] == true) {
+        // API возвращает данные в формате: {success: true, latest: [...], months: [{monthKey: "...", items: [...]}, ...]}
+        final allRKOs = <RKOMetadata>[];
+        
+        // Добавляем РКО из latest
+        if (employeeRKOs['latest'] != null) {
+          final latestList = employeeRKOs['latest'] as List<dynamic>;
+          for (var rkoJson in latestList) {
+            try {
+              final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
+              allRKOs.add(rko);
+            } catch (e) {
+              Logger.debug('⚠️ Ошибка парсинга РКО из latest: $e');
+            }
+          }
+        }
+        
+        // Добавляем РКО из всех months
+        if (employeeRKOs['months'] != null) {
+          final monthsList = employeeRKOs['months'] as List<dynamic>;
+          for (var monthData in monthsList) {
+            if (monthData is Map<String, dynamic> && monthData['items'] != null) {
+              final itemsList = monthData['items'] as List<dynamic>;
+              for (var rkoJson in itemsList) {
+                try {
+                  final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
+                  allRKOs.add(rko);
+                } catch (e) {
+                  Logger.debug('⚠️ Ошибка парсинга РКО из months: $e');
+                }
+              }
+            }
+          }
+        }
+        
+        // Фильтруем по текущему и предыдущему месяцу
+        filteredRKOs.addAll(allRKOs.where((rko) {
           final rkoMonth = DateTime(rko.date.year, rko.date.month, 1);
           return rkoMonth == currentMonth || rkoMonth == previousMonth;
         }));
