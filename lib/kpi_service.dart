@@ -876,10 +876,51 @@ class KPIService {
       // Получаем РКО за период
       final employeeRKOs = await RKOReportsService.getEmployeeRKOs(employeeName);
       final filteredRKOs = <RKOMetadata>[];
-      if (employeeRKOs != null && employeeRKOs['items'] != null) {
-        final rkoList = RKOMetadataList.fromJson(employeeRKOs);
-        Logger.debug('📋 Загружено РКО для $employeeName: ${rkoList.items.length}');
-        filteredRKOs.addAll(rkoList.items.where((rko) {
+      if (employeeRKOs != null && employeeRKOs['success'] == true) {
+        // API возвращает данные в формате: {success: true, latest: [...], months: [{monthKey: "...", items: [...]}, ...]}
+        // Нужно собрать все РКО из latest и из всех months
+        final allRKOs = <RKOMetadata>[];
+        
+        Logger.debug('📋 Структура ответа РКО для $employeeName: keys=${employeeRKOs.keys.toList()}');
+        
+        // Добавляем РКО из latest
+        if (employeeRKOs['latest'] != null) {
+          final latestList = employeeRKOs['latest'] as List<dynamic>;
+          Logger.debug('📋 РКО в latest: ${latestList.length}');
+          for (var rkoJson in latestList) {
+            try {
+              final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
+              allRKOs.add(rko);
+            } catch (e) {
+              Logger.debug('⚠️ Ошибка парсинга РКО из latest: $e');
+            }
+          }
+        }
+        
+        // Добавляем РКО из всех months
+        if (employeeRKOs['months'] != null) {
+          final monthsList = employeeRKOs['months'] as List<dynamic>;
+          Logger.debug('📋 Месяцев с РКО: ${monthsList.length}');
+          for (var monthData in monthsList) {
+            if (monthData is Map<String, dynamic> && monthData['items'] != null) {
+              final itemsList = monthData['items'] as List<dynamic>;
+              Logger.debug('   📋 РКО в месяце ${monthData['monthKey'] ?? 'unknown'}: ${itemsList.length}');
+              for (var rkoJson in itemsList) {
+                try {
+                  final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
+                  allRKOs.add(rko);
+                } catch (e) {
+                  Logger.debug('⚠️ Ошибка парсинга РКО из months: $e');
+                }
+              }
+            }
+          }
+        }
+        
+        Logger.debug('📋 Всего РКО собрано для $employeeName: ${allRKOs.length}');
+        
+        // Фильтруем по текущему и предыдущему месяцу
+        filteredRKOs.addAll(allRKOs.where((rko) {
           final rkoMonth = DateTime(rko.date.year, rko.date.month, 1);
           final matches = rkoMonth == currentMonth || rkoMonth == previousMonth;
           if (!matches) {
@@ -889,9 +930,9 @@ class KPIService {
           }
           return matches;
         }));
-        Logger.debug('📋 РКО после фильтрации: ${filteredRKOs.length}');
+        Logger.debug('📋 РКО после фильтрации по месяцам: ${filteredRKOs.length}');
       } else {
-        Logger.debug('⚠️ РКО не загружены для $employeeName');
+        Logger.debug('⚠️ РКО не загружены для $employeeName: employeeRKOs=${employeeRKOs != null}, success=${employeeRKOs?['success']}');
       }
 
       // Агрегируем данные по магазинам и датам (ключ: shopAddress_dateKey)
