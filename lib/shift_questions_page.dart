@@ -513,6 +513,19 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     }
 
     final question = _questions![_currentQuestionIndex];
+    
+    // Логирование для отладки эталонного фото
+    if (question.isPhotoOnly && _photoPath == null) {
+      print('📋 build: Текущий вопрос с фото: "${question.question}"');
+      print('   Индекс вопроса: $_currentQuestionIndex');
+      print('   Магазин: ${widget.shopAddress}');
+      final referencePhotoUrl = _findReferencePhoto(question);
+      if (referencePhotoUrl != null) {
+        print('   ✅ build: Найдено эталонное фото: $referencePhotoUrl');
+      } else {
+        print('   ❌ build: Эталонное фото не найдено');
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
