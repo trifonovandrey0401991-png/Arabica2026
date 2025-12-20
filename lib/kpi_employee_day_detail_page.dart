@@ -512,10 +512,56 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                           height: 100,
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: Colors.blue),
+                                            border: Border.all(color: Colors.grey),
                                           ),
-                                          child: const Center(
-                                            child: Icon(Icons.image, size: 24, color: Colors.blue),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: answer.photoPath != null
+                                                ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                                                    ? Image.network(
+                                                        answer.photoPath!,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context, error, stackTrace) {
+                                                          print('❌ Ошибка загрузки фото сотрудника: $error');
+                                                          return const Center(
+                                                            child: Icon(Icons.error, size: 24),
+                                                          );
+                                                        },
+                                                      )
+                                                    : Image.file(
+                                                        File(answer.photoPath!),
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context, error, stackTrace) {
+                                                          print('❌ Ошибка загрузки локального фото: $error');
+                                                          return const Center(
+                                                            child: Icon(Icons.error, size: 24),
+                                                          );
+                                                        },
+                                                      )
+                                                : answer.photoDriveId != null
+                                                    ? FutureBuilder<String>(
+                                                        future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                                        builder: (context, snapshot) {
+                                                          if (snapshot.hasData) {
+                                                            return Image.network(
+                                                              snapshot.data!,
+                                                              fit: BoxFit.cover,
+                                                              errorBuilder: (context, error, stackTrace) {
+                                                                print('❌ Ошибка загрузки фото из Google Drive: $error, URL: ${snapshot.data}');
+                                                                return const Center(
+                                                                  child: Icon(Icons.error, size: 24),
+                                                                );
+                                                              },
+                                                            );
+                                                          }
+                                                          return const Center(
+                                                            child: CircularProgressIndicator(),
+                                                          );
+                                                        },
+                                                      )
+                                                    : const Center(
+                                                        child: Icon(Icons.image, size: 24),
+                                                      ),
                                           ),
                                         ),
                                       ],
