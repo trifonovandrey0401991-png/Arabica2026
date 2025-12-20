@@ -39,18 +39,36 @@ class AttendanceRecord {
     if (lateMinutes != null) 'lateMinutes': lateMinutes,
   };
 
-  factory AttendanceRecord.fromJson(Map<String, dynamic> json) => AttendanceRecord(
-    id: json['id'] ?? '',
-    employeeName: json['employeeName'] ?? '',
-    shopAddress: json['shopAddress'] ?? '',
-    timestamp: DateTime.parse(json['timestamp']),
-    latitude: (json['latitude'] as num).toDouble(),
-    longitude: (json['longitude'] as num).toDouble(),
-    distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
-    isOnTime: json['isOnTime'] as bool?,
-    shiftType: json['shiftType'] as String?,
-    lateMinutes: json['lateMinutes'] != null ? (json['lateMinutes'] as num).toInt() : null,
-  );
+  factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    // Безопасный парсинг lateMinutes
+    int? parseLateMinutes(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return null;
+    }
+
+    // Безопасный парсинг latitude/longitude
+    double parseDouble(dynamic value, double defaultValue) {
+      if (value == null) return defaultValue;
+      if (value is double) return value;
+      if (value is num) return value.toDouble();
+      return defaultValue;
+    }
+
+    return AttendanceRecord(
+      id: json['id'] ?? '',
+      employeeName: json['employeeName'] ?? '',
+      shopAddress: json['shopAddress'] ?? '',
+      timestamp: DateTime.parse(json['timestamp']),
+      latitude: parseDouble(json['latitude'], 0.0),
+      longitude: parseDouble(json['longitude'], 0.0),
+      distance: json['distance'] != null ? parseDouble(json['distance'], 0.0) : null,
+      isOnTime: json['isOnTime'] as bool?,
+      shiftType: json['shiftType'] as String?,
+      lateMinutes: parseLateMinutes(json['lateMinutes']),
+    );
+  }
 
   static String generateId(String employeeName, DateTime timestamp) {
     final dateStr = '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}';
