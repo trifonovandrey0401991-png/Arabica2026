@@ -571,15 +571,13 @@ class KPIService {
         return recordMonth == currentMonth || recordMonth == previousMonth;
       }).toList();
 
-      // Получаем пересменки за период (из локальных данных)
-      final allShifts = await ShiftReport.loadAllReports();
+      // Получаем пересменки за период (с сервера)
+      final allShifts = await ShiftReportService.getReports(
+        employeeName: employeeName,
+      );
       final employeeShifts = allShifts.where((shift) {
-        if (shift.employeeName.toLowerCase() != employeeName.toLowerCase()) {
-          return false;
-        }
         final shiftMonth = DateTime(shift.createdAt.year, shift.createdAt.month, 1);
-        final prevMonth = previousMonth;
-        return shiftMonth == currentMonth || shiftMonth == prevMonth;
+        return shiftMonth == currentMonth || shiftMonth == previousMonth;
       }).toList();
 
       // Получаем пересчеты за период
@@ -722,10 +720,10 @@ class KPIService {
       }
 
       // Подсчитываем статистику
-      final totalDaysWorked = daysDataMap.values.where((day) => day.workedToday).length;
-      final totalShifts = daysDataMap.values.where((day) => day.hasShift).length;
-      final totalRecounts = daysDataMap.values.where((day) => day.hasRecount).length;
-      final totalRKOs = daysDataMap.values.where((day) => day.hasRKO).length;
+      final totalDaysWorked = shopDaysMap.values.where((day) => day.attendanceTime != null || day.hasShift).length;
+      final totalShifts = shopDaysMap.values.where((day) => day.hasShift).length;
+      final totalRecounts = shopDaysMap.values.where((day) => day.hasRecount).length;
+      final totalRKOs = shopDaysMap.values.where((day) => day.hasRKO).length;
 
       final result = KPIEmployeeData(
         employeeName: employeeName,
@@ -808,6 +806,235 @@ class KPIService {
   static void clearCacheForShop(String shopAddress) {
     CacheManager.clearByPattern('kpi_shop_day_${shopAddress}_');
     Logger.debug('Кэш KPI данных очищен для магазина $shopAddress');
+  }
+
+  /// Получить данные по сотруднику, сгруппированные по магазинам и датам
+  static Future<List<KPIEmployeeShopDayData>> getEmployeeShopDaysData(
+    String employeeName,
+  ) async {
+    try {
+      // Проверяем кэш
+      final cacheKey = 'kpi_employee_shop_days_$employeeName';
+      final cached = CacheManager.get<List<KPIEmployeeShopDayData>>(cacheKey);
+      if (cached != null) {
+        Logger.debug('KPI данные сотрудника (по магазинам) загружены из кэша');
+        return cached;
+      }
+
+      Logger.debug('Загрузка KPI данных для сотрудника $employeeName (по магазинам)');
+
+      final now = DateTime.now();
+      final currentMonth = DateTime(now.year, now.month, 1);
+      DateTime previousMonth;
+      if (now.month == 1) {
+        previousMonth = DateTime(now.year - 1, 12, 1);
+      } else {
+        previousMonth = DateTime(now.year, now.month - 1, 1);
+      }
+
+      // Получаем отметки прихода за период
+      final attendanceRecords = await AttendanceService.getAttendanceRecords(
+        employeeName: employeeName,
+      );
+
+      // Фильтруем по текущему и предыдущему месяцу
+      final filteredAttendance = attendanceRecords.where((record) {
+        final recordMonth = DateTime(record.timestamp.year, record.timestamp.month, 1);
+        return recordMonth == currentMonth || recordMonth == previousMonth;
+      }).toList();
+
+      // Получаем пересменки за период (с сервера)
+      final allShifts = await ShiftReportService.getReports(
+        employeeName: employeeName,
+      );
+      final employeeShifts = allShifts.where((shift) {
+        final shiftMonth = DateTime(shift.createdAt.year, shift.createdAt.month, 1);
+        return shiftMonth == currentMonth || shiftMonth == previousMonth;
+      }).toList();
+
+      // Получаем пересчеты за период
+      final allRecounts = await RecountService.getReports(
+        employeeName: employeeName,
+      );
+      final filteredRecounts = allRecounts.where((recount) {
+        final recountMonth = DateTime(recount.completedAt.year, recount.completedAt.month, 1);
+        return recountMonth == currentMonth || recountMonth == previousMonth;
+      }).toList();
+
+      // Получаем РКО за период
+      final employeeRKOs = await RKOReportsService.getEmployeeRKOs(employeeName);
+      final filteredRKOs = <RKOMetadata>[];
+      if (employeeRKOs != null && employeeRKOs['items'] != null) {
+        final rkoList = RKOMetadataList.fromJson(employeeRKOs);
+        filteredRKOs.addAll(rkoList.items.where((rko) {
+          final rkoMonth = DateTime(rko.date.year, rko.date.month, 1);
+          return rkoMonth == currentMonth || rkoMonth == previousMonth;
+        }));
+      }
+
+      // Агрегируем данные по магазинам и датам (ключ: shopAddress_dateKey)
+      final Map<String, KPIEmployeeShopDayData> shopDaysMap = {};
+
+      // Функция для создания ключа магазин+дата
+      String createShopDayKey(String shopAddress, DateTime date) {
+        final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        return '$shopAddress|$dateKey';
+      }
+
+      // Добавляем данные из отметок прихода
+      for (var record in filteredAttendance) {
+        final date = DateTime(
+          record.timestamp.year,
+          record.timestamp.month,
+          record.timestamp.day,
+        );
+        final key = createShopDayKey(record.shopAddress, date);
+        
+        if (!shopDaysMap.containsKey(key)) {
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: record.shopAddress,
+            employeeName: employeeName,
+            attendanceTime: record.timestamp.isUtc ? record.timestamp.toLocal() : record.timestamp,
+          );
+        } else {
+          // Обновляем время прихода, если текущее раньше
+          final existing = shopDaysMap[key]!;
+          final recordTime = record.timestamp.isUtc ? record.timestamp.toLocal() : record.timestamp;
+          final earliestTime = existing.attendanceTime == null || 
+              (recordTime.isBefore(existing.attendanceTime!)) 
+              ? recordTime 
+              : existing.attendanceTime!;
+          
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: record.shopAddress,
+            employeeName: employeeName,
+            attendanceTime: earliestTime,
+            hasShift: existing.hasShift,
+            hasRecount: existing.hasRecount,
+            hasRKO: existing.hasRKO,
+            rkoFileName: existing.rkoFileName,
+            recountReportId: existing.recountReportId,
+            shiftReportId: existing.shiftReportId,
+          );
+        }
+      }
+
+      // Добавляем данные из пересменок
+      for (var shift in employeeShifts) {
+        final date = DateTime(
+          shift.createdAt.year,
+          shift.createdAt.month,
+          shift.createdAt.day,
+        );
+        final key = createShopDayKey(shift.shopAddress, date);
+        
+        if (!shopDaysMap.containsKey(key)) {
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: shift.shopAddress,
+            employeeName: employeeName,
+            hasShift: true,
+            shiftReportId: shift.id,
+          );
+        } else {
+          final existing = shopDaysMap[key]!;
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: shift.shopAddress,
+            employeeName: employeeName,
+            attendanceTime: existing.attendanceTime,
+            hasShift: true,
+            hasRecount: existing.hasRecount,
+            hasRKO: existing.hasRKO,
+            rkoFileName: existing.rkoFileName,
+            recountReportId: existing.recountReportId,
+            shiftReportId: shift.id,
+          );
+        }
+      }
+
+      // Добавляем данные из пересчетов
+      for (var recount in filteredRecounts) {
+        final date = DateTime(
+          recount.completedAt.year,
+          recount.completedAt.month,
+          recount.completedAt.day,
+        );
+        final key = createShopDayKey(recount.shopAddress, date);
+        
+        if (!shopDaysMap.containsKey(key)) {
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: recount.shopAddress,
+            employeeName: employeeName,
+            hasRecount: true,
+            recountReportId: recount.id,
+          );
+        } else {
+          final existing = shopDaysMap[key]!;
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: recount.shopAddress,
+            employeeName: employeeName,
+            attendanceTime: existing.attendanceTime,
+            hasShift: existing.hasShift,
+            hasRecount: true,
+            hasRKO: existing.hasRKO,
+            rkoFileName: existing.rkoFileName,
+            recountReportId: recount.id,
+            shiftReportId: existing.shiftReportId,
+          );
+        }
+      }
+
+      // Добавляем данные из РКО
+      for (var rko in filteredRKOs) {
+        final date = DateTime(
+          rko.date.year,
+          rko.date.month,
+          rko.date.day,
+        );
+        final key = createShopDayKey(rko.shopAddress, date);
+        
+        if (!shopDaysMap.containsKey(key)) {
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: rko.shopAddress,
+            employeeName: employeeName,
+            hasRKO: true,
+            rkoFileName: rko.fileName,
+          );
+        } else {
+          final existing = shopDaysMap[key]!;
+          shopDaysMap[key] = KPIEmployeeShopDayData(
+            date: date,
+            shopAddress: rko.shopAddress,
+            employeeName: employeeName,
+            attendanceTime: existing.attendanceTime,
+            hasShift: existing.hasShift,
+            hasRecount: existing.hasRecount,
+            hasRKO: true,
+            rkoFileName: rko.fileName,
+            recountReportId: existing.recountReportId,
+            shiftReportId: existing.shiftReportId,
+          );
+        }
+      }
+
+      // Сортируем по дате (новые первыми)
+      final result = shopDaysMap.values.toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+      // Сохраняем в кэш
+      CacheManager.set(cacheKey, result, duration: cacheDuration);
+
+      return result;
+    } catch (e) {
+      Logger.error('Ошибка получения KPI данных сотрудника (по магазинам)', e);
+      return [];
+    }
   }
 }
 

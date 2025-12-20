@@ -188,6 +188,79 @@ class KPIDayTableRow {
   }
 }
 
+/// Модель данных одного дня работы сотрудника в магазине
+class KPIEmployeeShopDayData {
+  final DateTime date;
+  final String shopAddress;
+  final String employeeName;
+  final DateTime? attendanceTime; // Время прихода
+  final bool hasShift; // Есть ли пересменка
+  final bool hasRecount; // Есть ли пересчет
+  final bool hasRKO; // Есть ли РКО
+  final String? rkoFileName; // Имя файла РКО (если есть)
+  final String? recountReportId; // ID отчета пересчета (если есть)
+  final String? shiftReportId; // ID отчета пересменки (если есть)
+
+  KPIEmployeeShopDayData({
+    required this.date,
+    required this.shopAddress,
+    required this.employeeName,
+    this.attendanceTime,
+    this.hasShift = false,
+    this.hasRecount = false,
+    this.hasRKO = false,
+    this.rkoFileName,
+    this.recountReportId,
+    this.shiftReportId,
+  });
+
+  /// Проверить, выполнены ли все условия
+  bool get allConditionsMet => attendanceTime != null && hasShift && hasRecount && hasRKO;
+
+  /// Получить форматированное время прихода
+  String? get formattedAttendanceTime {
+    if (attendanceTime == null) return null;
+    final time = attendanceTime!.isUtc ? attendanceTime!.toLocal() : attendanceTime!;
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Получить форматированную дату
+  String get formattedDate {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  }
+
+  /// Получить строку для отображения (Магазин - ДД.ММ.ГГГГ)
+  String get displayTitle {
+    return '$shopAddress - $formattedDate';
+  }
+
+  Map<String, dynamic> toJson() => {
+    'date': date.toIso8601String(),
+    'shopAddress': shopAddress,
+    'employeeName': employeeName,
+    'attendanceTime': attendanceTime?.toIso8601String(),
+    'hasShift': hasShift,
+    'hasRecount': hasRecount,
+    'hasRKO': hasRKO,
+    'rkoFileName': rkoFileName,
+    'recountReportId': recountReportId,
+    'shiftReportId': shiftReportId,
+  };
+
+  factory KPIEmployeeShopDayData.fromJson(Map<String, dynamic> json) => KPIEmployeeShopDayData(
+    date: DateTime.parse(json['date']),
+    shopAddress: json['shopAddress'] ?? '',
+    employeeName: json['employeeName'] ?? '',
+    attendanceTime: json['attendanceTime'] != null ? DateTime.parse(json['attendanceTime']) : null,
+    hasShift: json['hasShift'] ?? false,
+    hasRecount: json['hasRecount'] ?? false,
+    hasRKO: json['hasRKO'] ?? false,
+    rkoFileName: json['rkoFileName'],
+    recountReportId: json['recountReportId'],
+    shiftReportId: json['shiftReportId'],
+  );
+}
+
 
 
 
