@@ -11,6 +11,7 @@ import 'menu_page.dart';
 import 'attendance_service.dart';
 import 'attendance_model.dart';
 import 'shift_report_model.dart';
+import 'shift_report_service.dart';
 import 'shift_question_model.dart';
 import 'recount_service.dart';
 import 'recount_report_model.dart';
@@ -458,20 +459,29 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         isSynced: false,
       );
 
-      // Сохраняем отчет
-      await ShiftReport.saveReport(report);
+      // Сохраняем отчет на сервер
+      final success = await ShiftReportService.saveReport(report);
 
       if (mounted) {
         setState(() => _creatingShift = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Пересменка создана: ${_formatDateTime(dateTime)}'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Пересменка создана: ${_formatDateTime(dateTime)}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Ошибка сохранения пересменки на сервер'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
 
-      return true;
+      return success;
     } catch (e) {
       Logger.error('Ошибка создания тестовой пересменки', e);
       if (mounted) {
