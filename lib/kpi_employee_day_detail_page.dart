@@ -546,11 +546,21 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
                                                         builder: (context, snapshot) {
                                                           if (snapshot.hasData) {
+                                                            final photoUrl = snapshot.data!;
+                                                            print('🖼️ KPI: Загрузка фото сотрудника из: $photoUrl');
                                                             return Image.network(
-                                                              snapshot.data!,
+                                                              photoUrl,
                                                               fit: BoxFit.cover,
+                                                              loadingBuilder: (context, child, loadingProgress) {
+                                                                if (loadingProgress == null) return child;
+                                                                return const Center(
+                                                                  child: CircularProgressIndicator(),
+                                                                );
+                                                              },
                                                               errorBuilder: (context, error, stackTrace) {
-                                                                print('❌ Ошибка загрузки фото из Google Drive: $error, URL: ${snapshot.data}');
+                                                                print('❌ Ошибка загрузки фото из Google Drive: $error');
+                                                                print('   URL: $photoUrl');
+                                                                print('   photoDriveId: ${answer.photoDriveId}');
                                                                 return const Center(
                                                                   child: Icon(Icons.error, size: 24),
                                                                 );
