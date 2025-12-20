@@ -173,7 +173,9 @@ class KPIDayTableRow {
     String? formattedTime;
     if (data.attendanceTime != null) {
       final time = data.attendanceTime!;
-      formattedTime = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      // Используем локальное время для отображения
+      final localTime = time.isUtc ? time.toLocal() : time;
+      formattedTime = '${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}';
     }
     
     return KPIDayTableRow(
