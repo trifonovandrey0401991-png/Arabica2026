@@ -612,6 +612,101 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              // Выбор магазинов
+              const Text(
+                'Магазины:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_isLoadingShops)
+                const Center(child: CircularProgressIndicator())
+              else ...[
+                // Кнопка "Задавать всем магазинам"
+                CheckboxListTile(
+                  title: const Text('Задавать всем магазинам'),
+                  value: _isForAllShops,
+                  onChanged: (value) {
+                    setState(() {
+                      _isForAllShops = value ?? false;
+                      if (_isForAllShops) {
+                        _selectedShopAddresses.clear();
+                      }
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                if (!_isForAllShops) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _allShops.length,
+                      itemBuilder: (context, index) {
+                        final shop = _allShops[index];
+                        final isSelected = _selectedShopAddresses.contains(shop.address);
+                        return CheckboxListTile(
+                          title: Text(shop.name),
+                          subtitle: Text(
+                            shop.address,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value ?? false) {
+                                _selectedShopAddresses.add(shop.address);
+                              } else {
+                                _selectedShopAddresses.remove(shop.address);
+                                _referencePhotoFiles.remove(shop.address);
+                                _referencePhotoUrls.remove(shop.address);
+                              }
+                            });
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                // Эталонные фото (только для вопросов с фото)
+                if (_selectedAnswerType == 'photo') ...[
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Эталонные фото:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_isForAllShops)
+                    // Если для всех магазинов, показываем возможность добавить фото для каждого
+                    ..._allShops.map((shop) => _buildReferencePhotoSection(shop.address, shop.name))
+                  else
+                    // Если выбраны конкретные магазины, показываем только для них
+                    ..._selectedShopAddresses.map((address) {
+                      final shop = _allShops.firstWhere(
+                        (s) => s.address == address,
+                        orElse: () => Shop(
+                          id: '',
+                          name: address,
+                          address: address,
+                          icon: Icons.store,
+                        ),
+                      );
+                      return _buildReferencePhotoSection(address, shop.name);
+                    }),
+                ],
+              ],
             ],
           ),
         ),
