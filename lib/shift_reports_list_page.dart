@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'shift_report_model.dart';
+import 'shift_report_service.dart';
 import 'shift_report_view_page.dart';
 
 /// Страница со списком отчетов по пересменкам
@@ -24,11 +25,45 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage> {
   }
 
   Future<void> _loadData() async {
+    print('📥 Загрузка отчетов пересменки...');
     setState(() {
       _shopsFuture = ShiftReport.getUniqueShopAddresses();
     });
-    _allReports = await ShiftReport.loadAllReports();
-    setState(() {});
+    
+    // Загружаем отчеты с сервера
+    try {
+      final serverReports = await ShiftReportService.getReports();
+      print('✅ Загружено отчетов с сервера: ${serverReports.length}');
+      
+      // Также загружаем локальные отчеты
+      final localReports = await ShiftReport.loadAllReports();
+      print('✅ Загружено локальных отчетов: ${localReports.length}');
+      
+      // Объединяем отчеты, убирая дубликаты (приоритет серверным)
+      final Map<String, ShiftReport> reportsMap = {};
+      
+      // Сначала добавляем локальные
+      for (var report in localReports) {
+        reportsMap[report.id] = report;
+      }
+      
+      // Затем добавляем серверные (перезаписывают локальные с тем же ID)
+      for (var report in serverReports) {
+        reportsMap[report.id] = report;
+      }
+      
+      _allReports = reportsMap.values.toList();
+      // Сортируем по дате (новые сверху)
+      _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      
+      print('✅ Всего отчетов после объединения: ${_allReports.length}');
+      setState(() {});
+    } catch (e) {
+      print('❌ Ошибка загрузки отчетов: $e');
+      // В случае ошибки загружаем только локальные
+      _allReports = await ShiftReport.loadAllReports();
+      setState(() {});
+    }
   }
 
   List<ShiftReport> get _filteredReports {
