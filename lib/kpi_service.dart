@@ -1025,10 +1025,33 @@ class KPIService {
           rko.date.month,
           rko.date.day,
         );
+        // Используем нормализованный ключ (адрес уже нормализован в createShopDayKey)
         final key = createShopDayKey(rko.shopAddress, date);
-        Logger.debug('   РКО: дата=${date.year}-${date.month}-${date.day}, магазин="${rko.shopAddress}", ключ="$key"');
+        final normalizedRkoAddress = normalizeShopAddress(rko.shopAddress);
+        Logger.debug('   РКО: дата=${date.year}-${date.month}-${date.day}');
+        Logger.debug('      магазин (оригинал)="${rko.shopAddress}"');
+        Logger.debug('      магазин (нормализован)="$normalizedRkoAddress"');
+        Logger.debug('      ключ="$key"');
         
-        if (!shopDaysMap.containsKey(key)) {
+        // Ищем существующую запись по нормализованному ключу
+        KPIEmployeeShopDayData? existingRecord;
+        String? existingKey;
+        
+        // Проверяем все ключи в map, так как адрес мог быть нормализован по-разному при создании
+        for (var entry in shopDaysMap.entries) {
+          final existingNormalized = normalizeShopAddress(entry.value.shopAddress);
+          if (existingNormalized == normalizedRkoAddress && 
+              entry.value.date.year == date.year &&
+              entry.value.date.month == date.month &&
+              entry.value.date.day == date.day) {
+            existingRecord = entry.value;
+            existingKey = entry.key;
+            Logger.debug('   ✅ Найдена существующая запись: ключ="$existingKey"');
+            break;
+          }
+        }
+        
+        if (existingRecord == null) {
           Logger.debug('   Создана новая запись для РКО');
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
@@ -1039,18 +1062,18 @@ class KPIService {
           );
         } else {
           Logger.debug('   Обновлена существующая запись: добавлено РКО');
-          final existing = shopDaysMap[key]!;
-          shopDaysMap[key] = KPIEmployeeShopDayData(
-            date: date,
-            shopAddress: rko.shopAddress,
+          // Используем существующий ключ, чтобы не создавать дубликат
+          shopDaysMap[existingKey!] = KPIEmployeeShopDayData(
+            date: existingRecord.date,
+            shopAddress: existingRecord.shopAddress, // Сохраняем оригинальный адрес из существующей записи
             employeeName: employeeName,
-            attendanceTime: existing.attendanceTime,
-            hasShift: existing.hasShift,
-            hasRecount: existing.hasRecount,
+            attendanceTime: existingRecord.attendanceTime,
+            hasShift: existingRecord.hasShift,
+            hasRecount: existingRecord.hasRecount,
             hasRKO: true,
             rkoFileName: rko.fileName,
-            recountReportId: existing.recountReportId,
-            shiftReportId: existing.shiftReportId,
+            recountReportId: existingRecord.recountReportId,
+            shiftReportId: existingRecord.shiftReportId,
           );
         }
       }
