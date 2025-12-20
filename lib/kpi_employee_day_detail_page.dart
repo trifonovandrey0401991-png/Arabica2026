@@ -448,13 +448,89 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                           ],
                           if (answer.photoPath != null || answer.photoDriveId != null) ...[
                             const SizedBox(height: 8),
-                            const Text(
-                              'Фото прикреплено',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue,
+                            // Если есть эталонное фото, показываем две фото рядом
+                            if (answer.referencePhotoUrl != null) ...[
+                              const Text(
+                                'Фото:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Эталон',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          height: 100,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.grey),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              answer.referencePhotoUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return const Center(
+                                                  child: Icon(Icons.error, size: 24),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Сделано',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          height: 100,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.blue),
+                                          ),
+                                          child: const Center(
+                                            child: Icon(Icons.image, size: 24, color: Colors.blue),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ] else
+                              const Text(
+                                'Фото прикреплено',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue,
+                                ),
+                              ),
                           ],
                         ],
                       ),
