@@ -7,7 +7,6 @@ import 'loyalty_storage.dart';
 import 'loyalty_promo_management_page.dart';
 import 'user_role_service.dart';
 import 'user_role_model.dart';
-import 'loyalty_cup_widget.dart';
 
 class LoyaltyPage extends StatefulWidget {
   const LoyaltyPage({super.key});
@@ -159,7 +158,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _coffeeCupCard(info),
+                        _qrCard(info),
                         const SizedBox(height: 16),
                         _pointsCard(info),
                         const SizedBox(height: 16),
@@ -200,10 +199,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     );
   }
 
-  Widget _coffeeCupCard(LoyaltyInfo info) {
-    // Отображаем points от 0 до 9 (если points = 10, стакан пустой)
-    final displayPoints = info.points >= 10 ? 0 : info.points.clamp(0, 9);
-    
+  Widget _qrCard(LoyaltyInfo info) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -212,28 +208,16 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         child: Column(
           children: [
             const Text(
-              'Акция 9+1',
+              'Ваш QR-код',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            CoffeeCupWidget(
-              points: displayPoints,
-              width: 200,
-              height: 300,
+            QrImageView(
+              data: info.qr,
+              version: QrVersions.auto,
+              size: 200,
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => _showQrFullScreen(context, info),
-              icon: const Icon(Icons.qr_code),
-              label: const Text('Показать QR'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
             Text(
               info.name,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -243,87 +227,6 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               style: const TextStyle(color: Colors.grey),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  void _showQrFullScreen(BuildContext context, LoyaltyInfo info) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: Colors.white,
-          child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Ваш QR-код',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: QrImageView(
-                    data: info.qr,
-                    version: QrVersions.auto,
-                    size: 300,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  info.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  info.phone,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Закрыть'),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
