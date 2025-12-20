@@ -950,6 +950,7 @@ class KPIService {
       }
 
       // Добавляем данные из пересменок
+      Logger.debug('📋 Обработка пересменок: всего ${employeeShifts.length} записей');
       for (var shift in employeeShifts) {
         final date = DateTime(
           shift.createdAt.year,
@@ -957,8 +958,10 @@ class KPIService {
           shift.createdAt.day,
         );
         final key = createShopDayKey(shift.shopAddress, date);
+        Logger.debug('   Пересменка: дата=${date.year}-${date.month}-${date.day}, магазин="${shift.shopAddress}", ключ="$key"');
         
         if (!shopDaysMap.containsKey(key)) {
+          Logger.debug('   Создана новая запись для пересменки');
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
             shopAddress: shift.shopAddress,
@@ -967,6 +970,7 @@ class KPIService {
             shiftReportId: shift.id,
           );
         } else {
+          Logger.debug('   Обновлена существующая запись: добавлена пересменка');
           final existing = shopDaysMap[key]!;
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
@@ -984,6 +988,7 @@ class KPIService {
       }
 
       // Добавляем данные из пересчетов
+      Logger.debug('📋 Обработка пересчетов: всего ${filteredRecounts.length} записей');
       for (var recount in filteredRecounts) {
         final date = DateTime(
           recount.completedAt.year,
@@ -991,8 +996,10 @@ class KPIService {
           recount.completedAt.day,
         );
         final key = createShopDayKey(recount.shopAddress, date);
+        Logger.debug('   Пересчет: дата=${date.year}-${date.month}-${date.day}, магазин="${recount.shopAddress}", ключ="$key"');
         
         if (!shopDaysMap.containsKey(key)) {
+          Logger.debug('   Создана новая запись для пересчета');
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
             shopAddress: recount.shopAddress,
@@ -1001,6 +1008,7 @@ class KPIService {
             recountReportId: recount.id,
           );
         } else {
+          Logger.debug('   Обновлена существующая запись: добавлен пересчет');
           final existing = shopDaysMap[key]!;
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
