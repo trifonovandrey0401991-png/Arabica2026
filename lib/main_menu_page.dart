@@ -368,59 +368,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // РКО - только для верифицированных сотрудников
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.receipt_long, 'РКО', () async {
-        // Проверяем верификацию сотрудника
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
-          
-          if (phone == null || phone.isEmpty) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Не удалось определить телефон сотрудника'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-            return;
-          }
-
-          final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-          
-          if (registration == null || !registration.isVerified) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Только верифицированные сотрудники могут создавать РКО'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
-            }
-            return;
-          }
-
-          if (!mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RKOTypeSelectionPage()),
-          );
-        } catch (e) {
-          print('Ошибка проверки верификации: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Ошибка: $e'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      }));
-    }
 
 
     // Карта лояльности - видно всем

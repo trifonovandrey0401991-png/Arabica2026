@@ -14,6 +14,9 @@ import 'test_questions_management_page.dart';
 import 'training_articles_management_page.dart';
 import 'clients_management_page.dart';
 import 'product_questions_management_page.dart';
+import 'rko_type_selection_page.dart';
+import 'employee_registration_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -140,6 +143,62 @@ class DataManagementPage extends StatelessWidget {
                   builder: (context) => const ProductQuestionsManagementPage(),
                 ),
               );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'РКО',
+            icon: Icons.receipt_long,
+            onTap: () async {
+              // Проверяем верификацию сотрудника
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+                
+                if (phone == null || phone.isEmpty) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Не удалось определить телефон сотрудника'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+                final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+                
+                if (registration == null || !registration.isVerified) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Только верифицированные сотрудники могут создавать РКО'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                if (!context.mounted) return;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RKOTypeSelectionPage()),
+                );
+              } catch (e) {
+                print('Ошибка проверки верификации: $e');
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Ошибка: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
           ),
           const SizedBox(height: 8),
