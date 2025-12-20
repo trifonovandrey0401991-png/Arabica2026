@@ -71,8 +71,11 @@ class _CoffeeCupWidgetState extends State<CoffeeCupWidget>
   Widget build(BuildContext context) {
     final cupWidth = widget.width ?? 200.0;
     final cupHeight = widget.height ?? 300.0;
-    final scaleWidth = 40.0; // Ширина линейки
+    final scaleWidth = 50.0; // Ширина линейки
     final totalWidth = cupWidth + scaleWidth + 20; // Общая ширина с отступами
+    
+    // Высота стакана (без учета верхнего отступа)
+    final actualCupHeight = cupHeight * 0.9;
 
     return SizedBox(
       width: totalWidth,
@@ -81,7 +84,9 @@ class _CoffeeCupWidgetState extends State<CoffeeCupWidget>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Кофейный стакан
-          Expanded(
+          SizedBox(
+            width: cupWidth,
+            height: cupHeight,
             child: AnimatedBuilder(
               animation: _fillAnimation,
               builder: (context, child) {
@@ -96,49 +101,69 @@ class _CoffeeCupWidgetState extends State<CoffeeCupWidget>
             ),
           ),
           const SizedBox(width: 20),
-          // Вертикальная линейка с делениями
-          _buildScale(cupHeight),
+          // Вертикальная линейка с делениями - точно такой же высоты как стакан
+          _buildScale(actualCupHeight, cupHeight * 0.05),
         ],
       ),
     );
   }
 
-  Widget _buildScale(double height) {
+  Widget _buildScale(double scaleHeight, double topOffset) {
+    // Каждое деление = 1/9 высоты стакана
+    final divisionHeight = scaleHeight / 9;
+    
     return SizedBox(
-      width: 40,
-      height: height,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(9, (index) {
-          final scaleNumber = index + 1;
-          final isActive = scaleNumber <= widget.points;
-          
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
+      width: 50,
+      height: scaleHeight + topOffset,
+      child: Stack(
+        children: [
+          // Вертикальная линия линейки
+          Positioned(
+            left: 0,
+            top: topOffset,
+            child: Container(
+              width: 3,
+              height: scaleHeight,
+              color: Colors.grey[400],
+            ),
+          ),
+          // Деления и цифры
+          ...List.generate(9, (index) {
+            final scaleNumber = index + 1;
+            final isActive = scaleNumber <= widget.points;
+            // Позиция деления: снизу вверх
+            // Деление 1 на высоте 1/9 от дна, деление 9 на высоте 9/9 (верх)
+            final positionFromBottom = scaleNumber * divisionHeight;
+            final positionFromTop = topOffset + scaleHeight - positionFromBottom;
+            
+            return Positioned(
+              left: 0,
+              top: positionFromTop - 1.5, // Центрируем деление (высота деления 3)
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 20,
-                    height: 2,
-                    color: isActive ? Colors.brown[700] : Colors.grey[300],
+                    width: 18,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.brown[700] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(1.5),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     '$scaleNumber',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                       color: isActive ? Colors.brown[700] : Colors.grey[400],
                     ),
                   ),
                 ],
               ),
-              if (index < 8) // Не добавляем отступ после последнего деления
-                SizedBox(height: (height - 18) / 9), // Равномерное распределение
-            ],
-          );
-        }),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -158,86 +183,145 @@ class CoffeeCupPainter extends CustomPainter {
     final paint = Paint();
     final strokePaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
+      ..strokeWidth = 4
       ..color = Colors.brown[800]!;
 
-    // Параметры стакана
-    final cupWidth = size.width * 0.7;
+    // Параметры стакана - трапециевидная форма (сверху шире)
+    final topWidth = size.width * 0.85;
+    final bottomWidth = size.width * 0.65;
     final cupHeight = size.height * 0.9;
-    final cupLeft = (size.width - cupWidth) / 2;
     final cupTop = size.height * 0.05;
-    final borderRadius = 15.0;
+    final topLeft = (size.width - topWidth) / 2;
+    final bottomLeft = (size.width - bottomWidth) / 2;
+    final borderRadius = 12.0;
 
-    // Рисуем контур стакана (закругленный прямоугольник)
-    final cupRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(cupLeft, cupTop, cupWidth, cupHeight),
-      Radius.circular(borderRadius),
+    // Создаем путь для стакана (трапеция с закругленными углами)
+    final cupPath = Path();
+    
+    // Верхняя часть (закругленная)
+    cupPath.moveTo(topLeft + borderRadius, cupTop);
+    cupPath.lineTo(topLeft + topWidth - borderRadius, cupTop);
+    cupPath.quadraticBezierTo(
+      topLeft + topWidth, cupTop,
+      topLeft + topWidth, cupTop + borderRadius,
     );
     
-    // Фон стакана (белый/прозрачный)
+    // Правая сторона (сужается вниз)
+    cupPath.lineTo(bottomLeft + bottomWidth, cupTop + cupHeight - borderRadius);
+    cupPath.quadraticBezierTo(
+      bottomLeft + bottomWidth, cupTop + cupHeight,
+      bottomLeft + bottomWidth - borderRadius, cupTop + cupHeight,
+    );
+    
+    // Нижняя часть
+    cupPath.lineTo(bottomLeft + borderRadius, cupTop + cupHeight);
+    cupPath.quadraticBezierTo(
+      bottomLeft, cupTop + cupHeight,
+      bottomLeft, cupTop + cupHeight - borderRadius,
+    );
+    
+    // Левая сторона (сужается вверх)
+    cupPath.lineTo(topLeft, cupTop + borderRadius);
+    cupPath.quadraticBezierTo(
+      topLeft, cupTop,
+      topLeft + borderRadius, cupTop,
+    );
+    cupPath.close();
+    
+    // Фон стакана (белый)
     paint.color = Colors.white;
     paint.style = PaintingStyle.fill;
-    canvas.drawRRect(cupRect, paint);
+    canvas.drawPath(cupPath, paint);
 
     // Рисуем кофе (заполнение)
     if (fillLevel > 0) {
       final fillHeight = cupHeight * fillLevel;
       final fillTop = cupTop + cupHeight - fillHeight;
       
+      // Ширина на уровне заполнения (линейная интерполяция)
+      final fillTopWidth = topWidth - (topWidth - bottomWidth) * 
+          ((cupTop + cupHeight - fillTop) / cupHeight);
+      final fillBottomWidth = bottomWidth;
+      final fillTopLeft = (size.width - fillTopWidth) / 2;
+      final fillBottomLeft = (size.width - fillBottomWidth) / 2;
+      
       // Градиент для кофе
       final coffeeGradient = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Colors.brown[400]!,
-          Colors.brown[700]!,
+          Colors.brown[300]!,
+          Colors.brown[600]!,
+          Colors.brown[800]!,
           Colors.brown[900]!,
         ],
+        stops: const [0.0, 0.3, 0.7, 1.0],
       );
+      
+      // Путь для кофе (трапеция)
+      final coffeePath = Path();
+      coffeePath.moveTo(fillTopLeft, fillTop);
+      coffeePath.lineTo(fillTopLeft + fillTopWidth, fillTop);
+      coffeePath.lineTo(fillBottomLeft + fillBottomWidth, cupTop + cupHeight);
+      coffeePath.lineTo(fillBottomLeft, cupTop + cupHeight);
+      coffeePath.close();
       
       paint.shader = coffeeGradient.createShader(
-        Rect.fromLTWH(cupLeft, fillTop, cupWidth, fillHeight),
+        Rect.fromLTWH(
+          fillBottomLeft,
+          fillTop,
+          fillBottomWidth,
+          fillHeight,
+        ),
       );
       paint.style = PaintingStyle.fill;
+      canvas.drawPath(coffeePath, paint);
       
-      // Закругленный верхний край кофе
-      final fillRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(cupLeft, fillTop, cupWidth, fillHeight),
-        Radius.circular(borderRadius),
-      );
-      canvas.drawRRect(fillRect, paint);
-      
-      // Верхняя линия кофе (более темная)
+      // Верхняя линия кофе (более темная, с пенкой)
       final topLinePaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = 3
         ..color = Colors.brown[900]!;
       canvas.drawLine(
-        Offset(cupLeft + borderRadius, fillTop),
-        Offset(cupLeft + cupWidth - borderRadius, fillTop),
+        Offset(fillTopLeft, fillTop),
+        Offset(fillTopLeft + fillTopWidth, fillTop),
         topLinePaint,
+      );
+      
+      // Пенка (светлая полоска сверху)
+      final foamPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = Colors.brown[200]!;
+      canvas.drawLine(
+        Offset(fillTopLeft + 5, fillTop - 2),
+        Offset(fillTopLeft + fillTopWidth - 5, fillTop - 2),
+        foamPaint,
       );
     }
 
     // Контур стакана
-    canvas.drawRRect(cupRect, strokePaint);
+    canvas.drawPath(cupPath, strokePaint);
 
-    // Ручка стакана (опционально, справа)
+    // Ручка стакана (полукруг справа)
     final handlePath = Path();
-    final handleCenterX = cupLeft + cupWidth + 15;
-    final handleCenterY = cupTop + cupHeight * 0.4;
-    final handleRadius = 12.0;
+    final handleCenterX = topLeft + topWidth + 20;
+    final handleCenterY = cupTop + cupHeight * 0.45;
+    final handleRadius = 18.0;
+    final handleThickness = 8.0;
     
+    // Внешняя дуга ручки
     handlePath.addArc(
       Rect.fromCircle(
         center: Offset(handleCenterX, handleCenterY),
         radius: handleRadius,
       ),
-      -math.pi / 2,
-      math.pi,
+      -math.pi / 2 - 0.3,
+      math.pi + 0.6,
     );
     
-    strokePaint.strokeWidth = 3;
+    strokePaint.strokeWidth = 5;
+    strokePaint.strokeCap = StrokeCap.round;
     canvas.drawPath(handlePath, strokePaint);
   }
 
