@@ -181,66 +181,76 @@ class CoffeeCupPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
-    final strokePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..color = Colors.brown[800]!;
-
-    // Параметры стакана - трапециевидная форма (сверху шире)
-    final topWidth = size.width * 0.85;
-    final bottomWidth = size.width * 0.65;
-    final cupHeight = size.height * 0.9;
+    
+    // Цвета бренда Арабика
+    final cupColor = const Color(0xFF1B4D5E); // Темно-бирюзовый/синий
+    final goldColor = const Color(0xFFD4AF37); // Золотой/бронзовый
+    final lidColor = Colors.black87;
+    
+    // Параметры стакана - высокий цилиндрический (слегка сужающийся)
+    final topWidth = size.width * 0.75;
+    final bottomWidth = size.width * 0.7;
+    final cupBodyHeight = size.height * 0.75; // Высота тела стакана
+    final lidHeight = size.height * 0.1; // Высота крышки
     final cupTop = size.height * 0.05;
+    final bodyTop = cupTop + lidHeight;
     final topLeft = (size.width - topWidth) / 2;
     final bottomLeft = (size.width - bottomWidth) / 2;
-    final borderRadius = 12.0;
+    final borderRadius = 8.0;
 
-    // Создаем путь для стакана (трапеция с закругленными углами)
+    // Рисуем тело стакана (цилиндр с легким сужением)
     final cupPath = Path();
     
-    // Верхняя часть (закругленная)
-    cupPath.moveTo(topLeft + borderRadius, cupTop);
-    cupPath.lineTo(topLeft + topWidth - borderRadius, cupTop);
+    // Верхняя часть тела (под крышкой)
+    cupPath.moveTo(topLeft + borderRadius, bodyTop);
+    cupPath.lineTo(topLeft + topWidth - borderRadius, bodyTop);
     cupPath.quadraticBezierTo(
-      topLeft + topWidth, cupTop,
-      topLeft + topWidth, cupTop + borderRadius,
+      topLeft + topWidth, bodyTop,
+      topLeft + topWidth, bodyTop + borderRadius,
     );
     
-    // Правая сторона (сужается вниз)
-    cupPath.lineTo(bottomLeft + bottomWidth, cupTop + cupHeight - borderRadius);
+    // Правая сторона (слегка сужается вниз)
+    cupPath.lineTo(bottomLeft + bottomWidth, bodyTop + cupBodyHeight - borderRadius);
     cupPath.quadraticBezierTo(
-      bottomLeft + bottomWidth, cupTop + cupHeight,
-      bottomLeft + bottomWidth - borderRadius, cupTop + cupHeight,
+      bottomLeft + bottomWidth, bodyTop + cupBodyHeight,
+      bottomLeft + bottomWidth - borderRadius, bodyTop + cupBodyHeight,
     );
     
     // Нижняя часть
-    cupPath.lineTo(bottomLeft + borderRadius, cupTop + cupHeight);
+    cupPath.lineTo(bottomLeft + borderRadius, bodyTop + cupBodyHeight);
     cupPath.quadraticBezierTo(
-      bottomLeft, cupTop + cupHeight,
-      bottomLeft, cupTop + cupHeight - borderRadius,
+      bottomLeft, bodyTop + cupBodyHeight,
+      bottomLeft, bodyTop + cupBodyHeight - borderRadius,
     );
     
-    // Левая сторона (сужается вверх)
-    cupPath.lineTo(topLeft, cupTop + borderRadius);
+    // Левая сторона (слегка сужается вверх)
+    cupPath.lineTo(topLeft, bodyTop + borderRadius);
     cupPath.quadraticBezierTo(
-      topLeft, cupTop,
-      topLeft + borderRadius, cupTop,
+      topLeft, bodyTop,
+      topLeft + borderRadius, bodyTop,
     );
     cupPath.close();
     
-    // Фон стакана (белый)
-    paint.color = Colors.white;
+    // Фон стакана (цвет бренда)
+    paint.color = cupColor;
     paint.style = PaintingStyle.fill;
     canvas.drawPath(cupPath, paint);
+    
+    // Контур стакана
+    final strokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = cupColor.withOpacity(0.8);
+    canvas.drawPath(cupPath, strokePaint);
 
     // Рисуем кофе (заполнение)
     if (fillLevel > 0) {
-      final fillHeight = cupHeight * fillLevel;
-      final fillTop = cupTop + cupHeight - fillHeight;
+      final fillHeight = cupBodyHeight * fillLevel;
+      final fillTop = bodyTop + cupBodyHeight - fillHeight;
       
       // Ширина на уровне заполнения (линейная интерполяция)
       final fillTopWidth = topWidth - (topWidth - bottomWidth) * 
-          ((cupTop + cupHeight - fillTop) / cupHeight);
+          ((bodyTop + cupBodyHeight - fillTop) / cupBodyHeight);
       final fillBottomWidth = bottomWidth;
       final fillTopLeft = (size.width - fillTopWidth) / 2;
       final fillBottomLeft = (size.width - fillBottomWidth) / 2;
@@ -250,7 +260,7 @@ class CoffeeCupPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Colors.brown[300]!,
+          Colors.brown[400]!,
           Colors.brown[600]!,
           Colors.brown[800]!,
           Colors.brown[900]!,
@@ -258,12 +268,12 @@ class CoffeeCupPainter extends CustomPainter {
         stops: const [0.0, 0.3, 0.7, 1.0],
       );
       
-      // Путь для кофе (трапеция)
+      // Путь для кофе
       final coffeePath = Path();
       coffeePath.moveTo(fillTopLeft, fillTop);
       coffeePath.lineTo(fillTopLeft + fillTopWidth, fillTop);
-      coffeePath.lineTo(fillBottomLeft + fillBottomWidth, cupTop + cupHeight);
-      coffeePath.lineTo(fillBottomLeft, cupTop + cupHeight);
+      coffeePath.lineTo(fillBottomLeft + fillBottomWidth, bodyTop + cupBodyHeight);
+      coffeePath.lineTo(fillBottomLeft, bodyTop + cupBodyHeight);
       coffeePath.close();
       
       paint.shader = coffeeGradient.createShader(
@@ -277,52 +287,104 @@ class CoffeeCupPainter extends CustomPainter {
       paint.style = PaintingStyle.fill;
       canvas.drawPath(coffeePath, paint);
       
-      // Верхняя линия кофе (более темная, с пенкой)
+      // Верхняя линия кофе (более темная)
       final topLinePaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
+        ..strokeWidth = 2
         ..color = Colors.brown[900]!;
       canvas.drawLine(
         Offset(fillTopLeft, fillTop),
         Offset(fillTopLeft + fillTopWidth, fillTop),
         topLinePaint,
       );
-      
-      // Пенка (светлая полоска сверху)
-      final foamPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = Colors.brown[200]!;
-      canvas.drawLine(
-        Offset(fillTopLeft + 5, fillTop - 2),
-        Offset(fillTopLeft + fillTopWidth - 5, fillTop - 2),
-        foamPaint,
-      );
     }
 
-    // Контур стакана
-    canvas.drawPath(cupPath, strokePaint);
-
-    // Ручка стакана (полукруг справа)
-    final handlePath = Path();
-    final handleCenterX = topLeft + topWidth + 20;
-    final handleCenterY = cupTop + cupHeight * 0.45;
-    final handleRadius = 18.0;
-    final handleThickness = 8.0;
+    // Рисуем крышку (черная пластиковая)
+    final lidPath = Path();
+    final lidTopWidth = topWidth * 1.05; // Крышка немного шире
+    final lidTopLeft = (size.width - lidTopWidth) / 2;
+    final lidRadius = 6.0;
     
-    // Внешняя дуга ручки
-    handlePath.addArc(
-      Rect.fromCircle(
-        center: Offset(handleCenterX, handleCenterY),
-        radius: handleRadius,
-      ),
-      -math.pi / 2 - 0.3,
-      math.pi + 0.6,
+    lidPath.moveTo(lidTopLeft + lidRadius, cupTop);
+    lidPath.lineTo(lidTopLeft + lidTopWidth - lidRadius, cupTop);
+    lidPath.quadraticBezierTo(
+      lidTopLeft + lidTopWidth, cupTop,
+      lidTopLeft + lidTopWidth, cupTop + lidRadius,
+    );
+    lidPath.lineTo(lidTopLeft + lidTopWidth, bodyTop - 2);
+    lidPath.lineTo(topLeft + topWidth, bodyTop);
+    lidPath.lineTo(topLeft, bodyTop);
+    lidPath.lineTo(lidTopLeft, bodyTop - 2);
+    lidPath.lineTo(lidTopLeft, cupTop + lidRadius);
+    lidPath.quadraticBezierTo(
+      lidTopLeft, cupTop,
+      lidTopLeft + lidRadius, cupTop,
+    );
+    lidPath.close();
+    
+    paint.shader = null;
+    paint.color = lidColor;
+    paint.style = PaintingStyle.fill;
+    canvas.drawPath(lidPath, paint);
+    
+    // Ободок крышки
+    final lidRimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = Colors.black;
+    canvas.drawLine(
+      Offset(topLeft, bodyTop),
+      Offset(topLeft + topWidth, bodyTop),
+      lidRimPaint,
     );
     
-    strokePaint.strokeWidth = 5;
-    strokePaint.strokeCap = StrokeCap.round;
-    canvas.drawPath(handlePath, strokePaint);
+    // Рисуем брендинг (золотые элементы)
+    final textPaint = Paint()
+      ..color = goldColor
+      ..style = PaintingStyle.fill;
+    
+    // Логотип (стилизованное кофейное зерно) - в верхней части стакана
+    final logoCenterX = size.width / 2;
+    final logoCenterY = bodyTop + cupBodyHeight * 0.25;
+    final logoSize = topWidth * 0.15;
+    
+    // Рисуем простой логотип (овал с линией)
+    final logoPath = Path();
+    logoPath.addOval(Rect.fromCenter(
+      center: Offset(logoCenterX, logoCenterY),
+      width: logoSize,
+      height: logoSize * 0.7,
+    ));
+    logoPath.moveTo(logoCenterX - logoSize * 0.3, logoCenterY);
+    logoPath.lineTo(logoCenterX + logoSize * 0.3, logoCenterY);
+    
+    final logoPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = goldColor;
+    canvas.drawPath(logoPath, logoPaint);
+    
+    // Текст "Арабика"
+    final arabicaY = bodyTop + cupBodyHeight * 0.4;
+    final arabicaText = TextSpan(
+      text: 'Арабика',
+      style: TextStyle(
+        color: goldColor,
+        fontSize: topWidth * 0.12,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+      ),
+    );
+    final arabicaPainter = TextPainter(
+      text: arabicaText,
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+    arabicaPainter.layout();
+    arabicaPainter.paint(
+      canvas,
+      Offset(logoCenterX - arabicaPainter.width / 2, arabicaY),
+    );
   }
 
   @override
