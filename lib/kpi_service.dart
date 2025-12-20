@@ -842,6 +842,7 @@ class KPIService {
       }
       
       Logger.debug('Фильтрация по месяцам: текущий=${currentMonth.year}-${currentMonth.month}, предыдущий=${previousMonth.year}-${previousMonth.month}');
+      Logger.debug('Текущая дата: ${now.year}-${now.month}-${now.day}');
 
       // Получаем отметки прихода за период
       final attendanceRecords = await AttendanceService.getAttendanceRecords(
