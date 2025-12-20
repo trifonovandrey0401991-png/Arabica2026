@@ -474,8 +474,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                   },
                 ),
               ] else if (question.isPhotoOnly) ...[
-                // Показываем эталонное фото, если есть для этого магазина
-                if (question.referencePhotos != null && 
+                // Показываем эталонное фото только ДО того, как сотрудник сделал свое фото
+                // После того как фото сделано, эталонное фото скрывается (сравнение только в отчетах)
+                if (_photoPath == null && 
+                    question.referencePhotos != null && 
                     question.referencePhotos!.containsKey(widget.shopAddress))
                   Card(
                     margin: const EdgeInsets.only(bottom: 16),
