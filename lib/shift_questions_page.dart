@@ -47,16 +47,27 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       // Фильтруем вопросы по магазину сотрудника
       final questions = await ShiftQuestion.loadQuestions(shopAddress: widget.shopAddress);
       print('📋 Загружено вопросов: ${questions.length}');
-      print('📋 Магазин сотрудника: ${widget.shopAddress}');
+      print('📋 Магазин сотрудника: "${widget.shopAddress}"');
+      print('📋 Длина адреса магазина: ${widget.shopAddress.length}');
       for (var q in questions) {
         if (q.isPhotoOnly) {
           print('📋 Вопрос с фото: "${q.question}"');
+          print('   ID вопроса: ${q.id}');
           if (q.referencePhotos != null) {
-            print('   Эталонные фото: ${q.referencePhotos!.keys.toList()}');
+            print('   Эталонные фото (ключи): ${q.referencePhotos!.keys.toList()}');
+            print('   Эталонные фото (количество): ${q.referencePhotos!.length}');
+            // Проверяем точное совпадение
             if (q.referencePhotos!.containsKey(widget.shopAddress)) {
               print('   ✅ Есть эталонное фото для магазина: ${q.referencePhotos![widget.shopAddress]}');
             } else {
-              print('   ❌ Нет эталонного фото для магазина ${widget.shopAddress}');
+              print('   ❌ Нет эталонного фото для магазина "${widget.shopAddress}"');
+              // Проверяем частичное совпадение
+              for (var key in q.referencePhotos!.keys) {
+                print('      Сравниваем: "${widget.shopAddress}" vs "$key"');
+                if (key.contains(widget.shopAddress) || widget.shopAddress.contains(key)) {
+                  print('      ⚠️ Найдено частичное совпадение!');
+                }
+              }
             }
           } else {
             print('   ❌ Нет эталонных фото в вопросе');
@@ -497,13 +508,15 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                   },
                 ),
               ] else if (question.isPhotoOnly) ...[
-                // Показываем эталонное фото из вопроса пересменки (которое админ прикрепил)
-                // Эталонное фото показывается только ДО того, как сотрудник сделал свое фото
+                // ВАЖНО: Эталонное фото из вопроса пересменки (которое админ прикрепил)
+                // Эталонное фото ВСЕГДА показывается ДО того, как сотрудник сделал свое фото
                 // После того как фото сделано, эталонное фото скрывается (сравнение только в отчетах)
                 if (_photoPath == null) ...[
                   // Получаем эталонное фото из вопроса для этого магазина
                   if (question.referencePhotos != null && 
-                      question.referencePhotos!.containsKey(widget.shopAddress))
+                      question.referencePhotos!.containsKey(widget.shopAddress)) ...[
+                    print('🖼️ Показываем эталонное фото для магазина: ${widget.shopAddress}');
+                    print('   URL эталонного фото: ${question.referencePhotos![widget.shopAddress]}');
                     Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
@@ -531,9 +544,23 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                 child: Image.network(
                                   question.referencePhotos![widget.shopAddress]!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
                                     return const Center(
-                                      child: Icon(Icons.error, size: 64),
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    print('❌ Ошибка загрузки эталонного фото: $error');
+                                    return const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.error, size: 64, color: Colors.red),
+                                          SizedBox(height: 8),
+                                          Text('Ошибка загрузки эталонного фото'),
+                                        ],
+                                      ),
                                     );
                                   },
                                 ),
@@ -541,7 +568,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              'Посмотрите на эталонное фото, затем сделайте свое фото',
+                              'Посмотрите на эталонное фото, затем нажмите кнопку ниже для фотографирования',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontStyle: FontStyle.italic,
@@ -552,6 +579,10 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                         ),
                       ),
                     ),
+                  ] else ...[
+                    print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
+                    print('   Доступные магазины в referencePhotos: ${question.referencePhotos?.keys.toList()}');
+                  ],
                 ],
                 if (_photoPath != null)
                   Container(
@@ -581,10 +612,18 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                   ),
                 ElevatedButton.icon(
                   onPressed: () async {
+                    print('📷 Нажата кнопка фотографирования');
+                    print('   Текущий вопрос: "${question.question}"');
+                    print('   Есть эталонное фото: ${question.referencePhotos != null && question.referencePhotos!.containsKey(widget.shopAddress)}');
                     await _takePhoto();
-                    // Если фото сделано, автоматически переходим к следующему вопросу
-                    if (_photoPath != null && _canProceed()) {
-                      _saveAndNext();
+                    if (_photoPath != null) {
+                      print('✅ Фото сделано: $_photoPath');
+                      // Если фото сделано, автоматически переходим к следующему вопросу
+                      if (_canProceed()) {
+                        _saveAndNext();
+                      }
+                    } else {
+                      print('⚠️ Фото не было сделано');
                     }
                   },
                   icon: const Icon(Icons.camera_alt),
