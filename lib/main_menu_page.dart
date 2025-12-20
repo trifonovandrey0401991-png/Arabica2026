@@ -441,26 +441,24 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Отзывы - только админ
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.rate_review, 'Отзывы', () {
-        print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
-        if (!context.mounted) {
-          print('❌ Context не mounted');
-          return;
-        }
-        print('🔵 Context mounted, открываем ReviewTypeSelectionPage');
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) {
-              print('🔵 Builder вызван, создаем ReviewTypeSelectionPage');
-              return const ReviewTypeSelectionPage();
-            },
-          ),
-        );
-      }));
-    }
+    // Отзывы - видно всем
+    items.add(_tile(context, Icons.rate_review, 'Отзывы', () {
+      print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
+      if (!context.mounted) {
+        print('❌ Context не mounted');
+        return;
+      }
+      print('🔵 Context mounted, открываем ReviewTypeSelectionPage');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) {
+            print('🔵 Builder вызван, создаем ReviewTypeSelectionPage');
+            return const ReviewTypeSelectionPage();
+          },
+        ),
+      );
+    }));
 
     // Мои диалоги - видно всем (клиентам, сотрудникам и админам)
     items.add(_tile(context, Icons.chat, 'Мои диалоги', () {
