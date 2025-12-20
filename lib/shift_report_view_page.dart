@@ -274,8 +274,14 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                 ),
                               ),
                             ],
-                          )
-                        else
+                          );
+                            } else {
+                              print('   ❌ Нет эталонного фото в ответе');
+                              return const SizedBox.shrink();
+                            }
+                          },
+                        ),
+                        if (answer.referencePhotoUrl == null)
                           // Если нет эталонного фото, показываем только сделанное фото
                           GestureDetector(
                             onTap: () {
