@@ -3,6 +3,7 @@ import 'rko_reports_page.dart';
 import 'shift_reports_list_page.dart';
 import 'recount_reports_list_page.dart';
 import 'attendance_reports_page.dart';
+import 'kpi_type_selection_page.dart';
 import 'user_role_service.dart';
 import 'user_role_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -148,6 +149,21 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const AttendanceReportsPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // KPI - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'KPI',
+              icon: Icons.analytics,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const KPITypeSelectionPage()),
                 );
               },
             ),

@@ -521,15 +521,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
 
 
-    // KPI - только админ
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.analytics, 'KPI', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const KPITypeSelectionPage()),
-        );
-      }));
-    }
 
     // Рецепты - только сотрудник и админ (для админа есть вкладка редактирования внутри)
     if (role == UserRole.employee || role == UserRole.admin) {
