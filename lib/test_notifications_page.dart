@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import 'order_provider.dart';
 import 'notification_service.dart';
 import 'employees_page.dart';
@@ -17,6 +20,7 @@ import 'employee_registration_service.dart';
 import 'employee_registration_model.dart';
 import 'shop_model.dart';
 import 'rko_type_selection_page.dart';
+import 'rko_reports_service.dart';
 import 'utils/logger.dart';
 
 /// Тестовая страница для проверки всех функций приложения
@@ -608,13 +612,121 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       return;
     }
 
-    // Открываем стандартную страницу создания РКО
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const RKOTypeSelectionPage(),
+    // Показываем диалог для ввода суммы
+    final amountController = TextEditingController();
+    final rkoTypeController = TextEditingController(text: 'income');
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Создать тестовое РКО'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: amountController,
+              decoration: const InputDecoration(
+                labelText: 'Сумма',
+                hintText: 'Например: 10000',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: rkoTypeController,
+              decoration: const InputDecoration(
+                labelText: 'Тип РКО',
+                hintText: 'income',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (amountController.text.isNotEmpty) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: const Text('Создать'),
+          ),
+        ],
       ),
     );
+
+    if (result != true) return;
+
+    final amount = double.tryParse(amountController.text.replaceAll(',', '.'));
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Введите корректную сумму'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Создаем тестовое РКО напрямую через API
+    // Используем выбранную дату из тестовой страницы
+    final selectedDate = DateTime.utc(
+      _kpiSelectedDate.year,
+      _kpiSelectedDate.month,
+      _kpiSelectedDate.day,
+    );
+
+    try {
+      // Создаем минимальный PDF файл для теста
+      final tempDir = await getTemporaryDirectory();
+      final fileName = 'rko_test_${_kpiSelectedEmployee!.toLowerCase()}_${_kpiSelectedDate.day}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final pdfFile = File(path.join(tempDir.path, fileName));
+      
+      // Создаем пустой PDF файл (заглушка)
+      await pdfFile.writeAsString('PDF placeholder for test RKO');
+      
+      // Загружаем на сервер с выбранной датой
+      final success = await RKOReportsService.uploadRKO(
+        pdfFile: pdfFile,
+        fileName: fileName,
+        employeeName: _kpiSelectedEmployee!,
+        shopAddress: _kpiSelectedShop!,
+        date: selectedDate, // Используем выбранную дату
+        amount: amount,
+        rkoType: rkoTypeController.text.isEmpty ? 'income' : rkoTypeController.text,
+      );
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Тестовое РКО создано для ${_formatDate(_kpiSelectedDate)}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Ошибка создания РКО'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка создания тестового РКО', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // ========== Вспомогательные методы форматирования ==========
