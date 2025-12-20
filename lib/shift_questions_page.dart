@@ -401,34 +401,54 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       );
 
       final List<ShiftAnswer> syncedAnswers = [];
-      for (var answer in _answers) {
+      for (var i = 0; i < _answers.length; i++) {
+        final answer = _answers[i];
+        print('📸 Обработка ответа ${i + 1}/${_answers.length}: "${answer.question}"');
+        print('   photoPath: ${answer.photoPath}');
+        print('   photoDriveId: ${answer.photoDriveId}');
+        print('   referencePhotoUrl: ${answer.referencePhotoUrl}');
+        
         if (answer.photoPath != null && answer.photoDriveId == null) {
           try {
-            final fileName = '${reportId}_${_answers.indexOf(answer)}.jpg';
+            final fileName = '${reportId}_${i}.jpg';
+            print('📤 Загрузка фото сотрудника на сервер: $fileName');
+            print('   Путь к фото: ${answer.photoPath}');
+            
             final driveId = await GoogleDriveService.uploadPhoto(
               answer.photoPath!,
               fileName,
             );
+            
             if (driveId != null) {
+              print('✅ Фото сотрудника успешно загружено: $driveId');
               syncedAnswers.add(ShiftAnswer(
                 question: answer.question,
                 textAnswer: answer.textAnswer,
                 numberAnswer: answer.numberAnswer,
                 photoPath: answer.photoPath,
                 photoDriveId: driveId,
+                referencePhotoUrl: answer.referencePhotoUrl, // Сохраняем эталонное фото
               ));
             } else {
               // Если не удалось загрузить, сохраняем без photoDriveId
-              print('⚠️ Фото не загружено в Google Drive, сохраняем локально');
+              print('⚠️ Фото не загружено на сервер, сохраняем локально');
               syncedAnswers.add(answer);
             }
           } catch (e) {
-            print('⚠️ Исключение при загрузке фото: $e');
+            print('❌ Исключение при загрузке фото: $e');
+            print('   Stack trace: ${StackTrace.current}');
             syncedAnswers.add(answer);
           }
         } else {
+          print('✅ Ответ уже имеет photoDriveId или не содержит фото');
           syncedAnswers.add(answer);
         }
+      }
+      
+      print('📊 Итого обработано ответов: ${syncedAnswers.length}');
+      for (var i = 0; i < syncedAnswers.length; i++) {
+        final ans = syncedAnswers[i];
+        print('   Ответ ${i + 1}: photoPath=${ans.photoPath}, photoDriveId=${ans.photoDriveId}, referencePhotoUrl=${ans.referencePhotoUrl}');
       }
 
       final report = ShiftReport(

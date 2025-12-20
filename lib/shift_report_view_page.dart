@@ -208,12 +208,29 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                     future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
                                                     builder: (context, snapshot) {
                                                       if (snapshot.hasData) {
+                                                        final photoUrl = snapshot.data!;
+                                                        print('🖼️ Загрузка фото сотрудника из: $photoUrl');
                                                         return Image.network(
-                                                          snapshot.data!,
+                                                          photoUrl,
                                                           fit: BoxFit.cover,
-                                                          errorBuilder: (context, error, stackTrace) {
+                                                          loadingBuilder: (context, child, loadingProgress) {
+                                                            if (loadingProgress == null) return child;
                                                             return const Center(
-                                                              child: Icon(Icons.error),
+                                                              child: CircularProgressIndicator(),
+                                                            );
+                                                          },
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            print('❌ Ошибка загрузки фото сотрудника: $error');
+                                                            print('   URL: $photoUrl');
+                                                            return const Center(
+                                                              child: Column(
+                                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                                children: [
+                                                                  Icon(Icons.error, size: 48),
+                                                                  SizedBox(height: 8),
+                                                                  Text('Ошибка загрузки фото', style: TextStyle(fontSize: 12)),
+                                                                ],
+                                                              ),
                                                             );
                                                           },
                                                         );
