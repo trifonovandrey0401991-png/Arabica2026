@@ -46,11 +46,29 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     try {
       // Фильтруем вопросы по магазину сотрудника
       final questions = await ShiftQuestion.loadQuestions(shopAddress: widget.shopAddress);
+      print('📋 Загружено вопросов: ${questions.length}');
+      print('📋 Магазин сотрудника: ${widget.shopAddress}');
+      for (var q in questions) {
+        if (q.isPhotoOnly) {
+          print('📋 Вопрос с фото: "${q.question}"');
+          if (q.referencePhotos != null) {
+            print('   Эталонные фото: ${q.referencePhotos!.keys.toList()}');
+            if (q.referencePhotos!.containsKey(widget.shopAddress)) {
+              print('   ✅ Есть эталонное фото для магазина: ${q.referencePhotos![widget.shopAddress]}');
+            } else {
+              print('   ❌ Нет эталонного фото для магазина ${widget.shopAddress}');
+            }
+          } else {
+            print('   ❌ Нет эталонных фото в вопросе');
+          }
+        }
+      }
       setState(() {
         _questions = questions;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Ошибка загрузки вопросов: $e');
       setState(() {
         _isLoading = false;
       });
@@ -240,16 +258,21 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       );
     } else if (question.isPhotoOnly) {
       if (_photoPath == null) return;
-      // Получаем URL эталонного фото для этого магазина, если есть
+      // ВАЖНО: Получаем URL эталонного фото ИЗ ВОПРОСА (которое админ прикрепил)
+      // НЕ используем фото сотрудника как эталонное!
       String? referencePhotoUrl;
       if (question.referencePhotos != null && 
           question.referencePhotos!.containsKey(widget.shopAddress)) {
         referencePhotoUrl = question.referencePhotos![widget.shopAddress];
+        print('✅ Сохраняем эталонное фото из вопроса: $referencePhotoUrl');
+        print('   Фото сотрудника: $_photoPath');
+      } else {
+        print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
       }
       answer = ShiftAnswer(
         question: question.question,
-        photoPath: _photoPath,
-        referencePhotoUrl: referencePhotoUrl,
+        photoPath: _photoPath, // Фото сотрудника
+        referencePhotoUrl: referencePhotoUrl, // Эталонное фото ИЗ ВОПРОСА
       );
     } else if (question.isYesNo) {
       if (_selectedYesNo == null) return;
