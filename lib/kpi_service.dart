@@ -830,6 +830,8 @@ class KPIService {
 
       Logger.debug('Загрузка KPI данных для сотрудника $employeeName (по магазинам)');
 
+      // Получаем данные за последние 2 месяца (текущий и предыдущий)
+      // Это нужно для отображения актуальных данных
       final now = DateTime.now();
       final currentMonth = DateTime(now.year, now.month, 1);
       DateTime previousMonth;
@@ -838,6 +840,8 @@ class KPIService {
       } else {
         previousMonth = DateTime(now.year, now.month - 1, 1);
       }
+      
+      Logger.debug('Фильтрация по месяцам: текущий=${currentMonth.year}-${currentMonth.month}, предыдущий=${previousMonth.year}-${previousMonth.month}');
 
       // Получаем отметки прихода за период
       final attendanceRecords = await AttendanceService.getAttendanceRecords(
@@ -997,6 +1001,7 @@ class KPIService {
       }
 
       // Добавляем данные из РКО
+      Logger.debug('📋 Обработка РКО: всего ${filteredRKOs.length} записей');
       for (var rko in filteredRKOs) {
         final date = DateTime(
           rko.date.year,
@@ -1004,8 +1009,10 @@ class KPIService {
           rko.date.day,
         );
         final key = createShopDayKey(rko.shopAddress, date);
+        Logger.debug('   РКО: дата=${date.year}-${date.month}-${date.day}, магазин="${rko.shopAddress}", ключ="$key"');
         
         if (!shopDaysMap.containsKey(key)) {
+          Logger.debug('   Создана новая запись для РКО');
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
             shopAddress: rko.shopAddress,
@@ -1014,6 +1021,7 @@ class KPIService {
             rkoFileName: rko.fileName,
           );
         } else {
+          Logger.debug('   Обновлена существующая запись: добавлено РКО');
           final existing = shopDaysMap[key]!;
           shopDaysMap[key] = KPIEmployeeShopDayData(
             date: date,
