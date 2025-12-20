@@ -601,7 +601,8 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                   ),
                                 ],
                               ),
-                                    );
+                                    ],
+                                  );
                                 } else {
                                   print('   ❌ Нет эталонного фото в ответе');
                                   return const SizedBox.shrink();
