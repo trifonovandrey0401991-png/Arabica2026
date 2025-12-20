@@ -897,10 +897,16 @@ class KPIService {
       // Агрегируем данные по магазинам и датам (ключ: shopAddress_dateKey)
       final Map<String, KPIEmployeeShopDayData> shopDaysMap = {};
 
-      // Функция для создания ключа магазин+дата
+      // Функция для нормализации адреса магазина (как в getShopDayData)
+      String normalizeShopAddress(String address) {
+        return address.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+      }
+
+      // Функция для создания ключа магазин+дата (с нормализацией адреса)
       String createShopDayKey(String shopAddress, DateTime date) {
+        final normalizedAddress = normalizeShopAddress(shopAddress);
         final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-        return '$shopAddress|$dateKey';
+        return '$normalizedAddress|$dateKey';
       }
 
       // Добавляем данные из отметок прихода
