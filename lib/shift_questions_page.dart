@@ -624,6 +624,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                           ],
                         ),
                       ),
+                        );
                       } else {
                         print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
                         if (question.referencePhotos != null) {
