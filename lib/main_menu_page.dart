@@ -44,6 +44,8 @@ import 'registration_page.dart';
 import 'loyalty_storage.dart';
 import 'product_search_shop_selection_page.dart';
 import 'employee_panel_page.dart';
+import 'work_schedule_page.dart';
+import 'my_schedule_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -433,6 +435,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const EmployeePanelPage()),
+        );
+      }));
+    }
+
+    // График работы - только админ (управление графиком сотрудников)
+    if (role == UserRole.admin) {
+      items.add(_tile(context, Icons.calendar_today, 'График работы', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const WorkSchedulePage()),
+        );
+      }));
+    }
+
+    // Мой график - для сотрудников и админов (просмотр личного графика)
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.calendar_month, 'Мой график', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MySchedulePage()),
         );
       }));
     }
