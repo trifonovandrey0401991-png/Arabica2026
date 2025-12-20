@@ -26,12 +26,20 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     setState(() => _isLoading = true);
 
     try {
+      Logger.debug('Загрузка списка сотрудников для KPI...');
       final employees = await KPIService.getAllEmployees();
+      Logger.debug('Загружено сотрудников: ${employees.length}');
+      Logger.debug('Список: $employees');
+      
       if (mounted) {
         setState(() {
           _employees = employees;
           _isLoading = false;
         });
+        
+        if (employees.isEmpty) {
+          Logger.debug('⚠️ Список сотрудников пуст!');
+        }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки списка сотрудников', e);
@@ -57,6 +65,16 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
       appBar: AppBar(
         title: const Text('KPI - Сотрудники'),
         backgroundColor: const Color(0xFF004D40),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              KPIService.clearCache();
+              _loadEmployees();
+            },
+            tooltip: 'Обновить список',
+          ),
+        ],
       ),
       body: Column(
         children: [

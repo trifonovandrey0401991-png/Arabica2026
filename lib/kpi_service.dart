@@ -764,19 +764,26 @@ class KPIService {
 
       Logger.debug('Загрузка списка всех сотрудников');
 
-      // Получаем всех сотрудников из регистрации
-      // Используем метод из EmployeeRegistrationService или Google Sheets
-      // Пока используем упрощенный подход - получаем из отметок прихода
+      // Получаем всех сотрудников из отметок прихода
       final attendanceRecords = await AttendanceService.getAttendanceRecords();
+      
+      Logger.debug('Загружено записей прихода: ${attendanceRecords.length}');
       
       final employeesSet = <String>{};
       for (var record in attendanceRecords) {
         if (record.employeeName.isNotEmpty) {
-          employeesSet.add(record.employeeName);
+          // Нормализуем имя (убираем лишние пробелы, приводим к единому формату)
+          final normalizedName = record.employeeName.trim();
+          if (normalizedName.isNotEmpty) {
+            employeesSet.add(normalizedName);
+            Logger.debug('Добавлен сотрудник: "$normalizedName"');
+          }
         }
       }
 
+      Logger.debug('Всего уникальных сотрудников: ${employeesSet.length}');
       final employees = employeesSet.toList()..sort();
+      Logger.debug('Список сотрудников: $employees');
       
       // Сохраняем в кэш
       CacheManager.set(cacheKey, employees, duration: cacheDuration);
