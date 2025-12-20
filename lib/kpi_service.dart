@@ -877,10 +877,20 @@ class KPIService {
       final filteredRKOs = <RKOMetadata>[];
       if (employeeRKOs != null && employeeRKOs['items'] != null) {
         final rkoList = RKOMetadataList.fromJson(employeeRKOs);
+        Logger.debug('📋 Загружено РКО для $employeeName: ${rkoList.items.length}');
         filteredRKOs.addAll(rkoList.items.where((rko) {
           final rkoMonth = DateTime(rko.date.year, rko.date.month, 1);
-          return rkoMonth == currentMonth || rkoMonth == previousMonth;
+          final matches = rkoMonth == currentMonth || rkoMonth == previousMonth;
+          if (!matches) {
+            Logger.debug('   РКО отфильтровано: дата=${rko.date.year}-${rko.date.month}-${rko.date.day}, месяц=${rkoMonth.year}-${rkoMonth.month}');
+          } else {
+            Logger.debug('   ✅ РКО прошло фильтр: дата=${rko.date.year}-${rko.date.month}-${rko.date.day}, магазин=${rko.shopAddress}');
+          }
+          return matches;
         }));
+        Logger.debug('📋 РКО после фильтрации: ${filteredRKOs.length}');
+      } else {
+        Logger.debug('⚠️ РКО не загружены для $employeeName');
       }
 
       // Агрегируем данные по магазинам и датам (ключ: shopAddress_dateKey)
