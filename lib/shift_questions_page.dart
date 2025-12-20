@@ -36,6 +36,36 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
   String? _selectedYesNo; // 'Да' или 'Нет'
   bool _isSubmitting = false;
 
+  /// Нормализовать адрес магазина для сравнения
+  String _normalizeShopAddress(String address) {
+    return address.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  /// Найти эталонное фото для магазина (с учетом нормализации адресов)
+  String? _findReferencePhoto(ShiftQuestion question) {
+    if (question.referencePhotos == null || question.referencePhotos!.isEmpty) {
+      return null;
+    }
+    
+    final normalizedShopAddress = _normalizeShopAddress(widget.shopAddress);
+    
+    // Сначала пробуем точное совпадение
+    if (question.referencePhotos!.containsKey(widget.shopAddress)) {
+      return question.referencePhotos![widget.shopAddress];
+    }
+    
+    // Затем пробуем найти по нормализованному адресу
+    for (var key in question.referencePhotos!.keys) {
+      final normalizedKey = _normalizeShopAddress(key);
+      if (normalizedKey == normalizedShopAddress) {
+        print('✅ Найдено эталонное фото по нормализованному адресу: "$key" -> "${question.referencePhotos![key]}"');
+        return question.referencePhotos![key];
+      }
+    }
+    
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -271,15 +301,17 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       if (_photoPath == null) return;
       // КРИТИЧЕСКИ ВАЖНО: Получаем URL эталонного фото ИЗ ВОПРОСА (которое админ прикрепил)
       // НИ В КОЕМ СЛУЧАЕ не используем фото сотрудника как эталонное!
-      // Эталонное фото должно быть из question.referencePhotos[shopAddress]
+      // Эталонное фото должно быть из question.referencePhotos[shopAddress] (с нормализацией адресов)
       String? referencePhotoUrl;
       print('💾 Сохранение ответа на вопрос с фото: "${question.question}"');
       print('   Магазин: ${widget.shopAddress}');
       print('   Фото сотрудника: $_photoPath');
       print('   referencePhotos в вопросе: ${question.referencePhotos}');
-      if (question.referencePhotos != null && 
-          question.referencePhotos!.containsKey(widget.shopAddress)) {
-        referencePhotoUrl = question.referencePhotos![widget.shopAddress];
+      
+      // Используем функцию поиска с нормализацией адресов
+      referencePhotoUrl = _findReferencePhoto(question);
+      
+      if (referencePhotoUrl != null) {
         print('✅ Сохраняем эталонное фото ИЗ ВОПРОСА: $referencePhotoUrl');
         print('   Фото сотрудника (НЕ эталонное!): $_photoPath');
         // Дополнительная проверка: убеждаемся, что эталонное фото НЕ равно фото сотрудника
@@ -288,7 +320,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         }
       } else {
         print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
-        print('   Доступные магазины: ${question.referencePhotos?.keys.toList()}');
+        if (question.referencePhotos != null) {
+          print('   Доступные магазины: ${question.referencePhotos!.keys.toList()}');
+        }
       }
       answer = ShiftAnswer(
         question: question.question,
@@ -522,10 +556,14 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                 // Эталонное фото ВСЕГДА показывается ДО того, как сотрудник сделал свое фото
                 // После того как фото сделано, эталонное фото скрывается (сравнение только в отчетах)
                 if (_photoPath == null) ...[
-                  // Получаем эталонное фото из вопроса для этого магазина
-                  if (question.referencePhotos != null && 
-                      question.referencePhotos!.containsKey(widget.shopAddress))
-                    Card(
+                  // Получаем эталонное фото из вопроса для этого магазина (с нормализацией адресов)
+                  Builder(
+                    builder: (context) {
+                      final referencePhotoUrl = _findReferencePhoto(question);
+                      if (referencePhotoUrl != null) {
+                        print('🖼️ Показываем эталонное фото для магазина: ${widget.shopAddress}');
+                        print('   URL эталонного фото: $referencePhotoUrl');
+                        return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -550,7 +588,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.network(
-                                  question.referencePhotos![widget.shopAddress]!,
+                                  referencePhotoUrl,
                                   fit: BoxFit.cover,
                                   loadingBuilder: (context, child, loadingProgress) {
                                     if (loadingProgress == null) return child;
@@ -586,7 +624,15 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                           ],
                         ),
                       ),
-                    ),
+                      } else {
+                        print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
+                        if (question.referencePhotos != null) {
+                          print('   Доступные магазины в referencePhotos: ${question.referencePhotos!.keys.toList()}');
+                        }
+                        return const SizedBox.shrink();
+                      }
+                    },
+                  ),
                 ],
                 if (_photoPath != null)
                   Container(
