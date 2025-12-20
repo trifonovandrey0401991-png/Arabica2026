@@ -524,9 +524,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                 if (_photoPath == null) ...[
                   // Получаем эталонное фото из вопроса для этого магазина
                   if (question.referencePhotos != null && 
-                      question.referencePhotos!.containsKey(widget.shopAddress)) ...[
-                    print('🖼️ Показываем эталонное фото для магазина: ${widget.shopAddress}');
-                    print('   URL эталонного фото: ${question.referencePhotos![widget.shopAddress]}');
+                      question.referencePhotos!.containsKey(widget.shopAddress))
                     Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
@@ -589,10 +587,6 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                         ),
                       ),
                     ),
-                  ] else ...[
-                    print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
-                    print('   Доступные магазины в referencePhotos: ${question.referencePhotos?.keys.toList()}');
-                  ],
                 ],
                 if (_photoPath != null)
                   Container(
