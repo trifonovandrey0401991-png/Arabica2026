@@ -244,8 +244,22 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         _currentQuestionIndex++;
         _textController.clear();
         _numberController.clear();
-        _photoPath = null;
+        _photoPath = null; // Сбрасываем фото при переходе к следующему вопросу
         _selectedYesNo = null;
+        print('➡️ Переход к следующему вопросу: индекс $_currentQuestionIndex');
+        if (_currentQuestionIndex < _questions!.length) {
+          final nextQuestion = _questions![_currentQuestionIndex];
+          print('   Следующий вопрос: "${nextQuestion.question}"');
+          if (nextQuestion.isPhotoOnly) {
+            print('   Это вопрос с фото');
+            final refPhoto = _findReferencePhoto(nextQuestion);
+            if (refPhoto != null) {
+              print('   ✅ У следующего вопроса есть эталонное фото: $refPhoto');
+            } else {
+              print('   ❌ У следующего вопроса нет эталонного фото');
+            }
+          }
+        }
       });
     } else {
       _submitReport();
