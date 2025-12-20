@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'loyalty_service.dart';
 import 'loyalty_storage.dart';
+import 'loyalty_promo_management_page.dart';
+import 'user_role_service.dart';
+import 'user_role_model.dart';
 
 class LoyaltyPage extends StatefulWidget {
   const LoyaltyPage({super.key});
@@ -16,11 +19,26 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   LoyaltyInfo? _info;
   bool _loading = true;
   String? _error;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _loadInitial();
+  }
+
+  Future<void> _checkAdminRole() async {
+    try {
+      final roleData = await UserRoleService.loadUserRole();
+      if (mounted) {
+        setState(() {
+          _isAdmin = roleData?.role == UserRole.admin;
+        });
+      }
+    } catch (e) {
+      print('Ошибка проверки роли: $e');
+    }
   }
 
   Future<void> _loadInitial() async {
@@ -105,9 +123,26 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       appBar: AppBar(
         title: const Text('Программа лояльности'),
         actions: [
+          if (_isAdmin)
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LoyaltyPromoManagementPage(),
+                  ),
+                ).then((_) {
+                  // Обновляем данные после возврата из управления акциями
+                  _refresh();
+                });
+              },
+              icon: const Icon(Icons.settings),
+              tooltip: 'Управление условиями акций',
+            ),
           IconButton(
             onPressed: () => _refresh(),
             icon: const Icon(Icons.refresh),
+            tooltip: 'Обновить',
           ),
         ],
       ),
