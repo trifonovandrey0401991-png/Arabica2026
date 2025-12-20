@@ -269,21 +269,31 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       );
     } else if (question.isPhotoOnly) {
       if (_photoPath == null) return;
-      // ВАЖНО: Получаем URL эталонного фото ИЗ ВОПРОСА (которое админ прикрепил)
-      // НЕ используем фото сотрудника как эталонное!
+      // КРИТИЧЕСКИ ВАЖНО: Получаем URL эталонного фото ИЗ ВОПРОСА (которое админ прикрепил)
+      // НИ В КОЕМ СЛУЧАЕ не используем фото сотрудника как эталонное!
+      // Эталонное фото должно быть из question.referencePhotos[shopAddress]
       String? referencePhotoUrl;
+      print('💾 Сохранение ответа на вопрос с фото: "${question.question}"');
+      print('   Магазин: ${widget.shopAddress}');
+      print('   Фото сотрудника: $_photoPath');
+      print('   referencePhotos в вопросе: ${question.referencePhotos}');
       if (question.referencePhotos != null && 
           question.referencePhotos!.containsKey(widget.shopAddress)) {
         referencePhotoUrl = question.referencePhotos![widget.shopAddress];
-        print('✅ Сохраняем эталонное фото из вопроса: $referencePhotoUrl');
-        print('   Фото сотрудника: $_photoPath');
+        print('✅ Сохраняем эталонное фото ИЗ ВОПРОСА: $referencePhotoUrl');
+        print('   Фото сотрудника (НЕ эталонное!): $_photoPath');
+        // Дополнительная проверка: убеждаемся, что эталонное фото НЕ равно фото сотрудника
+        if (referencePhotoUrl == _photoPath) {
+          print('❌❌❌ ОШИБКА: Эталонное фото совпадает с фото сотрудника! Это неправильно!');
+        }
       } else {
         print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
+        print('   Доступные магазины: ${question.referencePhotos?.keys.toList()}');
       }
       answer = ShiftAnswer(
         question: question.question,
-        photoPath: _photoPath, // Фото сотрудника
-        referencePhotoUrl: referencePhotoUrl, // Эталонное фото ИЗ ВОПРОСА
+        photoPath: _photoPath, // Фото сотрудника (НЕ эталонное!)
+        referencePhotoUrl: referencePhotoUrl, // Эталонное фото ИЗ ВОПРОСА (НЕ из фото сотрудника!)
       );
     } else if (question.isYesNo) {
       if (_selectedYesNo == null) return;
