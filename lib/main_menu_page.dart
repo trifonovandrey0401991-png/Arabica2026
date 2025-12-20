@@ -43,6 +43,7 @@ import 'reports_page.dart';
 import 'registration_page.dart';
 import 'loyalty_storage.dart';
 import 'product_search_shop_selection_page.dart';
+import 'employee_panel_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -426,90 +427,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Обучение - только сотрудник и админ
+    // Панель работника - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.menu_book, 'Обучение', () {
-        _showTrainingDialog(context);
-      }));
-    }
-
-
-    // Я на работе - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.access_time, 'Я на работе', () async {
-        // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
-        // Это гарантирует, что имя будет совпадать с отображением в системе
-        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        
-        try {
-          final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
-          
-          if (hasAttendance && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Вы уже отметились сегодня'),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 3),
-              ),
-            );
-            return;
-          }
-        } catch (e) {
-          print('⚠️ Ошибка проверки отметки: $e');
-          // Продолжаем, даже если проверка не удалась
-        }
-        
-        if (!mounted) return;
+      items.add(_tile(context, Icons.work, 'Панель работника', () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => AttendanceShopSelectionPage(
-              employeeName: employeeName,
-            ),
-          ),
-        );
-      }));
-    }
-
-    // Пересменка - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.work_history, 'Пересменка', () async {
-        // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
-        // Это гарантирует, что имя будет совпадать с отображением в системе
-        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-        
-        if (!context.mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ShiftShopSelectionPage(
-              employeeName: employeeName,
-            ),
-          ),
-        );
-      }));
-    }
-
-    // Пересчет товаров - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.inventory, 'Пересчет товаров', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RecountShopSelectionPage()),
-        );
-      }));
-    }
-
-
-
-    // Рецепты - только сотрудник и админ (для админа есть вкладка редактирования внутри)
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.restaurant_menu, 'Рецепты', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RecipesListPage()),
+          MaterialPageRoute(builder: (context) => const EmployeePanelPage()),
         );
       }));
     }
@@ -725,69 +648,4 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  /// Показать диалог выбора: Обучение или Тест
-  void _showTrainingDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
-          'Обучение',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF004D40),
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TrainingPage(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.menu_book),
-                label: const Text('Обучение'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TestPage(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.quiz),
-                label: const Text('Сдать тест'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[700],
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
