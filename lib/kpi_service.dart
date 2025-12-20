@@ -274,13 +274,18 @@ class KPIService {
       const int eveningBoundaryHour = 15;
 
       // Добавляем данные из отметок прихода
+      Logger.debug('📋 НАЧАЛО ОБРАБОТКИ ОТМЕТОК ПРИХОДА: ${filteredAttendanceRecords.length} записей');
       for (var record in filteredAttendanceRecords) {
         final key = normalizeEmployeeName(record.employeeName); // Нормализуем имя
         final recordTime = record.timestamp;
         final isMorning = recordTime.hour < eveningBoundaryHour;
         final isEvening = recordTime.hour >= eveningBoundaryHour;
         
-        Logger.debug('   Обработка отметки: "$key" в ${recordTime.hour}:${recordTime.minute.toString().padLeft(2, '0')} (${isMorning ? "утро" : "вечер"})');
+        Logger.debug('   🔍 Обработка отметки: "$key" (${record.employeeName})');
+        Logger.debug('      timestamp: ${recordTime.toIso8601String()}');
+        Logger.debug('      час: ${recordTime.hour}, минута: ${recordTime.minute}');
+        Logger.debug('      UTC: ${recordTime.isUtc}, локальное: ${recordTime.toLocal().toIso8601String()}');
+        Logger.debug('      время: ${recordTime.hour}:${recordTime.minute.toString().padLeft(2, '0')} (${isMorning ? "утро" : "вечер"})');
         
         if (!employeesDataMap.containsKey(key)) {
           // Создаем новую запись
@@ -294,6 +299,7 @@ class KPIService {
             hasEveningAttendance: isEvening,
           );
           Logger.debug('   ✅ Создана новая запись для "$key" с временем прихода: ${earliestTime.hour}:${earliestTime.minute.toString().padLeft(2, '0')}');
+          Logger.debug('      attendanceTime в KPIDayData: ${employeesDataMap[key]!.attendanceTime?.toIso8601String() ?? "null"}');
         } else {
           // Обновляем существующую запись
           final existing = employeesDataMap[key]!;
@@ -318,6 +324,13 @@ class KPIService {
       
       Logger.debug('📊 Всего уникальных сотрудников после обработки прихода: ${employeesDataMap.length}');
       Logger.debug('   Список сотрудников: ${employeesDataMap.keys.toList()}');
+      Logger.debug('   📋 Детали записей после обработки прихода:');
+      for (var entry in employeesDataMap.entries) {
+        final timeStr = entry.value.attendanceTime != null 
+            ? '${entry.value.attendanceTime!.hour.toString().padLeft(2, '0')}:${entry.value.attendanceTime!.minute.toString().padLeft(2, '0')}'
+            : 'null';
+        Logger.debug('      - ключ: "${entry.key}", имя: "${entry.value.employeeName}", время: $timeStr (${entry.value.attendanceTime?.toIso8601String() ?? "null"})');
+      }
 
       // Добавляем данные из пересменок
       Logger.debug('📋 Обработка пересменок: найдено ${dayShifts.length}');
@@ -494,7 +507,12 @@ class KPIService {
       } else {
         Logger.debug('   📋 Детали по сотрудникам:');
         for (var emp in result.employeesData) {
-          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, время=${emp.attendanceTime?.hour}:${emp.attendanceTime?.minute.toString().padLeft(2, '0')}');
+          final timeStr = emp.attendanceTime != null 
+              ? '${emp.attendanceTime!.hour.toString().padLeft(2, '0')}:${emp.attendanceTime!.minute.toString().padLeft(2, '0')}'
+              : 'null';
+          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, время=$timeStr');
+          Logger.debug('         attendanceTime объект: ${emp.attendanceTime?.toIso8601String() ?? "null"}');
+          Logger.debug('         attendanceTime is null: ${emp.attendanceTime == null}');
         }
       }
       Logger.debug('═══════════════════════════════════════════════════════');

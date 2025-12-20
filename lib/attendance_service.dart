@@ -205,9 +205,17 @@ class AttendanceService {
           final recordsJson = result['records'] as List<dynamic>;
           final records = recordsJson
               .map((json) {
-                final record = AttendanceRecord.fromJson(json);
-                Logger.debug('📥 Загружена отметка: ${record.employeeName}, время: ${record.timestamp.toIso8601String()} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')})');
-                return record;
+                Logger.debug('📥 Парсинг отметки: employeeName=${json['employeeName']}, timestamp=${json['timestamp']}, timestamp_type=${json['timestamp'].runtimeType}');
+                try {
+                  final record = AttendanceRecord.fromJson(json);
+                  Logger.debug('📥 Загружена отметка: ${record.employeeName}, время: ${record.timestamp.toIso8601String()} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}), UTC: ${record.timestamp.isUtc}');
+                  Logger.debug('   timestamp.hour=${record.timestamp.hour}, timestamp.minute=${record.timestamp.minute}');
+                  return record;
+                } catch (e) {
+                  Logger.error('Ошибка парсинга отметки', e);
+                  Logger.error('   JSON: $json');
+                  rethrow;
+                }
               })
               .toList();
           Logger.debug('📥 Всего загружено отметок: ${records.length}');
