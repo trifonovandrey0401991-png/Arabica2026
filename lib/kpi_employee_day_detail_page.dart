@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import 'kpi_models.dart';
 import 'recount_service.dart';
@@ -6,6 +8,7 @@ import 'recount_report_model.dart';
 import 'shift_report_service.dart';
 import 'shift_report_model.dart';
 import 'rko_reports_service.dart';
+import 'google_drive_service.dart';
 import 'utils/logger.dart';
 
 /// Детальная страница одного дня работы сотрудника в магазине
@@ -569,14 +572,65 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                   ),
                                 ],
                               ),
-                            ] else
-                              const Text(
-                                'Фото прикреплено',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue,
+                            ] else ...[
+                              // Если нет эталонного фото, показываем только сделанное фото
+                              Container(
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: answer.photoPath != null
+                                      ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                                          ? Image.network(
+                                              answer.photoPath!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                print('❌ Ошибка загрузки фото сотрудника: $error');
+                                                return const Center(
+                                                  child: Icon(Icons.error, size: 64),
+                                                );
+                                              },
+                                            )
+                                          : Image.file(
+                                              File(answer.photoPath!),
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                print('❌ Ошибка загрузки локального фото: $error');
+                                                return const Center(
+                                                  child: Icon(Icons.error, size: 64),
+                                                );
+                                              },
+                                            )
+                                      : answer.photoDriveId != null
+                                          ? FutureBuilder<String>(
+                                              future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                              builder: (context, snapshot) {
+                                                if (snapshot.hasData) {
+                                                  return Image.network(
+                                                    snapshot.data!,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      print('❌ Ошибка загрузки фото из Google Drive: $error, URL: ${snapshot.data}');
+                                                      return const Center(
+                                                        child: Icon(Icons.error, size: 64),
+                                                      );
+                                                    },
+                                                  );
+                                                }
+                                                return const Center(
+                                                  child: CircularProgressIndicator(),
+                                                );
+                                              },
+                                            )
+                                          : const Center(
+                                              child: Icon(Icons.image, size: 64),
+                                            ),
                                 ),
                               ),
+                            ],
                           ],
                         ],
                       ),
