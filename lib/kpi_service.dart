@@ -122,8 +122,7 @@ class KPIService {
       Logger.debug('📊 После фильтрации осталось отметок: ${filteredAttendanceRecords.length}');
 
       // Получаем пересменки за день с сервера
-      final shiftReportService = await import('shift_report_service.dart');
-      final allShifts = await shiftReportService.ShiftReportService.getReports(
+      final allShifts = await ShiftReportService.getReports(
         shopAddress: shopAddress,
         date: normalizedDate,
       );
