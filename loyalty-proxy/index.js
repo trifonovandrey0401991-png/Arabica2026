@@ -1552,4 +1552,273 @@ app.get('/test_rko_ko2_fixed.docx', (req, res) => {
   res.sendFile('/var/www/html/test_rko_ko2_fixed.docx');
 });
 
+// ==================== API для графика работы ====================
+
+const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
+const WORK_SCHEDULE_TEMPLATES_DIR = '/var/www/work-schedule-templates';
+
+// Создаем директории, если их нет
+if (!fs.existsSync(WORK_SCHEDULES_DIR)) {
+  fs.mkdirSync(WORK_SCHEDULES_DIR, { recursive: true });
+}
+if (!fs.existsSync(WORK_SCHEDULE_TEMPLATES_DIR)) {
+  fs.mkdirSync(WORK_SCHEDULE_TEMPLATES_DIR, { recursive: true });
+}
+
+// Вспомогательная функция для получения файла графика
+function getScheduleFilePath(month) {
+  return path.join(WORK_SCHEDULES_DIR, `${month}.json`);
+}
+
+// Вспомогательная функция для загрузки графика
+function loadSchedule(month) {
+  const filePath = getScheduleFilePath(month);
+  if (fs.existsSync(filePath)) {
+    try {
+      const data = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('Ошибка чтения графика:', error);
+      return { month, entries: [] };
+    }
+  }
+  return { month, entries: [] };
+}
+
+// Вспомогательная функция для сохранения графика
+function saveSchedule(schedule) {
+  const filePath = getScheduleFilePath(schedule.month);
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(schedule, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Ошибка сохранения графика:', error);
+    return false;
+  }
+}
+
+// GET /api/work-schedule?month=YYYY-MM - получить график на месяц
+app.get('/api/work-schedule', (req, res) => {
+  try {
+    const month = req.query.month;
+    if (!month) {
+      return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+    }
+
+    const schedule = loadSchedule(month);
+    res.json({ success: true, schedule });
+  } catch (error) {
+    console.error('Ошибка получения графика:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/work-schedule/employee/:employeeId?month=YYYY-MM - график сотрудника
+app.get('/api/work-schedule/employee/:employeeId', (req, res) => {
+  try {
+    const employeeId = req.params.employeeId;
+    const month = req.query.month;
+    if (!month) {
+      return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+    }
+
+    const schedule = loadSchedule(month);
+    const employeeEntries = schedule.entries.filter(e => e.employeeId === employeeId);
+    const employeeSchedule = { month, entries: employeeEntries };
+    
+    res.json({ success: true, schedule: employeeSchedule });
+  } catch (error) {
+    console.error('Ошибка получения графика сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/work-schedule - создать/обновить смену
+app.post('/api/work-schedule', (req, res) => {
+  try {
+    const entry = req.body;
+    if (!entry.month || !entry.employeeId || !entry.date || !entry.shiftType) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Не указаны обязательные поля: month, employeeId, date, shiftType' 
+      });
+    }
+
+    const month = entry.month;
+    const schedule = loadSchedule(month);
+    
+    // Генерируем ID, если его нет
+    if (!entry.id) {
+      entry.id = `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    // Удаляем старую запись для этого сотрудника и даты, если есть
+    schedule.entries = schedule.entries.filter(e => 
+      !(e.employeeId === entry.employeeId && e.date === entry.date)
+    );
+
+    // Добавляем новую запись
+    schedule.entries.push(entry);
+    schedule.month = month;
+
+    if (saveSchedule(schedule)) {
+      res.json({ success: true, entry });
+    } else {
+      res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
+    }
+  } catch (error) {
+    console.error('Ошибка сохранения смены:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/work-schedule/:entryId - удалить смену
+app.delete('/api/work-schedule/:entryId', (req, res) => {
+  try {
+    const entryId = req.params.entryId;
+    const month = req.query.month;
+    
+    if (!month) {
+      return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+    }
+
+    const schedule = loadSchedule(month);
+    const initialLength = schedule.entries.length;
+    schedule.entries = schedule.entries.filter(e => e.id !== entryId);
+
+    if (schedule.entries.length < initialLength) {
+      if (saveSchedule(schedule)) {
+        res.json({ success: true, message: 'Смена удалена' });
+      } else {
+        res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
+      }
+    } else {
+      res.status(404).json({ success: false, error: 'Смена не найдена' });
+    }
+  } catch (error) {
+    console.error('Ошибка удаления смены:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/work-schedule/bulk - массовое создание смен
+app.post('/api/work-schedule/bulk', (req, res) => {
+  try {
+    const entries = req.body.entries;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Не указаны записи (entries)' 
+      });
+    }
+
+    // Группируем по месяцам
+    const schedulesByMonth = {};
+    entries.forEach(entry => {
+      if (!entry.month) {
+        // Извлекаем месяц из даты
+        const date = new Date(entry.date);
+        entry.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      if (!schedulesByMonth[entry.month]) {
+        schedulesByMonth[entry.month] = loadSchedule(entry.month);
+      }
+
+      // Генерируем ID, если его нет
+      if (!entry.id) {
+        entry.id = `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+
+      // Удаляем старую запись для этого сотрудника и даты, если есть
+      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => 
+        !(e.employeeId === entry.employeeId && e.date === entry.date)
+      );
+
+      // Добавляем новую запись
+      schedulesByMonth[entry.month].entries.push(entry);
+    });
+
+    // Сохраняем все графики
+    let allSaved = true;
+    for (const month in schedulesByMonth) {
+      if (!saveSchedule(schedulesByMonth[month])) {
+        allSaved = false;
+      }
+    }
+
+    if (allSaved) {
+      res.json({ success: true, message: `Создано ${entries.length} смен` });
+    } else {
+      res.status(500).json({ success: false, error: 'Ошибка сохранения некоторых графиков' });
+    }
+  } catch (error) {
+    console.error('Ошибка массового создания смен:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/work-schedule/template - сохранить/применить шаблон
+app.post('/api/work-schedule/template', (req, res) => {
+  try {
+    const action = req.body.action; // 'save' или 'apply'
+    const template = req.body.template;
+
+    if (action === 'save') {
+      if (!template || !template.name) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Не указан шаблон или его название' 
+        });
+      }
+
+      // Генерируем ID, если его нет
+      if (!template.id) {
+        template.id = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+
+      const templateFile = path.join(WORK_SCHEDULE_TEMPLATES_DIR, `${template.id}.json`);
+      fs.writeFileSync(templateFile, JSON.stringify(template, null, 2), 'utf8');
+      
+      res.json({ success: true, template });
+    } else if (action === 'apply') {
+      // Применение шаблона обрабатывается на клиенте
+      res.json({ success: true, message: 'Шаблон применен' });
+    } else {
+      res.status(400).json({ success: false, error: 'Неизвестное действие' });
+    }
+  } catch (error) {
+    console.error('Ошибка работы с шаблоном:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/work-schedule/template - получить список шаблонов
+app.get('/api/work-schedule/template', (req, res) => {
+  try {
+    const templates = [];
+    
+    if (fs.existsSync(WORK_SCHEDULE_TEMPLATES_DIR)) {
+      const files = fs.readdirSync(WORK_SCHEDULE_TEMPLATES_DIR);
+      files.forEach(file => {
+        if (file.endsWith('.json')) {
+          try {
+            const filePath = path.join(WORK_SCHEDULE_TEMPLATES_DIR, file);
+            const data = fs.readFileSync(filePath, 'utf8');
+            const template = JSON.parse(data);
+            templates.push(template);
+          } catch (error) {
+            console.error(`Ошибка чтения шаблона ${file}:`, error);
+          }
+        }
+      });
+    }
+
+    res.json({ success: true, templates });
+  } catch (error) {
+    console.error('Ошибка получения шаблонов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
