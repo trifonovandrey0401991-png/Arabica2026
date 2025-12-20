@@ -17,6 +17,8 @@ import 'product_questions_management_page.dart';
 import 'rko_type_selection_page.dart';
 import 'employee_registration_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'test_notifications_page.dart';
+import 'role_test_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -212,6 +214,30 @@ class DataManagementPage extends StatelessWidget {
                 const SnackBar(
                   content: Text('Страница управления меню в разработке'),
                 ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Тест',
+            icon: Icons.science,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Тест ролей',
+            icon: Icons.science,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RoleTestPage()),
               );
             },
           ),
