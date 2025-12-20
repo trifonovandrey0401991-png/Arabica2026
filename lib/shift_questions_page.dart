@@ -43,26 +43,39 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   /// Найти эталонное фото для магазина (с учетом нормализации адресов)
   String? _findReferencePhoto(ShiftQuestion question) {
+    print('🔍 _findReferencePhoto вызвана для вопроса: "${question.question}"');
+    print('   Магазин сотрудника: "${widget.shopAddress}"');
+    
     if (question.referencePhotos == null || question.referencePhotos!.isEmpty) {
+      print('   ❌ referencePhotos пуст или null');
       return null;
     }
     
+    print('   referencePhotos содержит ${question.referencePhotos!.length} записей:');
+    question.referencePhotos!.forEach((key, value) {
+      print('     - "$key" -> "$value"');
+    });
+    
     final normalizedShopAddress = _normalizeShopAddress(widget.shopAddress);
+    print('   Нормализованный адрес магазина: "$normalizedShopAddress"');
     
     // Сначала пробуем точное совпадение
     if (question.referencePhotos!.containsKey(widget.shopAddress)) {
+      print('   ✅ Найдено точное совпадение: "${question.referencePhotos![widget.shopAddress]}"');
       return question.referencePhotos![widget.shopAddress];
     }
     
     // Затем пробуем найти по нормализованному адресу
     for (var key in question.referencePhotos!.keys) {
       final normalizedKey = _normalizeShopAddress(key);
+      print('   Сравниваем: "$normalizedKey" == "$normalizedShopAddress" ? ${normalizedKey == normalizedShopAddress}');
       if (normalizedKey == normalizedShopAddress) {
-        print('✅ Найдено эталонное фото по нормализованному адресу: "$key" -> "${question.referencePhotos![key]}"');
+        print('   ✅ Найдено эталонное фото по нормализованному адресу: "$key" -> "${question.referencePhotos![key]}"');
         return question.referencePhotos![key];
       }
     }
     
+    print('   ❌ Эталонное фото не найдено');
     return null;
   }
 
