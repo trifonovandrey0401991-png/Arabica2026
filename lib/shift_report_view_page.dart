@@ -117,64 +117,182 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                         Text('Ответ: ${answer.numberAnswer}'),
                       if (answer.photoPath != null || answer.photoDriveId != null) ...[
                         const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ShiftPhotoGalleryPage(
-                                  reports: [_currentReport],
-                                  initialIndex: index,
+                        // Если есть эталонное фото, показываем две фото рядом
+                        if (answer.referencePhotoUrl != null)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Эталон',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      height: 200,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          answer.referencePhotoUrl!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Center(
+                                              child: Icon(Icons.error),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
-                          child: Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: answer.photoPath != null
-                                ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
-                                    ? Image.network(
-                                        answer.photoPath!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return const Center(
-                                            child: Icon(Icons.error),
-                                          );
-                                        },
-                                      )
-                                    : Image.file(
-                                        File(answer.photoPath!),
-                                        fit: BoxFit.cover,
-                                      )
-                                : answer.photoDriveId != null
-                                    ? FutureBuilder<String>(
-                                        future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.hasData) {
-                                            return Image.network(
-                                              snapshot.data!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return const Center(
-                                                  child: Icon(Icons.error),
-                                                );
-                                              },
-                                            );
-                                          }
-                                          return const Center(
-                                            child: CircularProgressIndicator(),
-                                          );
-                                        },
-                                      )
-                                    : const Center(
-                                        child: Icon(Icons.image),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Сделано сотрудником',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey,
                                       ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ShiftPhotoGalleryPage(
+                                              reports: [_currentReport],
+                                              initialIndex: index,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Container(
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.grey),
+                                        ),
+                                        child: answer.photoPath != null
+                                            ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                                                ? Image.network(
+                                                    answer.photoPath!,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      return const Center(
+                                                        child: Icon(Icons.error),
+                                                      );
+                                                    },
+                                                  )
+                                                : Image.file(
+                                                    File(answer.photoPath!),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                            : answer.photoDriveId != null
+                                                ? FutureBuilder<String>(
+                                                    future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                                    builder: (context, snapshot) {
+                                                      if (snapshot.hasData) {
+                                                        return Image.network(
+                                                          snapshot.data!,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            return const Center(
+                                                              child: Icon(Icons.error),
+                                                            );
+                                                          },
+                                                        );
+                                                      }
+                                                      return const Center(
+                                                        child: CircularProgressIndicator(),
+                                                      );
+                                                    },
+                                                  )
+                                                : const Center(
+                                                    child: Icon(Icons.image),
+                                                  ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          // Если нет эталонного фото, показываем только сделанное фото
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ShiftPhotoGalleryPage(
+                                    reports: [_currentReport],
+                                    initialIndex: index,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              height: 200,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey),
+                              ),
+                              child: answer.photoPath != null
+                                  ? (kIsWeb || answer.photoPath!.startsWith('data:') || answer.photoPath!.startsWith('http'))
+                                      ? Image.network(
+                                          answer.photoPath!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Center(
+                                              child: Icon(Icons.error),
+                                            );
+                                          },
+                                        )
+                                      : Image.file(
+                                          File(answer.photoPath!),
+                                          fit: BoxFit.cover,
+                                        )
+                                  : answer.photoDriveId != null
+                                      ? FutureBuilder<String>(
+                                          future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.hasData) {
+                                              return Image.network(
+                                                snapshot.data!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  return const Center(
+                                                    child: Icon(Icons.error),
+                                                  );
+                                                },
+                                              );
+                                            }
+                                            return const Center(
+                                              child: CircularProgressIndicator(),
+                                            );
+                                          },
+                                        )
+                                      : const Center(
+                                          child: Icon(Icons.image),
+                                        ),
+                            ),
                           ),
-                        ),
                       ],
                     ],
                   ),

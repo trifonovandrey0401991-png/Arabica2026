@@ -44,7 +44,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   Future<void> _loadQuestions() async {
     try {
-      final questions = await ShiftQuestion.loadQuestions();
+      // Фильтруем вопросы по магазину сотрудника
+      final questions = await ShiftQuestion.loadQuestions(shopAddress: widget.shopAddress);
       setState(() {
         _questions = questions;
         _isLoading = false;
@@ -239,9 +240,16 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       );
     } else if (question.isPhotoOnly) {
       if (_photoPath == null) return;
+      // Получаем URL эталонного фото для этого магазина, если есть
+      String? referencePhotoUrl;
+      if (question.referencePhotos != null && 
+          question.referencePhotos!.containsKey(widget.shopAddress)) {
+        referencePhotoUrl = question.referencePhotos![widget.shopAddress];
+      }
       answer = ShiftAnswer(
         question: question.question,
         photoPath: _photoPath,
+        referencePhotoUrl: referencePhotoUrl,
       );
     } else if (question.isYesNo) {
       if (_selectedYesNo == null) return;
@@ -466,6 +474,48 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                   },
                 ),
               ] else if (question.isPhotoOnly) ...[
+                // Показываем эталонное фото, если есть для этого магазина
+                if (question.referencePhotos != null && 
+                    question.referencePhotos!.containsKey(widget.shopAddress))
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Эталонное фото:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF004D40),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            height: 200,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                question.referencePhotos![widget.shopAddress]!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Center(
+                                    child: Icon(Icons.error, size: 64),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (_photoPath != null)
                   Container(
                     height: 300,
@@ -501,7 +551,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     }
                   },
                   icon: const Icon(Icons.camera_alt),
-                  label: Text(_photoPath == null ? 'Добавить фото' : 'Изменить фото'),
+                  label: Text(_photoPath == null ? 'Сфотографировать' : 'Изменить фото'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF004D40),
                     padding: const EdgeInsets.symmetric(vertical: 16),

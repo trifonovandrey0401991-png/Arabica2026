@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'shift_question_model.dart';
 import 'shift_question_service.dart';
+import 'shop_model.dart';
 
 /// Страница управления вопросами пересменки
 class ShiftQuestionsManagementPage extends StatefulWidget {
@@ -264,6 +268,13 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
   final _questionController = TextEditingController();
   String? _selectedAnswerType; // 'photo', 'yesno', 'number', 'text'
   bool _isSaving = false;
+  bool _isForAllShops = false; // Задавать всем магазинам
+  List<Shop> _allShops = [];
+  Set<String> _selectedShopAddresses = {}; // Выбранные адреса магазинов
+  Map<String, String> _referencePhotoUrls = {}; // URL эталонных фото для каждого магазина
+  Map<String, File?> _referencePhotoFiles = {}; // Локальные файлы эталонных фото
+  bool _isLoadingShops = true;
+  bool _isUploadingPhotos = false;
 
   @override
   void initState() {
@@ -280,8 +291,110 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       } else {
         _selectedAnswerType = 'text';
       }
+      
+      // Загружаем выбранные магазины и эталонные фото
+      if (widget.question!.shops == null) {
+        _isForAllShops = true;
+      } else {
+        _selectedShopAddresses = widget.question!.shops!.toSet();
+      }
+      
+      if (widget.question!.referencePhotos != null) {
+        _referencePhotoUrls = Map<String, String>.from(widget.question!.referencePhotos!);
+      }
     } else {
       _selectedAnswerType = 'text'; // По умолчанию текст
+    }
+    _loadShops();
+  }
+  
+  Future<void> _loadShops() async {
+    try {
+      setState(() => _isLoadingShops = true);
+      final shops = await Shop.loadShopsFromGoogleSheets();
+      setState(() {
+        _allShops = shops;
+        _isLoadingShops = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingShops = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка загрузки магазинов: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _pickReferencePhoto(String shopAddress) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _referencePhotoFiles[shopAddress] = File(image.path);
+        });
+        
+        // Загружаем фото на сервер, если вопрос уже создан
+        if (widget.question != null) {
+          await _uploadReferencePhoto(widget.question!.id, shopAddress, File(image.path));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка выбора фото: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
+    try {
+      setState(() => _isUploadingPhotos = true);
+      
+      final photoUrl = await ShiftQuestionService.uploadReferencePhoto(
+        questionId: questionId,
+        shopAddress: shopAddress,
+        photoFile: photoFile,
+      );
+      
+      if (photoUrl != null) {
+        setState(() {
+          _referencePhotoUrls[shopAddress] = photoUrl;
+          _isUploadingPhotos = false;
+        });
+      } else {
+        setState(() => _isUploadingPhotos = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка загрузки эталонного фото'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isUploadingPhotos = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -327,6 +440,10 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           break;
       }
 
+      // Определяем shops: null если для всех, иначе список выбранных адресов
+      List<String>? shops = _isForAllShops ? null : _selectedShopAddresses.toList();
+      
+      // Для нового вопроса сначала создаем вопрос, затем загружаем фото
       ShiftQuestion? result;
       if (widget.question != null) {
         // Обновление существующего вопроса
@@ -335,14 +452,60 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           question: _questionController.text.trim(),
           answerFormatB: answerFormatB,
           answerFormatC: answerFormatC,
+          shops: shops,
+          referencePhotos: _referencePhotoUrls.isNotEmpty ? _referencePhotoUrls : null,
         );
+        
+        // Загружаем новые эталонные фото, если есть
+        if (result != null && _selectedAnswerType == 'photo') {
+          for (final entry in _referencePhotoFiles.entries) {
+            if (entry.value != null && !_referencePhotoUrls.containsKey(entry.key)) {
+              await _uploadReferencePhoto(result.id, entry.key, entry.value!);
+            }
+          }
+          // Перезагружаем вопрос с обновленными фото
+          final updatedResult = await ShiftQuestionService.getQuestion(result.id);
+          if (updatedResult != null) {
+            result = updatedResult;
+          }
+        }
       } else {
         // Создание нового вопроса
         result = await ShiftQuestionService.createQuestion(
           question: _questionController.text.trim(),
           answerFormatB: answerFormatB,
           answerFormatC: answerFormatC,
+          shops: shops,
+          referencePhotos: null, // Фото загрузим отдельно
         );
+        
+        // Загружаем эталонные фото для нового вопроса
+        if (result != null && _selectedAnswerType == 'photo') {
+          final Map<String, String> uploadedPhotos = {};
+          for (final entry in _referencePhotoFiles.entries) {
+            if (entry.value != null) {
+              final photoUrl = await ShiftQuestionService.uploadReferencePhoto(
+                questionId: result.id,
+                shopAddress: entry.key,
+                photoFile: entry.value!,
+              );
+              if (photoUrl != null) {
+                uploadedPhotos[entry.key] = photoUrl;
+              }
+            }
+          }
+          
+          // Обновляем вопрос с загруженными фото
+          if (uploadedPhotos.isNotEmpty) {
+            final updatedResult = await ShiftQuestionService.updateQuestion(
+              id: result.id,
+              referencePhotos: uploadedPhotos,
+            );
+            if (updatedResult != null) {
+              result = updatedResult;
+            }
+          }
+        }
       }
 
       if (result != null && mounted) {
@@ -517,6 +680,98 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 12,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildReferencePhotoSection(String shopAddress, String shopName) {
+    final hasPhoto = _referencePhotoUrls.containsKey(shopAddress) || 
+                     _referencePhotoFiles.containsKey(shopAddress);
+    final photoFile = _referencePhotoFiles[shopAddress];
+    final photoUrl = _referencePhotoUrls[shopAddress];
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              shopName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (hasPhoto) ...[
+              // Превью фото
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: photoFile != null
+                      ? kIsWeb
+                          ? Image.network(
+                              photoFile.path,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(child: Icon(Icons.error));
+                              },
+                            )
+                          : Image.file(
+                              photoFile,
+                              fit: BoxFit.cover,
+                            )
+                      : photoUrl != null
+                          ? Image.network(
+                              photoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(child: Icon(Icons.error));
+                              },
+                            )
+                          : const Center(child: Icon(Icons.image)),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
+                    icon: const Icon(Icons.add_photo_alternate, size: 18),
+                    label: Text(hasPhoto ? 'Изменить фото' : 'Добавить эталонное фото'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF004D40),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                if (hasPhoto) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      setState(() {
+                        _referencePhotoFiles.remove(shopAddress);
+                        _referencePhotoUrls.remove(shopAddress);
+                      });
+                    },
+                    tooltip: 'Удалить фото',
+                  ),
+                ],
+              ],
             ),
           ],
         ),

@@ -8,6 +8,7 @@ class ShiftAnswer {
   final double? numberAnswer;
   final String? photoPath; // Путь к локальному фото
   final String? photoDriveId; // ID фото в Google Drive после загрузки
+  final String? referencePhotoUrl; // URL эталонного фото, которое было показано сотруднику
 
   ShiftAnswer({
     required this.question,
@@ -15,6 +16,7 @@ class ShiftAnswer {
     this.numberAnswer,
     this.photoPath,
     this.photoDriveId,
+    this.referencePhotoUrl,
   });
 
   Map<String, dynamic> toJson() => {
@@ -23,6 +25,7 @@ class ShiftAnswer {
     'numberAnswer': numberAnswer,
     'photoPath': photoPath,
     'photoDriveId': photoDriveId,
+    if (referencePhotoUrl != null) 'referencePhotoUrl': referencePhotoUrl,
   };
 
   factory ShiftAnswer.fromJson(Map<String, dynamic> json) => ShiftAnswer(
@@ -31,6 +34,7 @@ class ShiftAnswer {
     numberAnswer: json['numberAnswer']?.toDouble(),
     photoPath: json['photoPath'],
     photoDriveId: json['photoDriveId'],
+    referencePhotoUrl: json['referencePhotoUrl'],
   );
 }
 
