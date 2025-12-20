@@ -645,16 +645,24 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                             ),
                             const SizedBox(height: 8),
                             Container(
-                              height: 200,
+                              height: 400,
+                              width: double.infinity,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey),
+                                border: Border.all(color: Colors.grey, width: 2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.network(
                                   referencePhotoUrl,
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.contain,
                                   loadingBuilder: (context, child, loadingProgress) {
                                     if (loadingProgress == null) return child;
                                     return const Center(
@@ -677,14 +685,15 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
                             const Text(
                               'Посмотрите на эталонное фото, затем нажмите кнопку ниже для фотографирования',
                               style: TextStyle(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
