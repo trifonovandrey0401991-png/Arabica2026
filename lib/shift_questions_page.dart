@@ -474,50 +474,62 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                   },
                 ),
               ] else if (question.isPhotoOnly) ...[
-                // Показываем эталонное фото только ДО того, как сотрудник сделал свое фото
+                // Показываем эталонное фото из вопроса пересменки (которое админ прикрепил)
+                // Эталонное фото показывается только ДО того, как сотрудник сделал свое фото
                 // После того как фото сделано, эталонное фото скрывается (сравнение только в отчетах)
-                if (_photoPath == null && 
-                    question.referencePhotos != null && 
-                    question.referencePhotos!.containsKey(widget.shopAddress))
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Эталонное фото:',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF004D40),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                question.referencePhotos![widget.shopAddress]!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Center(
-                                    child: Icon(Icons.error, size: 64),
-                                  );
-                                },
+                if (_photoPath == null) ...[
+                  // Получаем эталонное фото из вопроса для этого магазина
+                  if (question.referencePhotos != null && 
+                      question.referencePhotos!.containsKey(widget.shopAddress))
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Эталонное фото (как должно быть):',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF004D40),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Container(
+                              height: 200,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  question.referencePhotos![widget.shopAddress]!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Icon(Icons.error, size: 64),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Посмотрите на эталонное фото, затем сделайте свое фото',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                ],
                 if (_photoPath != null)
                   Container(
                     height: 300,
