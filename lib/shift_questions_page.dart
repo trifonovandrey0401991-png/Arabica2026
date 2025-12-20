@@ -92,28 +92,33 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       print('📋 Загружено вопросов: ${questions.length}');
       print('📋 Магазин сотрудника: "${widget.shopAddress}"');
       print('📋 Длина адреса магазина: ${widget.shopAddress.length}');
-      for (var q in questions) {
+      for (var i = 0; i < questions.length; i++) {
+        final q = questions[i];
         if (q.isPhotoOnly) {
-          print('📋 Вопрос с фото: "${q.question}"');
+          print('📋 Вопрос ${i + 1} с фото: "${q.question}"');
           print('   ID вопроса: ${q.id}');
-          if (q.referencePhotos != null) {
-            print('   Эталонные фото (ключи): ${q.referencePhotos!.keys.toList()}');
-            print('   Эталонные фото (количество): ${q.referencePhotos!.length}');
+          if (q.referencePhotos != null && q.referencePhotos!.isNotEmpty) {
+            print('   ✅ Есть эталонные фото (${q.referencePhotos!.length}):');
+            q.referencePhotos!.forEach((key, value) {
+              print('     - "$key" -> "$value"');
+            });
             // Проверяем точное совпадение
             if (q.referencePhotos!.containsKey(widget.shopAddress)) {
-              print('   ✅ Есть эталонное фото для магазина: ${q.referencePhotos![widget.shopAddress]}');
+              print('   ✅ Есть эталонное фото для магазина "${widget.shopAddress}": ${q.referencePhotos![widget.shopAddress]}');
             } else {
               print('   ❌ Нет эталонного фото для магазина "${widget.shopAddress}"');
-              // Проверяем частичное совпадение
+              // Проверяем нормализованное совпадение
+              final normalizedShopAddress = _normalizeShopAddress(widget.shopAddress);
               for (var key in q.referencePhotos!.keys) {
-                print('      Сравниваем: "${widget.shopAddress}" vs "$key"');
-                if (key.contains(widget.shopAddress) || widget.shopAddress.contains(key)) {
-                  print('      ⚠️ Найдено частичное совпадение!');
+                final normalizedKey = _normalizeShopAddress(key);
+                print('      Сравниваем нормализованные: "$normalizedKey" == "$normalizedShopAddress" ? ${normalizedKey == normalizedShopAddress}');
+                if (normalizedKey == normalizedShopAddress) {
+                  print('      ✅ Найдено совпадение по нормализованному адресу!');
                 }
               }
             }
           } else {
-            print('   ❌ Нет эталонных фото в вопросе');
+            print('   ❌ Нет эталонных фото в вопросе (referencePhotos: ${q.referencePhotos})');
           }
         }
       }
