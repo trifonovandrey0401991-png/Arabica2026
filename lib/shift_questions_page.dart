@@ -574,7 +574,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     builder: (context) {
                       final referencePhotoUrl = _findReferencePhoto(question);
                       if (referencePhotoUrl != null) {
-                        print('🖼️ Показываем эталонное фото для магазина: ${widget.shopAddress}');
+                        print('🖼️ Builder: Показываем эталонное фото для магазина: ${widget.shopAddress}');
                         print('   URL эталонного фото: $referencePhotoUrl');
                         return Card(
                       margin: const EdgeInsets.only(bottom: 16),
