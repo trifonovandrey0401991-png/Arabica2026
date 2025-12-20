@@ -720,10 +720,10 @@ class KPIService {
       }
 
       // Подсчитываем статистику
-      final totalDaysWorked = shopDaysMap.values.where((day) => day.attendanceTime != null || day.hasShift).length;
-      final totalShifts = shopDaysMap.values.where((day) => day.hasShift).length;
-      final totalRecounts = shopDaysMap.values.where((day) => day.hasRecount).length;
-      final totalRKOs = shopDaysMap.values.where((day) => day.hasRKO).length;
+      final totalDaysWorked = daysDataMap.values.where((day) => day.workedToday).length;
+      final totalShifts = daysDataMap.values.where((day) => day.hasShift).length;
+      final totalRecounts = daysDataMap.values.where((day) => day.hasRecount).length;
+      final totalRKOs = daysDataMap.values.where((day) => day.hasRKO).length;
 
       final result = KPIEmployeeData(
         employeeName: employeeName,
