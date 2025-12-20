@@ -118,44 +118,69 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                       if (answer.photoPath != null || answer.photoDriveId != null) ...[
                         const SizedBox(height: 8),
                         // Если есть эталонное фото, показываем две фото рядом
-                        if (answer.referencePhotoUrl != null)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Эталон',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      height: 200,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          answer.referencePhotoUrl!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return const Center(
-                                              child: Icon(Icons.error),
-                                            );
-                                          },
+                        Builder(
+                          builder: (context) {
+                            print('🖼️ Отчет: Проверка эталонного фото для вопроса "${answer.question}"');
+                            print('   referencePhotoUrl: ${answer.referencePhotoUrl}');
+                            print('   photoPath: ${answer.photoPath}');
+                            print('   photoDriveId: ${answer.photoDriveId}');
+                            
+                            if (answer.referencePhotoUrl != null) {
+                              print('   ✅ Есть эталонное фото: ${answer.referencePhotoUrl}');
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Эталон',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey,
+                                          ),
                                         ),
-                                      ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          height: 200,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.grey),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Image.network(
+                                              answer.referencePhotoUrl!,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return const Center(
+                                                  child: CircularProgressIndicator(),
+                                                );
+                                              },
+                                              errorBuilder: (context, error, stackTrace) {
+                                                print('❌ Ошибка загрузки эталонного фото: $error');
+                                                print('   URL: ${answer.referencePhotoUrl}');
+                                                return const Center(
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(Icons.error, size: 48),
+                                                      SizedBox(height: 8),
+                                                      Text('Ошибка загрузки\nэталонного фото', 
+                                                        textAlign: TextAlign.center,
+                                                        style: TextStyle(fontSize: 12)),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
