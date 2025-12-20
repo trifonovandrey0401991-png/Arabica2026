@@ -3,6 +3,7 @@ import 'kpi_models.dart';
 import 'attendance_service.dart';
 import 'attendance_model.dart';
 import 'shift_report_model.dart';
+import 'shift_report_service.dart';
 import 'recount_service.dart';
 import 'recount_report_model.dart';
 import 'rko_reports_service.dart';
@@ -120,10 +121,12 @@ class KPIService {
       
       Logger.debug('📊 После фильтрации осталось отметок: ${filteredAttendanceRecords.length}');
 
-      // Получаем пересменки за день (из локальных данных)
-      // Пересменки хранятся локально, но нужно проверить, есть ли API endpoint
-      // Пока используем локальные данные
-      final allShifts = await ShiftReport.loadAllReports();
+      // Получаем пересменки за день с сервера
+      final shiftReportService = await import('shift_report_service.dart');
+      final allShifts = await shiftReportService.ShiftReportService.getReports(
+        shopAddress: shopAddress,
+        date: normalizedDate,
+      );
       final dayShifts = allShifts.where((shift) {
         final shiftDate = DateTime(
           shift.createdAt.year,

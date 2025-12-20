@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'shift_question_model.dart';
 import 'shift_report_model.dart';
+import 'shift_report_service.dart';
 import 'google_drive_service.dart';
 
 /// Страница с вопросами пересменки
@@ -321,7 +322,13 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         isSynced: true,
       );
 
-      await ShiftReport.saveReport(report);
+      // Сохраняем на сервере
+      final saved = await ShiftReportService.saveReport(report);
+      
+      if (!saved) {
+        // Если не удалось сохранить на сервере, сохраняем локально как резерв
+        await ShiftReport.saveReport(report);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
