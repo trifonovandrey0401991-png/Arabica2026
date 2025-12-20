@@ -294,8 +294,9 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         return false;
       }
 
-      // Создаем DateTime из выбранных даты и времени
-      final dateTime = DateTime(
+      // Создаем DateTime из выбранных даты и времени в UTC
+      // Важно: конвертируем в UTC, чтобы время было корректным на сервере
+      final dateTime = DateTime.utc(
         _kpiSelectedDate.year,
         _kpiSelectedDate.month,
         _kpiSelectedDate.day,
@@ -314,14 +315,14 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       final longitude = shop.longitude ?? 43.0577;
 
       // Создаем отметку прихода с указанным временем
-      Logger.debug('📝 Создание тестовой отметки прихода: ${_kpiSelectedEmployee}, дата/время: ${dateTime.toIso8601String()}');
+      Logger.debug('📝 Создание тестовой отметки прихода: ${_kpiSelectedEmployee}, дата/время (UTC): ${dateTime.toIso8601String()}');
       final result = await AttendanceService.markAttendance(
         employeeName: _kpiSelectedEmployee!,
         shopAddress: _kpiSelectedShop!,
         latitude: latitude,
         longitude: longitude,
         distance: 0.0,
-        timestamp: dateTime, // Передаем созданное время
+        timestamp: dateTime, // Передаем созданное время в UTC
       );
 
       if (mounted) {
@@ -429,8 +430,9 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         return false;
       }
 
-      // Создаем DateTime из выбранных даты и времени
-      final dateTime = DateTime(
+      // Создаем DateTime из выбранных даты и времени в UTC
+      // Важно: конвертируем в UTC, чтобы время было корректным на сервере
+      final dateTime = DateTime.utc(
         _kpiSelectedDate.year,
         _kpiSelectedDate.month,
         _kpiSelectedDate.day,
@@ -447,7 +449,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         ),
         employeeName: _kpiSelectedEmployee!,
         shopAddress: _kpiSelectedShop!,
-        createdAt: dateTime,
+        createdAt: dateTime, // Время в UTC
         answers: answers,
         isSynced: false,
       );
@@ -514,8 +516,9 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         return false;
       }
 
-      // Создаем DateTime из выбранных даты и времени
-      final dateTime = DateTime(
+      // Создаем DateTime из выбранных даты и времени в UTC
+      // Важно: конвертируем в UTC, чтобы время было корректным на сервере
+      final dateTime = DateTime.utc(
         _kpiSelectedDate.year,
         _kpiSelectedDate.month,
         _kpiSelectedDate.day,
@@ -523,7 +526,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         time.minute,
       );
 
-      final startedAt = dateTime;
+      final startedAt = dateTime; // Время в UTC
       final completedAt = dateTime.add(const Duration(minutes: 5)); // Тестовая длительность 5 минут
       final duration = completedAt.difference(startedAt);
 
