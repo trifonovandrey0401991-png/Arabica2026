@@ -352,6 +352,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
               child: _buildTable(days, employeesByShop),
             ),
           ),
@@ -417,6 +418,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
                           '${day.day}',
@@ -425,6 +427,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
                             fontSize: 14,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           _getWeekdayName(day.weekday),
                           style: TextStyle(
