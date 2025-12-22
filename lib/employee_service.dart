@@ -65,6 +65,8 @@ class EmployeeService {
     String? phone,
     bool? isAdmin,
     String? employeeName,
+    List<String>? preferredWorkDays,
+    List<String>? preferredShops,
   }) async {
     try {
       Logger.debug('📤 Создание сотрудника: $name');
@@ -75,6 +77,8 @@ class EmployeeService {
       if (phone != null) requestBody['phone'] = phone;
       if (isAdmin != null) requestBody['isAdmin'] = isAdmin;
       if (employeeName != null) requestBody['employeeName'] = employeeName;
+      if (preferredWorkDays != null) requestBody['preferredWorkDays'] = preferredWorkDays;
+      if (preferredShops != null) requestBody['preferredShops'] = preferredShops;
       
       final response = await http.post(
         Uri.parse(baseUrl),
@@ -107,6 +111,8 @@ class EmployeeService {
     String? phone,
     bool? isAdmin,
     String? employeeName,
+    List<String>? preferredWorkDays,
+    List<String>? preferredShops,
   }) async {
     try {
       Logger.debug('📤 Обновление сотрудника: $id');
@@ -116,6 +122,8 @@ class EmployeeService {
       if (phone != null) body['phone'] = phone;
       if (isAdmin != null) body['isAdmin'] = isAdmin;
       if (employeeName != null) body['employeeName'] = employeeName;
+      if (preferredWorkDays != null) body['preferredWorkDays'] = preferredWorkDays;
+      if (preferredShops != null) body['preferredShops'] = preferredShops;
       
       final response = await http.put(
         Uri.parse('$baseUrl/$id'),

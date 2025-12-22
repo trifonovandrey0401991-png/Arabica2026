@@ -20,6 +20,8 @@ class Employee {
   final String? email;
   final bool? isAdmin;
   final String? employeeName;
+  final List<String> preferredWorkDays; // Желаемые дни работы (monday, tuesday, etc.)
+  final List<String> preferredShops; // Желаемые магазины (ID или адреса)
 
   Employee({
     required this.id,
@@ -30,9 +32,31 @@ class Employee {
     this.email,
     this.isAdmin,
     this.employeeName,
+    this.preferredWorkDays = const [],
+    this.preferredShops = const [],
   });
 
   factory Employee.fromJson(Map<String, dynamic> json) {
+    // Обработка preferredWorkDays
+    List<String> workDays = [];
+    if (json['preferredWorkDays'] != null) {
+      if (json['preferredWorkDays'] is List) {
+        workDays = (json['preferredWorkDays'] as List)
+            .map((e) => e.toString())
+            .toList();
+      }
+    }
+
+    // Обработка preferredShops
+    List<String> shops = [];
+    if (json['preferredShops'] != null) {
+      if (json['preferredShops'] is List) {
+        shops = (json['preferredShops'] as List)
+            .map((e) => e.toString())
+            .toList();
+      }
+    }
+
     return Employee(
       id: json['id'] ?? '',
       name: (json['name'] ?? '').toString().trim(),
@@ -42,6 +66,8 @@ class Employee {
       email: json['email']?.toString().trim(),
       isAdmin: json['isAdmin'] == true || json['isAdmin'] == 1 || json['isAdmin'] == '1',
       employeeName: json['employeeName']?.toString().trim(),
+      preferredWorkDays: workDays,
+      preferredShops: shops,
     );
   }
 
@@ -55,7 +81,35 @@ class Employee {
       'email': email,
       'isAdmin': isAdmin,
       'employeeName': employeeName,
+      'preferredWorkDays': preferredWorkDays,
+      'preferredShops': preferredShops,
     };
+  }
+
+  Employee copyWith({
+    String? id,
+    String? name,
+    String? position,
+    String? department,
+    String? phone,
+    String? email,
+    bool? isAdmin,
+    String? employeeName,
+    List<String>? preferredWorkDays,
+    List<String>? preferredShops,
+  }) {
+    return Employee(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      position: position ?? this.position,
+      department: department ?? this.department,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      isAdmin: isAdmin ?? this.isAdmin,
+      employeeName: employeeName ?? this.employeeName,
+      preferredWorkDays: preferredWorkDays ?? this.preferredWorkDays,
+      preferredShops: preferredShops ?? this.preferredShops,
+    );
   }
 }
 

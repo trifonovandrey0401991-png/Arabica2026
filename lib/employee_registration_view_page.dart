@@ -5,6 +5,11 @@ import 'employee_registration_service.dart';
 import 'employee_registration_page.dart';
 import 'user_role_service.dart';
 import 'user_role_model.dart';
+import 'employees_page.dart';
+import 'employee_service.dart';
+import 'employee_preferences_dialog.dart';
+import 'shop_model.dart';
+import 'shop_service.dart';
 
 class EmployeeRegistrationViewPage extends StatefulWidget {
   final String employeePhone;
@@ -22,6 +27,7 @@ class EmployeeRegistrationViewPage extends StatefulWidget {
 
 class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewPage> {
   EmployeeRegistration? _registration;
+  Employee? _employee;
   bool _isLoading = true;
   bool _isAdmin = false;
 
@@ -81,6 +87,9 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         print('⚠️ Регистрация не найдена для телефона: ${widget.employeePhone}');
       }
       
+      // Загружаем данные сотрудника для получения предпочтений
+      await _loadEmployee();
+      
       if (mounted) {
         setState(() {
           _registration = registration;
@@ -100,6 +109,73 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadEmployee() async {
+    try {
+      print('🔍 Поиск сотрудника для телефона: ${widget.employeePhone}, имени: ${widget.employeeName}');
+      // Загружаем всех сотрудников и ищем по телефону
+      final employees = await EmployeeService.getEmployees();
+      print('📋 Загружено сотрудников: ${employees.length}');
+      final normalizedPhone = widget.employeePhone.replaceAll(RegExp(r'[\s\+]'), '');
+      
+      try {
+        _employee = employees.firstWhere(
+          (emp) => emp.phone != null && emp.phone!.replaceAll(RegExp(r'[\s\+]'), '') == normalizedPhone,
+        );
+        print('✅ Сотрудник найден по телефону: ${_employee!.name}');
+        print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}');
+      } catch (e) {
+        print('⚠️ Не найден по телефону, пробуем по имени...');
+        // Если не нашли по телефону, пробуем по имени
+        try {
+          _employee = employees.firstWhere(
+            (emp) => emp.name == widget.employeeName,
+          );
+          print('✅ Сотрудник найден по имени: ${_employee!.name}');
+          print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}');
+        } catch (e2) {
+          print('⚠️ Сотрудник не найден ни по телефону, ни по имени: $e2');
+          _employee = null;
+        }
+      }
+    } catch (e) {
+      print('❌ Ошибка загрузки сотрудника: $e');
+      _employee = null;
+    }
+  }
+
+  Future<void> _editPreferences() async {
+    print('🔧 Редактирование предпочтений для сотрудника: ${_employee?.name ?? "не найден"}');
+    if (_employee == null) {
+      print('❌ Сотрудник не найден, пытаемся загрузить...');
+      await _loadEmployee();
+      if (_employee == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось загрузить данные сотрудника. Убедитесь, что сотрудник создан из этой регистрации.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
+    print('✅ Открываем диалог редактирования предпочтений');
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => EmployeePreferencesDialog(employee: _employee!),
+    );
+
+    if (result == true) {
+      print('✅ Предпочтения сохранены, обновляем данные');
+      // Обновляем данные сотрудника
+      await _loadEmployee();
+      setState(() {});
+    } else {
+      print('⚠️ Редактирование отменено');
     }
   }
 
@@ -391,6 +467,192 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                     // Дата выдачи
                     _buildInfoRow('Дата выдачи', _registration!.issueDate),
                     const SizedBox(height: 16),
+
+                    // Предпочтения сотрудника
+                    if (_registration != null) ...[
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Предпочтения работы',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (_employee != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.edit),
+                                      onPressed: _editPreferences,
+                                      tooltip: 'Редактировать предпочтения',
+                                    )
+                                  else
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Сначала нужно создать сотрудника из этой регистрации'),
+                                            backgroundColor: Colors.orange,
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.info_outline),
+                                      label: const Text('Создать сотрудника'),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              if (_employee != null) ...[
+                                // Желаемые дни работы
+                                if (_employee!.preferredWorkDays.isNotEmpty) ...[
+                                  const Text(
+                                    'Желаемые дни работы:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _employee!.preferredWorkDays.map((day) {
+                                      final dayNames = {
+                                        'monday': 'Понедельник',
+                                        'tuesday': 'Вторник',
+                                        'wednesday': 'Среда',
+                                        'thursday': 'Четверг',
+                                        'friday': 'Пятница',
+                                        'saturday': 'Суббота',
+                                        'sunday': 'Воскресенье',
+                                      };
+                                      return Chip(
+                                        label: Text(dayNames[day] ?? day),
+                                        backgroundColor: const Color(0xFF004D40).withOpacity(0.1),
+                                      );
+                                    }).toList(),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ] else
+                                  const Text(
+                                    'Желаемые дни работы не указаны',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                // Желаемые магазины
+                                if (_employee!.preferredShops.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Желаемые магазины:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FutureBuilder<List<Shop>>(
+                                    future: ShopService.getShops(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return const CircularProgressIndicator();
+                                      }
+                                      if (snapshot.hasData) {
+                                        final shops = snapshot.data!;
+                                        final selectedShops = shops.where((shop) =>
+                                          _employee!.preferredShops.contains(shop.id) ||
+                                          _employee!.preferredShops.contains(shop.address)
+                                        ).toList();
+                                        
+                                        if (selectedShops.isEmpty) {
+                                          return const Text(
+                                            'Магазины не найдены',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          );
+                                        }
+                                        
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: selectedShops.map((shop) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(bottom: 8),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF004D40).withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      shop.name,
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    if (shop.address.isNotEmpty) ...[
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        shop.address,
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.grey[600],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        );
+                                      }
+                                      return const Text(
+                                        'Ошибка загрузки магазинов',
+                                        style: TextStyle(color: Colors.red),
+                                      );
+                                    },
+                                  ),
+                                ] else
+                                  const Text(
+                                    'Желаемые магазины не указаны',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                              ] else ...[
+                                const Text(
+                                  'Сотрудник не найден. Создайте сотрудника из этой регистрации, чтобы настроить предпочтения.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Фото лицевой страницы
                     _buildPhotoSection(
