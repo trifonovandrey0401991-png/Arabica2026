@@ -125,25 +125,36 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
       
       print('📋 Результат диалога: ${result != null ? result['action'] : 'отменено'}');
 
-    if (result != null) {
-      if (result['action'] == 'save') {
-        final entry = result['entry'] as WorkScheduleEntry;
-        final success = await WorkScheduleService.saveShift(entry);
-        if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Смена сохранена')),
-          );
-          await _loadData();
+      if (result != null) {
+        if (result['action'] == 'save') {
+          final entry = result['entry'] as WorkScheduleEntry;
+          final success = await WorkScheduleService.saveShift(entry);
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Смена сохранена')),
+            );
+            await _loadData();
+          }
+        } else if (result['action'] == 'delete') {
+          final entry = result['entry'] as WorkScheduleEntry;
+          final success = await WorkScheduleService.deleteShift(entry.id);
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Смена удалена')),
+            );
+            await _loadData();
+          }
         }
-      } else if (result['action'] == 'delete') {
-        final entry = result['entry'] as WorkScheduleEntry;
-        final success = await WorkScheduleService.deleteShift(entry.id);
-        if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Смена удалена')),
-          );
-          await _loadData();
-        }
+      }
+    } catch (e) {
+      print('❌ Ошибка при редактировании смены: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
