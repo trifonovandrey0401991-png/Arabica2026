@@ -107,7 +107,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => ShiftEditDialog(
+      builder: (context) => AbbreviationSelectionDialog(
         employeeId: employee.id,
         employeeName: employee.name,
         date: date,
@@ -155,11 +155,76 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   List<DateTime> _getDaysInMonth() {
     final firstDay = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
     final lastDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+    final maxDay = lastDay.day;
+    final actualStartDay = _startDay.clamp(1, maxDay);
+    final actualEndDay = _endDay.clamp(actualStartDay, maxDay);
+    
     final days = <DateTime>[];
-    for (var i = 1; i <= lastDay.day; i++) {
+    for (var i = actualStartDay; i <= actualEndDay; i++) {
       days.add(DateTime(_selectedMonth.year, _selectedMonth.month, i));
     }
     return days;
+  }
+  
+  Future<void> _loadShopSettings(List<Shop> shops) async {
+    final Map<String, ShopSettings> settingsCache = {};
+    
+    for (var shop in shops) {
+      try {
+        final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shop.address)}';
+        final response = await http.get(Uri.parse(url)).timeout(
+          const Duration(seconds: 5),
+        );
+
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+          if (result['success'] == true && result['settings'] != null) {
+            settingsCache[shop.address] = ShopSettings.fromJson(result['settings']);
+          }
+        }
+      } catch (e) {
+        print('Ошибка загрузки настроек для магазина ${shop.address}: $e');
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _shopSettingsCache = settingsCache;
+      });
+    }
+  }
+  
+  String? _getAbbreviationForEntry(WorkScheduleEntry entry) {
+    final settings = _shopSettingsCache[entry.shopAddress];
+    if (settings == null) return null;
+    
+    switch (entry.shiftType) {
+      case ShiftType.morning:
+        return settings.morningAbbreviation;
+      case ShiftType.day:
+        return settings.dayAbbreviation;
+      case ShiftType.evening:
+        return settings.nightAbbreviation;
+    }
+  }
+  
+  Future<void> _selectPeriod() async {
+    final maxDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
+    final result = await showDialog<Map<String, int>>(
+      context: context,
+      builder: (context) => _PeriodSelectionDialog(
+        startDay: _startDay,
+        endDay: _endDay,
+        maxDay: maxDay,
+      ),
+    );
+    
+    if (result != null) {
+      setState(() {
+        _startDay = result['startDay'] ?? 1;
+        _endDay = result['endDay'] ?? maxDay;
+      });
+    }
   }
 
   WorkScheduleEntry? _getEntryForEmployeeAndDate(String employeeId, DateTime date) {
