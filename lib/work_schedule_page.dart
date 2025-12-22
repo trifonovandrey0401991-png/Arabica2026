@@ -3,9 +3,12 @@ import 'work_schedule_model.dart';
 import 'work_schedule_service.dart';
 import 'employee_service.dart';
 import 'shop_model.dart';
-import 'shift_edit_dialog.dart';
+import 'abbreviation_selection_dialog.dart';
 import 'schedule_bulk_operations_dialog.dart';
 import 'employees_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'shop_settings_model.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -22,6 +25,13 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   List<Shop> _shops = [];
   bool _isLoading = false;
   String? _error;
+  
+  // Выбор периода (числа месяца)
+  int _startDay = 1;
+  int _endDay = 31;
+  
+  // Кэш настроек магазинов для быстрого доступа к аббревиатурам
+  Map<String, ShopSettings> _shopSettingsCache = {};
 
   @override
   void initState() {
@@ -39,6 +49,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
       final employees = await EmployeeService.getEmployees();
       final shops = await Shop.loadShopsFromGoogleSheets();
       final schedule = await WorkScheduleService.getSchedule(_selectedMonth);
+      
+      // Загружаем настройки магазинов для получения аббревиатур
+      await _loadShopSettings(shops);
 
       if (mounted) {
         setState(() {
@@ -167,6 +180,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         backgroundColor: const Color(0xFF004D40),
         actions: [
           IconButton(
+            icon: const Icon(Icons.date_range),
+            onPressed: _selectPeriod,
+            tooltip: 'Выбрать период',
+          ),
+          IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: _selectMonth,
             tooltip: 'Выбрать месяц',
@@ -216,20 +234,30 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
 
     return Column(
       children: [
-        // Заголовок с месяцем
+        // Заголовок с месяцем и периодом
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.grey[200],
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '${_employees.length} сотрудников',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
               ),
+              const SizedBox(height: 8),
               Text(
-                '${_employees.length} сотрудников',
-                style: TextStyle(color: Colors.grey[700]),
+                'Период: $_startDay - $_endDay число',
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
               ),
             ],
           ),
@@ -248,6 +276,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   }
 
   Widget _buildTable(List<DateTime> days, Map<String, List<Employee>> employeesByShop) {
+    // Получаем всех сотрудников в один список
+    final allEmployees = employeesByShop.values.expand((list) => list).toList();
+    
     return Table(
       border: TableBorder.all(color: Colors.grey[300]!),
       columnWidths: {
@@ -286,43 +317,19 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
           ],
         ),
         // Строки для каждого сотрудника
-        ...employeesByShop.entries.expand((shopEntry) {
-          final shopName = shopEntry.key;
-          final employees = shopEntry.value;
-          
-          return [
-            // Заголовок магазина
-            TableRow(
-              decoration: BoxDecoration(color: Colors.grey[100]),
+        ...allEmployees.map((employee) => TableRow(
               children: [
                 TableCell(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      shopName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
+                    child: Text(employee.name),
                   ),
                 ),
-                ...days.map((_) => const TableCell(child: SizedBox())),
+                ...days.map((day) => TableCell(
+                      child: _buildCell(employee, day),
+                    )),
               ],
-            ),
-            // Сотрудники магазина
-            ...employees.map((employee) => TableRow(
-                  children: [
-                    TableCell(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(employee.name),
-                      ),
-                    ),
-                    ...days.map((day) => TableCell(
-                          child: _buildCell(employee, day),
-                        )),
-                  ],
-                )),
-          ];
-        }),
+            )),
       ],
     );
   }
@@ -330,6 +337,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   Widget _buildCell(Employee employee, DateTime date) {
     final entry = _getEntryForEmployeeAndDate(employee.id, date);
     final isEmpty = entry == null;
+    final abbreviation = entry != null ? _getAbbreviationForEntry(entry) : null;
 
     return GestureDetector(
       onTap: () => _editShift(employee, date),
@@ -343,24 +351,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         ),
         child: isEmpty
             ? const SizedBox()
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    entry.shiftType.label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: entry.shiftType.color,
-                    ),
+            : Center(
+                child: Text(
+                  abbreviation ?? entry.shiftType.label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: entry.shiftType.color,
                   ),
-                  Text(
-                    entry.shopAddress.split(',').first,
-                    style: TextStyle(fontSize: 8, color: Colors.grey[700]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
       ),
     );
@@ -387,5 +389,135 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   String _getWeekdayName(int weekday) {
     const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
+  }
+  
+  Future<void> _selectPeriod() async {
+    final maxDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
+    final result = await showDialog<Map<String, int>>(
+      context: context,
+      builder: (context) => _PeriodSelectionDialog(
+        startDay: _startDay,
+        endDay: _endDay,
+        maxDay: maxDay,
+      ),
+    );
+    
+    if (result != null) {
+      setState(() {
+        _startDay = result['startDay'] ?? 1;
+        _endDay = result['endDay'] ?? maxDay;
+      });
+    }
+  }
+}
+
+// Диалог для выбора периода (числа месяца)
+class _PeriodSelectionDialog extends StatefulWidget {
+  final int startDay;
+  final int endDay;
+  final int maxDay;
+
+  const _PeriodSelectionDialog({
+    required this.startDay,
+    required this.endDay,
+    required this.maxDay,
+  });
+
+  @override
+  State<_PeriodSelectionDialog> createState() => _PeriodSelectionDialogState();
+}
+
+class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
+  late int _startDay;
+  late int _endDay;
+
+  @override
+  void initState() {
+    super.initState();
+    _startDay = widget.startDay;
+    _endDay = widget.endDay;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Выберите период'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Text('С: '),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: _startDay,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  items: List.generate(widget.maxDay, (i) => i + 1).map((day) {
+                    return DropdownMenuItem<int>(
+                      value: day,
+                      child: Text('$day'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _startDay = value;
+                        if (_endDay < _startDay) {
+                          _endDay = _startDay;
+                        }
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Text('По: '),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: _endDay,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  items: List.generate(widget.maxDay - _startDay + 1, (i) => _startDay + i).map((day) {
+                    return DropdownMenuItem<int>(
+                      value: day,
+                      child: Text('$day'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _endDay = value;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pop({
+              'startDay': _startDay,
+              'endDay': _endDay,
+            });
+          },
+          child: const Text('Применить'),
+        ),
+      ],
+    );
   }
 }

@@ -16,6 +16,11 @@ class ShopSettings {
   final TimeOfDay? dayShiftEnd; // Конец дневной смены
   final TimeOfDay? nightShiftStart; // Начало ночной смены
   final TimeOfDay? nightShiftEnd; // Конец ночной смены
+  
+  // Аббревиатуры для смен (для графика работы)
+  final String? morningAbbreviation; // Аббревиатура утренней смены (например, "Ост(У)")
+  final String? dayAbbreviation; // Аббревиатура дневной смены (например, "Ост(Д)")
+  final String? nightAbbreviation; // Аббревиатура ночной смены (например, "Ост(Н)")
 
   ShopSettings({
     required this.shopAddress,
@@ -29,6 +34,9 @@ class ShopSettings {
     this.dayShiftEnd,
     this.nightShiftStart,
     this.nightShiftEnd,
+    this.morningAbbreviation,
+    this.dayAbbreviation,
+    this.nightAbbreviation,
   });
 
   Map<String, dynamic> toJson() => {
@@ -43,6 +51,9 @@ class ShopSettings {
     if (dayShiftEnd != null) 'dayShiftEnd': _timeOfDayToString(dayShiftEnd!),
     if (nightShiftStart != null) 'nightShiftStart': _timeOfDayToString(nightShiftStart!),
     if (nightShiftEnd != null) 'nightShiftEnd': _timeOfDayToString(nightShiftEnd!),
+    if (morningAbbreviation != null) 'morningAbbreviation': morningAbbreviation,
+    if (dayAbbreviation != null) 'dayAbbreviation': dayAbbreviation,
+    if (nightAbbreviation != null) 'nightAbbreviation': nightAbbreviation,
   };
   
   static String _timeOfDayToString(TimeOfDay time) {
@@ -72,6 +83,9 @@ class ShopSettings {
       dayShiftEnd: _stringToTimeOfDay(json['dayShiftEnd']),
       nightShiftStart: _stringToTimeOfDay(json['nightShiftStart']),
       nightShiftEnd: _stringToTimeOfDay(json['nightShiftEnd']),
+      morningAbbreviation: json['morningAbbreviation']?.toString(),
+      dayAbbreviation: json['dayAbbreviation']?.toString(),
+      nightAbbreviation: json['nightAbbreviation']?.toString(),
     );
   }
 
@@ -86,6 +100,9 @@ class ShopSettings {
     TimeOfDay? dayShiftEnd,
     TimeOfDay? nightShiftStart,
     TimeOfDay? nightShiftEnd,
+    String? morningAbbreviation,
+    String? dayAbbreviation,
+    String? nightAbbreviation,
   }) {
     return ShopSettings(
       shopAddress: shopAddress,
@@ -99,6 +116,9 @@ class ShopSettings {
       dayShiftEnd: dayShiftEnd ?? this.dayShiftEnd,
       nightShiftStart: nightShiftStart ?? this.nightShiftStart,
       nightShiftEnd: nightShiftEnd ?? this.nightShiftEnd,
+      morningAbbreviation: morningAbbreviation ?? this.morningAbbreviation,
+      dayAbbreviation: dayAbbreviation ?? this.dayAbbreviation,
+      nightAbbreviation: nightAbbreviation ?? this.nightAbbreviation,
     );
   }
 

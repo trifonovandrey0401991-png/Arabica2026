@@ -158,6 +158,17 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     TimeOfDay? dayEnd = currentSettings?.dayShiftEnd;
     TimeOfDay? nightStart = currentSettings?.nightShiftStart;
     TimeOfDay? nightEnd = currentSettings?.nightShiftEnd;
+    
+    // Контроллеры для аббревиатур
+    final morningAbbreviationController = TextEditingController(
+      text: currentSettings?.morningAbbreviation ?? '',
+    );
+    final dayAbbreviationController = TextEditingController(
+      text: currentSettings?.dayAbbreviation ?? '',
+    );
+    final nightAbbreviationController = TextEditingController(
+      text: currentSettings?.nightAbbreviation ?? '',
+    );
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -224,6 +235,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                       morningEnd = end;
                     });
                   },
+                  morningAbbreviationController,
                 ),
                 const SizedBox(height: 16),
                 // Дневная смена
@@ -238,6 +250,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                       dayEnd = end;
                     });
                   },
+                  dayAbbreviationController,
                 ),
                 const SizedBox(height: 16),
                 // Ночная смена
@@ -252,6 +265,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                       nightEnd = end;
                     });
                   },
+                  nightAbbreviationController,
                 ),
               ],
             ),
@@ -273,6 +287,9 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                   'dayShiftEnd': dayEnd,
                   'nightShiftStart': nightStart,
                   'nightShiftEnd': nightEnd,
+                  'morningAbbreviation': morningAbbreviationController.text.trim(),
+                  'dayAbbreviation': dayAbbreviationController.text.trim(),
+                  'nightAbbreviation': nightAbbreviationController.text.trim(),
                 });
               },
               child: const Text('Сохранить'),
@@ -296,6 +313,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
           dayShiftEnd: result['dayShiftEnd'] as TimeOfDay?,
           nightShiftStart: result['nightShiftStart'] as TimeOfDay?,
           nightShiftEnd: result['nightShiftEnd'] as TimeOfDay?,
+          morningAbbreviation: result['morningAbbreviation']?.toString().isEmpty == true 
+              ? null 
+              : result['morningAbbreviation']?.toString(),
+          dayAbbreviation: result['dayAbbreviation']?.toString().isEmpty == true 
+              ? null 
+              : result['dayAbbreviation']?.toString(),
+          nightAbbreviation: result['nightAbbreviation']?.toString().isEmpty == true 
+              ? null 
+              : result['nightAbbreviation']?.toString(),
         );
 
         final success = await _saveShopSettings(settings);
@@ -342,6 +368,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     TimeOfDay? startTime,
     TimeOfDay? endTime,
     Function(TimeOfDay?, TimeOfDay?) onChanged,
+    TextEditingController abbreviationController,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,6 +465,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: abbreviationController,
+          decoration: const InputDecoration(
+            labelText: 'Аббревиатура для графика',
+            hintText: 'Например: Ост(У)',
+            border: OutlineInputBorder(),
+            helperText: 'Используется в графике работы для быстрого выбора',
+          ),
         ),
       ],
     );
