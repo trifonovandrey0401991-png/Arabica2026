@@ -455,25 +455,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
-  
-  Future<void> _selectPeriod() async {
-    final maxDay = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
-    final result = await showDialog<Map<String, int>>(
-      context: context,
-      builder: (context) => _PeriodSelectionDialog(
-        startDay: _startDay,
-        endDay: _endDay,
-        maxDay: maxDay,
-      ),
-    );
-    
-    if (result != null) {
-      setState(() {
-        _startDay = result['startDay'] ?? 1;
-        _endDay = result['endDay'] ?? maxDay;
-      });
-    }
-  }
 }
 
 // Диалог для выбора периода (числа месяца)
