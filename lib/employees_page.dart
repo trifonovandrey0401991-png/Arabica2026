@@ -22,6 +22,7 @@ class Employee {
   final String? employeeName;
   final List<String> preferredWorkDays; // Желаемые дни работы (monday, tuesday, etc.)
   final List<String> preferredShops; // Желаемые магазины (ID или адреса)
+  final Map<String, int> shiftPreferences; // Предпочтения смен: {'morning': 1, 'day': 2, 'night': 3} где 1=хочет, 2=может, 3=не будет
 
   Employee({
     required this.id,
@@ -34,6 +35,7 @@ class Employee {
     this.employeeName,
     this.preferredWorkDays = const [],
     this.preferredShops = const [],
+    this.shiftPreferences = const {},
   });
 
   factory Employee.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,24 @@ class Employee {
       }
     }
 
+    // Обработка shiftPreferences
+    Map<String, int> shiftPrefs = {};
+    if (json['shiftPreferences'] != null) {
+      if (json['shiftPreferences'] is Map) {
+        final prefsMap = json['shiftPreferences'] as Map;
+        prefsMap.forEach((key, value) {
+          if (value is int) {
+            shiftPrefs[key.toString()] = value;
+          } else if (value is String) {
+            final intValue = int.tryParse(value);
+            if (intValue != null) {
+              shiftPrefs[key.toString()] = intValue;
+            }
+          }
+        });
+      }
+    }
+
     return Employee(
       id: json['id'] ?? '',
       name: (json['name'] ?? '').toString().trim(),
@@ -68,6 +88,7 @@ class Employee {
       employeeName: json['employeeName']?.toString().trim(),
       preferredWorkDays: workDays,
       preferredShops: shops,
+      shiftPreferences: shiftPrefs,
     );
   }
 
@@ -83,6 +104,7 @@ class Employee {
       'employeeName': employeeName,
       'preferredWorkDays': preferredWorkDays,
       'preferredShops': preferredShops,
+      'shiftPreferences': shiftPreferences,
     };
   }
 
@@ -97,6 +119,7 @@ class Employee {
     String? employeeName,
     List<String>? preferredWorkDays,
     List<String>? preferredShops,
+    Map<String, int>? shiftPreferences,
   }) {
     return Employee(
       id: id ?? this.id,
@@ -109,6 +132,7 @@ class Employee {
       employeeName: employeeName ?? this.employeeName,
       preferredWorkDays: preferredWorkDays ?? this.preferredWorkDays,
       preferredShops: preferredShops ?? this.preferredShops,
+      shiftPreferences: shiftPreferences ?? this.shiftPreferences,
     );
   }
 }

@@ -19,6 +19,7 @@ class EmployeePreferencesDialog extends StatefulWidget {
 class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
   late Set<String> _selectedDays;
   late Set<String> _selectedShops;
+  late Map<String, int> _shiftPreferences;
   List<Shop> _shops = [];
   bool _isLoading = true;
   bool _isSaving = false;
@@ -44,11 +45,30 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
     'sunday',
   ];
 
+  // Названия смен
+  static const Map<String, String> _shiftNames = {
+    'morning': 'Утро',
+    'day': 'День',
+    'night': 'Ночь',
+  };
+
+  // Описания градаций
+  static const Map<int, String> _gradeDescriptions = {
+    1: 'Всегда хочет работать',
+    2: 'Не хочет, но может',
+    3: 'Не будет работать',
+  };
+
   @override
   void initState() {
     super.initState();
     _selectedDays = Set<String>.from(widget.employee.preferredWorkDays);
     _selectedShops = Set<String>.from(widget.employee.preferredShops);
+    _shiftPreferences = Map<String, int>.from(widget.employee.shiftPreferences);
+    // Инициализируем значения по умолчанию, если их нет
+    if (!_shiftPreferences.containsKey('morning')) _shiftPreferences['morning'] = 2;
+    if (!_shiftPreferences.containsKey('day')) _shiftPreferences['day'] = 2;
+    if (!_shiftPreferences.containsKey('night')) _shiftPreferences['night'] = 2;
     _loadShops();
   }
 
@@ -82,6 +102,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
       final updatedEmployee = widget.employee.copyWith(
         preferredWorkDays: _selectedDays.toList(),
         preferredShops: shopIds,
+        shiftPreferences: _shiftPreferences,
       );
 
       final result = await EmployeeService.updateEmployee(
@@ -92,6 +113,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
         employeeName: updatedEmployee.employeeName,
         preferredWorkDays: updatedEmployee.preferredWorkDays,
         preferredShops: updatedEmployee.preferredShops,
+        shiftPreferences: updatedEmployee.shiftPreferences,
       );
 
       if (result != null && mounted) {
@@ -291,6 +313,60 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                           contentPadding: EdgeInsets.zero,
                         );
                       }),
+                    const SizedBox(height: 24),
+                    // Предпочтения смен
+                    const Text(
+                      'Предпочтения смен:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...['morning', 'day', 'night'].map((shiftKey) {
+                      final shiftName = _shiftNames[shiftKey] ?? shiftKey;
+                      final currentGrade = _shiftPreferences[shiftKey] ?? 2;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                shiftName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ...([1, 2, 3] as List<int>).map((grade) {
+                                final isSelected = currentGrade == grade;
+                                return RadioListTile<int>(
+                                  title: Text(
+                                    _gradeDescriptions[grade] ?? 'Градация $grade',
+                                    style: TextStyle(
+                                      color: isSelected ? const Color(0xFF004D40) : Colors.black87,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                    ),
+                                  ),
+                                  value: grade,
+                                  groupValue: currentGrade,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _shiftPreferences[shiftKey] = value!;
+                                    });
+                                  },
+                                  contentPadding: EdgeInsets.zero,
+                                  dense: true,
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),

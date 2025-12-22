@@ -125,7 +125,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
           (emp) => emp.phone != null && emp.phone!.replaceAll(RegExp(r'[\s\+]'), '') == normalizedPhone,
         );
         print('✅ Сотрудник найден по телефону: ${_employee!.name}');
-        print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}');
+        print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}, смены=${_employee!.shiftPreferences.length}');
       } catch (e) {
         print('⚠️ Не найден по телефону, пробуем по имени...');
         // Если не нашли по телефону, пробуем по имени
@@ -134,7 +134,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
             (emp) => emp.name == widget.employeeName,
           );
           print('✅ Сотрудник найден по имени: ${_employee!.name}');
-          print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}');
+          print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}, смены=${_employee!.shiftPreferences.length}');
         } catch (e2) {
           print('⚠️ Сотрудник не найден ни по телефону, ни по имени: $e2');
           _employee = null;
@@ -631,6 +631,86 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                                 ] else
                                   const Text(
                                     'Желаемые магазины не указаны',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                // Предпочтения смен
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Предпочтения смен:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (_employee!.shiftPreferences.isNotEmpty) ...[
+                                  ...['morning', 'day', 'night'].map((shiftKey) {
+                                    final shiftName = {
+                                      'morning': 'Утро',
+                                      'day': 'День',
+                                      'night': 'Ночь',
+                                    }[shiftKey] ?? shiftKey;
+                                    final grade = _employee!.shiftPreferences[shiftKey] ?? 2;
+                                    final gradeDescription = {
+                                      1: 'Всегда хочет работать',
+                                      2: 'Не хочет, но может',
+                                      3: 'Не будет работать',
+                                    }[grade] ?? 'Не указано';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              shiftName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: grade == 1
+                                                  ? Colors.green.withOpacity(0.2)
+                                                  : grade == 2
+                                                      ? Colors.orange.withOpacity(0.2)
+                                                      : Colors.red.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: grade == 1
+                                                    ? Colors.green
+                                                    : grade == 2
+                                                        ? Colors.orange
+                                                        : Colors.red,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              gradeDescription,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: grade == 1
+                                                    ? Colors.green[800]
+                                                    : grade == 2
+                                                        ? Colors.orange[800]
+                                                        : Colors.red[800],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ] else
+                                  const Text(
+                                    'Предпочтения смен не указаны',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.grey,
