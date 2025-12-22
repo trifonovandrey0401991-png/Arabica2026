@@ -497,8 +497,10 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         _editShift(employee, date);
       },
       child: Container(
-        width: double.infinity,
-        height: double.infinity,
+        constraints: const BoxConstraints(
+          minHeight: 40,
+          minWidth: 70,
+        ),
         padding: const EdgeInsets.all(2.0),
         decoration: BoxDecoration(
           color: isEmpty 
