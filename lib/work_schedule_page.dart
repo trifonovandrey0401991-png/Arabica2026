@@ -365,35 +365,73 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     final allEmployees = employeesByShop.values.expand((list) => list).toList();
     
     return Table(
-      border: TableBorder.all(color: Colors.grey[300]!),
+      border: TableBorder(
+        top: BorderSide(color: Colors.grey[400]!, width: 1.5),
+        bottom: BorderSide(color: Colors.grey[400]!, width: 1.5),
+        left: BorderSide(color: Colors.grey[400]!, width: 1.5),
+        right: BorderSide(color: Colors.grey[400]!, width: 1.5),
+        horizontalInside: BorderSide(color: Colors.grey[300]!, width: 1),
+        verticalInside: BorderSide(color: Colors.grey[300]!, width: 1),
+      ),
       columnWidths: {
-        0: const FixedColumnWidth(200), // Колонка с именами сотрудников
-        for (var i = 0; i < days.length; i++) i + 1: const FixedColumnWidth(80),
+        0: const FixedColumnWidth(180), // Колонка с именами сотрудников
+        for (var i = 0; i < days.length; i++) i + 1: const FixedColumnWidth(70),
       },
       children: [
         // Заголовок с датами
         TableRow(
-          decoration: BoxDecoration(color: Colors.grey[200]),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            border: Border(
+              bottom: BorderSide(color: Colors.grey[400]!, width: 2),
+            ),
+          ),
           children: [
-            const TableCell(
-              child: Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text('Сотрудник', style: TextStyle(fontWeight: FontWeight.bold)),
+            TableCell(
+              verticalAlignment: TableCellVerticalAlignment.middle,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  border: Border(
+                    right: BorderSide(color: Colors.grey[400]!, width: 2),
+                  ),
+                ),
+                child: const Text(
+                  'Сотрудник',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
             ...days.map((day) => TableCell(
+                  verticalAlignment: TableCellVerticalAlignment.middle,
                   child: Container(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           '${day.day}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                         Text(
                           _getWeekdayName(day.weekday),
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -402,19 +440,43 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
           ],
         ),
         // Строки для каждого сотрудника
-        ...allEmployees.map((employee) => TableRow(
-              children: [
-                TableCell(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(employee.name),
+        ...allEmployees.asMap().entries.map((entry) {
+          final index = entry.key;
+          final employee = entry.value;
+          final isEven = index % 2 == 0;
+          
+          return TableRow(
+            decoration: BoxDecoration(
+              color: isEven ? Colors.white : Colors.grey[50],
+            ),
+            children: [
+              TableCell(
+                verticalAlignment: TableCellVerticalAlignment.middle,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isEven ? Colors.white : Colors.grey[50],
+                    border: Border(
+                      right: BorderSide(color: Colors.grey[400]!, width: 2),
+                    ),
+                  ),
+                  child: Text(
+                    employee.name,
+                    style: const TextStyle(
+                      fontSize: 12,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                ...days.map((day) => TableCell(
-                      child: _buildCell(employee, day),
-                    )),
-              ],
-            )),
+              ),
+              ...days.map((day) => TableCell(
+                    verticalAlignment: TableCellVerticalAlignment.middle,
+                    child: _buildCell(employee, day),
+                  )),
+            ],
+          );
+        }),
       ],
     );
   }
@@ -423,6 +485,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     final entry = _getEntryForEmployeeAndDate(employee.id, date);
     final isEmpty = entry == null;
     final abbreviation = entry != null ? _getAbbreviationForEntry(entry) : null;
+    final employeeIndex = _employees.indexWhere((e) => e.id == employee.id);
+    final isEven = employeeIndex % 2 == 0;
 
     return InkWell(
       onTap: () {
@@ -430,12 +494,19 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         _editShift(employee, date);
       },
       child: Container(
-        padding: const EdgeInsets.all(4.0),
+        width: double.infinity,
+        height: double.infinity,
+        padding: const EdgeInsets.all(2.0),
         decoration: BoxDecoration(
-          color: isEmpty ? Colors.white : entry!.shiftType.color.withOpacity(0.3),
+          color: isEmpty 
+              ? (isEven ? Colors.white : Colors.grey[50])
+              : entry!.shiftType.color.withOpacity(0.2),
           border: isEmpty
-              ? Border.all(color: Colors.grey[200]!, width: 1)
-              : Border.all(color: entry.shiftType.color, width: 2),
+              ? null
+              : Border.all(
+                  color: entry.shiftType.color,
+                  width: 1.5,
+                ),
         ),
         child: isEmpty
             ? const SizedBox()
@@ -443,8 +514,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
                 child: Text(
                   abbreviation ?? entry.shiftType.label,
                   style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                     color: entry.shiftType.color,
                   ),
                   textAlign: TextAlign.center,
