@@ -33,6 +33,10 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
   @override
   void initState() {
     super.initState();
+    print('🔵 AbbreviationSelectionDialog инициализирован');
+    print('   Сотрудник: ${widget.employeeName}');
+    print('   Дата: ${widget.date.day}.${widget.date.month}.${widget.date.year}');
+    print('   Магазинов: ${widget.shops.length}');
     _loadAbbreviations();
     if (widget.existingEntry != null) {
       // Пытаемся найти аббревиатуру для существующей записи
@@ -41,6 +45,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
   }
 
   Future<void> _loadAbbreviations() async {
+    print('📥 Начинаем загрузку аббревиатур...');
     setState(() {
       _isLoading = true;
     });
@@ -52,6 +57,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
       for (var shop in widget.shops) {
         try {
           final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shop.address)}';
+          print('   Загрузка настроек для: ${shop.name}');
           final response = await http.get(Uri.parse(url)).timeout(
             const Duration(seconds: 5),
           );
@@ -69,6 +75,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
                   shopName: shop.name,
                   shiftType: ShiftType.morning,
                 ));
+                print('     ✅ Добавлена аббревиатура: ${settings.morningAbbreviation} (утро)');
               }
               if (settings.dayAbbreviation != null && settings.dayAbbreviation!.isNotEmpty) {
                 abbreviations.add(ShopAbbreviation(
@@ -77,6 +84,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
                   shopName: shop.name,
                   shiftType: ShiftType.day,
                 ));
+                print('     ✅ Добавлена аббревиатура: ${settings.dayAbbreviation} (день)');
               }
               if (settings.nightAbbreviation != null && settings.nightAbbreviation!.isNotEmpty) {
                 abbreviations.add(ShopAbbreviation(
@@ -85,17 +93,21 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
                   shopName: shop.name,
                   shiftType: ShiftType.evening, // night = evening
                 ));
+                print('     ✅ Добавлена аббревиатура: ${settings.nightAbbreviation} (ночь)');
               }
             }
+          } else {
+            print('     ⚠️ Статус ответа: ${response.statusCode}');
           }
         } catch (e) {
-          print('Ошибка загрузки настроек для магазина ${shop.address}: $e');
+          print('     ❌ Ошибка загрузки настроек для магазина ${shop.address}: $e');
         }
       }
 
       // Сортируем по аббревиатуре
       abbreviations.sort((a, b) => a.abbreviation.compareTo(b.abbreviation));
 
+      print('✅ Загружено аббревиатур: ${abbreviations.length}');
       if (mounted) {
         setState(() {
           _abbreviations = abbreviations;
@@ -103,7 +115,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
         });
       }
     } catch (e) {
-      print('Ошибка загрузки аббревиатур: $e');
+      print('❌ Ошибка загрузки аббревиатур: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

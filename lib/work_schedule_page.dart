@@ -90,31 +90,40 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   }
 
   Future<void> _editShift(Employee employee, DateTime date) async {
-    final existingEntry = _schedule?.entries.firstWhere(
-      (e) => e.employeeId == employee.id && 
-             e.date.year == date.year &&
-             e.date.month == date.month &&
-             e.date.day == date.day,
-      orElse: () => throw StateError('Not found'),
-    );
-
+    print('🔵 _editShift вызван: ${employee.name}, ${date.day}.${date.month}.${date.year}');
+    
     WorkScheduleEntry? entryToEdit;
-    try {
-      entryToEdit = existingEntry;
-    } catch (e) {
-      entryToEdit = null;
+    if (_schedule != null) {
+      try {
+        entryToEdit = _schedule!.entries.firstWhere(
+          (e) => e.employeeId == employee.id && 
+                 e.date.year == date.year &&
+                 e.date.month == date.month &&
+                 e.date.day == date.day,
+        );
+        print('✅ Найдена существующая запись: ${entryToEdit.id}');
+      } catch (e) {
+        entryToEdit = null;
+        print('ℹ️ Запись не найдена (это нормально для новой смены)');
+      }
     }
 
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => AbbreviationSelectionDialog(
-        employeeId: employee.id,
-        employeeName: employee.name,
-        date: date,
-        existingEntry: entryToEdit,
-        shops: _shops,
-      ),
-    );
+    print('📋 Открываем диалог выбора аббревиатуры...');
+    print('   Магазинов доступно: ${_shops.length}');
+    
+    try {
+      final result = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (context) => AbbreviationSelectionDialog(
+          employeeId: employee.id,
+          employeeName: employee.name,
+          date: date,
+          existingEntry: entryToEdit,
+          shops: _shops,
+        ),
+      );
+      
+      print('📋 Результат диалога: ${result != null ? result['action'] : 'отменено'}');
 
     if (result != null) {
       if (result['action'] == 'save') {
@@ -404,8 +413,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     final isEmpty = entry == null;
     final abbreviation = entry != null ? _getAbbreviationForEntry(entry) : null;
 
-    return GestureDetector(
-      onTap: () => _editShift(employee, date),
+    return InkWell(
+      onTap: () {
+        print('🔵 Клик по клетке: ${employee.name}, ${date.day}.${date.month}.${date.year}');
+        _editShift(employee, date);
+      },
       child: Container(
         padding: const EdgeInsets.all(4.0),
         decoration: BoxDecoration(
