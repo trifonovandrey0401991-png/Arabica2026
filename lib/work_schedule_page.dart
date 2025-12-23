@@ -612,10 +612,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     
     // Проверяем наличие конфликта для этой ячейки
     bool hasConflict = false;
-    if (!isEmpty && _schedule != null) {
+    if (!isEmpty && _schedule != null && entry != null) {
       hasConflict = WorkScheduleValidator.hasConflictForCell(
-        employee.id,
-        date,
+        entry,
         _schedule!,
       );
     }
@@ -824,8 +823,30 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         Navigator.of(context).pop();
       }
 
-      // Обновляем график
+      // Обновляем график - принудительно перезагружаем данные
+      setState(() {
+        _isLoading = true;
+      });
+      
       await _loadData();
+      
+      // Дополнительная проверка - загружаем график еще раз для уверенности
+      try {
+        final refreshedSchedule = await WorkScheduleService.getSchedule(_selectedMonth);
+        if (mounted) {
+          setState(() {
+            _schedule = refreshedSchedule;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print('Ошибка при обновлении графика: $e');
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
 
       // Показываем результаты
       if (mounted) {
