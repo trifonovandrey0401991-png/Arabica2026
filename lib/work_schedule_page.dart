@@ -12,6 +12,8 @@ import 'shop_settings_model.dart';
 import 'work_schedule_validator.dart';
 import 'schedule_validation_dialog.dart';
 import 'employee_schedule_page.dart';
+import 'auto_fill_schedule_dialog.dart';
+import 'auto_fill_schedule_service.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -379,6 +381,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
                 icon: const Icon(Icons.copy_all),
                 onPressed: _showBulkOperations,
                 tooltip: 'Массовые операции',
+              ),
+            if (_schedule != null)
+              IconButton(
+                icon: const Icon(Icons.auto_fix_high),
+                onPressed: _showAutoFillDialog,
+                tooltip: 'Автозаполнение графика',
               ),
             IconButton(
               icon: const Icon(Icons.refresh),
