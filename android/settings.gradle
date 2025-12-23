@@ -25,14 +25,26 @@ plugins {
 
 include ":app"
 
-// Инициализация свойства flutter для всех подпроектов ДО их оценки
-gradle.beforeProject { project ->
-    // Инициализируем ext.flutter для всех подпроектов (включая плагины)
-    project.ext.flutter = [
+// Инициализация свойства flutter для всех подпроектов
+allprojects {
+    ext.flutter = [
         compileSdkVersion: 35,
         minSdkVersion: 21,
         targetSdkVersion: 35,
         versionCode: 1,
         versionName: "1.0.0"
     ]
+}
+
+// Также инициализируем ДО оценки проекта
+gradle.beforeProject { project ->
+    if (!project.hasProperty('flutter')) {
+        project.ext.flutter = [
+            compileSdkVersion: 35,
+            minSdkVersion: 21,
+            targetSdkVersion: 35,
+            versionCode: 1,
+            versionName: "1.0.0"
+        ]
+    }
 }
