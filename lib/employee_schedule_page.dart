@@ -78,6 +78,29 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
   Future<void> _loadAbbreviations() async {
     final List<ShopAbbreviation> abbreviations = [];
     
+    // Если кэш настроек пуст, загружаем настройки для каждого магазина
+    if (_shopSettingsCache.isEmpty) {
+      print('📥 Загрузка настроек магазинов...');
+      for (var shop in widget.shops) {
+        try {
+          final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shop.address)}';
+          final response = await http.get(Uri.parse(url)).timeout(
+            const Duration(seconds: 5),
+          );
+          
+          if (response.statusCode == 200) {
+            final result = jsonDecode(response.body);
+            if (result['success'] == true && result['settings'] != null) {
+              final settings = ShopSettings.fromJson(result['settings']);
+              _shopSettingsCache[shop.address] = settings;
+            }
+          }
+        } catch (e) {
+          print('❌ Ошибка загрузки настроек для магазина ${shop.address}: $e');
+        }
+      }
+    }
+    
     for (var shop in widget.shops) {
       final settings = _shopSettingsCache[shop.address];
       if (settings == null) continue;
@@ -110,7 +133,11 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
     
     setState(() {
       _allAbbreviations = abbreviations;
+      _isLoading = false;
     });
+    
+    // Загружаем существующие смены после загрузки аббревиатур
+    _loadExistingShifts();
   }
 
   void _loadExistingShifts() {
