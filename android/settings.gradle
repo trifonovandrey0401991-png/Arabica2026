@@ -27,8 +27,8 @@ include ":app"
 
 // Инициализация свойства flutter для всех подпроектов ДО их оценки
 gradle.beforeProject { project ->
-    if (project.name != 'app') {
-        // Инициализируем ext.flutter для всех подпроектов
+    // Инициализируем ext.flutter для всех подпроектов (включая плагины)
+    if (!project.hasProperty('flutter')) {
         project.ext.flutter = [
             compileSdkVersion: 35,
             minSdkVersion: 21,
