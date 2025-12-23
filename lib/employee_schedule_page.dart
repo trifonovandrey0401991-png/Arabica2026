@@ -239,8 +239,9 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
 
     try {
       final List<String> allWarnings = [];
+      final List<WorkScheduleEntry> entriesToSave = [];
       
-      // Сохраняем каждую выбранную смену
+      // Сначала проверяем валидацию для всех выбранных смен
       for (var entry in _selectedAbbreviations.entries) {
         final day = entry.key;
         final abbreviation = entry.value;
@@ -271,14 +272,13 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
           shiftType: abbrev.shiftType,
         );
         
+        entriesToSave.add(shiftEntry);
+        
         // Проверяем валидацию
         if (_schedule != null) {
           final warnings = WorkScheduleValidator.checkShiftConflict(shiftEntry, _schedule!);
           allWarnings.addAll(warnings);
         }
-        
-        // Сохраняем смену
-        await WorkScheduleService.saveShift(shiftEntry);
       }
       
       // Показываем предупреждения, если есть
@@ -294,6 +294,11 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
           });
           return;
         }
+      }
+      
+      // Сохраняем каждую выбранную смену
+      for (var shiftEntry in entriesToSave) {
+        await WorkScheduleService.saveShift(shiftEntry);
       }
       
       // Удаляем смены, которые были сняты
