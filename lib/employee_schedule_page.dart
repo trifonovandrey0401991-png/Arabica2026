@@ -122,6 +122,8 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
       
       try {
         final entry = _schedule!.getEntry(_employee.id, day);
+        if (entry == null) continue;
+        
         // Находим аббревиатуру для этой записи
         final abbrev = _allAbbreviations.firstWhere(
           (a) => a.shopAddress == entry.shopAddress && a.shiftType == entry.shiftType,
@@ -257,7 +259,9 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
         if (_schedule != null && _schedule!.hasEntry(_employee.id, day)) {
           try {
             final existingEntry = _schedule!.getEntry(_employee.id, day);
-            existingId = existingEntry.id;
+            if (existingEntry != null) {
+              existingId = existingEntry.id;
+            }
           } catch (e) {
             // Запись не найдена - создадим новую
           }
@@ -308,7 +312,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
           if (!_selectedAbbreviations.containsKey(day)) {
             try {
               final existingEntry = _schedule!.getEntry(_employee.id, day);
-              if (existingEntry.id.isNotEmpty) {
+              if (existingEntry != null && existingEntry.id.isNotEmpty) {
                 await WorkScheduleService.deleteShift(existingEntry.id);
               }
             } catch (e) {
@@ -457,7 +461,12 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
               children: _employee.preferredShops.map((shopId) {
                 final shop = widget.shops.firstWhere(
                   (s) => s.id == shopId || s.address == shopId,
-                  orElse: () => Shop(id: shopId, name: shopId, address: shopId),
+                  orElse: () => Shop(
+                    id: shopId,
+                    name: shopId,
+                    address: shopId,
+                    icon: Icons.store,
+                  ),
                 );
                 return Chip(
                   label: Text(shop.name),
