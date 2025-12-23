@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'shop_settings_model.dart';
 import 'work_schedule_validator.dart';
 import 'schedule_validation_dialog.dart';
+import 'employee_schedule_page.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -347,53 +348,72 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('График работы'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.date_range),
-            onPressed: _selectPeriod,
-            tooltip: 'Выбрать период',
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('График работы'),
+          backgroundColor: const Color(0xFF004D40),
+          bottom: TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: const [
+              Tab(text: 'График'),
+              Tab(text: 'По сотрудникам'),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _selectMonth,
-            tooltip: 'Выбрать месяц',
-          ),
-          if (_schedule != null)
+          actions: [
             IconButton(
-              icon: const Icon(Icons.copy_all),
-              onPressed: _showBulkOperations,
-              tooltip: 'Массовые операции',
+              icon: const Icon(Icons.date_range),
+              onPressed: _selectPeriod,
+              tooltip: 'Выбрать период',
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: _selectMonth,
+              tooltip: 'Выбрать месяц',
+            ),
+            if (_schedule != null)
+              IconButton(
+                icon: const Icon(Icons.copy_all),
+                onPressed: _showBulkOperations,
+                tooltip: 'Массовые операции',
+              ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Обновить',
+            ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Ошибка: $_error'),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadData,
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  )
+                : TabBarView(
                     children: [
-                      Text('Ошибка: $_error'),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadData,
-                        child: const Text('Повторить'),
-                      ),
+                      // Вкладка "График"
+                      _schedule == null
+                          ? const Center(child: Text('График не загружен'))
+                          : _buildCalendarGrid(),
+                      // Вкладка "По сотрудникам"
+                      _buildByEmployeesTab(),
                     ],
                   ),
-                )
-              : _schedule == null
-                  ? const Center(child: Text('График не загружен'))
-                  : _buildCalendarGrid(),
+      ),
     );
   }
 
@@ -676,6 +696,64 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
   String _getWeekdayName(int weekday) {
     const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
+  }
+
+  /// Строит вкладку "По сотрудникам"
+  Widget _buildByEmployeesTab() {
+    if (_employees.isEmpty) {
+      return const Center(
+        child: Text('Нет сотрудников'),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _employees.length,
+      itemBuilder: (context, index) {
+        final employee = _employees[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFF004D40),
+              child: Text(
+                employee.name.isNotEmpty
+                    ? employee.name[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            title: Text(
+              employee.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            subtitle: employee.phone != null
+                ? Text(employee.phone!)
+                : null,
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EmployeeSchedulePage(
+                    employee: employee,
+                    selectedMonth: _selectedMonth,
+                    startDay: _startDay,
+                    endDay: _endDay,
+                    shops: _shops,
+                    schedule: _schedule,
+                    shopSettingsCache: _shopSettingsCache,
+                    onScheduleUpdated: () => _loadData(),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }
 
