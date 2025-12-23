@@ -794,9 +794,29 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         replaceExisting: replaceExisting,
       );
 
-      // Сохраняем новые смены
+      // Сохраняем новые смены батчами по 50 записей
       if (newEntries.isNotEmpty) {
-        await WorkScheduleService.bulkCreateShifts(newEntries);
+        const batchSize = 50;
+        int savedCount = 0;
+        
+        for (int i = 0; i < newEntries.length; i += batchSize) {
+          final batch = newEntries.skip(i).take(batchSize).toList();
+          final success = await WorkScheduleService.bulkCreateShifts(batch);
+          if (success) {
+            savedCount += batch.length;
+          } else {
+            // Если батч не сохранился, пробуем сохранить по одной
+            for (var entry in batch) {
+              await WorkScheduleService.saveShift(entry);
+              savedCount++;
+            }
+          }
+          
+          // Небольшая задержка между батчами
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+        
+        print('✅ Сохранено смен: $savedCount из ${newEntries.length}');
       }
 
       // Закрываем индикатор загрузки
