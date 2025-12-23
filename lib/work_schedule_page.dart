@@ -614,7 +614,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     bool hasConflict = false;
     if (!isEmpty && _schedule != null && entry != null) {
       hasConflict = WorkScheduleValidator.hasConflictForCell(
-        entry,
+        employee.id,
+        date,
         _schedule!,
       );
     }
