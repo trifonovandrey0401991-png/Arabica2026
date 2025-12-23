@@ -1730,9 +1730,11 @@ app.post('/api/work-schedule/bulk', (req, res) => {
         entry.id = `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
-      // Удаляем старую запись для этого сотрудника и даты, если есть
+      // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
       schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => 
-        !(e.employeeId === entry.employeeId && e.date === entry.date)
+        !(e.employeeId === entry.employeeId && 
+          e.date === entry.date && 
+          e.shiftType === entry.shiftType)
       );
 
       // Добавляем новую запись
