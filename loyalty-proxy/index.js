@@ -1606,6 +1606,7 @@ app.get('/api/work-schedule', (req, res) => {
     }
 
     const schedule = loadSchedule(month);
+    console.log(`📥 Загружен график для ${month}: ${schedule.entries.length} записей`);
     res.json({ success: true, schedule });
   } catch (error) {
     console.error('Ошибка получения графика:', error);
@@ -1716,7 +1717,7 @@ app.post('/api/work-schedule/bulk', (req, res) => {
 
     // Группируем по месяцам
     const schedulesByMonth = {};
-    entries.forEach(entry => {
+    entries.forEach((entry, index) => {
       if (!entry.month) {
         // Извлекаем месяц из даты
         const date = new Date(entry.date);
@@ -1727,9 +1728,9 @@ app.post('/api/work-schedule/bulk', (req, res) => {
         schedulesByMonth[entry.month] = loadSchedule(entry.month);
       }
 
-      // Генерируем ID, если его нет
+      // Генерируем уникальный ID, если его нет
       if (!entry.id) {
-        entry.id = `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        entry.id = `entry_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
       // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
@@ -1742,17 +1743,26 @@ app.post('/api/work-schedule/bulk', (req, res) => {
       // Добавляем новую запись
       schedulesByMonth[entry.month].entries.push(entry);
     });
+    
+    console.log(`📊 Массовое создание: обработано ${entries.length} записей, сохранено в ${Object.keys(schedulesByMonth).length} месяцах`);
 
     // Сохраняем все графики
     let allSaved = true;
+    let totalSaved = 0;
     for (const month in schedulesByMonth) {
-      if (!saveSchedule(schedulesByMonth[month])) {
+      const schedule = schedulesByMonth[month];
+      if (saveSchedule(schedule)) {
+        totalSaved += schedule.entries.length;
+        console.log(`✅ Сохранен график для ${month}: ${schedule.entries.length} записей`);
+      } else {
         allSaved = false;
+        console.error(`❌ Ошибка сохранения графика для ${month}`);
       }
     }
 
     if (allSaved) {
-      res.json({ success: true, message: `Создано ${entries.length} смен` });
+      console.log(`✅ Всего сохранено записей в графиках: ${totalSaved}`);
+      res.json({ success: true, message: `Создано ${entries.length} смен, всего в графиках: ${totalSaved}` });
     } else {
       res.status(500).json({ success: false, error: 'Ошибка сохранения некоторых графиков' });
     }
