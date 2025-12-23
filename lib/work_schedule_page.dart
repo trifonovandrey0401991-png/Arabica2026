@@ -808,26 +808,42 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
         replaceExisting: replaceExisting,
       );
 
-      // Сохраняем новые смены батчами по 50 записей
+      // Сохраняем новые смены одним большим батчем
+      // Разбиваем на батчи только если записей очень много (больше 200)
       if (newEntries.isNotEmpty) {
-        const batchSize = 50;
         int savedCount = 0;
         
-        for (int i = 0; i < newEntries.length; i += batchSize) {
-          final batch = newEntries.skip(i).take(batchSize).toList();
-          final success = await WorkScheduleService.bulkCreateShifts(batch);
+        if (newEntries.length > 200) {
+          // Для больших объемов разбиваем на батчи
+          const batchSize = 100;
+          for (int i = 0; i < newEntries.length; i += batchSize) {
+            final batch = newEntries.skip(i).take(batchSize).toList();
+            final success = await WorkScheduleService.bulkCreateShifts(batch);
+            if (success) {
+              savedCount += batch.length;
+            } else {
+              // Если батч не сохранился, пробуем сохранить по одной
+              for (var entry in batch) {
+                await WorkScheduleService.saveShift(entry);
+                savedCount++;
+              }
+            }
+            
+            // Небольшая задержка между батчами
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+        } else {
+          // Для небольших объемов сохраняем все сразу
+          final success = await WorkScheduleService.bulkCreateShifts(newEntries);
           if (success) {
-            savedCount += batch.length;
+            savedCount = newEntries.length;
           } else {
-            // Если батч не сохранился, пробуем сохранить по одной
-            for (var entry in batch) {
+            // Если не сохранилось, пробуем по одной
+            for (var entry in newEntries) {
               await WorkScheduleService.saveShift(entry);
               savedCount++;
             }
           }
-          
-          // Небольшая задержка между батчами
-          await Future.delayed(const Duration(milliseconds: 100));
         }
         
         print('✅ Сохранено смен: $savedCount из ${newEntries.length}');
