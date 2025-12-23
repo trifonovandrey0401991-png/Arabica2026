@@ -18,6 +18,19 @@ allprojects {
     }
     
     // Инициализация свойства flutter для всех подпроектов
+    afterEvaluate { project ->
+        if (!project.hasProperty('flutter')) {
+            project.ext.flutter = [
+                compileSdkVersion: 35,
+                minSdkVersion: 21,
+                targetSdkVersion: 35,
+                versionCode: 1,
+                versionName: "1.0.0"
+            ]
+        }
+    }
+    
+    // Также устанавливаем напрямую
     ext.flutter = [
         compileSdkVersion: 35,
         minSdkVersion: 21,

@@ -25,9 +25,9 @@ plugins {
 
 include ":app"
 
-// Инициализация свойства flutter для всех подпроектов
-allprojects {
-    ext.flutter = [
+// Инициализация свойства flutter ДО загрузки проектов
+gradle.settingsEvaluated { settings ->
+    settings.rootProject.ext.flutter = [
         compileSdkVersion: 35,
         minSdkVersion: 21,
         targetSdkVersion: 35,
@@ -36,15 +36,24 @@ allprojects {
     ]
 }
 
-// Также инициализируем ДО оценки проекта
+// Инициализация для всех подпроектов
 gradle.beforeProject { project ->
-    if (!project.hasProperty('flutter')) {
-        project.ext.flutter = [
-            compileSdkVersion: 35,
-            minSdkVersion: 21,
-            targetSdkVersion: 35,
-            versionCode: 1,
-            versionName: "1.0.0"
-        ]
-    }
+    project.ext.flutter = [
+        compileSdkVersion: 35,
+        minSdkVersion: 21,
+        targetSdkVersion: 35,
+        versionCode: 1,
+        versionName: "1.0.0"
+    ]
+}
+
+// Также через allprojects для совместимости
+allprojects {
+    ext.flutter = [
+        compileSdkVersion: 35,
+        minSdkVersion: 21,
+        targetSdkVersion: 35,
+        versionCode: 1,
+        versionName: "1.0.0"
+    ]
 }
