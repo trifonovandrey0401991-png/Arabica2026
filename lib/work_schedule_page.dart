@@ -706,6 +706,145 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     return weekdays[weekday - 1];
   }
 
+  /// Показывает диалог автозаполнения
+  Future<void> _showAutoFillDialog() async {
+    if (_schedule == null || _employees.isEmpty || _shops.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Необходимо загрузить график, сотрудников и магазины'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => AutoFillScheduleDialog(
+        selectedMonth: _selectedMonth,
+        startDay: _startDay,
+        endDay: _endDay,
+        schedule: _schedule,
+        employees: _employees,
+        shops: _shops,
+        shopSettingsCache: _shopSettingsCache,
+      ),
+    );
+
+    if (result != null) {
+      await _performAutoFill(result);
+    }
+  }
+
+  /// Выполняет автозаполнение графика
+  Future<void> _performAutoFill(Map<String, dynamic> options) async {
+    final startDay = options['startDay'] as int;
+    final endDay = options['endDay'] as int;
+    final replaceExisting = options['replaceExisting'] as bool;
+
+    // Показываем индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Выполняется автозаполнение...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Вычисляем даты начала и конца периода
+      final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, startDay);
+      final endDate = DateTime(_selectedMonth.year, _selectedMonth.month, endDay);
+
+      // Если режим "Заменить", удаляем существующие смены в периоде
+      if (replaceExisting && _schedule != null) {
+        final entriesToDelete = _schedule!.entries.where((e) {
+          final entryDate = DateTime(e.date.year, e.date.month, e.date.day);
+          return entryDate.isAfter(startDate.subtract(const Duration(days: 1))) &&
+                 entryDate.isBefore(endDate.add(const Duration(days: 1)));
+        }).toList();
+
+        for (var entry in entriesToDelete) {
+          if (entry.id.isNotEmpty) {
+            await WorkScheduleService.deleteShift(entry.id);
+          }
+        }
+      }
+
+      // Выполняем автозаполнение
+      final newEntries = await AutoFillScheduleService.autoFill(
+        startDate: startDate,
+        endDate: endDate,
+        employees: _employees,
+        shops: _shops,
+        shopSettingsCache: _shopSettingsCache,
+        existingSchedule: _schedule,
+        replaceExisting: replaceExisting,
+      );
+
+      // Сохраняем новые смены
+      if (newEntries.isNotEmpty) {
+        await WorkScheduleService.bulkCreateShifts(newEntries);
+      }
+
+      // Закрываем индикатор загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Обновляем график
+      await _loadData();
+
+      // Показываем результаты
+      if (mounted) {
+        _showAutoFillResults(newEntries.length);
+      }
+    } catch (e) {
+      // Закрываем индикатор загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка автозаполнения: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Показывает результаты автозаполнения
+  void _showAutoFillResults(int entriesCount) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Автозаполнение завершено'),
+        content: Text('Создано смен: $entriesCount'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('ОК'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Строит вкладку "По сотрудникам"
   Widget _buildByEmployeesTab() {
     if (_employees.isEmpty) {
