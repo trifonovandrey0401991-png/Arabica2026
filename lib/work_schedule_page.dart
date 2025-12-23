@@ -9,6 +9,8 @@ import 'employees_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'shop_settings_model.dart';
+import 'work_schedule_validator.dart';
+import 'schedule_validation_dialog.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -149,6 +151,19 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
           print('   shopAddress: ${entry.shopAddress}');
           print('   date: ${entry.date}');
           print('   shiftType: ${entry.shiftType.name}');
+
+          // Проверяем валидацию перед сохранением
+          final warnings = _validateShiftBeforeSave(entry);
+          
+          // Если есть предупреждения, показываем диалог
+          if (warnings.isNotEmpty) {
+            final shouldSave = await _showValidationWarning(warnings);
+            if (!shouldSave) {
+              // Пользователь отменил сохранение
+              print('❌ Пользователь отменил сохранение из-за предупреждений');
+              return;
+            }
+          }
 
           final success = await WorkScheduleService.saveShift(entry);
           if (success) {
@@ -306,6 +321,30 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     }
   }
 
+  /// Проверяет валидность дня по правилу 1 (наличие утренней и вечерней смен на всех магазинах)
+  bool _isDayValid(DateTime day) {
+    if (_schedule == null || _shops.isEmpty) return false;
+    return WorkScheduleValidator.isDayComplete(day, _shops, _schedule!);
+  }
+
+  /// Проверяет конфликты перед сохранением смены
+  List<String> _validateShiftBeforeSave(WorkScheduleEntry entry) {
+    if (_schedule == null) return [];
+    return WorkScheduleValidator.checkShiftConflict(entry, _schedule!);
+  }
+
+  /// Показывает диалог с предупреждениями валидации
+  Future<bool> _showValidationWarning(List<String> warnings) async {
+    if (warnings.isEmpty) return true;
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ScheduleValidationDialog(warnings: warnings),
+    );
+    
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -457,38 +496,41 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
                 ),
               ),
             ),
-            ...days.map((day) => TableCell(
-                  verticalAlignment: TableCellVerticalAlignment.middle,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${day.day}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _getWeekdayName(day.weekday),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+            ...days.map((day) {
+              final isValid = _isDayValid(day);
+              return TableCell(
+                verticalAlignment: TableCellVerticalAlignment.middle,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isValid ? Colors.green[100] : Colors.grey[300],
                   ),
-                )),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${day.day}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _getWeekdayName(day.weekday),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ],
         ),
         // Строки для каждого сотрудника
@@ -539,6 +581,16 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
     final abbreviation = entry != null ? _getAbbreviationForEntry(entry) : null;
     final employeeIndex = _employees.indexWhere((e) => e.id == employee.id);
     final isEven = employeeIndex % 2 == 0;
+    
+    // Проверяем наличие конфликта для этой ячейки
+    bool hasConflict = false;
+    if (!isEmpty && _schedule != null) {
+      hasConflict = WorkScheduleValidator.hasConflictForCell(
+        employee.id,
+        date,
+        _schedule!,
+      );
+    }
 
     return InkWell(
       onTap: () {
@@ -558,24 +610,46 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
           border: isEmpty
               ? null
               : Border.all(
-                  color: entry.shiftType.color,
-                  width: 1.5,
+                  color: hasConflict ? Colors.red : entry.shiftType.color,
+                  width: hasConflict ? 2.0 : 1.5,
                 ),
         ),
         child: isEmpty
             ? const SizedBox()
-            : Center(
-                child: Text(
-                  abbreviation ?? entry.shiftType.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: entry.shiftType.color,
+            : Stack(
+                children: [
+                  Center(
+                    child: Text(
+                      abbreviation ?? entry.shiftType.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: entry.shiftType.color,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  // Иконка предупреждения для конфликтов
+                  if (hasConflict)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.warning,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                ],
               ),
       ),
     );
