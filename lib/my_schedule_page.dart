@@ -27,41 +27,83 @@ class _MySchedulePageState extends State<MySchedulePage> {
     _loadEmployeeId();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Автоматическое обновление при открытии страницы
+    if (_employeeId != null && _schedule == null && !_isLoading) {
+      _loadSchedule();
+    }
+  }
+
   Future<void> _loadEmployeeId() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      // Получаем имя сотрудника из системы
-      final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-      if (systemEmployeeName == null) {
+      print('🔍 Начало загрузки данных сотрудника...');
+      
+      // Используем новый метод для получения employeeId (основной способ)
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      
+      if (employeeId == null) {
+        print('❌ Не удалось определить ID сотрудника');
         setState(() {
-          _error = 'Не удалось определить сотрудника';
+          _error = 'Не удалось определить сотрудника. Убедитесь, что вы вошли в систему.';
           _isLoading = false;
         });
         return;
       }
 
-      // Загружаем список сотрудников и находим ID по имени
-      final employees = await EmployeeService.getEmployees();
-      final employee = employees.firstWhere(
-        (e) => e.name == systemEmployeeName,
-        orElse: () => throw StateError('Employee not found'),
-      );
+      print('✅ Получен employeeId: $employeeId');
 
-      setState(() {
-        _employeeId = employee.id;
-        _employeeName = employee.name;
-      });
+      // Получаем имя сотрудника
+      final employeeName = await EmployeesPage.getCurrentEmployeeName();
+      
+      // Если имя не получено, загружаем из списка сотрудников
+      String? name = employeeName;
+      if (name == null) {
+        print('⚠️ Имя не получено, загружаем из списка сотрудников...');
+        final employees = await EmployeeService.getEmployees();
+        try {
+          final employee = employees.firstWhere((e) => e.id == employeeId);
+          name = employee.name;
+          print('✅ Имя получено из списка: $name');
+        } catch (e) {
+          print('❌ Сотрудник не найден в списке: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _employeeId = employeeId;
+          _employeeName = name ?? 'Неизвестно';
+        });
+        print('✅ Данные сотрудника загружены: ID=$employeeId, имя=$name');
+      }
 
       await _loadSchedule();
     } catch (e) {
-      setState(() {
-        _error = 'Ошибка загрузки данных: $e';
-        _isLoading = false;
-      });
+      print('❌ Ошибка загрузки данных сотрудника: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Ошибка загрузки данных: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadSchedule() async {
-    if (_employeeId == null) return;
+    if (_employeeId == null) {
+      print('⚠️ _loadSchedule: employeeId равен null');
+      return;
+    }
+
+    print('📅 Загрузка графика для сотрудника: $_employeeId');
+    print('   Месяц: ${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}');
 
     setState(() {
       _isLoading = true;
@@ -74,6 +116,8 @@ class _MySchedulePageState extends State<MySchedulePage> {
         _selectedMonth,
       );
 
+      print('✅ График загружен: ${schedule.entries.length} записей');
+
       if (mounted) {
         setState(() {
           _schedule = schedule;
@@ -81,9 +125,10 @@ class _MySchedulePageState extends State<MySchedulePage> {
         });
       }
     } catch (e) {
+      print('❌ Ошибка загрузки графика: $e');
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = 'Ошибка загрузки графика: ${e.toString()}';
           _isLoading = false;
         });
       }
@@ -163,8 +208,45 @@ class _MySchedulePageState extends State<MySchedulePage> {
                   ),
                 )
               : _schedule == null
-                  ? const Center(child: Text('График не загружен'))
-                  : _buildCalendarView(),
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.calendar_today, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'График не загружен',
+                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: _loadSchedule,
+                            child: const Text('Обновить'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _schedule!.entries.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.event_busy, size: 64, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              Text(
+                                'На ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year} смен не назначено',
+                                style: const TextStyle(fontSize: 18, color: Colors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              ElevatedButton(
+                                onPressed: _loadSchedule,
+                                child: const Text('Обновить'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _buildCalendarView(),
     );
   }
 
@@ -230,14 +312,47 @@ class _MySchedulePageState extends State<MySchedulePage> {
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${entry.shiftType.label} (${entry.shiftType.timeRange})',
-                              style: TextStyle(
-                                color: entry.shiftType.color,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  size: 16,
+                                  color: entry.shiftType.color,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${entry.shiftType.label} (${entry.shiftType.timeRange})',
+                                  style: TextStyle(
+                                    color: entry.shiftType.color,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(entry.shopAddress),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.store,
+                                  size: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    entry.shopAddress,
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         )
                       : const Text('Выходной', style: TextStyle(color: Colors.grey)),

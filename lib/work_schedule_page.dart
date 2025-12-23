@@ -128,21 +128,70 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
       if (result != null) {
         if (result['action'] == 'save') {
           final entry = result['entry'] as WorkScheduleEntry;
+          
+          // Валидация перед сохранением
+          if (entry.employeeId.isEmpty) {
+            print('❌ КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой!');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ошибка: не указан сотрудник'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            return;
+          }
+
+          print('💾 Сохранение смены на сервер:');
+          print('   employeeId: ${entry.employeeId}');
+          print('   employeeName: ${entry.employeeName}');
+          print('   shopAddress: ${entry.shopAddress}');
+          print('   date: ${entry.date}');
+          print('   shiftType: ${entry.shiftType.name}');
+
           final success = await WorkScheduleService.saveShift(entry);
-          if (success && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Смена сохранена')),
-            );
+          if (success) {
+            print('✅ Смена успешно сохранена на сервер');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Смена сохранена')),
+              );
+            }
             await _loadData();
+          } else {
+            print('❌ Ошибка сохранения смены на сервер');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ошибка сохранения смены'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         } else if (result['action'] == 'delete') {
           final entry = result['entry'] as WorkScheduleEntry;
+          print('🗑️ Удаление смены: ${entry.id}');
           final success = await WorkScheduleService.deleteShift(entry.id);
-          if (success && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Смена удалена')),
-            );
+          if (success) {
+            print('✅ Смена успешно удалена');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Смена удалена')),
+              );
+            }
             await _loadData();
+          } else {
+            print('❌ Ошибка удаления смены');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ошибка удаления смены'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         }
       }

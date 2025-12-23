@@ -141,35 +141,97 @@ class Employee {
 class EmployeesPage extends StatefulWidget {
   const EmployeesPage({super.key});
 
-  /// Получить имя текущего сотрудника из меню "Сотрудники"
-  /// Это единый источник истины для имени сотрудника во всем приложении
-  static Future<String?> getCurrentEmployeeName() async {
+  /// Получить ID текущего сотрудника (основной способ)
+  /// Сначала проверяет сохраненный employeeId, затем ищет по телефону
+  static Future<String?> getCurrentEmployeeId() async {
     try {
-      // Получаем телефон текущего пользователя
       final prefs = await SharedPreferences.getInstance();
+      
+      // 1. Пытаемся получить сохраненный employeeId (основной способ)
+      final savedEmployeeId = prefs.getString('currentEmployeeId');
+      if (savedEmployeeId != null && savedEmployeeId.isNotEmpty) {
+        print('✅ Найден сохраненный employeeId: $savedEmployeeId');
+        // Проверяем, что сотрудник все еще существует
+        try {
+          final employees = await EmployeeService.getEmployees();
+          final employee = employees.firstWhere((e) => e.id == savedEmployeeId);
+          print('✅ Сотрудник найден по сохраненному ID: ${employee.name}');
+          return savedEmployeeId;
+        } catch (e) {
+          print('⚠️ Сотрудник с сохраненным ID не найден, ищем по телефону');
+          // Удаляем невалидный ID
+          await prefs.remove('currentEmployeeId');
+        }
+      }
+      
+      // 2. Резервный способ: ищем по телефону
+      print('📞 Поиск сотрудника по телефону...');
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
       
       if (phone == null || phone.isEmpty) {
+        print('❌ Телефон не найден в SharedPreferences');
         return null;
       }
       
       // Нормализуем телефон (убираем пробелы и +)
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      print('📞 Нормализованный телефон: $normalizedPhone');
       
       // Загружаем список сотрудников
       final employees = await loadEmployeesForNotifications();
+      print('📋 Загружено сотрудников для поиска: ${employees.length}');
       
       // Ищем сотрудника по телефону
       for (var employee in employees) {
         if (employee.phone != null) {
           final employeePhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
           if (employeePhone == normalizedPhone) {
-            return employee.name;
+            print('✅ Сотрудник найден по телефону: ${employee.name} (ID: ${employee.id})');
+            // Сохраняем employeeId для будущего использования
+            await prefs.setString('currentEmployeeId', employee.id);
+            await prefs.setString('currentEmployeeName', employee.name);
+            print('💾 Сохранен employeeId: ${employee.id}');
+            return employee.id;
           }
         }
       }
       
+      print('❌ Сотрудник не найден по телефону');
       return null;
+    } catch (e) {
+      print('❌ Ошибка получения ID текущего сотрудника: $e');
+      return null;
+    }
+  }
+
+  /// Получить имя текущего сотрудника из меню "Сотрудники"
+  /// Это единый источник истины для имени сотрудника во всем приложении
+  static Future<String?> getCurrentEmployeeName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 1. Пытаемся получить сохраненное имя
+      final savedName = prefs.getString('currentEmployeeName');
+      if (savedName != null && savedName.isNotEmpty) {
+        print('✅ Найдено сохраненное имя сотрудника: $savedName');
+        return savedName;
+      }
+      
+      // 2. Получаем ID и затем имя
+      final employeeId = await getCurrentEmployeeId();
+      if (employeeId == null) {
+        return null;
+      }
+      
+      final employees = await EmployeeService.getEmployees();
+      final employee = employees.firstWhere(
+        (e) => e.id == employeeId,
+        orElse: () => throw StateError('Employee not found'),
+      );
+      
+      // Сохраняем имя
+      await prefs.setString('currentEmployeeName', employee.name);
+      return employee.name;
     } catch (e) {
       print('❌ Ошибка получения имени текущего сотрудника: $e');
       return null;

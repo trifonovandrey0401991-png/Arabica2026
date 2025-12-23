@@ -216,12 +216,41 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
   }
 
   void _save() {
-    if (_selectedAbbreviation == null) return;
+    if (_selectedAbbreviation == null) {
+      print('❌ Аббревиатура не выбрана');
+      return;
+    }
+
+    // Валидация employeeId
+    if (widget.employeeId.isEmpty) {
+      print('❌ Ошибка: employeeId пустой');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ошибка: не указан сотрудник'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Валидация employeeName
+    if (widget.employeeName.isEmpty) {
+      print('❌ Ошибка: employeeName пустой');
+    }
+
+    print('💾 Сохранение смены:');
+    print('   employeeId: ${widget.employeeId}');
+    print('   employeeName: ${widget.employeeName}');
+    print('   date: ${widget.date.day}.${widget.date.month}.${widget.date.year}');
+    print('   selectedAbbreviation: $_selectedAbbreviation');
 
     // Находим выбранную аббревиатуру
     final selectedAbbrev = _abbreviations.firstWhere(
       (a) => a.abbreviation == _selectedAbbreviation,
     );
+
+    print('   shopAddress: ${selectedAbbrev.shopAddress}');
+    print('   shiftType: ${selectedAbbrev.shiftType.name}');
 
     // Создаем запись
     final entry = WorkScheduleEntry(
@@ -232,6 +261,26 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
       date: widget.date,
       shiftType: selectedAbbrev.shiftType,
     );
+
+    // Дополнительная валидация созданной записи
+    if (entry.employeeId.isEmpty) {
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой в созданной записи!');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ошибка: не удалось создать запись'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    print('✅ Запись создана успешно:');
+    print('   ID: ${entry.id}');
+    print('   employeeId: ${entry.employeeId}');
+    print('   employeeName: ${entry.employeeName}');
+    print('   shopAddress: ${entry.shopAddress}');
+    print('   date: ${entry.date}');
+    print('   shiftType: ${entry.shiftType.name}');
 
     Navigator.of(context).pop({
       'action': 'save',
