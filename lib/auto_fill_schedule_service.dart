@@ -53,25 +53,31 @@ class AutoFillScheduleService {
         final settings = shopSettingsCache[shop.address];
         if (settings == null) continue;
 
-        // Определяем необходимые смены (утро и вечер)
-        final requiredShifts = <ShiftType>[];
+        // Всегда заполняем утро и вечер для каждого магазина в каждый день
+        final requiredShifts = <ShiftType>[
+          ShiftType.morning,
+          ShiftType.evening,
+        ];
         
-        // Проверяем, есть ли уже смены для этого магазина в этот день
-        final existingShifts = workingSchedule.entries.where((e) =>
-          e.date.year == day.year &&
-          e.date.month == day.month &&
-          e.date.day == day.day &&
-          e.shopAddress == shop.address
-        ).toList();
+        // Если режим "Заполнить пустые", проверяем существующие смены
+        if (!replaceExisting) {
+          final existingShifts = workingSchedule.entries.where((e) =>
+            e.date.year == day.year &&
+            e.date.month == day.month &&
+            e.date.day == day.day &&
+            e.shopAddress == shop.address
+          ).toList();
 
-        final hasMorning = existingShifts.any((e) => e.shiftType == ShiftType.morning);
-        final hasEvening = existingShifts.any((e) => e.shiftType == ShiftType.evening);
+          final hasMorning = existingShifts.any((e) => e.shiftType == ShiftType.morning);
+          final hasEvening = existingShifts.any((e) => e.shiftType == ShiftType.evening);
 
-        if (!hasMorning) {
-          requiredShifts.add(ShiftType.morning);
-        }
-        if (!hasEvening) {
-          requiredShifts.add(ShiftType.evening);
+          // Убираем смены, которые уже есть
+          if (hasMorning) {
+            requiredShifts.remove(ShiftType.morning);
+          }
+          if (hasEvening) {
+            requiredShifts.remove(ShiftType.evening);
+          }
         }
 
         // Заполняем необходимые смены
