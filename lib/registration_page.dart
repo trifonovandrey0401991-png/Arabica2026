@@ -77,20 +77,46 @@ class _RegistrationPageState extends State<RegistrationPage> {
               } catch (e) {
                 Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e');
               }
+            } else {
+              print('✅ Пользователь является ${roleData.role.name}, не регистрируем как клиента');
             }
           } catch (e) {
             print('⚠️ Ошибка проверки роли: $e');
-            // Продолжаем без роли (по умолчанию клиент)
-            // Сохраняем данные о клиенте на сервере (по умолчанию считаем клиентом)
+            // При ошибке проверки роли, пытаемся проверить через API сотрудников
             try {
-              await RegistrationService.saveClientToServer(
-                phone: existingUser.phone,
-                name: existingUser.name,
-                clientName: existingUser.name,
-              );
-              Logger.debug('✅ Данные существующего клиента сохранены на сервере (без роли)');
-            } catch (e) {
-              Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e');
+              final apiRole = await UserRoleService.checkEmployeeViaAPI(existingUser.phone);
+              if (apiRole != null) {
+                print('✅ Сотрудник найден через API после ошибки проверки роли');
+                await UserRoleService.saveUserRole(apiRole);
+                await prefs.setString('user_name', apiRole.displayName);
+                print('✅ Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
+              } else {
+                // Если не найден как сотрудник, регистрируем как клиента
+                print('ℹ️ Пользователь не найден как сотрудник, регистрируем как клиента');
+                try {
+                  await RegistrationService.saveClientToServer(
+                    phone: existingUser.phone,
+                    name: existingUser.name,
+                    clientName: existingUser.name,
+                  );
+                  Logger.debug('✅ Данные существующего клиента сохранены на сервере (без роли)');
+                } catch (e2) {
+                  Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e2');
+                }
+              }
+            } catch (apiError) {
+              print('⚠️ Ошибка проверки через API сотрудников: $apiError');
+              // В случае ошибки API тоже регистрируем как клиента
+              try {
+                await RegistrationService.saveClientToServer(
+                  phone: existingUser.phone,
+                  name: existingUser.name,
+                  clientName: existingUser.name,
+                );
+                Logger.debug('✅ Данные существующего клиента сохранены на сервере (ошибка API)');
+              } catch (e2) {
+                Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e2');
+              }
             }
           }
 
@@ -135,9 +161,26 @@ class _RegistrationPageState extends State<RegistrationPage> {
           await UserRoleService.saveUserRole(roleData);
           // Обновляем имя, если нужно (из столбца G для сотрудников/админов)
           await prefs.setString('user_name', roleData.displayName);
+          
+          // Если это сотрудник или админ, не сохраняем как клиента
+          if (roleData.role.name != 'client') {
+            print('✅ Пользователь является ${roleData.role.name}, не регистрируем как клиента');
+          }
         } catch (e) {
           print('⚠️ Ошибка проверки роли при регистрации: $e');
-          // Продолжаем без роли (по умолчанию клиент)
+          // При ошибке проверки роли, пытаемся проверить через API сотрудников
+          try {
+            final apiRole = await UserRoleService.checkEmployeeViaAPI(loyaltyInfo.phone);
+            if (apiRole != null) {
+              print('✅ Сотрудник найден через API при регистрации');
+              await UserRoleService.saveUserRole(apiRole);
+              await prefs.setString('user_name', apiRole.displayName);
+              print('✅ Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
+            }
+          } catch (apiError) {
+            print('⚠️ Ошибка проверки через API сотрудников при регистрации: $apiError');
+            // Продолжаем без роли (по умолчанию клиент)
+          }
         }
 
         if (mounted) {

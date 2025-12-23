@@ -6,17 +6,98 @@ import 'google_script_config.dart';
 
 /// Сервис для работы с ролями пользователей
 class UserRoleService {
+  /// Проверить, является ли пользователь сотрудником через API
+  static Future<UserRoleData?> checkEmployeeViaAPI(String phone) async {
+    try {
+      // Нормализуем номер телефона: убираем + и пробелы, оставляем только цифры
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      
+      print('🔍 Проверка сотрудника через API с номером: $normalizedPhone');
+      
+      // Загружаем список сотрудников с сервера
+      final uri = Uri.parse('https://arabica26.ru/api/employees');
+      final response = await http.get(uri).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Таймаут при получении списка сотрудников');
+        },
+      );
+
+      if (response.statusCode != 200) {
+        print('⚠️ Ошибка получения списка сотрудников: ${response.statusCode}');
+        return null;
+      }
+
+      final data = jsonDecode(response.body);
+      if (data['success'] != true || data['employees'] == null) {
+        print('⚠️ Неверный формат ответа от API сотрудников');
+        return null;
+      }
+
+      final employees = data['employees'] as List;
+      print('📋 Загружено сотрудников: ${employees.length}');
+
+      // Ищем сотрудника по телефону
+      for (var emp in employees) {
+        final empPhone = emp['phone']?.toString().trim();
+        if (empPhone != null && empPhone.isNotEmpty) {
+          final empNormalizedPhone = empPhone.replaceAll(RegExp(r'[\s\+]'), '');
+          if (empNormalizedPhone == normalizedPhone) {
+            final employeeName = emp['name']?.toString().trim() ?? '';
+            final isAdmin = emp['isAdmin'] == true || emp['isAdmin'] == 1 || emp['isAdmin'] == '1';
+            
+            print('✅ Сотрудник найден через API:');
+            print('   ID: ${emp['id']}');
+            print('   Имя: $employeeName');
+            print('   Админ: $isAdmin');
+            
+            // Сохраняем employeeId для последующего использования
+            if (emp['id'] != null) {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('currentEmployeeId', emp['id'].toString());
+              await prefs.setString('currentEmployeeName', employeeName);
+              print('💾 Сохранен employeeId: ${emp['id']}');
+            }
+            
+            return UserRoleData(
+              role: isAdmin ? UserRole.admin : UserRole.employee,
+              displayName: employeeName,
+              phone: normalizedPhone,
+              employeeName: employeeName,
+            );
+          }
+        }
+      }
+      
+      print('ℹ️ Сотрудник не найден через API');
+      return null;
+    } catch (e) {
+      print('⚠️ Ошибка проверки сотрудника через API: $e');
+      return null;
+    }
+  }
+
   /// Получить роль пользователя по номеру телефона
   static Future<UserRoleData> getUserRole(String phone) async {
     try {
       // Нормализуем номер телефона: убираем + и пробелы, оставляем только цифры
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
       
+      print('🔍 Проверка роли пользователя с номером: $normalizedPhone');
+      
+      // СНАЧАЛА проверяем через API сотрудников (для сотрудников, созданных через API)
+      final apiRole = await checkEmployeeViaAPI(phone);
+      if (apiRole != null) {
+        print('✅ Роль определена через API: ${apiRole.role.name}');
+        return apiRole;
+      }
+      
+      // ЕСЛИ не найден через API, проверяем через Google Sheets
+      print('📊 Проверка роли через Google Sheets...');
       final uri = Uri.parse(
         '$googleScriptUrl?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
       );
       
-      print('🔍 Проверка роли пользователя с номером: $normalizedPhone');
       print('🔗 URL запроса: $uri');
 
       final response = await http.get(uri).timeout(
@@ -67,7 +148,7 @@ class UserRoleService {
         displayName = employeeName;
       }
 
-      print('✅ Роль определена: ${role.name}');
+      print('✅ Роль определена через Google Sheets: ${role.name}');
       print('   Имя для отображения: $displayName');
       if (employeeName != null) {
         print('   Имя сотрудника (G): $employeeName');
