@@ -316,11 +316,25 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> {
 
   WorkScheduleEntry? _getEntryForEmployeeAndDate(String employeeId, DateTime date) {
     if (_schedule == null) return null;
+    
+    // Используем hasEntry для проверки, чтобы избежать исключений
+    if (!_schedule!.hasEntry(employeeId, date)) {
+      return null;
+    }
+    
     try {
       return _schedule!.getEntry(employeeId, date);
     } catch (e) {
-      // Запись не найдена - это нормально (выходной)
-      return null;
+      // Если все же произошла ошибка, ищем вручную
+      try {
+        final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        return _schedule!.entries.firstWhere(
+          (e) => e.employeeId == employeeId && 
+                 e.date.toIso8601String().split('T')[0] == dateStr,
+        );
+      } catch (e2) {
+        return null;
+      }
     }
   }
 
