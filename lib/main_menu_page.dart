@@ -17,6 +17,7 @@ import 'test_page.dart';
 import 'shift_shop_selection_page.dart';
 import 'shift_reports_list_page.dart';
 import 'shift_sync_service.dart';
+import 'suppliers_page.dart';
 import 'rko_service.dart';
 import 'recipes_list_page.dart';
 import 'recipe_edit_page.dart';
