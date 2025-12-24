@@ -12,6 +12,7 @@ import 'user_role_service.dart';
 import 'user_role_model.dart';
 import 'rko_type_selection_page.dart';
 import 'employee_registration_service.dart';
+import 'my_schedule_page.dart';
 
 /// Страница панели работника
 class EmployeePanelPage extends StatefulWidget {
@@ -144,6 +145,18 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const RecipesListPage()),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Мой график',
+            icon: Icons.calendar_month,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MySchedulePage()),
               );
             },
           ),

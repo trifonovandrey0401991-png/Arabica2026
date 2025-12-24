@@ -439,15 +439,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Мой график - для сотрудников и админов (просмотр личного графика)
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.calendar_month, 'Мой график', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MySchedulePage()),
-        );
-      }));
-    }
 
     print('🔵 Всего кнопок в меню: ${items.length}');
 
