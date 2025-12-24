@@ -244,13 +244,8 @@ class _SuppliersPageState extends State<SuppliersPage> {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
-          ),
+        decoration: const BoxDecoration(
+          color: Color(0xFF004D40),
         ),
         child: _isLoading
             ? const Center(
