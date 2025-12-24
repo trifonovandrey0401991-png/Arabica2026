@@ -439,16 +439,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // График работы - только админ (управление графиком сотрудников)
-    if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.calendar_today, 'График работы', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const WorkSchedulePage()),
-        );
-      }));
-    }
-
     // Мой график - для сотрудников и админов (просмотр личного графика)
     if (role == UserRole.employee || role == UserRole.admin) {
       items.add(_tile(context, Icons.calendar_month, 'Мой график', () {
