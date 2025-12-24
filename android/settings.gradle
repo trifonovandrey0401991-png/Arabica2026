@@ -27,22 +27,29 @@ include ":app"
 
 // Инициализация свойства flutter ДО загрузки проектов
 gradle.settingsEvaluated { settings ->
-    try {
-        settings.rootProject.ext.flutter = [
-            compileSdkVersion: 35,
-            minSdkVersion: 21,
-            targetSdkVersion: 35,
-            versionCode: 1,
-            versionName: "1.0.0"
-        ]
-    } catch (e) {
-        // Игнорируем ошибку, если ext недоступен
-    }
+    settings.rootProject.ext.flutter = [
+        compileSdkVersion: 35,
+        minSdkVersion: 21,
+        targetSdkVersion: 35,
+        versionCode: 1,
+        versionName: "1.0.0"
+    ]
 }
 
 // Инициализация для всех подпроектов
 gradle.beforeProject { project ->
     project.ext.flutter = [
+        compileSdkVersion: 35,
+        minSdkVersion: 21,
+        targetSdkVersion: 35,
+        versionCode: 1,
+        versionName: "1.0.0"
+    ]
+}
+
+// Также через allprojects для совместимости
+allprojects {
+    ext.flutter = [
         compileSdkVersion: 35,
         minSdkVersion: 21,
         targetSdkVersion: 35,
