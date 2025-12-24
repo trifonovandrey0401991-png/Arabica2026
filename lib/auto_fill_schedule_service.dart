@@ -239,22 +239,28 @@ class AutoFillScheduleService {
     ShiftType shiftType,
     WorkSchedule schedule,
   ) {
-    // Проверяем конфликты
+    // Проверяем конфликты (утро после вечера предыдущего дня)
     if (_hasConflict(employee, day, shiftType, schedule)) {
       return false;
     }
 
-    // Проверяем, не занят ли сотрудник в этот день
-    final hasShift = schedule.entries.any((e) =>
+    // Проверяем, не занят ли сотрудник в эту конкретную смену (утро/вечер) в этот день
+    final hasThisShift = schedule.entries.any((e) =>
       e.employeeId == employee.id &&
       e.date.year == day.year &&
       e.date.month == day.month &&
-      e.date.day == day.day
+      e.date.day == day.day &&
+      e.shiftType == shiftType
     );
 
-    // Разрешаем несколько смен подряд, если это не нарушает правило "утро после вечера"
-    if (hasShift && shiftType == ShiftType.morning) {
-      // Проверяем, не работал ли сотрудник вечером предыдущего дня
+    // Если уже есть такая же смена, нельзя назначить еще раз
+    if (hasThisShift) {
+      return false;
+    }
+
+    // Разрешаем утреннюю и вечернюю смены в один день для одного сотрудника
+    // Но проверяем правило "утро после вечера предыдущего дня"
+    if (shiftType == ShiftType.morning) {
       final previousDay = day.subtract(const Duration(days: 1));
       final workedEvening = schedule.entries.any((e) =>
         e.employeeId == employee.id &&
