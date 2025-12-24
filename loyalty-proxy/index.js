@@ -697,6 +697,285 @@ app.get('/api/employee-registrations', async (req, res) => {
   }
 });
 
+// ========== API для сотрудников ==========
+
+const EMPLOYEES_DIR = '/var/www/employees';
+
+// GET /api/employees - получить всех сотрудников
+app.get('/api/employees', (req, res) => {
+  try {
+    console.log('GET /api/employees');
+    
+    const employees = [];
+    
+    if (!fs.existsSync(EMPLOYEES_DIR)) {
+      fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
+    }
+    
+    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    
+    for (const file of files) {
+      try {
+        const filePath = path.join(EMPLOYEES_DIR, file);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const employee = JSON.parse(content);
+        employees.push(employee);
+      } catch (e) {
+        console.error(`Ошибка чтения файла ${file}:`, e);
+      }
+    }
+    
+    // Сортируем по дате создания (новые первыми)
+    employees.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA;
+    });
+    
+    res.json({ success: true, employees });
+  } catch (error) {
+    console.error('Ошибка получения сотрудников:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/employees/:id - получить сотрудника по ID
+app.get('/api/employees/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log('GET /api/employees:', id);
+    
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    if (!fs.existsSync(employeeFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Сотрудник не найден'
+      });
+    }
+    
+    const content = fs.readFileSync(employeeFile, 'utf8');
+    const employee = JSON.parse(content);
+    
+    res.json({ success: true, employee });
+  } catch (error) {
+    console.error('Ошибка получения сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/employees - создать нового сотрудника
+app.post('/api/employees', async (req, res) => {
+  try {
+    console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
+    
+    if (!fs.existsSync(EMPLOYEES_DIR)) {
+      fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
+    }
+    
+    // Валидация обязательных полей
+    if (!req.body.name || req.body.name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Имя сотрудника обязательно'
+      });
+    }
+    
+    // Генерируем ID если не указан
+    const id = req.body.id || `employee_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    const employee = {
+      id: sanitizedId,
+      name: req.body.name.trim(),
+      position: req.body.position || null,
+      department: req.body.department || null,
+      phone: req.body.phone || null,
+      email: req.body.email || null,
+      isAdmin: req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1,
+      employeeName: req.body.employeeName || null,
+      preferredWorkDays: req.body.preferredWorkDays || [],
+      preferredShops: req.body.preferredShops || [],
+      shiftPreferences: req.body.shiftPreferences || {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+    console.log('Сотрудник создан:', employeeFile);
+    
+    res.json({ success: true, employee });
+  } catch (error) {
+    console.error('Ошибка создания сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/employees/:id - обновить сотрудника
+app.put('/api/employees/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log('PUT /api/employees:', id);
+    
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    if (!fs.existsSync(employeeFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Сотрудник не найден'
+      });
+    }
+    
+    // Валидация обязательных полей
+    if (!req.body.name || req.body.name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Имя сотрудника обязательно'
+      });
+    }
+    
+    // Читаем существующие данные для сохранения createdAt
+    const oldContent = fs.readFileSync(employeeFile, 'utf8');
+    const oldEmployee = JSON.parse(oldContent);
+    
+    const employee = {
+      id: sanitizedId,
+      name: req.body.name.trim(),
+      position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
+      department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
+      phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
+      email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
+      isAdmin: req.body.isAdmin !== undefined ? (req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1) : oldEmployee.isAdmin,
+      employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
+      preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
+      preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
+      shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : oldEmployee.shiftPreferences,
+      createdAt: oldEmployee.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+    console.log('Сотрудник обновлен:', employeeFile);
+    
+    res.json({ success: true, employee });
+  } catch (error) {
+    console.error('Ошибка обновления сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/employees/:id - удалить сотрудника
+app.delete('/api/employees/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log('DELETE /api/employees:', id);
+    
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    if (!fs.existsSync(employeeFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Сотрудник не найден'
+      });
+    }
+    
+    fs.unlinkSync(employeeFile);
+    console.log('Сотрудник удален:', employeeFile);
+    
+    res.json({ success: true, message: 'Сотрудник удален' });
+  } catch (error) {
+    console.error('Ошибка удаления сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для магазинов ==========
+
+// GET /api/shops - получить все магазины
+app.get('/api/shops', (req, res) => {
+  try {
+    console.log('GET /api/shops');
+    
+    // Возвращаем список магазинов по умолчанию
+    // Это те же магазины, что и в shop_model.dart _getDefaultShops()
+    const shops = [
+      {
+        id: 'shop_1',
+        name: 'Арабика Винсады',
+        address: 'с.Винсады,ул Подгорная 156д (На Выезде)',
+        icon: 'store_outlined',
+        latitude: 44.091173,
+        longitude: 42.952451,
+      },
+      {
+        id: 'shop_2',
+        name: 'Арабика Лермонтов',
+        address: 'Лермонтов,ул Пятигорская 19',
+        icon: 'store_outlined',
+        latitude: 44.100923,
+        longitude: 42.967543,
+      },
+      {
+        id: 'shop_3',
+        name: 'Арабика Лермонтов (Площадь)',
+        address: 'Лермонтов,Комсомольская 1 (На Площади)',
+        icon: 'store_outlined',
+        latitude: 44.104619,
+        longitude: 42.970543,
+      },
+      {
+        id: 'shop_4',
+        name: 'Арабика Лермонтов (Остановка)',
+        address: 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )',
+        icon: 'store_outlined',
+        latitude: 44.105379,
+        longitude: 42.978421,
+      },
+      {
+        id: 'shop_5',
+        name: 'Арабика Ессентуки',
+        address: 'Ессентуки , ул пятигорская 149/1 (Золотушка)',
+        icon: 'store_mall_directory_outlined',
+        latitude: 44.055559,
+        longitude: 42.911012,
+      },
+      {
+        id: 'shop_6',
+        name: 'Арабика Иноземцево',
+        address: 'Иноземцево , ул Гагарина 1',
+        icon: 'store_outlined',
+        latitude: 44.080153,
+        longitude: 43.081593,
+      },
+      {
+        id: 'shop_7',
+        name: 'Арабика Пятигорск (Ромашка)',
+        address: 'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)',
+        icon: 'store_outlined',
+        latitude: 44.061053,
+        longitude: 43.063672,
+      },
+      {
+        id: 'shop_8',
+        name: 'Арабика Пятигорск',
+        address: 'Пятигорск,ул Коллективная 26а',
+        icon: 'store_outlined',
+        latitude: 44.032997,
+        longitude: 43.042525,
+      },
+    ];
+    
+    res.json({ success: true, shops });
+  } catch (error) {
+    console.error('Ошибка получения магазинов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== API для настроек магазинов (РКО) ==========
 
 // Получить настройки магазина
