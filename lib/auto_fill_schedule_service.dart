@@ -46,6 +46,12 @@ class AutoFillScheduleService {
           )
         : WorkSchedule(month: startDate, entries: []);
 
+    // Отслеживаем количество смен для каждого сотрудника
+    final employeeShiftCounts = <String, int>{};
+    for (var employee in employees) {
+      employeeShiftCounts[employee.id] = 0;
+    }
+
     // 2. Для каждого дня периода
     for (var day in days) {
       // Для каждого магазина
@@ -82,36 +88,15 @@ class AutoFillScheduleService {
 
         // Заполняем необходимые смены
         for (var shiftType in requiredShifts) {
-          // Сначала пытаемся найти сотрудника с предпочтениями
-          Employee? selectedEmployee = _selectBestEmployee(
+          // Выбираем сотрудника с учетом равномерного распределения
+          Employee? selectedEmployee = _selectEmployeeWithBalance(
             shop: shop,
             day: day,
             shiftType: shiftType,
-            employees: employeesWithPreferences,
+            employees: employees,
             schedule: workingSchedule,
+            employeeShiftCounts: employeeShiftCounts,
           );
-
-          // Если не нашли с предпочтениями, используем без предпочтений
-          if (selectedEmployee == null) {
-            selectedEmployee = _selectBestEmployee(
-              shop: shop,
-              day: day,
-              shiftType: shiftType,
-              employees: employeesWithoutPreferences,
-              schedule: workingSchedule,
-            );
-          }
-
-          // Если все еще не нашли, используем любого доступного
-          if (selectedEmployee == null) {
-            selectedEmployee = _selectAnyAvailableEmployee(
-              shop: shop,
-              day: day,
-              shiftType: shiftType,
-              employees: employees,
-              schedule: workingSchedule,
-            );
-          }
 
           if (selectedEmployee != null) {
             final entry = WorkScheduleEntry(
@@ -124,6 +109,9 @@ class AutoFillScheduleService {
             );
             newEntries.add(entry);
             workingSchedule.entries.add(entry);
+            // Увеличиваем счетчик смен для сотрудника
+            employeeShiftCounts[selectedEmployee.id] = 
+                (employeeShiftCounts[selectedEmployee.id] ?? 0) + 1;
           } else {
             warnings.add(
               'Не удалось найти сотрудника для ${shop.name}, ${day.day}.${day.month}, ${shiftType.label}'
@@ -157,6 +145,188 @@ class AutoFillScheduleService {
     }
     
     return days;
+  }
+
+  /// Выбрать сотрудника с учетом равномерного распределения
+  static Employee? _selectEmployeeWithBalance({
+    required Shop shop,
+    required DateTime day,
+    required ShiftType shiftType,
+    required List<Employee> employees,
+    required WorkSchedule schedule,
+    required Map<String, int> employeeShiftCounts,
+  }) {
+    // Разделяем сотрудников на группы
+    final employeesWithPreferences = employees.where((e) =>
+      e.preferredWorkDays.isNotEmpty ||
+      e.preferredShops.isNotEmpty ||
+      e.shiftPreferences.isNotEmpty
+    ).toList();
+    
+    final employeesWithoutPreferences = employees.where((e) =>
+      e.preferredWorkDays.isEmpty &&
+      e.preferredShops.isEmpty &&
+      e.shiftPreferences.isEmpty
+    ).toList();
+
+    // Сначала пытаемся найти среди сотрудников с предпочтениями
+    Employee? selectedEmployee = _selectBestEmployeeWithBalance(
+      shop: shop,
+      day: day,
+      shiftType: shiftType,
+      employees: employeesWithPreferences,
+      schedule: schedule,
+      employeeShiftCounts: employeeShiftCounts,
+    );
+
+    // Если не нашли, используем без предпочтений
+    if (selectedEmployee == null) {
+      selectedEmployee = _selectBestEmployeeWithBalance(
+        shop: shop,
+        day: day,
+        shiftType: shiftType,
+        employees: employeesWithoutPreferences,
+        schedule: schedule,
+        employeeShiftCounts: employeeShiftCounts,
+      );
+    }
+
+    // Если все еще не нашли, используем любого доступного
+    if (selectedEmployee == null) {
+      selectedEmployee = _selectAnyAvailableEmployeeWithBalance(
+        shop: shop,
+        day: day,
+        shiftType: shiftType,
+        employees: employees,
+        schedule: schedule,
+        employeeShiftCounts: employeeShiftCounts,
+      );
+    }
+
+    return selectedEmployee;
+  }
+
+  /// Выбрать лучшего сотрудника с учетом баланса смен
+  static Employee? _selectBestEmployeeWithBalance({
+    required Shop shop,
+    required DateTime day,
+    required ShiftType shiftType,
+    required List<Employee> employees,
+    required WorkSchedule schedule,
+    required Map<String, int> employeeShiftCounts,
+  }) {
+    // Сортируем сотрудников по приоритету и балансу смен
+    final scoredEmployees = employees.map((employee) {
+      int score = 0;
+
+      // Приоритет 1: Предпочтение магазина (+10)
+      if (_isPreferredShop(employee, shop)) {
+        score += 10;
+      }
+
+      // Приоритет 2: Желаемый день работы (+5)
+      if (_isPreferredDay(employee, day)) {
+        score += 5;
+      }
+
+      // Приоритет 3: Предпочтение смены
+      final grade = _getShiftPreferenceGrade(employee, shiftType);
+      if (grade == 1) {
+        score += 3; // Всегда хочет
+      } else if (grade == 2) {
+        score += 1; // Может, но не хочет
+      } else if (grade == 3) {
+        score -= 10; // Не будет работать
+      }
+
+      // Приоритет 4: Отсутствие конфликтов (+2)
+      if (!_hasConflict(employee, day, shiftType, schedule)) {
+        score += 2;
+      }
+
+      // Приоритет 5: Баланс смен - приоритет сотрудникам с меньшим количеством смен (+5 за каждую смену меньше среднего)
+      final currentShifts = employeeShiftCounts[employee.id] ?? 0;
+      final avgShifts = employeeShiftCounts.values.isEmpty 
+          ? 0 
+          : employeeShiftCounts.values.reduce((a, b) => a + b) / employeeShiftCounts.length;
+      final shiftDiff = (avgShifts - currentShifts).round();
+      if (shiftDiff > 0) {
+        score += shiftDiff * 5; // Бонус за меньшее количество смен
+      }
+
+      // Приоритет 6: Проверка на выходные - если у сотрудника уже много смен подряд, снижаем приоритет
+      final consecutiveShifts = _getConsecutiveShifts(employee.id, day, schedule);
+      if (consecutiveShifts >= 5) {
+        score -= 20; // Штраф за слишком много смен подряд
+      }
+
+      return {'employee': employee, 'score': score};
+    }).toList();
+
+    // Фильтруем сотрудников с отрицательным счетом (не будут работать)
+    scoredEmployees.removeWhere((item) => item['score'] as int < 0);
+
+    // Сортируем по счету (больше = лучше)
+    scoredEmployees.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+
+    // Выбираем сотрудника с наивысшим счетом, который может работать
+    for (var item in scoredEmployees) {
+      final employee = item['employee'] as Employee;
+      if (_canWorkShift(employee, day, shiftType, schedule)) {
+        return employee;
+      }
+    }
+
+    return null;
+  }
+
+  /// Выбрать любого доступного сотрудника с учетом баланса
+  static Employee? _selectAnyAvailableEmployeeWithBalance({
+    required Shop shop,
+    required DateTime day,
+    required ShiftType shiftType,
+    required List<Employee> employees,
+    required WorkSchedule schedule,
+    required Map<String, int> employeeShiftCounts,
+  }) {
+    // Сортируем по количеству смен (меньше = лучше)
+    final sortedEmployees = List<Employee>.from(employees);
+    sortedEmployees.sort((a, b) {
+      final shiftsA = employeeShiftCounts[a.id] ?? 0;
+      final shiftsB = employeeShiftCounts[b.id] ?? 0;
+      return shiftsA.compareTo(shiftsB);
+    });
+
+    for (var employee in sortedEmployees) {
+      if (_canWorkShift(employee, day, shiftType, schedule)) {
+        return employee;
+      }
+    }
+    return null;
+  }
+
+  /// Получить количество смен подряд для сотрудника
+  static int _getConsecutiveShifts(String employeeId, DateTime day, WorkSchedule schedule) {
+    int count = 0;
+    var checkDay = day.subtract(const Duration(days: 1));
+    
+    while (true) {
+      final hasShift = schedule.entries.any((e) =>
+        e.employeeId == employeeId &&
+        e.date.year == checkDay.year &&
+        e.date.month == checkDay.month &&
+        e.date.day == checkDay.day
+      );
+      
+      if (hasShift) {
+        count++;
+        checkDay = checkDay.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+    
+    return count;
   }
 
   /// Выбрать лучшего сотрудника для смены
