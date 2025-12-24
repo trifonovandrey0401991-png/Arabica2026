@@ -441,7 +441,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Сдать смену - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.handover, 'Сдать смену', () async {
+      items.add(_tile(context, Icons.swap_horiz, 'Сдать смену', () async {
         final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
         final employeeName = systemEmployeeName ?? 'Сотрудник';
         
