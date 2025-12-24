@@ -46,14 +46,3 @@ gradle.beforeProject { project ->
         versionName: "1.0.0"
     ]
 }
-
-// Также через allprojects для совместимости
-allprojects {
-    ext.flutter = [
-        compileSdkVersion: 35,
-        minSdkVersion: 21,
-        targetSdkVersion: 35,
-        versionCode: 1,
-        versionName: "1.0.0"
-    ]
-}
