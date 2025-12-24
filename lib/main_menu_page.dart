@@ -439,6 +439,33 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
+    // Сдать смену - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.handover, 'Сдать смену', () async {
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? 'Сотрудник';
+        
+        if (!context.mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ShiftShopSelectionPage(
+              employeeName: employeeName,
+            ),
+          ),
+        );
+      }));
+    }
+
+    // Отчет сдача смены - только сотрудник и админ
+    if (role == UserRole.employee || role == UserRole.admin) {
+      items.add(_tile(context, Icons.assignment, 'Отчет сдача смены', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ShiftReportsListPage()),
+        );
+      }));
+    }
 
     print('🔵 Всего кнопок в меню: ${items.length}');
 
