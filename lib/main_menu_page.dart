@@ -467,6 +467,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
+    // Поставщики - видно всем
+    items.add(_tile(context, Icons.local_shipping, 'Поставщики', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SuppliersPage()),
+      );
+    }));
+
     print('🔵 Всего кнопок в меню: ${items.length}');
 
     return items;
