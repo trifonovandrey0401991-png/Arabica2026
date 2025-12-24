@@ -25,6 +25,7 @@ plugins {
 
 include ":app"
 
+
 // Инициализация для всех подпроектов
 gradle.beforeProject { project ->
     project.ext.flutter = [
@@ -35,3 +36,4 @@ gradle.beforeProject { project ->
         versionName: "1.0.0"
     ]
 }
+
