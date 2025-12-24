@@ -42,7 +42,7 @@ android {
 }
 
 flutter {
-    source = rootProject.projectDir.parentFile
+    source = file("${rootProject.projectDir}/../..")
 }
 
 dependencies {
