@@ -25,9 +25,6 @@ plugins {
 
 include ":app"
 
-// Define Flutter source directory for all projects
-rootProject.ext.flutterSourceDir = file("..")
-
 // Инициализация для всех подпроектов
 // ПРИМЕЧАНИЕ: allprojects {} и gradle.settingsEvaluated {} не поддерживаются в Gradle 8+
 // Используем только gradle.beforeProject {} для совместимости
@@ -39,8 +36,4 @@ gradle.beforeProject { project ->
         versionCode: 1,
         versionName: "1.0.0"
     ]
-    // Set Flutter source for app project
-    if (project.name == "app") {
-        project.ext.flutterSourceDir = rootProject.ext.flutterSourceDir
-    }
 }
