@@ -6,28 +6,6 @@ plugins {
     id "com.google.gms.google-services"
 }
 
-// #region agent log
-println("DEBUG: Before flutter block definition")
-println("DEBUG: rootProject.projectDir = ${rootProject.projectDir}")
-println("DEBUG: project.projectDir = ${project.projectDir}")
-println("DEBUG: projectDir.parentFile = ${project.projectDir.parentFile}")
-// #endregion
-
-flutter {
-    // #region agent log
-    println("DEBUG: Inside flutter block")
-    def flutterSource = file("../..")
-    println("DEBUG: flutterSource = ${flutterSource}")
-    println("DEBUG: flutterSource.exists() = ${flutterSource.exists()}")
-    println("DEBUG: flutterSource.absolutePath = ${flutterSource.absolutePath}")
-    // #endregion
-    source = "../.."
-}
-
-// #region agent log
-println("DEBUG: After flutter block definition")
-// #endregion
-
 android {
     namespace = "com.example.arabica_app"
     compileSdk = 35
