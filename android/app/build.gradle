@@ -7,7 +7,7 @@ plugins {
 }
 
 flutter {
-    source = rootProject.projectDir.parentFile
+    source = file("../..")
 }
 
 android {
