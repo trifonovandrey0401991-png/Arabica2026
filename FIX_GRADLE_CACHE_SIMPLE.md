@@ -56,3 +56,6 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 
 Но это не обязательно для решения текущей проблемы.
 
+
+
+

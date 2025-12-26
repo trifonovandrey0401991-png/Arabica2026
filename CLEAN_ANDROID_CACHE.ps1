@@ -94,3 +94,6 @@ if (Test-Path $mainActivityPath) {
 Write-Host "`n=== Очистка завершена ===" -ForegroundColor Cyan
 Write-Host "Теперь выполните: flutter run" -ForegroundColor Green
 
+
+
+
