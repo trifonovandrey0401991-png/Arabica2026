@@ -2051,4 +2051,71 @@ app.delete('/api/suppliers/:id', (req, res) => {
   }
 });
 
+// Директория для хранения клиентов
+const CLIENTS_DIR = '/var/www/clients';
+if (!fs.existsSync(CLIENTS_DIR)) {
+  fs.mkdirSync(CLIENTS_DIR, { recursive: true });
+}
+
+// GET /api/clients - получить всех клиентов
+app.get('/api/clients', (req, res) => {
+  try {
+    const clients = [];
+    if (fs.existsSync(CLIENTS_DIR)) {
+      const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(CLIENTS_DIR, file), 'utf8');
+          const client = JSON.parse(content);
+          clients.push(client);
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+    }
+    res.json({ success: true, clients });
+  } catch (error) {
+    console.error('Ошибка получения клиентов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/clients - создать/обновить клиента
+app.post('/api/clients', async (req, res) => {
+  try {
+    console.log('POST /api/clients:', JSON.stringify(req.body).substring(0, 200));
+    
+    if (!req.body.phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Номер телефона обязателен'
+      });
+    }
+    
+    // Нормализуем номер телефона
+    const normalizedPhone = req.body.phone.replace(/[\s\+]/g, '');
+    const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
+    const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
+    
+    const client = {
+      phone: normalizedPhone,
+      name: req.body.name || '',
+      clientName: req.body.clientName || req.body.name || '',
+      isAdmin: req.body.isAdmin || false,
+      employeeName: req.body.employeeName || '',
+      fcmToken: req.body.fcmToken || null,
+      createdAt: fs.existsSync(clientFile) ? JSON.parse(fs.readFileSync(clientFile, 'utf8')).createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
+    console.log('Клиент сохранен:', clientFile);
+    
+    res.json({ success: true, client });
+  } catch (error) {
+    console.error('Ошибка сохранения клиента:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
