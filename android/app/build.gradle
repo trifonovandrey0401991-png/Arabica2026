@@ -6,11 +6,8 @@ plugins {
     id "com.google.gms.google-services"
 }
 
-// Define Flutter source before plugin applies
-project.ext.flutterSource = file("../..")
-
 flutter {
-    source = project.ext.flutterSource
+    source = rootProject.ext.flutterSourceDir
 }
 
 android {
