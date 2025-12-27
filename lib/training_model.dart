@@ -47,14 +47,14 @@ class TrainingArticle {
     }
   }
 
-  /// Загрузить статьи обучения из Google Sheets (устаревший метод)
+  /// Загрузить статьи обучения из сервер (устаревший метод)
   @Deprecated('Используйте loadArticles()')
   static Future<List<TrainingArticle>> loadArticlesFromGoogleSheets() async {
     try {
       const sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Статьи_Обучения';
       
-      print('📥 Загружаем статьи обучения из Google Sheets...');
+      print('📥 Загружаем статьи обучения из сервер...');
       final response = await http.get(Uri.parse(sheetUrl));
       
       if (response.statusCode != 200) {

@@ -7,7 +7,7 @@ class ShiftAnswer {
   final String? textAnswer;
   final double? numberAnswer;
   final String? photoPath; // Путь к локальному фото
-  final String? photoDriveId; // ID фото в Google Drive после загрузки
+  final String? photoDriveId; // ID фото в сервер после загрузки
   final String? referencePhotoUrl; // URL эталонного фото, которое было показано сотруднику
 
   ShiftAnswer({

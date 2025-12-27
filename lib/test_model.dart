@@ -49,7 +49,7 @@ class TestQuestion {
     }
   }
 
-  /// Загрузить вопросы из Google Sheets (устаревший метод)
+  /// Загрузить вопросы из сервер (устаревший метод)
   @Deprecated('Используйте loadQuestions()')
   static Future<List<TestQuestion>> loadQuestionsFromGoogleSheets() async {
     try {
@@ -60,7 +60,7 @@ class TestQuestion {
       final sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=$encodedSheetName';
       
-      print('📥 Загружаем вопросы теста из Google Sheets...');
+      print('📥 Загружаем вопросы теста из сервер...');
       print('   Лист: $sheetName');
       print('   Закодированное название: $encodedSheetName');
       print('   URL: $sheetUrl');

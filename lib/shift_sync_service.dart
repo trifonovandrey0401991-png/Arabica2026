@@ -1,5 +1,5 @@
 import 'shift_report_model.dart';
-import 'google_drive_service.dart';
+import 'photo_service.dart';
 import 'utils/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,15 +29,15 @@ class ShiftSyncService {
       Logger.debug('Начало синхронизации отчетов...');
       final reports = await ShiftReport.loadAllReports();
       
-      // Удаляем старые отчеты (старше недели) и их фото из Google Drive
+      // Удаляем старые отчеты (старше недели) и их фото с сервера
       final oldReports = reports.where((r) => r.isOlderThanWeek).toList();
       for (var report in oldReports) {
-        // Удаляем фото из Google Drive параллельно
+        // Удаляем фото с сервера параллельно
         final photoDeleteFutures = <Future>[];
         for (var answer in report.answers) {
           if (answer.photoDriveId != null) {
             photoDeleteFutures.add(
-              GoogleDriveService.deletePhoto(answer.photoDriveId!)
+              PhotoService.deletePhoto(answer.photoDriveId!)
                 .catchError((e) {
                   Logger.warning('Ошибка удаления фото ${answer.photoDriveId}: $e');
                   return null; // Продолжаем даже при ошибке
@@ -66,7 +66,7 @@ class ShiftSyncService {
             final answer = report.answers[i];
             if (answer.photoPath != null && answer.photoDriveId == null) {
               final fileName = '${report.id}_$i.jpg';
-              uploadFutures[i] = GoogleDriveService.uploadPhoto(
+              uploadFutures[i] = PhotoService.uploadPhoto(
                 answer.photoPath!,
                 fileName,
               ).catchError((e) {

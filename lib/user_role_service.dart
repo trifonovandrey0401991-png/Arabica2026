@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'user_role_model.dart';
-import 'google_script_config.dart';
+import 'server_config.dart';
 
 /// Сервис для работы с ролями пользователей
 class UserRoleService {
@@ -92,10 +92,10 @@ class UserRoleService {
         return apiRole;
       }
       
-      // ЕСЛИ не найден через API, проверяем через Google Sheets
-      print('📊 Проверка роли через Google Sheets...');
+      // ЕСЛИ не найден через API, проверяем через сервер
+      print('📊 Проверка роли через сервер...');
       final uri = Uri.parse(
-        '$googleScriptUrl?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+        '$serverUrl?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
       );
       
       print('🔗 URL запроса: $uri');
@@ -148,7 +148,7 @@ class UserRoleService {
         displayName = employeeName;
       }
 
-      print('✅ Роль определена через Google Sheets: ${role.name}');
+      print('✅ Роль определена через сервер: ${role.name}');
       print('   Имя для отображения: $displayName');
       if (employeeName != null) {
         print('   Имя сотрудника (G): $employeeName');

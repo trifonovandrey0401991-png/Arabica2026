@@ -39,9 +39,6 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-// URL Google Apps Script для регистрации, лояльности и ролей
-const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
-
 // Утилита для безопасного парсинга JSON с улучшенными сообщениями об ошибках
 function safeJSONParse(jsonString, context = 'unknown') {
   try {
@@ -52,67 +49,6 @@ function safeJSONParse(jsonString, context = 'unknown') {
     throw new Error(`Неверный формат JSON файла (${context}): ${error.message}`);
   }
 }
-
-app.post('/', async (req, res) => {
-  try {
-    console.log("POST request to script:", SCRIPT_URL);
-    console.log("Request body:", JSON.stringify(req.body));
-    
-    const response = await fetch(SCRIPT_URL, {
-      method: 'post',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    });
-
-    const contentType = response.headers.get('content-type');
-    console.log("Response status:", response.status);
-    console.log("Response content-type:", contentType);
-
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response received:", text.substring(0, 200));
-      throw new Error(`Сервер вернул HTML вместо JSON. Проверьте URL сервера: ${SCRIPT_URL}`);
-    }
-
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error("POST error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ошибка при обращении к серверу'
-    });
-  }
-});
-
-app.get('/', async (req, res) => {
-  try {
-    console.log("GET request:", req.query);
-    const queryString = new URLSearchParams(req.query).toString();
-    const url = `${SCRIPT_URL}?${queryString}`;
-
-    const response = await fetch(url);
-    
-    const contentType = response.headers.get('content-type');
-    console.log("Response status:", response.status);
-    console.log("Response content-type:", contentType);
-
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response received:", text.substring(0, 200));
-      throw new Error(`Сервер вернул HTML вместо JSON. Проверьте URL сервера: ${SCRIPT_URL}`);
-    }
-
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error("GET error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ошибка при обращении к серверу'
-    });
-  }
-});
 
 // Эндпоинт для загрузки фото
 app.post('/upload-photo', upload.single('file'), (req, res) => {
@@ -166,29 +102,7 @@ app.post('/api/recount-reports', async (req, res) => {
       console.error('Ошибка записи файла:', writeError);
       throw writeError;
     }
-    
-    // Пытаемся также отправить в Google Apps Script (опционально)
-    try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'post',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'createRecountReport',
-          ...req.body
-        }),
-      });
 
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        if (data.success) {
-          console.log('Отчет также отправлен в Google Apps Script');
-        }
-      }
-    } catch (scriptError) {
-      console.log('Google Apps Script не поддерживает это действие, отчет сохранен локально');
-    }
-    
     res.json({ 
       success: true, 
       message: 'Отчет успешно сохранен',

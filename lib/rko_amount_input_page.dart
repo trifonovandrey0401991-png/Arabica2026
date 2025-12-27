@@ -42,7 +42,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
     });
 
     try {
-      // Получаем имя сотрудника из Google Sheets (для совместимости с поиском)
+      // Получаем имя сотрудника из сервер (для совместимости с поиском)
       final employees = await EmployeesPage.loadEmployeesForNotifications();
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
@@ -193,8 +193,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       
       // Загружаем на сервер
       // ВАЖНО: Используем то же имя, которое используется в системе для отметок прихода и пересменок
-      // Это имя из SharedPreferences или регистрации, а НЕ из Google Sheets
-      // Google Sheets может содержать другое имя (например, "andrey tifonov vladimir"),
+      // Это имя из SharedPreferences или регистрации, а НЕ из сервер
+      // сервер может содержать другое имя (например, "andrey tifonov vladimir"),
       // а в системе сотрудник называется "Андрей В"
       String employeeNameForRKO;
       
@@ -206,16 +206,16 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         employeeNameForRKO = systemEmployeeName.trim().replaceAll(RegExp(r'\s+'), ' ');
         Logger.debug('📤 Используем имя из меню "Сотрудники": "$employeeNameForRKO"');
       } else if (_employeeName != null && _employeeName!.isNotEmpty) {
-        // Fallback: используем имя из Google Sheets, только убираем лишние пробелы
+        // Fallback: используем имя из сервер, только убираем лишние пробелы
         employeeNameForRKO = _employeeName!.trim().replaceAll(RegExp(r'\s+'), ' ');
-        Logger.debug('📤 Fallback: используем имя из Google Sheets: "$employeeNameForRKO"');
+        Logger.debug('📤 Fallback: используем имя из сервер: "$employeeNameForRKO"');
       } else {
         // Последний fallback: используем имя из регистрации
         employeeNameForRKO = employeeData.fullName.trim().replaceAll(RegExp(r'\s+'), ' ');
         Logger.debug('📤 Fallback: используем имя из регистрации: "$employeeNameForRKO"');
       }
       Logger.debug('📤 Оригинальное имя из регистрации: "${employeeData.fullName}"');
-      Logger.debug('📤 Имя из Google Sheets: "$_employeeName"');
+      Logger.debug('📤 Имя из сервер: "$_employeeName"');
       Logger.debug('📤 Итоговое имя для РКО: "$employeeNameForRKO"');
       final uploadSuccess = await RKOPDFService.uploadRKOToServer(
         pdfFile: pdfFile,

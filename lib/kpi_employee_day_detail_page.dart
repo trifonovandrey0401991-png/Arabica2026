@@ -8,7 +8,7 @@ import 'recount_report_model.dart';
 import 'shift_report_service.dart';
 import 'shift_report_model.dart';
 import 'rko_reports_service.dart';
-import 'google_drive_service.dart';
+import 'photo_service.dart';
 import 'utils/logger.dart';
 
 /// Детальная страница одного дня работы сотрудника в магазине
@@ -560,7 +560,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                       )
                                                 : answer.photoDriveId != null
                                                     ? FutureBuilder<String>(
-                                                        future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                                        future: Future.value(PhotoService.getPhotoUrl(answer.photoDriveId!)),
                                                         builder: (context, snapshot) {
                                                           if (snapshot.hasData) {
                                                             return Image.network(
@@ -638,14 +638,14 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                             )
                                       : answer.photoDriveId != null
                                           ? FutureBuilder<String>(
-                                              future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                              future: Future.value(PhotoService.getPhotoUrl(answer.photoDriveId!)),
                                               builder: (context, snapshot) {
                                                 if (snapshot.hasData) {
                                                   return Image.network(
                                                     snapshot.data!,
                                                     fit: BoxFit.cover,
                                                     errorBuilder: (context, error, stackTrace) {
-                                                      print('❌ Ошибка загрузки фото из Google Drive: $error, URL: ${snapshot.data}');
+                                                      print('❌ Ошибка загрузки фото из сервер: $error, URL: ${snapshot.data}');
                                                       return const Center(
                                                         child: Icon(Icons.error, size: 64),
                                                       );
