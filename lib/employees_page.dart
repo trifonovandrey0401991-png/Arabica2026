@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'user_role_service.dart';
-import 'google_script_config.dart';
+import 'server_config.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'employee_registration_page.dart';
@@ -518,8 +518,9 @@ class _EmployeesPageState extends State<EmployeesPage> {
                     final isVerified = employee.phone != null
                         ? _verificationStatus[employee.phone!] ?? false
                         : false;
-                    
+
                     return Card(
+                      key: ValueKey(employee.id),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         leading: Stack(
@@ -853,6 +854,7 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
                       : false;
 
                   return Card(
+                    key: ValueKey(employee.id),
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
                       leading: Stack(

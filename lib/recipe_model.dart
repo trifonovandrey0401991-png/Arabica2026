@@ -94,13 +94,13 @@ class Recipe {
     return await RecipeService.getRecipes();
   }
 
-  /// Загрузить рецепты из Google Sheets (старый метод, для обратной совместимости)
+  /// Загрузить рецепты из сервер (старый метод, для обратной совместимости)
   static Future<List<Recipe>> loadRecipesFromGoogleSheets() async {
     try {
       const sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
       
-      Logger.debug('📥 Загружаем рецепты из Google Sheets...');
+      Logger.debug('📥 Загружаем рецепты из сервер...');
       
       final response = await http.get(Uri.parse(sheetUrl));
       if (response.statusCode != 200) {

@@ -8,7 +8,7 @@ import 'recount_report_model.dart';
 import 'shift_report_service.dart';
 import 'shift_report_model.dart';
 import 'rko_reports_service.dart';
-import 'google_drive_service.dart';
+import 'photo_service.dart';
 import 'utils/logger.dart';
 
 /// Детальная страница одного дня работы сотрудника в магазине
@@ -43,13 +43,11 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
       if (widget.shopDayData.recountReportId != null) {
         try {
           final recounts = await RecountService.getReports(
-            employeeName: widget.shopDayData.employeeName,
+            reportId: widget.shopDayData.recountReportId,
           );
-          try {
-            _recountReport = recounts.firstWhere(
-              (r) => r.id == widget.shopDayData.recountReportId,
-            );
-          } catch (e) {
+          if (recounts.isNotEmpty) {
+            _recountReport = recounts.first;
+          } else {
             Logger.debug('Отчет пересчета с ID ${widget.shopDayData.recountReportId} не найден');
           }
         } catch (e) {
@@ -61,13 +59,11 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
       if (widget.shopDayData.shiftReportId != null) {
         try {
           final shifts = await ShiftReportService.getReports(
-            employeeName: widget.shopDayData.employeeName,
+            reportId: widget.shopDayData.shiftReportId,
           );
-          try {
-            _shiftReport = shifts.firstWhere(
-              (s) => s.id == widget.shopDayData.shiftReportId,
-            );
-          } catch (e) {
+          if (shifts.isNotEmpty) {
+            _shiftReport = shifts.first;
+          } else {
             Logger.debug('Отчет пересменки с ID ${widget.shopDayData.shiftReportId} не найден');
           }
         } catch (e) {
@@ -498,6 +494,8 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                     child: Image.network(
                                                       answer.referencePhotoUrl!,
                                                       fit: BoxFit.cover,
+                                                      cacheWidth: 150,
+                                                      cacheHeight: 150,
                                                       loadingBuilder: (context, child, loadingProgress) {
                                                         if (loadingProgress == null) return child;
                                                         return const Center(
@@ -505,8 +503,6 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         );
                                                       },
                                                       errorBuilder: (context, error, stackTrace) {
-                                                        print('❌ Ошибка загрузки эталонного фото: $error');
-                                                        print('   URL: ${answer.referencePhotoUrl}');
                                                         return const Center(
                                                           child: Icon(Icons.error, size: 24),
                                                         );
@@ -543,8 +539,9 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                     ? Image.network(
                                                         answer.photoPath!,
                                                         fit: BoxFit.cover,
+                                                        cacheWidth: 150,
+                                                        cacheHeight: 150,
                                                         errorBuilder: (context, error, stackTrace) {
-                                                          print('❌ Ошибка загрузки фото сотрудника: $error');
                                                           return const Center(
                                                             child: Icon(Icons.error, size: 24),
                                                           );
@@ -553,8 +550,9 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                     : Image.file(
                                                         File(answer.photoPath!),
                                                         fit: BoxFit.cover,
+                                                        cacheWidth: 150,
+                                                        cacheHeight: 150,
                                                         errorBuilder: (context, error, stackTrace) {
-                                                          print('❌ Ошибка загрузки локального фото: $error');
                                                           return const Center(
                                                             child: Icon(Icons.error, size: 24),
                                                           );
@@ -562,14 +560,14 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                       )
                                                 : answer.photoDriveId != null
                                                     ? FutureBuilder<String>(
-                                                        future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                                        future: Future.value(PhotoService.getPhotoUrl(answer.photoDriveId!)),
                                                         builder: (context, snapshot) {
                                                           if (snapshot.hasData) {
-                                                            final photoUrl = snapshot.data!;
-                                                            print('🖼️ KPI: Загрузка фото сотрудника из: $photoUrl');
                                                             return Image.network(
-                                                              photoUrl,
+                                                              snapshot.data!,
                                                               fit: BoxFit.cover,
+                                                              cacheWidth: 150,
+                                                              cacheHeight: 150,
                                                               loadingBuilder: (context, child, loadingProgress) {
                                                                 if (loadingProgress == null) return child;
                                                                 return const Center(
@@ -577,9 +575,6 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                                 );
                                                               },
                                                               errorBuilder: (context, error, stackTrace) {
-                                                                print('❌ Ошибка загрузки фото из Google Drive: $error');
-                                                                print('   URL: $photoUrl');
-                                                                print('   photoDriveId: ${answer.photoDriveId}');
                                                                 return const Center(
                                                                   child: Icon(Icons.error, size: 24),
                                                                 );
@@ -643,14 +638,14 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                             )
                                       : answer.photoDriveId != null
                                           ? FutureBuilder<String>(
-                                              future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                              future: Future.value(PhotoService.getPhotoUrl(answer.photoDriveId!)),
                                               builder: (context, snapshot) {
                                                 if (snapshot.hasData) {
                                                   return Image.network(
                                                     snapshot.data!,
                                                     fit: BoxFit.cover,
                                                     errorBuilder: (context, error, stackTrace) {
-                                                      print('❌ Ошибка загрузки фото из Google Drive: $error, URL: ${snapshot.data}');
+                                                      print('❌ Ошибка загрузки фото из сервер: $error, URL: ${snapshot.data}');
                                                       return const Center(
                                                         child: Icon(Icons.error, size: 64),
                                                       );

@@ -66,6 +66,7 @@ class CartPage extends StatelessWidget {
                           'assets/images/${cartItem.menuItem.photoId}.jpg';
 
                       return Card(
+                        key: ValueKey('cart_${cartItem.menuItem.id}_${cartItem.quantity}'),
                         margin: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
@@ -78,11 +79,15 @@ class CartPage extends StatelessWidget {
                               width: 60,
                               height: 60,
                               fit: BoxFit.cover,
+                              cacheWidth: 60,
+                              cacheHeight: 60,
                               errorBuilder: (_, __, ___) => Image.asset(
                                 'assets/images/no_photo.png',
                                 width: 60,
                                 height: 60,
                                 fit: BoxFit.cover,
+                                cacheWidth: 60,
+                                cacheHeight: 60,
                               ),
                             ),
                           ),

@@ -126,8 +126,8 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
         KPIService.clearCacheForDate(_selectedShop!.address, date);
       }
 
-      // Загружаем данные параллельно (пакетами по 5 для снижения нагрузки)
-      const batchSize = 5;
+      // Загружаем данные параллельно (пакетами по 15 для оптимальной производительности)
+      const batchSize = 15;
       for (int i = 0; i < datesToLoad.length; i += batchSize) {
         final batch = datesToLoad.skip(i).take(batchSize).toList();
         final results = await Future.wait(
@@ -144,17 +144,8 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
         for (int j = 0; j < batch.length; j++) {
           if (results[j] != null) {
             final date = batch[j];
-            final isTargetDate = date.year == 2025 && date.month == 12 && date.day == 12;
             final normalizedDate = DateTime(date.year, date.month, date.day);
             _dayDataCache[normalizedDate] = results[j]!;
-            if (isTargetDate) {
-              Logger.debug('🔍 === Сохранение в кэш для 12.12.2025 ===');
-              Logger.debug('   Ключ в кэше: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
-              Logger.debug('   employeesWorkedCount: ${results[j]!.employeesWorkedCount}');
-              Logger.debug('   hasMorningAttendance: ${results[j]!.hasMorningAttendance}');
-              Logger.debug('   hasEveningAttendance: ${results[j]!.hasEveningAttendance}');
-              Logger.debug('   === КОНЕЦ сохранения в кэш для 12.12.2025 ===');
-            }
           }
         }
 

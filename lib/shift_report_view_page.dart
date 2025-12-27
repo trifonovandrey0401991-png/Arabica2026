@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'shift_report_model.dart';
-import 'google_drive_service.dart';
+import 'photo_service.dart';
 import 'shift_photo_gallery_page.dart';
 
 /// Страница просмотра отчета пересменки
@@ -230,7 +230,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                   )
                                             : answer.photoDriveId != null
                                                 ? FutureBuilder<String>(
-                                                    future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                                    future: Future.value(PhotoService.getPhotoUrl(answer.photoDriveId!)),
                                                     builder: (context, snapshot) {
                                                       if (snapshot.hasData) {
                                                         final photoUrl = snapshot.data!;
@@ -318,7 +318,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                         )
                                   : answer.photoDriveId != null
                                       ? FutureBuilder<String>(
-                                          future: Future.value(GoogleDriveService.getPhotoUrl(answer.photoDriveId!)),
+                                          future: Future.value(PhotoService.getPhotoUrl(answer.photoDriveId!)),
                                           builder: (context, snapshot) {
                                             if (snapshot.hasData) {
                                               final photoUrl = snapshot.data!;

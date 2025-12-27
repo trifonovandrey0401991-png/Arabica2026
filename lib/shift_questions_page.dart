@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path;
 import 'shift_question_model.dart';
 import 'shift_report_model.dart';
 import 'shift_report_service.dart';
-import 'google_drive_service.dart';
+import 'photo_service.dart';
 
 /// Страница с вопросами пересменки
 class ShiftQuestionsPage extends StatefulWidget {
@@ -414,7 +414,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
             print('📤 Загрузка фото сотрудника на сервер: $fileName');
             print('   Путь к фото: ${answer.photoPath}');
             
-            final driveId = await GoogleDriveService.uploadPhoto(
+            final driveId = await PhotoService.uploadPhoto(
               answer.photoPath!,
               fileName,
             );

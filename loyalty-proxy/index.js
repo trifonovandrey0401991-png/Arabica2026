@@ -5,26 +5,90 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
+// ========== CSRF ЗАЩИТА ==========
+// Разрешенные домены для CSRF защиты
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://arabica26.ru,http://localhost:3000').split(',');
+
+// Middleware для проверки Origin на POST/PUT/DELETE запросах
+function csrfProtection(req, res, next) {
+  // Применяем только для изменяющих методов
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const origin = req.get('origin') || req.get('referer');
+
+    if (!origin) {
+      console.warn(`⚠️ CSRF: Отклонен ${req.method} ${req.path} - отсутствует Origin/Referer`);
+      return res.status(403).json({
+        success: false,
+        error: 'CSRF protection: Origin required'
+      });
+    }
+
+    // Проверяем, что origin в списке разрешенных
+    const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+      try {
+        const originUrl = new URL(origin);
+        const allowedUrl = new URL(allowed);
+        return originUrl.origin === allowedUrl.origin;
+      } catch (e) {
+        // Если origin - это referer, он может содержать путь
+        return origin.startsWith(allowed);
+      }
+    });
+
+    if (!isAllowed) {
+      console.warn(`⚠️ CSRF: Отклонен ${req.method} ${req.path} - неразрешенный Origin: ${origin}`);
+      return res.status(403).json({
+        success: false,
+        error: 'CSRF protection: Origin not allowed'
+      });
+    }
+  }
+
+  next();
+}
+
+// Применяем CSRF защиту ко всем маршрутам
+app.use(csrfProtection);
+
+// ========== КОНФИГУРАЦИЯ ПУТЕЙ ==========
+// Все пути настраиваются через переменные окружения
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const PATHS = {
+  // Директории для данных
+  html: path.join(DATA_DIR, 'html'),
+  shiftPhotos: path.join(DATA_DIR, 'shift-photos'),
+  recountReports: path.join(DATA_DIR, 'recount-reports'),
+  attendance: path.join(DATA_DIR, 'attendance'),
+  employeePhotos: path.join(DATA_DIR, 'employee-photos'),
+  employeeRegistrations: path.join(DATA_DIR, 'employee-registrations'),
+  shopSettings: path.join(DATA_DIR, 'shop-settings'),
+  rkoReports: path.join(DATA_DIR, 'rko-reports'),
+  workSchedules: path.join(DATA_DIR, 'work-schedules'),
+  workScheduleTemplates: path.join(DATA_DIR, 'work-schedule-templates'),
+  suppliers: path.join(DATA_DIR, 'suppliers'),
+  clients: path.join(DATA_DIR, 'clients'),
+};
+
 // Статические файлы для редактора координат
-app.use('/static', express.static('/var/www/html'));
+app.use('/static', express.static(PATHS.html));
 
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/shift-photos';
     // Создаем директорию, если её нет
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(PATHS.shiftPhotos)) {
+      fs.mkdirSync(PATHS.shiftPhotos, { recursive: true });
     }
-    cb(null, uploadDir);
+    cb(null, PATHS.shiftPhotos);
   },
   filename: function (req, file, cb) {
     // Используем оригинальное имя файла
@@ -38,69 +102,16 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-// URL Google Apps Script для регистрации, лояльности и ролей
-const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
-
-app.post('/', async (req, res) => {
+// Утилита для безопасного парсинга JSON с улучшенными сообщениями об ошибках
+function safeJSONParse(jsonString, context = 'unknown') {
   try {
-    console.log("POST request to script:", SCRIPT_URL);
-    console.log("Request body:", JSON.stringify(req.body));
-    
-    const response = await fetch(SCRIPT_URL, {
-      method: 'post',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body),
-    });
-
-    const contentType = response.headers.get('content-type');
-    console.log("Response status:", response.status);
-    console.log("Response content-type:", contentType);
-
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response received:", text.substring(0, 200));
-      throw new Error(`Сервер вернул HTML вместо JSON. Проверьте URL сервера: ${SCRIPT_URL}`);
-    }
-
-    const data = await response.json();
-    res.json(data);
+    return JSON.parse(jsonString);
   } catch (error) {
-    console.error("POST error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ошибка при обращении к серверу'
-    });
+    console.error(`Ошибка парсинга JSON (${context}):`, error.message);
+    console.error(`Первые 100 символов: ${jsonString.substring(0, 100)}`);
+    throw new Error(`Неверный формат JSON файла (${context}): ${error.message}`);
   }
-});
-
-app.get('/', async (req, res) => {
-  try {
-    console.log("GET request:", req.query);
-    const queryString = new URLSearchParams(req.query).toString();
-    const url = `${SCRIPT_URL}?${queryString}`;
-
-    const response = await fetch(url);
-    
-    const contentType = response.headers.get('content-type');
-    console.log("Response status:", response.status);
-    console.log("Response content-type:", contentType);
-
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error("Non-JSON response received:", text.substring(0, 200));
-      throw new Error(`Сервер вернул HTML вместо JSON. Проверьте URL сервера: ${SCRIPT_URL}`);
-    }
-
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error("GET error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ошибка при обращении к серверу'
-    });
-  }
-});
+}
 
 // Эндпоинт для загрузки фото
 app.post('/upload-photo', upload.single('file'), (req, res) => {
@@ -130,7 +141,7 @@ app.post('/api/recount-reports', async (req, res) => {
     console.log('POST /api/recount-reports:', JSON.stringify(req.body).substring(0, 200));
     
     // Сохраняем отчет локально в файл
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = PATHS.recountReports;
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
@@ -154,29 +165,7 @@ app.post('/api/recount-reports', async (req, res) => {
       console.error('Ошибка записи файла:', writeError);
       throw writeError;
     }
-    
-    // Пытаемся также отправить в Google Apps Script (опционально)
-    try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'post',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'createRecountReport',
-          ...req.body
-        }),
-      });
 
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        if (data.success) {
-          console.log('Отчет также отправлен в Google Apps Script');
-        }
-      }
-    } catch (scriptError) {
-      console.log('Google Apps Script не поддерживает это действие, отчет сохранен локально');
-    }
-    
     res.json({ 
       success: true, 
       message: 'Отчет успешно сохранен',
@@ -196,23 +185,28 @@ app.get('/api/recount-reports', async (req, res) => {
   try {
     console.log('GET /api/recount-reports:', req.query);
     
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = PATHS.recountReports;
     const reports = [];
     
-    // Читаем отчеты из локальной директории
+    // Читаем отчеты из локальной директории асинхронно
     if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
-      
-      for (const file of files) {
+      const files = await fs.promises.readdir(reportsDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
           const filePath = path.join(reportsDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const report = JSON.parse(content);
-          reports.push(report);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(readPromises);
+      reports.push(...results.filter(r => r !== null));
+    }
       
       // Сортируем по дате создания (новые первыми)
       reports.sort((a, b) => {
@@ -256,27 +250,41 @@ app.get('/api/recount-reports', async (req, res) => {
 app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
   try {
     let { reportId } = req.params;
-    // Декодируем URL-кодированный reportId
-    reportId = decodeURIComponent(reportId);
-    // Санитизируем имя файла (как при сохранении)
-    const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+    // SECURITY: Validate format BEFORE any processing
+    if (!/^[a-zA-Z0-9_\-]+$/.test(reportId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid reportId format'
+      });
+    }
+
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
-    console.log(`Санитизированный ID: ${sanitizedId}`);
-    
-    const reportsDir = '/var/www/recount-reports';
-    const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
-    
+
+    const reportsDir = PATHS.recountReports;
+    const reportFile = path.join(reportsDir, `${reportId}.json`);
+
+    // SECURITY: Verify the resolved path is within reportsDir
+    const resolvedPath = path.resolve(reportFile);
+    const resolvedDir = path.resolve(reportsDir);
+    if (!resolvedPath.startsWith(resolvedDir + path.sep)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
     if (!fs.existsSync(reportFile)) {
       console.error(`Файл не найден: ${reportFile}`);
-      // Попробуем найти файл по частичному совпадению
+      // SECURITY: Use exact match instead of substring
       const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
-      const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+      const matchingFile = files.find(f => f === `${reportId}.json`);
       if (matchingFile) {
         console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
         const actualFile = path.join(reportsDir, matchingFile);
         const content = fs.readFileSync(actualFile, 'utf8');
-        const report = JSON.parse(content);
-        
+        const report = safeJSONParse(content, `recount-report-${matchingFile}`);
+
         // Обновляем оценку
         report.adminRating = req.body.rating;
         report.adminName = req.body.adminName;
@@ -293,8 +301,8 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     
     // Читаем отчет
     const content = fs.readFileSync(reportFile, 'utf8');
-    const report = JSON.parse(content);
-    
+    const report = safeJSONParse(content, `recount-report-${reportId}`);
+
     // Обновляем оценку
     report.adminRating = req.body.rating;
     report.adminName = req.body.adminName;
@@ -326,14 +334,14 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 });
 
 // Статическая раздача фото
-app.use('/shift-photos', express.static('/var/www/shift-photos'));
+app.use('/shift-photos', express.static(PATHS.shiftPhotos));
 
 // Эндпоинт для отметки прихода
 app.post('/api/attendance', async (req, res) => {
   try {
     console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = PATHS.attendance;
     if (!fs.existsSync(attendanceDir)) {
       fs.mkdirSync(attendanceDir, { recursive: true });
     }
@@ -380,31 +388,38 @@ app.get('/api/attendance/check', async (req, res) => {
       return res.json({ success: true, hasAttendance: false });
     }
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = PATHS.attendance;
     if (!fs.existsSync(attendanceDir)) {
       return res.json({ success: true, hasAttendance: false });
     }
     
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
-    for (const file of files) {
+
+    const files = await fs.promises.readdir(attendanceDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    const readPromises = jsonFiles.map(async (file) => {
       try {
         const filePath = path.join(attendanceDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const record = JSON.parse(content);
-        
-        if (record.employeeName === employeeName) {
-          const recordDate = new Date(record.timestamp);
-          const recordDateStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
-          
-          if (recordDateStr === todayStr) {
-            return res.json({ success: true, hasAttendance: true });
-          }
-        }
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        return JSON.parse(content);
       } catch (e) {
         console.error(`Ошибка чтения файла ${file}:`, e);
+        return null;
+      }
+    });
+
+    const records = (await Promise.all(readPromises)).filter(r => r !== null);
+
+    for (const record of records) {
+      if (record.employeeName === employeeName) {
+        const recordDate = new Date(record.timestamp);
+        const recordDateStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
+
+        if (recordDateStr === todayStr) {
+          return res.json({ success: true, hasAttendance: true });
+        }
       }
     }
     
@@ -420,22 +435,27 @@ app.get('/api/attendance', async (req, res) => {
   try {
     console.log('GET /api/attendance:', req.query);
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = PATHS.attendance;
     const records = [];
     
     if (fs.existsSync(attendanceDir)) {
-      const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
-      
-      for (const file of files) {
+      const files = await fs.promises.readdir(attendanceDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
           const filePath = path.join(attendanceDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const record = JSON.parse(content);
-          records.push(record);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(readPromises);
+      records.push(...results.filter(r => r !== null));
+    }
       
       // Сортируем по дате (новые первыми)
       records.sort((a, b) => {
@@ -477,7 +497,7 @@ app.get('/api/attendance', async (req, res) => {
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/employee-photos';
+    const uploadDir = PATHS.employeePhotos;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -522,7 +542,7 @@ app.post('/api/employee-registration', async (req, res) => {
   try {
     console.log('POST /api/employee-registration:', JSON.stringify(req.body).substring(0, 200));
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     if (!fs.existsSync(registrationDir)) {
       fs.mkdirSync(registrationDir, { recursive: true });
     }
@@ -579,17 +599,17 @@ app.get('/api/employee-registration/:phone', async (req, res) => {
     const phone = decodeURIComponent(req.params.phone);
     console.log('GET /api/employee-registration:', phone);
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
     if (!fs.existsSync(registrationFile)) {
       return res.json({ success: true, registration: null });
     }
-    
+
     const content = fs.readFileSync(registrationFile, 'utf8');
-    const registration = JSON.parse(content);
-    
+    const registration = safeJSONParse(content, `employee-registration-${phone}`);
+
     res.json({ success: true, registration });
   } catch (error) {
     console.error('Ошибка получения регистрации:', error);
@@ -607,7 +627,7 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     const { isVerified, verifiedBy } = req.body;
     console.log('POST /api/employee-registration/:phone/verify:', phone, isVerified);
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
@@ -617,10 +637,10 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
         error: 'Регистрация не найдена'
       });
     }
-    
+
     const content = fs.readFileSync(registrationFile, 'utf8');
-    const registration = JSON.parse(content);
-    
+    const registration = safeJSONParse(content, `employee-registration-verify-${phone}`);
+
     registration.isVerified = isVerified === true;
     // Сохраняем дату первой верификации, даже если верификация снята
     // Это нужно для отображения в списке "Не верифицированных сотрудников"
@@ -662,23 +682,27 @@ app.get('/api/employee-registrations', async (req, res) => {
   try {
     console.log('GET /api/employee-registrations');
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     const registrations = [];
     
     if (fs.existsSync(registrationDir)) {
-      const files = fs.readdirSync(registrationDir).filter(f => f.endsWith('.json'));
-      
-      for (const file of files) {
+      const files = await fs.promises.readdir(registrationDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
           const filePath = path.join(registrationDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const registration = JSON.parse(content);
-          registrations.push(registration);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
-      
+      });
+
+      const results = await Promise.all(readPromises);
+      registrations.push(...results.filter(r => r !== null));
+
       // Сортируем по дате создания (новые первыми)
       registrations.sort((a, b) => {
         const dateA = new Date(a.createdAt || 0);
@@ -705,7 +729,7 @@ app.get('/api/shop-settings/:shopAddress', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('GET /api/shop-settings:', shopAddress);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     if (!fs.existsSync(settingsDir)) {
       fs.mkdirSync(settingsDir, { recursive: true });
     }
@@ -719,10 +743,10 @@ app.get('/api/shop-settings/:shopAddress', async (req, res) => {
         settings: null 
       });
     }
-    
+
     const content = fs.readFileSync(settingsFile, 'utf8');
-    const settings = JSON.parse(content);
-    
+    const settings = safeJSONParse(content, `shop-settings-${shopId}`);
+
     res.json({ success: true, settings });
   } catch (error) {
     console.error('Ошибка получения настроек магазина:', error);
@@ -739,7 +763,7 @@ app.post('/api/shop-settings', async (req, res) => {
     console.log('📝 POST /api/shop-settings');
     console.log('   Тело запроса:', JSON.stringify(req.body, null, 2));
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     console.log('   Проверка директории:', settingsDir);
     
     if (!fs.existsSync(settingsDir)) {
@@ -839,7 +863,7 @@ app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
     
@@ -849,10 +873,10 @@ app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
         documentNumber: 1 
       });
     }
-    
+
     const content = fs.readFileSync(settingsFile, 'utf8');
-    const settings = JSON.parse(content);
-    
+    const settings = safeJSONParse(content, `shop-settings-next-doc-${shopId}`);
+
     let nextNumber = (settings.lastDocumentNumber || 0) + 1;
     if (nextNumber > 50000) {
       nextNumber = 1;
@@ -878,7 +902,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
     const { documentNumber } = req.body;
     console.log('POST /api/shop-settings/:shopAddress/document-number:', shopAddress, documentNumber);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     if (!fs.existsSync(settingsDir)) {
       fs.mkdirSync(settingsDir, { recursive: true });
     }
@@ -916,7 +940,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
 
 // ========== API для РКО отчетов ==========
 
-const rkoReportsDir = '/var/www/rko-reports';
+const rkoReportsDir = PATHS.rkoReports;
 const rkoMetadataFile = path.join(rkoReportsDir, 'rko_metadata.json');
 
 // Инициализация директорий для РКО
@@ -1032,11 +1056,38 @@ app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
     }
     
     const { fileName, employeeName, shopAddress, date, amount, rkoType } = req.body;
-    
+
+    // SECURITY: Validate all required fields are present
     if (!fileName || !employeeName || !shopAddress || !date) {
       return res.status(400).json({
         success: false,
         error: 'Не все обязательные поля указаны'
+      });
+    }
+
+    // SECURITY: Validate date format (ISO 8601)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Expected ISO 8601'
+      });
+    }
+
+    // SECURITY: Validate amount is a valid number
+    const numAmount = parseFloat(amount);
+    if (amount !== undefined && (isNaN(numAmount) || numAmount < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Amount must be a valid non-negative number'
+      });
+    }
+
+    // SECURITY: Validate fileName doesn't contain path traversal
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid fileName: path traversal detected'
       });
     }
     
@@ -1381,35 +1432,36 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       passport_issuer: `${employeeData.issuedBy} Дата выдачи: ${employeeData.issueDate}`,
       cashier_name: directorShortName
     };
-    
-    // Вызываем Python скрипт для обработки Word шаблона
+
+    // Вызываем Python скрипт для обработки Word шаблона (БЕЗОПАСНО - без shell)
     const scriptPath = path.join(__dirname, 'rko_docx_processor.py');
-    const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
-    
+
     try {
-      // Обработка Word шаблона через python-docx
-      console.log(`Выполняем обработку Word шаблона: python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`);
-      const { stdout: processOutput } = await execPromise(
-        `python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`
+      // Обработка Word шаблона через python-docx (использует execFile вместо exec для безопасности)
+      console.log(`Выполняем обработку Word шаблона`);
+      const { stdout: processOutput } = await execFilePromise(
+        'python3',
+        [scriptPath, 'process', templateDocxPath, tempDocxPath, JSON.stringify(data)]
       );
-      
-      const processResult = JSON.parse(processOutput);
+
+      const processResult = safeJSONParse(processOutput, 'python-word-process');
       if (!processResult.success) {
         throw new Error(processResult.error || 'Ошибка обработки Word шаблона');
       }
-      
+
       console.log('✅ Word документ успешно обработан');
-      
+
       // Конвертируем DOCX в PDF
       const tempPdfPath = tempDocxPath.replace('.docx', '.pdf');
       console.log(`Конвертируем DOCX в PDF: ${tempDocxPath} -> ${tempPdfPath}`);
-      
+
       try {
-        const { stdout: convertOutput } = await execPromise(
-          `python3 "${scriptPath}" convert "${tempDocxPath}" "${tempPdfPath}"`
+        const { stdout: convertOutput } = await execFilePromise(
+          'python3',
+          [scriptPath, 'convert', tempDocxPath, tempPdfPath]
         );
-        
-        const convertResult = JSON.parse(convertOutput);
+
+        const convertResult = safeJSONParse(convertOutput, 'python-pdf-convert');
         if (!convertResult.success) {
           throw new Error(convertResult.error || 'Ошибка конвертации в PDF');
         }
@@ -1515,47 +1567,47 @@ function convertAmountToWords(amount) {
 
 // Endpoint для редактора координат
 app.get('/rko_coordinates_editor.html', (req, res) => {
-  res.sendFile('/var/www/html/rko_coordinates_editor.html');
+  res.sendFile(path.join(PATHS.html, 'rko_coordinates_editor.html'));
 });
 
 // Endpoint для координат HTML
 app.get('/coordinates.html', (req, res) => {
-  res.sendFile('/var/www/html/coordinates.html');
+  res.sendFile(path.join(PATHS.html, 'coordinates.html'));
 });
 
 // Endpoint для тестового PDF
 app.get('/test_rko_corrected.pdf', (req, res) => {
-  res.sendFile('/var/www/html/test_rko_corrected.pdf');
+  res.sendFile(path.join(PATHS.html, 'test_rko_corrected.pdf'));
 });
 
 // Endpoint для изображения шаблона
 app.get('/rko_template.jpg', (req, res) => {
-  res.sendFile('/var/www/html/rko_template.jpg');
+  res.sendFile(path.join(PATHS.html, 'rko_template.jpg'));
 });
 
 // Endpoint для финального тестового PDF
 app.get('/test_rko_final.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile('/var/www/html/test_rko_final.pdf');
+  res.sendFile(path.join(PATHS.html, 'test_rko_final.pdf'));
 });
 
 // Endpoint для нового тестового PDF с исправленными координатами
 app.get('/test_rko_new_coords.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile('/var/www/html/test_rko_new_coords.pdf');
+  res.sendFile(path.join(PATHS.html, 'test_rko_new_coords.pdf'));
 });
 
 // Endpoint для тестового РКО КО-2 с фиксированными высотами
 app.get('/test_rko_ko2_fixed.docx', (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', 'inline; filename="test_rko_ko2_fixed.docx"');
-  res.sendFile('/var/www/html/test_rko_ko2_fixed.docx');
+  res.sendFile(path.join(PATHS.html, 'test_rko_ko2_fixed.docx'));
 });
 
 // ==================== API для графика работы ====================
 
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const WORK_SCHEDULE_TEMPLATES_DIR = '/var/www/work-schedule-templates';
+const WORK_SCHEDULES_DIR = PATHS.workSchedules;
+const WORK_SCHEDULE_TEMPLATES_DIR = PATHS.workScheduleTemplates;
 
 // Создаем директории, если их нет
 if (!fs.existsSync(WORK_SCHEDULES_DIR)) {
@@ -1566,11 +1618,22 @@ if (!fs.existsSync(WORK_SCHEDULE_TEMPLATES_DIR)) {
 }
 
 // Вспомогательная функция для получения файла графика
+// Лок для предотвращения гонки при записи в один и тот же месяц
+const scheduleLocks = new Map();
+
 function getScheduleFilePath(month) {
   return path.join(WORK_SCHEDULES_DIR, `${month}.json`);
 }
 
-// Вспомогательная функция для загрузки графика
+// Получить или создать промис-лок для месяца
+function getScheduleLock(month) {
+  if (!scheduleLocks.has(month)) {
+    scheduleLocks.set(month, Promise.resolve());
+  }
+  return scheduleLocks.get(month);
+}
+
+// Вспомогательная функция для загрузки графика (синхронная версия для обратной совместимости)
 function loadSchedule(month) {
   const filePath = getScheduleFilePath(month);
   if (fs.existsSync(filePath)) {
@@ -1585,7 +1648,23 @@ function loadSchedule(month) {
   return { month, entries: [] };
 }
 
-// Вспомогательная функция для сохранения графика
+// Асинхронная версия загрузки графика
+async function loadScheduleAsync(month) {
+  const filePath = getScheduleFilePath(month);
+  try {
+    const exists = await fs.promises.access(filePath).then(() => true).catch(() => false);
+    if (exists) {
+      const data = await fs.promises.readFile(filePath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Ошибка чтения графика:', error);
+    return { month, entries: [] };
+  }
+  return { month, entries: [] };
+}
+
+// Вспомогательная функция для сохранения графика (синхронная версия для обратной совместимости)
 function saveSchedule(schedule) {
   const filePath = getScheduleFilePath(schedule.month);
   try {
@@ -1595,6 +1674,29 @@ function saveSchedule(schedule) {
     console.error('Ошибка сохранения графика:', error);
     return false;
   }
+}
+
+// Асинхронная версия сохранения с локом для предотвращения гонки
+async function saveScheduleAsync(schedule) {
+  const month = schedule.month;
+  const currentLock = getScheduleLock(month);
+
+  // Создаем новый промис, который выполнится после текущего лока
+  const newLock = currentLock.then(async () => {
+    const filePath = getScheduleFilePath(month);
+    try {
+      await fs.promises.writeFile(filePath, JSON.stringify(schedule, null, 2), 'utf8');
+      return true;
+    } catch (error) {
+      console.error('Ошибка сохранения графика:', error);
+      return false;
+    }
+  });
+
+  // Обновляем лок для этого месяца
+  scheduleLocks.set(month, newLock);
+
+  return newLock;
 }
 
 // GET /api/work-schedule?month=YYYY-MM - получить график на месяц
@@ -1705,60 +1807,81 @@ app.delete('/api/work-schedule/:entryId', (req, res) => {
 });
 
 // POST /api/work-schedule/bulk - массовое создание смен
-app.post('/api/work-schedule/bulk', (req, res) => {
+app.post('/api/work-schedule/bulk', async (req, res) => {
   try {
     const entries = req.body.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Не указаны записи (entries)' 
+      return res.status(400).json({
+        success: false,
+        error: 'Не указаны записи (entries)'
       });
     }
 
     // Группируем по месяцам
     const schedulesByMonth = {};
+    const monthsToLoad = new Set();
+
+    // Сначала определяем все месяцы
     entries.forEach((entry, index) => {
       if (!entry.month) {
         // Извлекаем месяц из даты
         const date = new Date(entry.date);
         entry.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       }
-
-      if (!schedulesByMonth[entry.month]) {
-        schedulesByMonth[entry.month] = loadSchedule(entry.month);
-      }
+      monthsToLoad.add(entry.month);
 
       // Генерируем уникальный ID, если его нет
       if (!entry.id) {
         entry.id = `entry_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
       }
+    });
 
+    // Загружаем все графики параллельно с использованием async версии
+    const loadPromises = Array.from(monthsToLoad).map(async month => {
+      const schedule = await loadScheduleAsync(month);
+      return { month, schedule };
+    });
+
+    const loadedSchedules = await Promise.all(loadPromises);
+    loadedSchedules.forEach(({ month, schedule }) => {
+      schedulesByMonth[month] = schedule;
+    });
+
+    // Обрабатываем записи
+    entries.forEach(entry => {
       // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
-      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => 
-        !(e.employeeId === entry.employeeId && 
-          e.date === entry.date && 
+      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e =>
+        !(e.employeeId === entry.employeeId &&
+          e.date === entry.date &&
           e.shiftType === entry.shiftType)
       );
 
       // Добавляем новую запись
       schedulesByMonth[entry.month].entries.push(entry);
     });
-    
+
     console.log(`📊 Массовое создание: обработано ${entries.length} записей, сохранено в ${Object.keys(schedulesByMonth).length} месяцах`);
 
-    // Сохраняем все графики
+    // Сохраняем все графики параллельно с локами
+    const savePromises = Object.values(schedulesByMonth).map(async schedule => {
+      const success = await saveScheduleAsync(schedule);
+      return { month: schedule.month, success, count: schedule.entries.length };
+    });
+
+    const saveResults = await Promise.all(savePromises);
+
+    // Проверяем результаты
     let allSaved = true;
     let totalSaved = 0;
-    for (const month in schedulesByMonth) {
-      const schedule = schedulesByMonth[month];
-      if (saveSchedule(schedule)) {
-        totalSaved += schedule.entries.length;
-        console.log(`✅ Сохранен график для ${month}: ${schedule.entries.length} записей`);
+    saveResults.forEach(({ month, success, count }) => {
+      if (success) {
+        totalSaved += count;
+        console.log(`✅ Сохранен график для ${month}: ${count} записей`);
       } else {
         allSaved = false;
         console.error(`❌ Ошибка сохранения графика для ${month}`);
       }
-    }
+    });
 
     if (allSaved) {
       console.log(`✅ Всего сохранено записей в графиках: ${totalSaved}`);
@@ -1837,32 +1960,36 @@ app.get('/api/work-schedule/template', (req, res) => {
 
 // ========== API для поставщиков ==========
 
-const SUPPLIERS_DIR = '/var/www/suppliers';
+const SUPPLIERS_DIR = PATHS.suppliers;
 
 // GET /api/suppliers - получить всех поставщиков
-app.get('/api/suppliers', (req, res) => {
+app.get('/api/suppliers', async (req, res) => {
   try {
     console.log('GET /api/suppliers');
-    
+
     const suppliers = [];
-    
+
     if (!fs.existsSync(SUPPLIERS_DIR)) {
       fs.mkdirSync(SUPPLIERS_DIR, { recursive: true });
     }
-    
-    const files = fs.readdirSync(SUPPLIERS_DIR).filter(f => f.endsWith('.json'));
-    
-    for (const file of files) {
+
+    const files = await fs.promises.readdir(SUPPLIERS_DIR);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    const readPromises = jsonFiles.map(async (file) => {
       try {
         const filePath = path.join(SUPPLIERS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const supplier = JSON.parse(content);
-        suppliers.push(supplier);
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        return JSON.parse(content);
       } catch (e) {
         console.error(`Ошибка чтения файла ${file}:`, e);
+        return null;
       }
-    }
-    
+    });
+
+    const results = await Promise.all(readPromises);
+    suppliers.push(...results.filter(r => r !== null));
+
     // Сортируем по дате создания (новые первыми)
     suppliers.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0);
@@ -1892,10 +2019,10 @@ app.get('/api/suppliers/:id', (req, res) => {
         error: 'Поставщик не найден'
       });
     }
-    
+
     const content = fs.readFileSync(supplierFile, 'utf8');
-    const supplier = JSON.parse(content);
-    
+    const supplier = safeJSONParse(content, `supplier-${id}`);
+
     res.json({ success: true, supplier });
   } catch (error) {
     console.error('Ошибка получения поставщика:', error);
@@ -2001,8 +2128,8 @@ app.put('/api/suppliers/:id', async (req, res) => {
     
     // Читаем существующие данные для сохранения createdAt
     const oldContent = fs.readFileSync(supplierFile, 'utf8');
-    const oldSupplier = JSON.parse(oldContent);
-    
+    const oldSupplier = safeJSONParse(oldContent, `supplier-update-${id}`);
+
     const supplier = {
       id: sanitizedId,
       name: req.body.name.trim(),
@@ -2052,26 +2179,31 @@ app.delete('/api/suppliers/:id', (req, res) => {
 });
 
 // Директория для хранения клиентов
-const CLIENTS_DIR = '/var/www/clients';
+const CLIENTS_DIR = PATHS.clients;
 if (!fs.existsSync(CLIENTS_DIR)) {
   fs.mkdirSync(CLIENTS_DIR, { recursive: true });
 }
 
 // GET /api/clients - получить всех клиентов
-app.get('/api/clients', (req, res) => {
+app.get('/api/clients', async (req, res) => {
   try {
     const clients = [];
     if (fs.existsSync(CLIENTS_DIR)) {
-      const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
-      for (const file of files) {
+      const files = await fs.promises.readdir(CLIENTS_DIR);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
-          const content = fs.readFileSync(path.join(CLIENTS_DIR, file), 'utf8');
-          const client = JSON.parse(content);
-          clients.push(client);
+          const content = await fs.promises.readFile(path.join(CLIENTS_DIR, file), 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(readPromises);
+      clients.push(...results.filter(r => r !== null));
     }
     res.json({ success: true, clients });
   } catch (error) {

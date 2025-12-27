@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main_menu_page.dart';
@@ -48,14 +49,16 @@ void main() async {
   }
   
   await NotificationService.initialize();
-  
+
   // Синхронизация отчетов пересменки в фоне (не блокирует запуск)
-  Future.microtask(() {
+  // Явно игнорируем результат через unawaited
+  unawaited(
     ShiftSyncService.syncAllReports().catchError((e) {
       Logger.warning('Ошибка синхронизации при запуске: $e');
-    });
-  });
-  
+      return null; // Return value to satisfy catchError
+    })
+  );
+
   runApp(const ArabicaApp());
 }
 

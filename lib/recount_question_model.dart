@@ -42,7 +42,7 @@ class RecountQuestion {
     }
   }
 
-  /// Загрузить вопросы из Google Sheets (устаревший метод)
+  /// Загрузить вопросы из сервер (устаревший метод)
   @Deprecated('Используйте loadQuestions()')
   static Future<List<RecountQuestion>> loadQuestionsFromGoogleSheets() async {
     try {
@@ -51,7 +51,7 @@ class RecountQuestion {
       final sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=$encodedSheetName';
       
-      print('📥 Загружаем вопросы пересчета из Google Sheets...');
+      print('📥 Загружаем вопросы пересчета из сервер...');
       print('   Лист: $sheetName');
       print('   URL: $sheetUrl');
       

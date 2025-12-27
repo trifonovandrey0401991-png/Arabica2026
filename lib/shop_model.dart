@@ -66,16 +66,13 @@ class Shop {
     const cacheKey = 'shops_list';
     final cached = CacheManager.get<List<Shop>>(cacheKey);
     if (cached != null) {
-      Logger.debug('📥 Магазины загружены из кэша');
       return cached;
     }
-    
+
     try {
-      Logger.debug('📥 Загружаем магазины с сервера...');
-      
       // Загружаем магазины через сервис
       final shops = await ShopService.getShops();
-      
+
       // Сохраняем в кэш на 10 минут
       CacheManager.set(cacheKey, shops, duration: const Duration(minutes: 10));
       
@@ -88,7 +85,7 @@ class Shop {
     }
   }
 
-  /// Загрузить список магазинов из Google Sheets (устаревший метод, оставлен для обратной совместимости)
+  /// Загрузить список магазинов из сервер (устаревший метод, оставлен для обратной совместимости)
   @Deprecated('Используйте loadShopsFromServer()')
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     return loadShopsFromServer();

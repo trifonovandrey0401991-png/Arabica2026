@@ -9,8 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 
-/// Сервис для работы с фото пересменки (сохранение на сервере)
-class GoogleDriveService {
+/// Сервис для работы с фото (сохранение на сервере)
+class PhotoService {
   // URL сервера для загрузки фото
   static const String serverUrl = 'https://arabica26.ru';
 
@@ -18,7 +18,7 @@ class GoogleDriveService {
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
     try {
       List<int> bytes;
-      
+
       // Проверяем, является ли это base64 data URL (для веб)
       if (photoPath.startsWith('data:image/')) {
         final base64Index = photoPath.indexOf(',');
@@ -70,7 +70,7 @@ class GoogleDriveService {
     try {
       // Используем XMLHttpRequest для веб (более надежно, чем fetch)
       final formData = html.FormData();
-      
+
       // Создаем Blob из bytes
       final blob = html.Blob(bytes, 'image/jpeg');
       formData.appendBlob('file', blob, fileName);
@@ -80,13 +80,13 @@ class GoogleDriveService {
 
       final completer = Completer<String?>();
       final xhr = html.HttpRequest();
-      
+
       xhr.open('POST', '$serverUrl/upload-photo', true);
-      
+
       xhr.onLoad.listen((e) {
         final status = xhr.status ?? 0;
         print('📥 Получен ответ: статус $status');
-        
+
         if (status >= 200 && status < 300) {
           try {
             final result = jsonDecode(xhr.responseText ?? '') as Map<String, dynamic>;
@@ -109,15 +109,15 @@ class GoogleDriveService {
           completer.complete(null);
         }
       });
-      
+
       xhr.onError.listen((e) {
         print('❌ Ошибка XMLHttpRequest: ${xhr.statusText ?? "Unknown error"}');
         completer.complete(null);
       });
-      
+
       // Отправляем запрос
       xhr.send(formData);
-      
+
       // Таймаут
       return completer.future.timeout(
         const Duration(seconds: 120),
@@ -138,7 +138,7 @@ class GoogleDriveService {
   static Future<String?> _uploadPhotoMobile(List<int> bytes, String fileName) async {
     try {
       final uri = Uri.parse('$serverUrl/upload-photo');
-      
+
       final request = http.MultipartRequest('POST', uri);
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -184,7 +184,7 @@ class GoogleDriveService {
     }
   }
 
-  /// Получить URL фото (теперь это просто URL с сервера)
+  /// Получить URL фото
   static String getPhotoUrl(String filePath) {
     // Если это уже полный URL, возвращаем как есть
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
