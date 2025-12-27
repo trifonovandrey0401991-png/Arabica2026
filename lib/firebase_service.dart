@@ -146,27 +146,16 @@ class FirebaseService {
         return;
       }
       
-      // Выполняем дальнейшую инициализацию в отдельной функции,
-      // чтобы ошибки не перехватывались общим catch блоком
-      // Используем Future.microtask для выполнения в следующем микротаске
+      // Выполняем дальнейшую инициализацию с proper error handling
       try {
-        Future.microtask(() async {
-          try {
-            Logger.debug('Начало инициализации после разрешений');
-            await _initializeAfterPermissions(messaging);
-            _initialized = true;
-            Logger.success('Firebase Messaging инициализирован');
-          } catch (e) {
-            Logger.warning('Ошибка в _initializeAfterPermissions: $e');
-            Logger.warning('Приложение продолжит работу, но push-уведомления могут не работать');
-            _initialized = true; // Все равно помечаем как инициализированный
-            Logger.success('Firebase Messaging инициализирован (с ограничениями)');
-          }
-        });
-      } catch (e) {
-        Logger.warning('Ошибка при создании Future.microtask: $e');
-        // Продолжаем работу
+        Logger.debug('Начало инициализации после разрешений');
+        await _initializeAfterPermissions(messaging);
         _initialized = true;
+        Logger.success('Firebase Messaging инициализирован');
+      } catch (e) {
+        Logger.warning('Ошибка в _initializeAfterPermissions: $e');
+        Logger.warning('Приложение продолжит работу, но push-уведомления могут не работать');
+        _initialized = true; // Все равно помечаем как инициализированный
         Logger.success('Firebase Messaging инициализирован (с ограничениями)');
       }
     } catch (e) {

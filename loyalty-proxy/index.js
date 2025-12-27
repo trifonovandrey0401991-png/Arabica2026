@@ -5,9 +5,10 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+const execFilePromise = util.promisify(execFile);
 
 const app = express();
 app.use(bodyParser.json());
@@ -261,21 +262,35 @@ app.get('/api/recount-reports', async (req, res) => {
 app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
   try {
     let { reportId } = req.params;
-    // Декодируем URL-кодированный reportId
-    reportId = decodeURIComponent(reportId);
-    // Санитизируем имя файла (как при сохранении)
-    const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+    // SECURITY: Validate format BEFORE any processing
+    if (!/^[a-zA-Z0-9_\-]+$/.test(reportId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid reportId format'
+      });
+    }
+
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
-    console.log(`Санитизированный ID: ${sanitizedId}`);
-    
+
     const reportsDir = '/var/www/recount-reports';
-    const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
-    
+    const reportFile = path.join(reportsDir, `${reportId}.json`);
+
+    // SECURITY: Verify the resolved path is within reportsDir
+    const resolvedPath = path.resolve(reportFile);
+    const resolvedDir = path.resolve(reportsDir);
+    if (!resolvedPath.startsWith(resolvedDir + path.sep)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
     if (!fs.existsSync(reportFile)) {
       console.error(`Файл не найден: ${reportFile}`);
-      // Попробуем найти файл по частичному совпадению
+      // SECURITY: Use exact match instead of substring
       const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
-      const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
+      const matchingFile = files.find(f => f === `${reportId}.json`);
       if (matchingFile) {
         console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
         const actualFile = path.join(reportsDir, matchingFile);
@@ -1053,11 +1068,38 @@ app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
     }
     
     const { fileName, employeeName, shopAddress, date, amount, rkoType } = req.body;
-    
+
+    // SECURITY: Validate all required fields are present
     if (!fileName || !employeeName || !shopAddress || !date) {
       return res.status(400).json({
         success: false,
         error: 'Не все обязательные поля указаны'
+      });
+    }
+
+    // SECURITY: Validate date format (ISO 8601)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Expected ISO 8601'
+      });
+    }
+
+    // SECURITY: Validate amount is a valid number
+    const numAmount = parseFloat(amount);
+    if (amount !== undefined && (isNaN(numAmount) || numAmount < 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Amount must be a valid non-negative number'
+      });
+    }
+
+    // SECURITY: Validate fileName doesn't contain path traversal
+    if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid fileName: path traversal detected'
       });
     }
     
@@ -1402,32 +1444,33 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       passport_issuer: `${employeeData.issuedBy} Дата выдачи: ${employeeData.issueDate}`,
       cashier_name: directorShortName
     };
-    
-    // Вызываем Python скрипт для обработки Word шаблона
+
+    // Вызываем Python скрипт для обработки Word шаблона (БЕЗОПАСНО - без shell)
     const scriptPath = path.join(__dirname, 'rko_docx_processor.py');
-    const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
-    
+
     try {
-      // Обработка Word шаблона через python-docx
-      console.log(`Выполняем обработку Word шаблона: python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`);
-      const { stdout: processOutput } = await execPromise(
-        `python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`
+      // Обработка Word шаблона через python-docx (использует execFile вместо exec для безопасности)
+      console.log(`Выполняем обработку Word шаблона`);
+      const { stdout: processOutput } = await execFilePromise(
+        'python3',
+        [scriptPath, 'process', templateDocxPath, tempDocxPath, JSON.stringify(data)]
       );
-      
+
       const processResult = JSON.parse(processOutput);
       if (!processResult.success) {
         throw new Error(processResult.error || 'Ошибка обработки Word шаблона');
       }
-      
+
       console.log('✅ Word документ успешно обработан');
-      
+
       // Конвертируем DOCX в PDF
       const tempPdfPath = tempDocxPath.replace('.docx', '.pdf');
       console.log(`Конвертируем DOCX в PDF: ${tempDocxPath} -> ${tempPdfPath}`);
-      
+
       try {
-        const { stdout: convertOutput } = await execPromise(
-          `python3 "${scriptPath}" convert "${tempDocxPath}" "${tempPdfPath}"`
+        const { stdout: convertOutput } = await execFilePromise(
+          'python3',
+          [scriptPath, 'convert', tempDocxPath, tempPdfPath]
         );
         
         const convertResult = JSON.parse(convertOutput);
