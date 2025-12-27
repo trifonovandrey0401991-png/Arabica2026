@@ -156,11 +156,12 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                   itemCount: filteredEmployees.length,
                   itemBuilder: (context, index) {
                     final employee = filteredEmployees[index];
-                    final registration = employee.phone != null 
-                        ? _registrations[employee.phone!] 
+                    final registration = employee.phone != null
+                        ? _registrations[employee.phone!]
                         : null;
 
                     return Card(
+                      key: ValueKey(employee.id),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       color: Colors.orange.shade50,
                       child: ListTile(

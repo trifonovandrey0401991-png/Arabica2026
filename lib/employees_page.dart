@@ -518,8 +518,9 @@ class _EmployeesPageState extends State<EmployeesPage> {
                     final isVerified = employee.phone != null
                         ? _verificationStatus[employee.phone!] ?? false
                         : false;
-                    
+
                     return Card(
+                      key: ValueKey(employee.id),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         leading: Stack(
@@ -853,6 +854,7 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
                       : false;
 
                   return Card(
+                    key: ValueKey(employee.id),
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
                       leading: Stack(
