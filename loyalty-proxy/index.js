@@ -42,6 +42,17 @@ const upload = multer({
 // URL Google Apps Script для регистрации, лояльности и ролей
 const SCRIPT_URL = process.env.SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzaH6AqH8j9E93Tf4SFCie35oeESGfBL6p51cTHl9EvKq0Y5bfzg4UbmsDKB1B82yPS/exec";
 
+// Утилита для безопасного парсинга JSON с улучшенными сообщениями об ошибках
+function safeJSONParse(jsonString, context = 'unknown') {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error(`Ошибка парсинга JSON (${context}):`, error.message);
+    console.error(`Первые 100 символов: ${jsonString.substring(0, 100)}`);
+    throw new Error(`Неверный формат JSON файла (${context}): ${error.message}`);
+  }
+}
+
 app.post('/', async (req, res) => {
   try {
     console.log("POST request to script:", SCRIPT_URL);
@@ -295,8 +306,8 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
         console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
         const actualFile = path.join(reportsDir, matchingFile);
         const content = fs.readFileSync(actualFile, 'utf8');
-        const report = JSON.parse(content);
-        
+        const report = safeJSONParse(content, `recount-report-${matchingFile}`);
+
         // Обновляем оценку
         report.adminRating = req.body.rating;
         report.adminName = req.body.adminName;
@@ -313,8 +324,8 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     
     // Читаем отчет
     const content = fs.readFileSync(reportFile, 'utf8');
-    const report = JSON.parse(content);
-    
+    const report = safeJSONParse(content, `recount-report-${reportId}`);
+
     // Обновляем оценку
     report.adminRating = req.body.rating;
     report.adminName = req.body.adminName;
@@ -618,10 +629,10 @@ app.get('/api/employee-registration/:phone', async (req, res) => {
     if (!fs.existsSync(registrationFile)) {
       return res.json({ success: true, registration: null });
     }
-    
+
     const content = fs.readFileSync(registrationFile, 'utf8');
-    const registration = JSON.parse(content);
-    
+    const registration = safeJSONParse(content, `employee-registration-${phone}`);
+
     res.json({ success: true, registration });
   } catch (error) {
     console.error('Ошибка получения регистрации:', error);
@@ -649,10 +660,10 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
         error: 'Регистрация не найдена'
       });
     }
-    
+
     const content = fs.readFileSync(registrationFile, 'utf8');
-    const registration = JSON.parse(content);
-    
+    const registration = safeJSONParse(content, `employee-registration-verify-${phone}`);
+
     registration.isVerified = isVerified === true;
     // Сохраняем дату первой верификации, даже если верификация снята
     // Это нужно для отображения в списке "Не верифицированных сотрудников"
@@ -755,10 +766,10 @@ app.get('/api/shop-settings/:shopAddress', async (req, res) => {
         settings: null 
       });
     }
-    
+
     const content = fs.readFileSync(settingsFile, 'utf8');
-    const settings = JSON.parse(content);
-    
+    const settings = safeJSONParse(content, `shop-settings-${shopId}`);
+
     res.json({ success: true, settings });
   } catch (error) {
     console.error('Ошибка получения настроек магазина:', error);
@@ -885,10 +896,10 @@ app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
         documentNumber: 1 
       });
     }
-    
+
     const content = fs.readFileSync(settingsFile, 'utf8');
-    const settings = JSON.parse(content);
-    
+    const settings = safeJSONParse(content, `shop-settings-next-doc-${shopId}`);
+
     let nextNumber = (settings.lastDocumentNumber || 0) + 1;
     if (nextNumber > 50000) {
       nextNumber = 1;
@@ -1456,7 +1467,7 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
         [scriptPath, 'process', templateDocxPath, tempDocxPath, JSON.stringify(data)]
       );
 
-      const processResult = JSON.parse(processOutput);
+      const processResult = safeJSONParse(processOutput, 'python-word-process');
       if (!processResult.success) {
         throw new Error(processResult.error || 'Ошибка обработки Word шаблона');
       }
@@ -1472,8 +1483,8 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
           'python3',
           [scriptPath, 'convert', tempDocxPath, tempPdfPath]
         );
-        
-        const convertResult = JSON.parse(convertOutput);
+
+        const convertResult = safeJSONParse(convertOutput, 'python-pdf-convert');
         if (!convertResult.success) {
           throw new Error(convertResult.error || 'Ошибка конвертации в PDF');
         }
@@ -1630,11 +1641,22 @@ if (!fs.existsSync(WORK_SCHEDULE_TEMPLATES_DIR)) {
 }
 
 // Вспомогательная функция для получения файла графика
+// Лок для предотвращения гонки при записи в один и тот же месяц
+const scheduleLocks = new Map();
+
 function getScheduleFilePath(month) {
   return path.join(WORK_SCHEDULES_DIR, `${month}.json`);
 }
 
-// Вспомогательная функция для загрузки графика
+// Получить или создать промис-лок для месяца
+function getScheduleLock(month) {
+  if (!scheduleLocks.has(month)) {
+    scheduleLocks.set(month, Promise.resolve());
+  }
+  return scheduleLocks.get(month);
+}
+
+// Вспомогательная функция для загрузки графика (синхронная версия для обратной совместимости)
 function loadSchedule(month) {
   const filePath = getScheduleFilePath(month);
   if (fs.existsSync(filePath)) {
@@ -1649,7 +1671,23 @@ function loadSchedule(month) {
   return { month, entries: [] };
 }
 
-// Вспомогательная функция для сохранения графика
+// Асинхронная версия загрузки графика
+async function loadScheduleAsync(month) {
+  const filePath = getScheduleFilePath(month);
+  try {
+    const exists = await fs.promises.access(filePath).then(() => true).catch(() => false);
+    if (exists) {
+      const data = await fs.promises.readFile(filePath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Ошибка чтения графика:', error);
+    return { month, entries: [] };
+  }
+  return { month, entries: [] };
+}
+
+// Вспомогательная функция для сохранения графика (синхронная версия для обратной совместимости)
 function saveSchedule(schedule) {
   const filePath = getScheduleFilePath(schedule.month);
   try {
@@ -1659,6 +1697,29 @@ function saveSchedule(schedule) {
     console.error('Ошибка сохранения графика:', error);
     return false;
   }
+}
+
+// Асинхронная версия сохранения с локом для предотвращения гонки
+async function saveScheduleAsync(schedule) {
+  const month = schedule.month;
+  const currentLock = getScheduleLock(month);
+
+  // Создаем новый промис, который выполнится после текущего лока
+  const newLock = currentLock.then(async () => {
+    const filePath = getScheduleFilePath(month);
+    try {
+      await fs.promises.writeFile(filePath, JSON.stringify(schedule, null, 2), 'utf8');
+      return true;
+    } catch (error) {
+      console.error('Ошибка сохранения графика:', error);
+      return false;
+    }
+  });
+
+  // Обновляем лок для этого месяца
+  scheduleLocks.set(month, newLock);
+
+  return newLock;
 }
 
 // GET /api/work-schedule?month=YYYY-MM - получить график на месяц
@@ -1769,60 +1830,81 @@ app.delete('/api/work-schedule/:entryId', (req, res) => {
 });
 
 // POST /api/work-schedule/bulk - массовое создание смен
-app.post('/api/work-schedule/bulk', (req, res) => {
+app.post('/api/work-schedule/bulk', async (req, res) => {
   try {
     const entries = req.body.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Не указаны записи (entries)' 
+      return res.status(400).json({
+        success: false,
+        error: 'Не указаны записи (entries)'
       });
     }
 
     // Группируем по месяцам
     const schedulesByMonth = {};
+    const monthsToLoad = new Set();
+
+    // Сначала определяем все месяцы
     entries.forEach((entry, index) => {
       if (!entry.month) {
         // Извлекаем месяц из даты
         const date = new Date(entry.date);
         entry.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       }
-
-      if (!schedulesByMonth[entry.month]) {
-        schedulesByMonth[entry.month] = loadSchedule(entry.month);
-      }
+      monthsToLoad.add(entry.month);
 
       // Генерируем уникальный ID, если его нет
       if (!entry.id) {
         entry.id = `entry_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
       }
+    });
 
+    // Загружаем все графики параллельно с использованием async версии
+    const loadPromises = Array.from(monthsToLoad).map(async month => {
+      const schedule = await loadScheduleAsync(month);
+      return { month, schedule };
+    });
+
+    const loadedSchedules = await Promise.all(loadPromises);
+    loadedSchedules.forEach(({ month, schedule }) => {
+      schedulesByMonth[month] = schedule;
+    });
+
+    // Обрабатываем записи
+    entries.forEach(entry => {
       // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
-      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => 
-        !(e.employeeId === entry.employeeId && 
-          e.date === entry.date && 
+      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e =>
+        !(e.employeeId === entry.employeeId &&
+          e.date === entry.date &&
           e.shiftType === entry.shiftType)
       );
 
       // Добавляем новую запись
       schedulesByMonth[entry.month].entries.push(entry);
     });
-    
+
     console.log(`📊 Массовое создание: обработано ${entries.length} записей, сохранено в ${Object.keys(schedulesByMonth).length} месяцах`);
 
-    // Сохраняем все графики
+    // Сохраняем все графики параллельно с локами
+    const savePromises = Object.values(schedulesByMonth).map(async schedule => {
+      const success = await saveScheduleAsync(schedule);
+      return { month: schedule.month, success, count: schedule.entries.length };
+    });
+
+    const saveResults = await Promise.all(savePromises);
+
+    // Проверяем результаты
     let allSaved = true;
     let totalSaved = 0;
-    for (const month in schedulesByMonth) {
-      const schedule = schedulesByMonth[month];
-      if (saveSchedule(schedule)) {
-        totalSaved += schedule.entries.length;
-        console.log(`✅ Сохранен график для ${month}: ${schedule.entries.length} записей`);
+    saveResults.forEach(({ month, success, count }) => {
+      if (success) {
+        totalSaved += count;
+        console.log(`✅ Сохранен график для ${month}: ${count} записей`);
       } else {
         allSaved = false;
         console.error(`❌ Ошибка сохранения графика для ${month}`);
       }
-    }
+    });
 
     if (allSaved) {
       console.log(`✅ Всего сохранено записей в графиках: ${totalSaved}`);
@@ -1960,10 +2042,10 @@ app.get('/api/suppliers/:id', (req, res) => {
         error: 'Поставщик не найден'
       });
     }
-    
+
     const content = fs.readFileSync(supplierFile, 'utf8');
-    const supplier = JSON.parse(content);
-    
+    const supplier = safeJSONParse(content, `supplier-${id}`);
+
     res.json({ success: true, supplier });
   } catch (error) {
     console.error('Ошибка получения поставщика:', error);
@@ -2069,8 +2151,8 @@ app.put('/api/suppliers/:id', async (req, res) => {
     
     // Читаем существующие данные для сохранения createdAt
     const oldContent = fs.readFileSync(supplierFile, 'utf8');
-    const oldSupplier = JSON.parse(oldContent);
-    
+    const oldSupplier = safeJSONParse(oldContent, `supplier-update-${id}`);
+
     const supplier = {
       id: sanitizedId,
       name: req.body.name.trim(),

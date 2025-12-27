@@ -20,11 +20,16 @@ import 'package:firebase_core/firebase_core.dart' as firebase_core;
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
   static FirebaseMessaging? _messaging;
-  static final FlutterLocalNotificationsPlugin _localNotifications = 
-      FlutterLocalNotificationsPlugin();
+  static FlutterLocalNotificationsPlugin? _localNotifications;
 
   static bool _initialized = false;
   static BuildContext? _globalContext;
+
+  /// Получить экземпляр FlutterLocalNotificationsPlugin
+  static FlutterLocalNotificationsPlugin _getLocalNotifications() {
+    _localNotifications ??= FlutterLocalNotificationsPlugin();
+    return _localNotifications!;
+  }
   
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
   static FirebaseMessaging _getMessaging() {
@@ -182,7 +187,7 @@ class FirebaseService {
     );
 
     try {
-      await _localNotifications.initialize(
+      await _getLocalNotifications().initialize(
         initSettings,
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
@@ -374,7 +379,7 @@ class FirebaseService {
       iOS: iosDetails,
     );
 
-    await _localNotifications.show(
+    await _getLocalNotifications().show(
       message.hashCode,
       message.notification?.title ?? 'Новый ответ',
       message.notification?.body ?? 'У вас новый ответ на отзыв',
