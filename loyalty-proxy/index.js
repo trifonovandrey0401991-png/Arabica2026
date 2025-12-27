@@ -14,18 +14,81 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
+// ========== CSRF ЗАЩИТА ==========
+// Разрешенные домены для CSRF защиты
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://arabica26.ru,http://localhost:3000').split(',');
+
+// Middleware для проверки Origin на POST/PUT/DELETE запросах
+function csrfProtection(req, res, next) {
+  // Применяем только для изменяющих методов
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const origin = req.get('origin') || req.get('referer');
+
+    if (!origin) {
+      console.warn(`⚠️ CSRF: Отклонен ${req.method} ${req.path} - отсутствует Origin/Referer`);
+      return res.status(403).json({
+        success: false,
+        error: 'CSRF protection: Origin required'
+      });
+    }
+
+    // Проверяем, что origin в списке разрешенных
+    const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+      try {
+        const originUrl = new URL(origin);
+        const allowedUrl = new URL(allowed);
+        return originUrl.origin === allowedUrl.origin;
+      } catch (e) {
+        // Если origin - это referer, он может содержать путь
+        return origin.startsWith(allowed);
+      }
+    });
+
+    if (!isAllowed) {
+      console.warn(`⚠️ CSRF: Отклонен ${req.method} ${req.path} - неразрешенный Origin: ${origin}`);
+      return res.status(403).json({
+        success: false,
+        error: 'CSRF protection: Origin not allowed'
+      });
+    }
+  }
+
+  next();
+}
+
+// Применяем CSRF защиту ко всем маршрутам
+app.use(csrfProtection);
+
+// ========== КОНФИГУРАЦИЯ ПУТЕЙ ==========
+// Все пути настраиваются через переменные окружения
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
+const PATHS = {
+  // Директории для данных
+  html: path.join(DATA_DIR, 'html'),
+  shiftPhotos: path.join(DATA_DIR, 'shift-photos'),
+  recountReports: path.join(DATA_DIR, 'recount-reports'),
+  attendance: path.join(DATA_DIR, 'attendance'),
+  employeePhotos: path.join(DATA_DIR, 'employee-photos'),
+  employeeRegistrations: path.join(DATA_DIR, 'employee-registrations'),
+  shopSettings: path.join(DATA_DIR, 'shop-settings'),
+  rkoReports: path.join(DATA_DIR, 'rko-reports'),
+  workSchedules: path.join(DATA_DIR, 'work-schedules'),
+  workScheduleTemplates: path.join(DATA_DIR, 'work-schedule-templates'),
+  suppliers: path.join(DATA_DIR, 'suppliers'),
+  clients: path.join(DATA_DIR, 'clients'),
+};
+
 // Статические файлы для редактора координат
-app.use('/static', express.static('/var/www/html'));
+app.use('/static', express.static(PATHS.html));
 
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/shift-photos';
     // Создаем директорию, если её нет
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(PATHS.shiftPhotos)) {
+      fs.mkdirSync(PATHS.shiftPhotos, { recursive: true });
     }
-    cb(null, uploadDir);
+    cb(null, PATHS.shiftPhotos);
   },
   filename: function (req, file, cb) {
     // Используем оригинальное имя файла
@@ -78,7 +141,7 @@ app.post('/api/recount-reports', async (req, res) => {
     console.log('POST /api/recount-reports:', JSON.stringify(req.body).substring(0, 200));
     
     // Сохраняем отчет локально в файл
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = PATHS.recountReports;
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
@@ -122,7 +185,7 @@ app.get('/api/recount-reports', async (req, res) => {
   try {
     console.log('GET /api/recount-reports:', req.query);
     
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = PATHS.recountReports;
     const reports = [];
     
     // Читаем отчеты из локальной директории асинхронно
@@ -198,7 +261,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
 
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
 
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = PATHS.recountReports;
     const reportFile = path.join(reportsDir, `${reportId}.json`);
 
     // SECURITY: Verify the resolved path is within reportsDir
@@ -271,14 +334,14 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 });
 
 // Статическая раздача фото
-app.use('/shift-photos', express.static('/var/www/shift-photos'));
+app.use('/shift-photos', express.static(PATHS.shiftPhotos));
 
 // Эндпоинт для отметки прихода
 app.post('/api/attendance', async (req, res) => {
   try {
     console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = PATHS.attendance;
     if (!fs.existsSync(attendanceDir)) {
       fs.mkdirSync(attendanceDir, { recursive: true });
     }
@@ -325,7 +388,7 @@ app.get('/api/attendance/check', async (req, res) => {
       return res.json({ success: true, hasAttendance: false });
     }
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = PATHS.attendance;
     if (!fs.existsSync(attendanceDir)) {
       return res.json({ success: true, hasAttendance: false });
     }
@@ -372,7 +435,7 @@ app.get('/api/attendance', async (req, res) => {
   try {
     console.log('GET /api/attendance:', req.query);
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = PATHS.attendance;
     const records = [];
     
     if (fs.existsSync(attendanceDir)) {
@@ -434,7 +497,7 @@ app.get('/api/attendance', async (req, res) => {
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/employee-photos';
+    const uploadDir = PATHS.employeePhotos;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -479,7 +542,7 @@ app.post('/api/employee-registration', async (req, res) => {
   try {
     console.log('POST /api/employee-registration:', JSON.stringify(req.body).substring(0, 200));
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     if (!fs.existsSync(registrationDir)) {
       fs.mkdirSync(registrationDir, { recursive: true });
     }
@@ -536,7 +599,7 @@ app.get('/api/employee-registration/:phone', async (req, res) => {
     const phone = decodeURIComponent(req.params.phone);
     console.log('GET /api/employee-registration:', phone);
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
@@ -564,7 +627,7 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     const { isVerified, verifiedBy } = req.body;
     console.log('POST /api/employee-registration/:phone/verify:', phone, isVerified);
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
@@ -619,7 +682,7 @@ app.get('/api/employee-registrations', async (req, res) => {
   try {
     console.log('GET /api/employee-registrations');
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = PATHS.employeeRegistrations;
     const registrations = [];
     
     if (fs.existsSync(registrationDir)) {
@@ -666,7 +729,7 @@ app.get('/api/shop-settings/:shopAddress', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('GET /api/shop-settings:', shopAddress);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     if (!fs.existsSync(settingsDir)) {
       fs.mkdirSync(settingsDir, { recursive: true });
     }
@@ -700,7 +763,7 @@ app.post('/api/shop-settings', async (req, res) => {
     console.log('📝 POST /api/shop-settings');
     console.log('   Тело запроса:', JSON.stringify(req.body, null, 2));
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     console.log('   Проверка директории:', settingsDir);
     
     if (!fs.existsSync(settingsDir)) {
@@ -800,7 +863,7 @@ app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
     
@@ -839,7 +902,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
     const { documentNumber } = req.body;
     console.log('POST /api/shop-settings/:shopAddress/document-number:', shopAddress, documentNumber);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = PATHS.shopSettings;
     if (!fs.existsSync(settingsDir)) {
       fs.mkdirSync(settingsDir, { recursive: true });
     }
@@ -877,7 +940,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
 
 // ========== API для РКО отчетов ==========
 
-const rkoReportsDir = '/var/www/rko-reports';
+const rkoReportsDir = PATHS.rkoReports;
 const rkoMetadataFile = path.join(rkoReportsDir, 'rko_metadata.json');
 
 // Инициализация директорий для РКО
@@ -1504,47 +1567,47 @@ function convertAmountToWords(amount) {
 
 // Endpoint для редактора координат
 app.get('/rko_coordinates_editor.html', (req, res) => {
-  res.sendFile('/var/www/html/rko_coordinates_editor.html');
+  res.sendFile(path.join(PATHS.html, 'rko_coordinates_editor.html'));
 });
 
 // Endpoint для координат HTML
 app.get('/coordinates.html', (req, res) => {
-  res.sendFile('/var/www/html/coordinates.html');
+  res.sendFile(path.join(PATHS.html, 'coordinates.html'));
 });
 
 // Endpoint для тестового PDF
 app.get('/test_rko_corrected.pdf', (req, res) => {
-  res.sendFile('/var/www/html/test_rko_corrected.pdf');
+  res.sendFile(path.join(PATHS.html, 'test_rko_corrected.pdf'));
 });
 
 // Endpoint для изображения шаблона
 app.get('/rko_template.jpg', (req, res) => {
-  res.sendFile('/var/www/html/rko_template.jpg');
+  res.sendFile(path.join(PATHS.html, 'rko_template.jpg'));
 });
 
 // Endpoint для финального тестового PDF
 app.get('/test_rko_final.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile('/var/www/html/test_rko_final.pdf');
+  res.sendFile(path.join(PATHS.html, 'test_rko_final.pdf'));
 });
 
 // Endpoint для нового тестового PDF с исправленными координатами
 app.get('/test_rko_new_coords.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile('/var/www/html/test_rko_new_coords.pdf');
+  res.sendFile(path.join(PATHS.html, 'test_rko_new_coords.pdf'));
 });
 
 // Endpoint для тестового РКО КО-2 с фиксированными высотами
 app.get('/test_rko_ko2_fixed.docx', (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', 'inline; filename="test_rko_ko2_fixed.docx"');
-  res.sendFile('/var/www/html/test_rko_ko2_fixed.docx');
+  res.sendFile(path.join(PATHS.html, 'test_rko_ko2_fixed.docx'));
 });
 
 // ==================== API для графика работы ====================
 
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const WORK_SCHEDULE_TEMPLATES_DIR = '/var/www/work-schedule-templates';
+const WORK_SCHEDULES_DIR = PATHS.workSchedules;
+const WORK_SCHEDULE_TEMPLATES_DIR = PATHS.workScheduleTemplates;
 
 // Создаем директории, если их нет
 if (!fs.existsSync(WORK_SCHEDULES_DIR)) {
@@ -1897,7 +1960,7 @@ app.get('/api/work-schedule/template', (req, res) => {
 
 // ========== API для поставщиков ==========
 
-const SUPPLIERS_DIR = '/var/www/suppliers';
+const SUPPLIERS_DIR = PATHS.suppliers;
 
 // GET /api/suppliers - получить всех поставщиков
 app.get('/api/suppliers', async (req, res) => {
@@ -2116,7 +2179,7 @@ app.delete('/api/suppliers/:id', (req, res) => {
 });
 
 // Директория для хранения клиентов
-const CLIENTS_DIR = '/var/www/clients';
+const CLIENTS_DIR = PATHS.clients;
 if (!fs.existsSync(CLIENTS_DIR)) {
   fs.mkdirSync(CLIENTS_DIR, { recursive: true });
 }
