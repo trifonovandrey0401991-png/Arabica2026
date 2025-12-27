@@ -43,13 +43,11 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
       if (widget.shopDayData.recountReportId != null) {
         try {
           final recounts = await RecountService.getReports(
-            employeeName: widget.shopDayData.employeeName,
+            reportId: widget.shopDayData.recountReportId,
           );
-          try {
-            _recountReport = recounts.firstWhere(
-              (r) => r.id == widget.shopDayData.recountReportId,
-            );
-          } catch (e) {
+          if (recounts.isNotEmpty) {
+            _recountReport = recounts.first;
+          } else {
             Logger.debug('Отчет пересчета с ID ${widget.shopDayData.recountReportId} не найден');
           }
         } catch (e) {
@@ -61,13 +59,11 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
       if (widget.shopDayData.shiftReportId != null) {
         try {
           final shifts = await ShiftReportService.getReports(
-            employeeName: widget.shopDayData.employeeName,
+            reportId: widget.shopDayData.shiftReportId,
           );
-          try {
-            _shiftReport = shifts.firstWhere(
-              (s) => s.id == widget.shopDayData.shiftReportId,
-            );
-          } catch (e) {
+          if (shifts.isNotEmpty) {
+            _shiftReport = shifts.first;
+          } else {
             Logger.debug('Отчет пересменки с ID ${widget.shopDayData.shiftReportId} не найден');
           }
         } catch (e) {

@@ -42,17 +42,21 @@ class ShiftReportService {
     String? employeeName,
     String? shopAddress,
     DateTime? date,
+    String? reportId,
   }) async {
     try {
       Logger.debug('📥 Загрузка отчетов пересменки с сервера...');
-      
+
       final queryParams = <String, String>{};
       if (employeeName != null) queryParams['employeeName'] = employeeName;
       if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
       if (date != null) {
         queryParams['date'] = date.toIso8601String().split('T')[0];
       }
-      
+      if (reportId != null) {
+        queryParams['id'] = reportId;
+      }
+
       final uri = Uri.parse('$serverUrl/api/shift-reports').replace(queryParameters: queryParams);
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
 

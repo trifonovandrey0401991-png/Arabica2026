@@ -46,80 +46,26 @@ class KPIService {
         }
       }
 
-      Logger.debug('═══════════════════════════════════════════════════════');
-      Logger.debug('🔄 НАЧАЛО ЗАГРУЗКИ KPI данных для магазина "$shopAddress" за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
-      Logger.debug('═══════════════════════════════════════════════════════');
-
       // Получаем отметки прихода за день
-      // Создаем дату с временем 00:00:00 для правильной фильтрации на сервере
       final dateForQuery = DateTime(normalizedDate.year, normalizedDate.month, normalizedDate.day, 0, 0, 0);
-      Logger.debug('📥 Запрос отметок прихода для $shopAddress за ${dateForQuery.toIso8601String()}');
       final attendanceRecords = await AttendanceService.getAttendanceRecords(
         shopAddress: shopAddress,
         date: dateForQuery,
       );
-      
-      Logger.debug('📊 Загружено отметок прихода: ${attendanceRecords.length}');
-      if (attendanceRecords.isNotEmpty) {
-        Logger.debug('   📋 Список всех отметок:');
-        for (var record in attendanceRecords) {
-          final recordDate = DateTime(record.timestamp.year, record.timestamp.month, record.timestamp.day);
-          final isSameDate = recordDate == normalizedDate;
-          Logger.debug('   ✅ Отметка: ${record.employeeName} в ${record.timestamp} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}), дата записи: ${recordDate.year}-${recordDate.month}-${recordDate.day}, совпадает с запрошенной: $isSameDate, магазин: ${record.shopAddress}');
-        }
-      } else {
-        Logger.debug('   ⚠️ Отметок прихода не найдено для этой даты');
-      }
 
-      // Фильтруем отметки по дате и магазину (на случай, если API вернул лишние данные)
-      // Нормализуем адрес магазина для сравнения (убираем лишние пробелы, приводим к нижнему регистру)
+      // Фильтруем отметки по дате и магазину
       final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-      Logger.debug('═══════════════════════════════════════════════════════');
-      Logger.debug('🔍 ФИЛЬТРАЦИЯ ОТМЕТОК ПРИХОДА');
-      Logger.debug('   Запрошенный магазин: "$shopAddress"');
-      Logger.debug('   Нормализованный адрес: "$normalizedShopAddress"');
-      Logger.debug('   Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
-      Logger.debug('   Всего отметок до фильтрации: ${attendanceRecords.length}');
-      Logger.debug('═══════════════════════════════════════════════════════');
-      
+
       final filteredAttendanceRecords = attendanceRecords.where((record) {
-        // Нормализуем дату отметки (убираем время)
         final recordDate = DateTime(record.timestamp.year, record.timestamp.month, record.timestamp.day);
-        final isSameDate = recordDate.year == normalizedDate.year && 
-                          recordDate.month == normalizedDate.month && 
+        final isSameDate = recordDate.year == normalizedDate.year &&
+                          recordDate.month == normalizedDate.month &&
                           recordDate.day == normalizedDate.day;
         final normalizedRecordAddress = record.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         final isSameShop = normalizedRecordAddress == normalizedShopAddress;
-        
-        // Детальное логирование для каждой отметки
-        Logger.debug('   🔍 Проверка отметки:');
-        Logger.debug('      - Сотрудник: "${record.employeeName}"');
-        Logger.debug('      - Время: ${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}');
-        Logger.debug('      - Дата отметки: ${recordDate.year}-${recordDate.month.toString().padLeft(2, '0')}-${recordDate.day.toString().padLeft(2, '0')}');
-        Logger.debug('      - Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
-        Logger.debug('      - Даты совпадают: $isSameDate (год: ${recordDate.year == normalizedDate.year}, месяц: ${recordDate.month == normalizedDate.month}, день: ${recordDate.day == normalizedDate.day})');
-        Logger.debug('      - Магазин (оригинал): "${record.shopAddress}"');
-        Logger.debug('      - Магазин (нормализован): "$normalizedRecordAddress"');
-        Logger.debug('      - Запрошенный магазин (нормализован): "$normalizedShopAddress"');
-        Logger.debug('      - Магазины совпадают: $isSameShop');
-        
-        if (!isSameDate || !isSameShop) {
-          final reasons = <String>[];
-          if (!isSameDate) {
-            reasons.add('дата не совпадает');
-          }
-          if (!isSameShop) {
-            reasons.add('магазин не совпадает');
-          }
-          Logger.debug('      ⚠️ ОТМЕТКА ОТФИЛЬТРОВАНА: ${reasons.join(', ')}');
-        } else {
-          Logger.debug('      ✅ ОТМЕТКА ПРОШЛА ФИЛЬТРАЦИЮ');
-        }
-        
+
         return isSameDate && isSameShop;
       }).toList();
-      
-      Logger.debug('📊 После фильтрации осталось отметок: ${filteredAttendanceRecords.length}');
 
       // Получаем пересменки за день с сервера
       final allShifts = await ShiftReportService.getReports(
@@ -142,15 +88,7 @@ class KPIService {
         date: normalizedDate,
       );
 
-      // Получаем РКО за день (нужно получить список и отфильтровать)
-      final isTargetDate = normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12;
-      if (isTargetDate) {
-        Logger.debug('═══════════════════════════════════════════════════════');
-        Logger.debug('🔍 СПЕЦИАЛЬНЫЙ АНАЛИЗ ДЛЯ 12.12.2025');
-        Logger.debug('═══════════════════════════════════════════════════════');
-      }
-      Logger.debug('📋 Загрузка РКО для магазина: "$shopAddress"');
-      Logger.debug('📋 Запрошенная дата для РКО: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      // Получаем РКО за день
       Logger.debug('📋 normalizedDate объект: ${normalizedDate.toIso8601String()}');
       final shopRKOs = await RKOReportsService.getShopRKOs(shopAddress);
       Logger.debug('📋 Ответ API getShopRKOs: ${shopRKOs != null ? "успешно" : "null"}');

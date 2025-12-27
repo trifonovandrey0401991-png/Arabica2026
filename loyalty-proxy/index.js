@@ -199,20 +199,25 @@ app.get('/api/recount-reports', async (req, res) => {
     const reportsDir = '/var/www/recount-reports';
     const reports = [];
     
-    // Читаем отчеты из локальной директории
+    // Читаем отчеты из локальной директории асинхронно
     if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
-      
-      for (const file of files) {
+      const files = await fs.promises.readdir(reportsDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
           const filePath = path.join(reportsDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const report = JSON.parse(content);
-          reports.push(report);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(readPromises);
+      reports.push(...results.filter(r => r !== null));
+    }
       
       // Сортируем по дате создания (новые первыми)
       reports.sort((a, b) => {
@@ -387,24 +392,31 @@ app.get('/api/attendance/check', async (req, res) => {
     
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
-    for (const file of files) {
+
+    const files = await fs.promises.readdir(attendanceDir);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    const readPromises = jsonFiles.map(async (file) => {
       try {
         const filePath = path.join(attendanceDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const record = JSON.parse(content);
-        
-        if (record.employeeName === employeeName) {
-          const recordDate = new Date(record.timestamp);
-          const recordDateStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
-          
-          if (recordDateStr === todayStr) {
-            return res.json({ success: true, hasAttendance: true });
-          }
-        }
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        return JSON.parse(content);
       } catch (e) {
         console.error(`Ошибка чтения файла ${file}:`, e);
+        return null;
+      }
+    });
+
+    const records = (await Promise.all(readPromises)).filter(r => r !== null);
+
+    for (const record of records) {
+      if (record.employeeName === employeeName) {
+        const recordDate = new Date(record.timestamp);
+        const recordDateStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
+
+        if (recordDateStr === todayStr) {
+          return res.json({ success: true, hasAttendance: true });
+        }
       }
     }
     
@@ -424,18 +436,23 @@ app.get('/api/attendance', async (req, res) => {
     const records = [];
     
     if (fs.existsSync(attendanceDir)) {
-      const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
-      
-      for (const file of files) {
+      const files = await fs.promises.readdir(attendanceDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
           const filePath = path.join(attendanceDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const record = JSON.parse(content);
-          records.push(record);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(readPromises);
+      records.push(...results.filter(r => r !== null));
+    }
       
       // Сортируем по дате (новые первыми)
       records.sort((a, b) => {
@@ -666,19 +683,23 @@ app.get('/api/employee-registrations', async (req, res) => {
     const registrations = [];
     
     if (fs.existsSync(registrationDir)) {
-      const files = fs.readdirSync(registrationDir).filter(f => f.endsWith('.json'));
-      
-      for (const file of files) {
+      const files = await fs.promises.readdir(registrationDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
           const filePath = path.join(registrationDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
-          const registration = JSON.parse(content);
-          registrations.push(registration);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
-      
+      });
+
+      const results = await Promise.all(readPromises);
+      registrations.push(...results.filter(r => r !== null));
+
       // Сортируем по дате создания (новые первыми)
       registrations.sort((a, b) => {
         const dateA = new Date(a.createdAt || 0);
@@ -1840,29 +1861,33 @@ app.get('/api/work-schedule/template', (req, res) => {
 const SUPPLIERS_DIR = '/var/www/suppliers';
 
 // GET /api/suppliers - получить всех поставщиков
-app.get('/api/suppliers', (req, res) => {
+app.get('/api/suppliers', async (req, res) => {
   try {
     console.log('GET /api/suppliers');
-    
+
     const suppliers = [];
-    
+
     if (!fs.existsSync(SUPPLIERS_DIR)) {
       fs.mkdirSync(SUPPLIERS_DIR, { recursive: true });
     }
-    
-    const files = fs.readdirSync(SUPPLIERS_DIR).filter(f => f.endsWith('.json'));
-    
-    for (const file of files) {
+
+    const files = await fs.promises.readdir(SUPPLIERS_DIR);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    const readPromises = jsonFiles.map(async (file) => {
       try {
         const filePath = path.join(SUPPLIERS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const supplier = JSON.parse(content);
-        suppliers.push(supplier);
+        const content = await fs.promises.readFile(filePath, 'utf8');
+        return JSON.parse(content);
       } catch (e) {
         console.error(`Ошибка чтения файла ${file}:`, e);
+        return null;
       }
-    }
-    
+    });
+
+    const results = await Promise.all(readPromises);
+    suppliers.push(...results.filter(r => r !== null));
+
     // Сортируем по дате создания (новые первыми)
     suppliers.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0);
@@ -2058,20 +2083,25 @@ if (!fs.existsSync(CLIENTS_DIR)) {
 }
 
 // GET /api/clients - получить всех клиентов
-app.get('/api/clients', (req, res) => {
+app.get('/api/clients', async (req, res) => {
   try {
     const clients = [];
     if (fs.existsSync(CLIENTS_DIR)) {
-      const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
-      for (const file of files) {
+      const files = await fs.promises.readdir(CLIENTS_DIR);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      const readPromises = jsonFiles.map(async (file) => {
         try {
-          const content = fs.readFileSync(path.join(CLIENTS_DIR, file), 'utf8');
-          const client = JSON.parse(content);
-          clients.push(client);
+          const content = await fs.promises.readFile(path.join(CLIENTS_DIR, file), 'utf8');
+          return JSON.parse(content);
         } catch (e) {
           console.error(`Ошибка чтения файла ${file}:`, e);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(readPromises);
+      clients.push(...results.filter(r => r !== null));
     }
     res.json({ success: true, clients });
   } catch (error) {

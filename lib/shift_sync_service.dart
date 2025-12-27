@@ -32,15 +32,22 @@ class ShiftSyncService {
       // Удаляем старые отчеты (старше недели) и их фото из Google Drive
       final oldReports = reports.where((r) => r.isOlderThanWeek).toList();
       for (var report in oldReports) {
-        // Удаляем фото из Google Drive
+        // Удаляем фото из Google Drive параллельно
+        final photoDeleteFutures = <Future>[];
         for (var answer in report.answers) {
           if (answer.photoDriveId != null) {
-            try {
-              await GoogleDriveService.deletePhoto(answer.photoDriveId!);
-            } catch (e) {
-              Logger.warning('Ошибка удаления фото ${answer.photoDriveId}: $e');
-            }
+            photoDeleteFutures.add(
+              GoogleDriveService.deletePhoto(answer.photoDriveId!)
+                .catchError((e) {
+                  Logger.warning('Ошибка удаления фото ${answer.photoDriveId}: $e');
+                  return null; // Продолжаем даже при ошибке
+                })
+            );
           }
+        }
+        // Ждем завершения всех удалений параллельно
+        if (photoDeleteFutures.isNotEmpty) {
+          await Future.wait(photoDeleteFutures);
         }
         // Удаляем отчет локально
         await ShiftReport.deleteReport(report.id);
@@ -52,28 +59,47 @@ class ShiftSyncService {
       
       for (var report in unsyncedReports) {
         try {
-          // Загружаем фото, которые еще не загружены
-          final List<ShiftAnswer> syncedAnswers = [];
-          for (var answer in report.answers) {
+          // Загружаем фото параллельно, которые еще не загружены
+          final uploadFutures = <int, Future<String?>>{};
+
+          for (int i = 0; i < report.answers.length; i++) {
+            final answer = report.answers[i];
             if (answer.photoPath != null && answer.photoDriveId == null) {
-              try {
-                final fileName = '${report.id}_${report.answers.indexOf(answer)}.jpg';
-                final driveId = await GoogleDriveService.uploadPhoto(
-                  answer.photoPath!,
-                  fileName,
-                );
-                syncedAnswers.add(ShiftAnswer(
-                  question: answer.question,
-                  textAnswer: answer.textAnswer,
-                  numberAnswer: answer.numberAnswer,
-                  photoPath: answer.photoPath,
-                  photoDriveId: driveId,
-                ));
-              } catch (e) {
-                // Если не удалось загрузить, оставляем как есть
-                syncedAnswers.add(answer);
-              }
+              final fileName = '${report.id}_$i.jpg';
+              uploadFutures[i] = GoogleDriveService.uploadPhoto(
+                answer.photoPath!,
+                fileName,
+              ).catchError((e) {
+                Logger.warning('Ошибка загрузки фото для ответа $i: $e');
+                return null; // Возвращаем null при ошибке
+              });
+            }
+          }
+
+          // Ждем завершения всех загрузок параллельно
+          final uploadResults = uploadFutures.isEmpty
+            ? <int, String?>{}
+            : await Future.wait(
+                uploadFutures.entries.map((e) async => MapEntry(e.key, await e.value))
+              ).then((entries) => Map.fromEntries(entries));
+
+          // Создаем список синхронизированных ответов
+          final List<ShiftAnswer> syncedAnswers = [];
+          for (int i = 0; i < report.answers.length; i++) {
+            final answer = report.answers[i];
+            final driveId = uploadResults[i];
+
+            if (driveId != null) {
+              // Фото успешно загружено
+              syncedAnswers.add(ShiftAnswer(
+                question: answer.question,
+                textAnswer: answer.textAnswer,
+                numberAnswer: answer.numberAnswer,
+                photoPath: answer.photoPath,
+                photoDriveId: driveId,
+              ));
             } else {
+              // Фото либо не требовалось загружать, либо загрузка не удалась
               syncedAnswers.add(answer);
             }
           }

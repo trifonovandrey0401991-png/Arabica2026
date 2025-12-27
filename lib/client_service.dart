@@ -177,7 +177,7 @@ class ClientService {
         Uri.parse('$baseUrl/messages/broadcast'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
