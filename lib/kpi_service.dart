@@ -33,15 +33,13 @@ class KPIService {
       
       final cacheKey = 'kpi_shop_day_${shopAddress}_${normalizedDate.year}_${normalizedDate.month}_${normalizedDate.day}';
       
-      // Для недавних дат (последние 7 дней) всегда очищаем кэш, чтобы видеть свежие данные
+      // Для недавних дат (последние 7 дней) всегда очищаем кэш
       if (daysDiff >= -7 && daysDiff <= 0) {
         CacheManager.remove(cacheKey);
-        Logger.debug('🔄 Кэш очищен для недавней даты: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day} (разница: $daysDiff дней)');
       } else {
         // Для старых дат используем кэш, если он есть
         final cached = CacheManager.get<KPIShopDayData>(cacheKey);
         if (cached != null) {
-          Logger.debug('KPI данные магазина загружены из кэша для даты: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
           return cached;
         }
       }
@@ -89,29 +87,20 @@ class KPIService {
       );
 
       // Получаем РКО за день
-      Logger.debug('📋 normalizedDate объект: ${normalizedDate.toIso8601String()}');
       final shopRKOs = await RKOReportsService.getShopRKOs(shopAddress);
-      Logger.debug('📋 Ответ API getShopRKOs: ${shopRKOs != null ? "успешно" : "null"}');
-      if (shopRKOs != null) {
-        Logger.debug('📋 Структура ответа: keys=${shopRKOs.keys.toList()}');
-        Logger.debug('📋 success=${shopRKOs['success']}, currentMonth=${(shopRKOs['currentMonth'] as List?)?.length ?? 0}, months=${(shopRKOs['months'] as List?)?.length ?? 0}');
-      }
       final dayRKOs = <RKOMetadata>[];
       if (shopRKOs != null && shopRKOs['success'] == true) {
-        // API возвращает данные в формате: {success: true, currentMonth: [...], months: [{month: "...", items: [...]}, ...]}
-        // Нужно собрать все РКО из currentMonth и из всех months
         final allRKOs = <RKOMetadata>[];
-        
+
         // Добавляем РКО из currentMonth
         if (shopRKOs['currentMonth'] != null) {
           final currentMonthList = shopRKOs['currentMonth'] as List<dynamic>;
-          Logger.debug('📋 РКО в currentMonth: ${currentMonthList.length}');
           for (var rkoJson in currentMonthList) {
             try {
               final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
               allRKOs.add(rko);
             } catch (e) {
-              Logger.debug('⚠️ Ошибка парсинга РКО из currentMonth: $e');
+              // Игнорируем ошибки парсинга
             }
           }
         }
@@ -119,80 +108,29 @@ class KPIService {
         // Добавляем РКО из всех months
         if (shopRKOs['months'] != null) {
           final monthsList = shopRKOs['months'] as List<dynamic>;
-          Logger.debug('📋 Месяцев с РКО: ${monthsList.length}');
           for (var monthData in monthsList) {
             if (monthData is Map<String, dynamic> && monthData['items'] != null) {
               final itemsList = monthData['items'] as List<dynamic>;
-              Logger.debug('   📋 РКО в месяце ${monthData['month'] ?? 'unknown'}: ${itemsList.length}');
               for (var rkoJson in itemsList) {
                 try {
                   final rko = RKOMetadata.fromJson(rkoJson as Map<String, dynamic>);
                   allRKOs.add(rko);
                 } catch (e) {
-                  Logger.debug('⚠️ Ошибка парсинга РКО из months: $e');
+                  // Игнорируем ошибки парсинга
                 }
               }
             }
           }
         }
-        
-        Logger.debug('📋 Всего РКО собрано из всех источников: ${allRKOs.length}');
-        if (allRKOs.isNotEmpty) {
-          Logger.debug('   📋 Первые 10 РКО (для анализа):');
-          for (var i = 0; i < (allRKOs.length > 10 ? 10 : allRKOs.length); i++) {
-            final rko = allRKOs[i];
-            final rkoDateNormalized = DateTime(rko.date.year, rko.date.month, rko.date.day);
-            Logger.debug('      ${i + 1}. ${rko.employeeName}');
-            Logger.debug('         - date (оригинал из API): ${rko.date.toIso8601String()}');
-            Logger.debug('         - date (нормализован): ${rkoDateNormalized.year}-${rkoDateNormalized.month.toString().padLeft(2, '0')}-${rkoDateNormalized.day.toString().padLeft(2, '0')}');
-            Logger.debug('         - магазин: "${rko.shopAddress}"');
-          }
-        }
-        
-        // Нормализуем адрес магазина для сравнения
+
+        // Фильтруем РКО по дате и магазину
         final normalizedShopAddress = shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-        Logger.debug('   🔍 Нормализованный адрес магазина для фильтрации РКО: "$normalizedShopAddress"');
-        
+
         dayRKOs.addAll(allRKOs.where((rko) {
-          final rkoDate = DateTime(
-            rko.date.year,
-            rko.date.month,
-            rko.date.day,
-          );
+          final rkoDate = DateTime(rko.date.year, rko.date.month, rko.date.day);
           final rkoShopAddress = rko.shopAddress.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-          final rkoEmployeeName = rko.employeeName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-          final isDateMatch = rkoDate == normalizedDate;
-          final isShopMatch = rkoShopAddress == normalizedShopAddress;
-          
-          // Логируем для всех РКО, но более детально для целевой даты
-          final shouldLogDetail = isTargetDate || isDateMatch;
-          if (shouldLogDetail) {
-            Logger.debug('   🔍 РКО:');
-            Logger.debug('      - employeeName (оригинал): "${rko.employeeName}"');
-            Logger.debug('      - employeeName (нормализован): "$rkoEmployeeName"');
-            Logger.debug('      - date (оригинал из объекта): ${rko.date.toIso8601String()}');
-            Logger.debug('      - date (год/месяц/день): ${rko.date.year}/${rko.date.month}/${rko.date.day}');
-            Logger.debug('      - date (нормализован): ${rkoDate.year}-${rkoDate.month.toString().padLeft(2, '0')}-${rkoDate.day.toString().padLeft(2, '0')}');
-            Logger.debug('      - rkoDate объект: ${rkoDate.toIso8601String()}');
-            Logger.debug('      - shopAddress (оригинал): "${rko.shopAddress}"');
-            Logger.debug('      - shopAddress (нормализован): "$rkoShopAddress"');
-            Logger.debug('      - Запрошенная дата: ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
-            Logger.debug('      - normalizedDate объект: ${normalizedDate.toIso8601String()}');
-            Logger.debug('      - Запрошенный магазин (нормализован): "$normalizedShopAddress"');
-            Logger.debug('      - Сравнение дат: rkoDate == normalizedDate: ${rkoDate == normalizedDate}');
-            Logger.debug('      - Сравнение по компонентам: год=${rkoDate.year == normalizedDate.year}, месяц=${rkoDate.month == normalizedDate.month}, день=${rkoDate.day == normalizedDate.day}');
-            Logger.debug('      - Дата совпадает: $isDateMatch');
-            Logger.debug('      - Магазин совпадает: $isShopMatch');
-            Logger.debug('      - ПРОЙДЕТ ФИЛЬТРАЦИЮ: ${isDateMatch && isShopMatch}');
-          }
-          
-          return isDateMatch && isShopMatch;
+          return rkoDate == normalizedDate && rkoShopAddress == normalizedShopAddress;
         }));
-        Logger.debug('📋 РКО после фильтрации по дате и магазину: ${dayRKOs.length}');
-        if (dayRKOs.isEmpty && allRKOs.isNotEmpty) {
-          Logger.debug('   ⚠️ ВНИМАНИЕ: РКО загружены, но ни одно не прошло фильтрацию!');
-          Logger.debug('   🔍 Проверка: запрошенная дата=${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}, нормализованный адрес="$normalizedShopAddress"');
-        }
       } else {
         Logger.debug('⚠️ РКО не загружены: shopRKOs=${shopRKOs != null}, success=${shopRKOs?['success']}');
         if (shopRKOs != null && shopRKOs['success'] == false) {

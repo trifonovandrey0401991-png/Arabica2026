@@ -20,19 +20,21 @@ class AutoFillScheduleService {
 
     // 1. Подготовка данных
     final days = _getDaysInPeriod(startDate, endDate);
-    
-    // Разделяем сотрудников на группы
-    final employeesWithPreferences = employees.where((e) =>
-      e.preferredWorkDays.isNotEmpty ||
-      e.preferredShops.isNotEmpty ||
-      e.shiftPreferences.isNotEmpty
-    ).toList();
-    
-    final employeesWithoutPreferences = employees.where((e) =>
-      e.preferredWorkDays.isEmpty &&
-      e.preferredShops.isEmpty &&
-      e.shiftPreferences.isEmpty
-    ).toList();
+
+    // Разделяем сотрудников на группы (один проход вместо двух)
+    final employeesWithPreferences = <Employee>[];
+    final employeesWithoutPreferences = <Employee>[];
+
+    for (final e in employees) {
+      final hasPreferences = e.preferredWorkDays.isNotEmpty ||
+                            e.preferredShops.isNotEmpty ||
+                            e.shiftPreferences.isNotEmpty;
+      if (hasPreferences) {
+        employeesWithPreferences.add(e);
+      } else {
+        employeesWithoutPreferences.add(e);
+      }
+    }
 
     // Создаем копию существующего графика для работы
     final workingSchedule = existingSchedule != null
