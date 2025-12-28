@@ -261,8 +261,42 @@ class KPIEmployeeShopDayData {
   );
 }
 
+/// Модель данных сотрудника по магазинам и датам
+class KPIEmployeeShopDaysData {
+  final String employeeName;
+  final List<KPIEmployeeShopDayData> shopDays; // Данные по всем магазинам и датам
 
+  KPIEmployeeShopDaysData({
+    required this.employeeName,
+    required this.shopDays,
+  });
 
+  /// Получить данные за конкретный магазин и дату
+  KPIEmployeeShopDayData? getShopDayData(String shopAddress, DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    try {
+      return shopDays.firstWhere(
+        (data) =>
+          data.shopAddress == shopAddress &&
+          data.date.year == normalizedDate.year &&
+          data.date.month == normalizedDate.month &&
+          data.date.day == normalizedDate.day,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 
+  /// Получить все даты работы
+  List<DateTime> get allDates {
+    return shopDays.map((d) => d.date).toSet().toList()
+      ..sort((a, b) => b.compareTo(a));
+  }
+
+  /// Получить все магазины
+  List<String> get allShops {
+    return shopDays.map((d) => d.shopAddress).toSet().toList()..sort();
+  }
+}
 
 
