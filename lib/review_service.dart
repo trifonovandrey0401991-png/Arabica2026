@@ -1,11 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'review_model.dart';
-
-// Условный импорт: по умолчанию stub, на веб - dart:html
-import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 /// Сервис для работы с отзывами
 class ReviewService {
@@ -33,70 +29,11 @@ class ReviewService {
       print('   URL: $url');
       print('   Body: ${jsonEncode(body)}');
       print('   Платформа: ${kIsWeb ? "Web" : "Mobile"}');
-      
+
+      // Используем обычный HTTP клиент для всех платформ
       http.Response response;
-      
-      // Для веб-платформы используем альтернативный способ
-      if (kIsWeb) {
-        try {
-          print('🌐 Используем fetch API для веб-платформы');
-          // ignore: avoid_web_libraries_in_flutter
-          final request = html.HttpRequest();
-          request.open('POST', url, true);
-          request.setRequestHeader('Content-Type', 'application/json');
-          request.setRequestHeader('Accept', 'application/json');
-          
-          final completer = Completer<void>();
-          request.onLoad.listen((_) {
-            if (!completer.isCompleted) {
-              completer.complete();
-            }
-          });
-          request.onError.listen((error) {
-            if (!completer.isCompleted) {
-              completer.completeError(error);
-            }
-          });
-          
-          request.send(jsonEncode(body));
-          await completer.future;
-          
-          final status = request.status;
-          final responseBody = request.responseText;
-          
-          if (status != null && status >= 200 && status < 300) {
-            print('📥 Получен ответ через fetch API:');
-            print('   Status: $status');
-            print('   Body: $responseBody');
-            
-            if (responseBody != null && responseBody.isNotEmpty) {
-              final result = jsonDecode(responseBody);
-              if (result['success'] == true) {
-                print('✅ Отзыв успешно создан');
-                return Review.fromJson(result['review']);
-              } else {
-                print('❌ Сервер вернул success: false');
-                print('   Error: ${result['error']}');
-              }
-            } else {
-              print('❌ Пустой ответ от сервера');
-            }
-            return null;
-          } else {
-            print('❌ Ошибка создания отзыва: $status');
-            print('   Response: $responseBody');
-            return null;
-          }
-        } catch (e, stackTrace) {
-          print('❌ Ошибка при использовании fetch API: $e');
-          print('   Stack trace: $stackTrace');
-          // Пробуем обычный способ как fallback
-          print('   Пробуем обычный HTTP клиент...');
-        }
-      }
-      
-      // Обычный способ для мобильных платформ или fallback для веб
       try {
+        print('📤 Отправка через http.post...');
         response = await http.post(
           Uri.parse(url),
           headers: {

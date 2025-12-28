@@ -4,7 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'recount_report_model.dart';
 import 'recount_answer_model.dart';
-import 'google_drive_service.dart';
+import 'photo_upload_service.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
@@ -23,7 +23,7 @@ class RecountService {
         if (answer.photoPath != null && answer.photoRequired) {
           try {
             final fileName = 'recount_${report.id}_${report.answers.indexOf(answer)}.jpg';
-            final photoUrl = await GoogleDriveService.uploadPhoto(
+            final photoUrl = await PhotoUploadService.uploadPhoto(
               answer.photoPath!,
               fileName,
             );

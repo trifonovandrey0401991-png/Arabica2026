@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'google_script_config.dart';
+import 'server_config.dart';
 import 'utils/logger.dart';
 
 class LoyaltyInfo {
@@ -67,7 +67,7 @@ class LoyaltyService {
     // Нормализуем номер телефона: убираем + и пробелы
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     final uri = Uri.parse(
-      '$googleScriptUrl?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+      '$serverUrl?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
     );
     
     Logger.debug('📞 Поиск пользователя с номером: $normalizedPhone');
@@ -124,7 +124,7 @@ class LoyaltyService {
   static Future<LoyaltyInfo> fetchByQr(String qr) async {
     try {
     final uri = Uri.parse(
-      '$googleScriptUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
+      '$serverUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
     );
 
     final response = await http.get(uri).timeout(const Duration(seconds: 30));
@@ -171,9 +171,9 @@ class LoyaltyService {
 
   static Future<Map<String, dynamic>> _post(Map<String, dynamic> body) async {
     try {
-      final uri = Uri.parse(googleScriptUrl);
+      final uri = Uri.parse(serverUrl);
       if (!uri.hasScheme || !uri.hasAuthority) {
-        throw Exception('Invalid URL: $googleScriptUrl');
+        throw Exception('Invalid URL: $serverUrl');
       }
       
       final response = await http

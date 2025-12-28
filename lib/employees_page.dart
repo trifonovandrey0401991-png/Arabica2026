@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'user_role_service.dart';
-import 'google_script_config.dart';
+import 'server_config.dart';
 import 'employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'employee_registration_page.dart';

@@ -10,7 +10,7 @@ import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
-class GoogleDriveService {
+class PhotoUploadService {
   // URL сервера для загрузки фото
   static const String serverUrl = 'https://arabica26.ru';
 

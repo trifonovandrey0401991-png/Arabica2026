@@ -18,42 +18,8 @@ pluginManagement {
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "com.android.application" version "8.2.2" apply false
-    id "org.jetbrains.kotlin.android" version "1.9.22" apply false
-    id "com.google.gms.google-services" version "4.4.0" apply false
+    id "com.android.application" version "8.1.0" apply false
+    id "org.jetbrains.kotlin.android" version "1.8.22" apply false
 }
 
 include ":app"
-
-// Инициализация свойства flutter ДО загрузки проектов
-gradle.settingsEvaluated { settings ->
-    settings.rootProject.ext.flutter = [
-        compileSdkVersion: 35,
-        minSdkVersion: 21,
-        targetSdkVersion: 35,
-        versionCode: 1,
-        versionName: "1.0.0"
-    ]
-}
-
-// Инициализация для всех подпроектов
-gradle.beforeProject { project ->
-    project.ext.flutter = [
-        compileSdkVersion: 35,
-        minSdkVersion: 21,
-        targetSdkVersion: 35,
-        versionCode: 1,
-        versionName: "1.0.0"
-    ]
-}
-
-// Также через allprojects для совместимости
-allprojects {
-    ext.flutter = [
-        compileSdkVersion: 35,
-        minSdkVersion: 21,
-        targetSdkVersion: 35,
-        versionCode: 1,
-        versionName: "1.0.0"
-    ]
-}

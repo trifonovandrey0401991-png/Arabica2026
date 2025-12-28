@@ -88,7 +88,7 @@ class Shop {
     }
   }
 
-  /// Загрузить список магазинов из Google Sheets (устаревший метод, оставлен для обратной совместимости)
+  /// Загрузить список магазинов из сервер (устаревший метод, оставлен для обратной совместимости)
   @Deprecated('Используйте loadShopsFromServer()')
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     return loadShopsFromServer();

@@ -641,9 +641,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
       print("📋 Категории: $categoriesList");
       return categoriesList;
     } catch (e) {
-      // Если не получилось загрузить из JSON, пробуем из Google Sheets
+      // Если не получилось загрузить из JSON, пробуем из сервер
       // ignore: avoid_print
-      print("⚠️ Ошибка загрузки из menu.json: $e, пробуем Google Sheets...");
+      print("⚠️ Ошибка загрузки из menu.json: $e, пробуем сервер...");
       
       const sheetUrl =
           'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
@@ -665,7 +665,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }
       final categoriesList = categories.toList()..sort();
       // ignore: avoid_print
-      print("📋 Загружено категорий из Google Sheets: ${categoriesList.length}");
+      print("📋 Загружено категорий из сервер: ${categoriesList.length}");
       return categoriesList;
     }
   }

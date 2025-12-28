@@ -5,9 +5,9 @@ allprojects {
     }
 }
 
-// Define Flutter SDK versions for all plugins
-subprojects { project ->
-    project.ext {
+// Define flutter properties for all subprojects BEFORE they are evaluated
+subprojects {
+    ext {
         flutter = [
             minSdkVersion    : 21,
             targetSdkVersion : 35,
@@ -16,6 +16,16 @@ subprojects { project ->
             versionCode      : 1,
             versionName      : '1.0'
         ]
+    }
+
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (namespace == null) {
+                    namespace = "com.example.${project.name}"
+                }
+            }
+        }
     }
 }
 

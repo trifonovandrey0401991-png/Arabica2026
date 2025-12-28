@@ -1,5 +1,5 @@
 import 'shift_report_model.dart';
-import 'google_drive_service.dart';
+import 'photo_upload_service.dart';
 import 'utils/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,7 +36,7 @@ class ShiftSyncService {
         for (var answer in report.answers) {
           if (answer.photoDriveId != null) {
             try {
-              await GoogleDriveService.deletePhoto(answer.photoDriveId!);
+              await PhotoUploadService.deletePhoto(answer.photoDriveId!);
             } catch (e) {
               Logger.warning('Ошибка удаления фото ${answer.photoDriveId}: $e');
             }
@@ -58,7 +58,7 @@ class ShiftSyncService {
             if (answer.photoPath != null && answer.photoDriveId == null) {
               try {
                 final fileName = '${report.id}_${report.answers.indexOf(answer)}.jpg';
-                final driveId = await GoogleDriveService.uploadPhoto(
+                final driveId = await PhotoUploadService.uploadPhoto(
                   answer.photoPath!,
                   fileName,
                 );

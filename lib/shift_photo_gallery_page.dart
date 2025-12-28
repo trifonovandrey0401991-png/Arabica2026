@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'shift_report_model.dart';
-import 'google_drive_service.dart';
+import 'photo_upload_service.dart';
 
 /// Страница галереи фото из отчетов
 class ShiftPhotoGalleryPage extends StatefulWidget {
@@ -95,7 +95,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                         },
                       )
                     : FutureBuilder<String>(
-                        future: Future.value(GoogleDriveService.getPhotoUrl(photo)),
+                        future: Future.value(PhotoUploadService.getPhotoUrl(photo)),
                         builder: (context, snapshot) {
                           if (snapshot.hasData) {
                             return Image.network(
@@ -129,7 +129,7 @@ class _ShiftPhotoGalleryPageState extends State<ShiftPhotoGalleryPage> {
                             fit: BoxFit.contain,
                           )
                         : FutureBuilder<String>(
-                            future: Future.value(GoogleDriveService.getPhotoUrl(photo)),
+                            future: Future.value(PhotoUploadService.getPhotoUrl(photo)),
                             builder: (context, snapshot) {
                               if (snapshot.hasData) {
                                 return Image.network(

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'recount_report_model.dart';
 import 'recount_service.dart';
-import 'google_drive_service.dart';
+import 'photo_upload_service.dart';
 
 /// Страница просмотра отчета пересчета с возможностью оценки
 class RecountReportViewPage extends StatefulWidget {
