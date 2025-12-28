@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main_menu_page.dart';
-import 'registration_page.dart';
-import 'cart_provider.dart';
-import 'order_provider.dart';
-import 'notification_service.dart';
-import 'loyalty_service.dart';
-import 'loyalty_storage.dart';
-import 'shift_sync_service.dart';
+import 'features/clients/pages/registration_page.dart';
+import 'shared/providers/cart_provider.dart';
+import 'shared/providers/order_provider.dart';
+import 'core/services/notification_service.dart';
+import 'features/loyalty/services/loyalty_service.dart';
+import 'features/loyalty/services/loyalty_storage.dart';
+import 'features/shifts/services/shift_sync_service.dart';
 import 'firebase_wrapper.dart';
-import 'user_role_service.dart';
+import 'features/employees/models/user_role_service.dart';
 import 'core/utils/logger.dart';
-import 'registration_service.dart';
+import 'features/clients/services/registration_service.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
