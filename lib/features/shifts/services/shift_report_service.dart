@@ -1,22 +1,22 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/shift_report_model.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class ShiftReportService {
-  static const String serverUrl = 'https://arabica26.ru';
+  static const String baseEndpoint = '/api/shift-reports';
 
   /// Сохранить отчет пересменки на сервере
   static Future<bool> saveReport(ShiftReport report) async {
     try {
       Logger.debug('📤 Сохранение отчета пересменки на сервере: ${report.id}');
-      
-      final url = '$serverUrl/api/shift-reports';
+
       final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(report.toJson()),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -45,16 +45,18 @@ class ShiftReportService {
   }) async {
     try {
       Logger.debug('📥 Загрузка отчетов пересменки с сервера...');
-      
+
       final queryParams = <String, String>{};
       if (employeeName != null) queryParams['employeeName'] = employeeName;
       if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
       if (date != null) {
         queryParams['date'] = date.toIso8601String().split('T')[0];
       }
-      
-      final uri = Uri.parse('$serverUrl/api/shift-reports').replace(queryParameters: queryParams);
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);

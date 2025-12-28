@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import '../models/attendance_model.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class AttendanceService {
-  static const String serverUrl = 'https://arabica26.ru';
-  static const double checkRadius = 750.0; // Радиус проверки в метрах (среднее между 500 и 1000)
+  static const String baseEndpoint = '/api/attendance';
+  static const double checkRadius = AppConstants.checkInRadius;
 
   /// Получить текущую геолокацию
   static Future<Position> getCurrentLocation() async {
@@ -106,13 +108,12 @@ class AttendanceService {
       
       Logger.debug('📝 Создание отметки прихода: ${employeeName}, время: ${finalTimestamp.toIso8601String()}');
 
-      final url = '$serverUrl/api/attendance';
       final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(record.toJson()),
       ).timeout(
-        const Duration(seconds: 15),
+        ApiConstants.defaultTimeout,
         onTimeout: () {
           throw Exception('Таймаут при отправке отметки');
         },
@@ -153,10 +154,9 @@ class AttendanceService {
   /// Проверить, была ли уже отметка сегодня
   static Future<bool> hasAttendanceToday(String employeeName) async {
     try {
-      final url = '$serverUrl/api/attendance/check?employeeName=${Uri.encodeComponent(employeeName)}';
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/check')
+          .replace(queryParameters: {'employeeName': employeeName});
+      final response = await http.get(uri).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -177,26 +177,17 @@ class AttendanceService {
     DateTime? date,
   }) async {
     try {
-      var url = '$serverUrl/api/attendance?';
-      final params = <String>[];
+      final queryParams = <String, String>{};
+      if (employeeName != null) queryParams['employeeName'] = employeeName;
+      if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
+      if (date != null) queryParams['date'] = date.toIso8601String();
 
-      if (employeeName != null) {
-        params.add('employeeName=${Uri.encodeComponent(employeeName)}');
-      }
-      if (shopAddress != null) {
-        params.add('shopAddress=${Uri.encodeComponent(shopAddress)}');
-      }
-      if (date != null) {
-        params.add('date=${date.toIso8601String()}');
-      }
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-      url += params.join('&');
-      
-      Logger.debug('📥 Запрос отметок прихода: $url');
+      Logger.debug('📥 Запрос отметок прихода: $uri');
 
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 15), // Уменьшено с 30 до 15
-      );
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
