@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/providers/order_provider.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/employees/services/user_role_service.dart';
+import '../utils/logger.dart';
 
 /// Сервис для работы с уведомлениями
 class NotificationService {
@@ -75,15 +76,15 @@ class NotificationService {
             return roleData.displayName;
           }
         } catch (e) {
-          print("⚠️ Ошибка получения роли: $e");
+          Logger.debug("⚠️ Ошибка получения роли: $e");
         }
       }
-      
+
       // Если не получилось, используем сохраненное имя
       final name = prefs.getString('user_name');
       return name ?? 'Сотрудник';
     } catch (e) {
-      print("⚠️ Ошибка получения имени сотрудника: $e");
+      Logger.debug("⚠️ Ошибка получения имени сотрудника: $e");
       return 'Сотрудник';
     }
   }

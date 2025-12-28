@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import '../constants/api_constants.dart';
+import '../utils/logger.dart';
 
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
@@ -11,8 +13,6 @@ import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
 class PhotoUploadService {
-  // URL сервера для загрузки фото
-  static const String serverUrl = 'https://arabica26.ru';
 
   /// Загрузить фото на сервер
   static Future<String?> uploadPhoto(String photoPath, String fileName) async {
@@ -26,32 +26,32 @@ class PhotoUploadService {
           final base64Image = photoPath.substring(base64Index + 1);
           bytes = base64Decode(base64Image);
         } else {
-          print('⚠️ Неверный формат data URL');
+          Logger.debug('⚠️ Неверный формат data URL');
           return null;
         }
       } else {
         try {
           final file = File(photoPath);
           if (!await file.exists()) {
-            print('⚠️ Файл не найден: $photoPath');
+            Logger.debug('⚠️ Файл не найден: $photoPath');
             return null;
           }
           bytes = await file.readAsBytes();
         } catch (e) {
-          print('⚠️ Ошибка чтения файла: $e');
+          Logger.error('⚠️ Ошибка чтения файла', e);
           return null;
         }
       }
 
-      print('📤 Начинаем загрузку фото на сервер: $fileName');
-      print('📦 Размер файла: ${bytes.length} байт (${(bytes.length / 1024).toStringAsFixed(2)} KB)');
+      Logger.debug('📤 Начинаем загрузку фото на сервер: $fileName');
+      Logger.debug('📦 Размер файла: ${bytes.length} байт (${(bytes.length / 1024).toStringAsFixed(2)} KB)');
       if (bytes.length > 1000000) {
         final sizeMB = (bytes.length / 1024 / 1024).toStringAsFixed(2);
-        print('⚠️ Внимание: Размер файла очень большой ($sizeMB MB)');
+        Logger.debug('⚠️ Внимание: Размер файла очень большой ($sizeMB MB)');
       }
 
-      print('🔗 URL загрузки: $serverUrl/upload-photo');
-      print('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
+      Logger.debug('🔗 URL загрузки: ${ApiConstants.serverUrl}/upload-photo');
+      Logger.debug('📋 Платформа: ${kIsWeb ? "Web" : "Mobile"}');
 
       // Для веб используем нативный fetch API, для мобильных - MultipartRequest
       if (kIsWeb) {
@@ -60,7 +60,7 @@ class PhotoUploadService {
         return await _uploadPhotoMobile(bytes, fileName);
       }
     } catch (e) {
-      print('❌ Критическая ошибка загрузки фото: $e');
+      Logger.error('❌ Критическая ошибка загрузки фото', e);
       return null;
     }
   }
@@ -70,48 +70,48 @@ class PhotoUploadService {
     try {
       // Используем XMLHttpRequest для веб (более надежно, чем fetch)
       final formData = html.FormData();
-      
+
       // Создаем Blob из bytes
       final blob = html.Blob(bytes, 'image/jpeg');
       formData.appendBlob('file', blob, fileName);
       formData.append('fileName', fileName);
 
-      print('📤 Отправляем запрос через XMLHttpRequest...');
+      Logger.debug('📤 Отправляем запрос через XMLHttpRequest...');
 
       final completer = Completer<String?>();
       final xhr = html.HttpRequest();
-      
-      xhr.open('POST', '$serverUrl/upload-photo', true);
+
+      xhr.open('POST', '${ApiConstants.serverUrl}/upload-photo', true);
       
       xhr.onLoad.listen((e) {
         final status = xhr.status ?? 0;
-        print('📥 Получен ответ: статус $status');
-        
+        Logger.debug('📥 Получен ответ: статус $status');
+
         if (status >= 200 && status < 300) {
           try {
             final result = jsonDecode(xhr.responseText ?? '') as Map<String, dynamic>;
             if (result['success'] == true) {
               final photoUrl = result['filePath'] as String;
-              print('✅ Фото успешно загружено на сервер: $photoUrl');
+              Logger.debug('✅ Фото успешно загружено на сервер: $photoUrl');
               completer.complete(photoUrl);
             } else {
-              print('⚠️ Ошибка от сервера: ${result['error']}');
+              Logger.debug('⚠️ Ошибка от сервера: ${result['error']}');
               completer.complete(null);
             }
           } catch (e) {
-            print('⚠️ Ошибка парсинга ответа: $e');
+            Logger.error('⚠️ Ошибка парсинга ответа', e);
             completer.complete(null);
           }
         } else {
           final responseText = xhr.responseText ?? '';
-          print('⚠️ Ошибка HTTP: $status');
-          print('⚠️ Тело ответа: ${responseText.length > 500 ? responseText.substring(0, 500) : responseText}');
+          Logger.debug('⚠️ Ошибка HTTP: $status');
+          Logger.debug('⚠️ Тело ответа: ${responseText.length > 500 ? responseText.substring(0, 500) : responseText}');
           completer.complete(null);
         }
       });
-      
+
       xhr.onError.listen((e) {
-        print('❌ Ошибка XMLHttpRequest: ${xhr.statusText ?? "Unknown error"}');
+        Logger.debug('❌ Ошибка XMLHttpRequest: ${xhr.statusText ?? "Unknown error"}');
         completer.complete(null);
       });
       
@@ -120,16 +120,16 @@ class PhotoUploadService {
       
       // Таймаут
       return completer.future.timeout(
-        const Duration(seconds: 120),
+        ApiConstants.uploadTimeout,
         onTimeout: () {
-          print('⏱️ Таймаут при загрузке фото (120 секунд)');
+          Logger.debug('⏱️ Таймаут при загрузке фото (120 секунд)');
           xhr.abort();
           return null;
         },
       );
     } catch (e, stackTrace) {
-      print('❌ Ошибка загрузки фото (веб): $e');
-      print('❌ Stack trace: $stackTrace');
+      Logger.error('❌ Ошибка загрузки фото (веб)', e);
+      Logger.debug('❌ Stack trace: $stackTrace');
       return null;
     }
   }
@@ -137,7 +137,7 @@ class PhotoUploadService {
   /// Загрузка фото на мобильных платформах через MultipartRequest
   static Future<String?> _uploadPhotoMobile(List<int> bytes, String fileName) async {
     try {
-      final uri = Uri.parse('$serverUrl/upload-photo');
+      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-photo');
       
       final request = http.MultipartRequest('POST', uri);
       request.files.add(
@@ -149,37 +149,37 @@ class PhotoUploadService {
       );
       request.fields['fileName'] = fileName;
 
-      print('📤 Отправляем multipart/form-data запрос...');
+      Logger.debug('📤 Отправляем multipart/form-data запрос...');
 
       final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 120),
+        ApiConstants.uploadTimeout,
         onTimeout: () {
-          print('⏱️ Таймаут при загрузке фото (120 секунд)');
+          Logger.debug('⏱️ Таймаут при загрузке фото (120 секунд)');
           throw Exception('Таймаут при загрузке фото');
         },
       );
 
       final response = await http.Response.fromStream(streamedResponse);
-      print('📥 Получен ответ: статус ${response.statusCode}');
+      Logger.debug('📥 Получен ответ: статус ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
           final photoUrl = result['filePath'] as String;
-          print('✅ Фото успешно загружено на сервер: $photoUrl');
+          Logger.debug('✅ Фото успешно загружено на сервер: $photoUrl');
           return photoUrl;
         } else {
-          print('⚠️ Ошибка от сервера: ${result['error']}');
+          Logger.debug('⚠️ Ошибка от сервера: ${result['error']}');
           return null;
         }
       } else {
-        print('⚠️ Ошибка HTTP: ${response.statusCode}');
-        print('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
+        Logger.debug('⚠️ Ошибка HTTP: ${response.statusCode}');
+        Logger.debug('⚠️ Тело ответа: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
         return null;
       }
     } catch (e, stackTrace) {
-      print('❌ Ошибка загрузки фото (мобильный): $e');
-      print('❌ Stack trace: $stackTrace');
+      Logger.error('❌ Ошибка загрузки фото (мобильный)', e);
+      Logger.debug('❌ Stack trace: $stackTrace');
       return null;
     }
   }
@@ -191,7 +191,7 @@ class PhotoUploadService {
       return filePath;
     }
     // Иначе добавляем базовый URL сервера
-    return '$serverUrl/photos/$filePath';
+    return '${ApiConstants.serverUrl}/photos/$filePath';
   }
 
   /// Удалить фото с сервера
@@ -205,13 +205,13 @@ class PhotoUploadService {
       }
 
       final response = await http.post(
-        Uri.parse('$serverUrl/delete-photo'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}/delete-photo'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'fileName': actualFileName,
         }),
       ).timeout(
-        const Duration(seconds: 10),
+        ApiConstants.shortTimeout,
         onTimeout: () {
           throw Exception('Таймаут при удалении фото');
         },
@@ -223,7 +223,7 @@ class PhotoUploadService {
       }
       return false;
     } catch (e) {
-      print('❌ Ошибка удаления фото: $e');
+      Logger.error('❌ Ошибка удаления фото', e);
       return false;
     }
   }

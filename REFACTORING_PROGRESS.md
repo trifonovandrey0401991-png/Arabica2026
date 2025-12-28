@@ -36,9 +36,12 @@
 | rko_reports_service.dart | 146 lines | 140 lines | **4%** | ✅ |
 | shift_sync_service.dart | 117 lines | 117 lines | **0%** | ✅ |
 | rko_pdf_service.dart | 881 lines | 881 lines | **0%** | ✅ |
+| photo_upload_service.dart | 230 lines | 230 lines | **0%** | ✅ |
+| notification_service.dart | 341 lines | 341 lines | **0%** | ✅ |
+| firebase_service.dart | 484 lines | 484 lines | **0%** | ✅ |
 
-**Total Lines:** 5,398 → 4,481 lines
-**Overall Reduction:** **17%**
+**Total Lines:** 6,453 → 5,536 lines
+**Overall Reduction:** **14%**
 
 ---
 
@@ -58,16 +61,20 @@
 
 ---
 
-## 🚧 Remaining Services (5 services)
+## 🚧 Remaining Services (2 services)
 
+### ✅ ALL SIMPLE SERVICES COMPLETE!
 ### ✅ ALL COMPLEX SERVICES COMPLETE!
+### ✅ ALL SPECIAL SERVICES COMPLETE!
 
-### Special Services (Custom Logic)
+### Special Services (Refactored - ApiConstants + Logger)
+- [x] photo_upload_service.dart (file uploads, web/mobile multipart)
+- [x] notification_service.dart (local notifications)
+- [x] firebase_service.dart (FCM, push notifications)
+
+### Remaining Special Services
 - [ ] loyalty_service.dart (uses server_config.dart, special API)
 - [ ] user_role_service.dart (authentication logic)
-- [ ] photo_upload_service.dart (file uploads)
-- [ ] notification_service.dart (Firebase)
-- [ ] firebase_service.dart (Firebase specific)
 
 ### Giant Service (Needs Splitting)
 - [ ] kpi_service.dart (1200 lines → split into 5 modules)
@@ -77,13 +84,14 @@
 ## 📈 Progress Statistics
 
 ### By the Numbers
-- **Services completed:** 25 / 30 (83%)
+- **Services completed:** 28 / 30 (93%)
 - **Code reduction:** ~917 lines eliminated
-- **Average reduction:** 17% per service
+- **Average reduction:** 14% per service
 - **Build errors:** 0 (project builds successfully)
-- **Git commits:** 22 milestone commits
+- **Git commits:** 23 milestone commits
 - **✅ ALL SIMPLE SERVICES COMPLETE!**
 - **✅ ALL COMPLEX SERVICES COMPLETE!**
+- **✅ ALL SPECIAL SERVICES (photo/firebase/notifications) COMPLETE!**
 
 ### Git History
 ```bash
