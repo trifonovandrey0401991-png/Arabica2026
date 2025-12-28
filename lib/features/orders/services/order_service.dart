@@ -2,11 +2,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../shared/providers/order_provider.dart';
 import '../../../shared/providers/cart_provider.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class OrderService {
-  static const String serverUrl = 'https://arabica26.ru';
-  static const String baseUrl = '$serverUrl/api/orders';
+  static const String baseEndpoint = '/api/orders';
 
   /// Создать заказ на сервере
   static Future<Order?> createOrder({
@@ -37,10 +37,10 @@ class OrderService {
       };
       
       final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -76,10 +76,11 @@ class OrderService {
   static Future<List<Map<String, dynamic>>> getClientOrders(String clientPhone) async {
     try {
       Logger.debug('📥 Загрузка заказов клиента: $clientPhone');
-      
-      final response = await http.get(
-        Uri.parse('$baseUrl?clientPhone=$clientPhone'),
-      ).timeout(const Duration(seconds: 15));
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
+          .replace(queryParameters: {'clientPhone': clientPhone});
+
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -118,10 +119,10 @@ class OrderService {
       if (rejectionReason != null) requestBody['rejectionReason'] = rejectionReason;
       
       final response = await http.patch(
-        Uri.parse('$baseUrl/$orderId'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/$orderId'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);

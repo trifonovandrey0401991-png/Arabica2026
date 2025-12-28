@@ -7,11 +7,12 @@ import '../../employees/models/employee_registration_model.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../shops/models/shop_model.dart';
 import '../../employees/pages/employees_page.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 
 class RKOService {
-  static const String serverUrl = 'https://arabica26.ru';
 
   /// Получить последнюю пересменку сотрудника
   static Future<ShiftReport?> getLastShift(String employeeName) async {
@@ -47,17 +48,15 @@ class RKOService {
     }
     
     try {
-      final url = '$serverUrl/api/shop-settings/${Uri.encodeComponent(shopAddress)}';
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final url = '${ApiConstants.serverUrl}/api/shop-settings/${Uri.encodeComponent(shopAddress)}';
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true && result['settings'] != null) {
           final settings = ShopSettings.fromJson(result['settings']);
-          // Сохраняем в кэш на 5 минут
-          CacheManager.set(cacheKey, settings, duration: const Duration(minutes: 5));
+          // Сохраняем в кэш
+          CacheManager.set(cacheKey, settings, duration: AppConstants.cacheDuration);
           return settings;
         }
       }
@@ -71,10 +70,8 @@ class RKOService {
   /// Получить следующий номер документа для магазина
   static Future<int> getNextDocumentNumber(String shopAddress) async {
     try {
-      final url = '$serverUrl/api/shop-settings/${Uri.encodeComponent(shopAddress)}/document-number';
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final url = '${ApiConstants.serverUrl}/api/shop-settings/${Uri.encodeComponent(shopAddress)}/document-number';
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -92,14 +89,12 @@ class RKOService {
   /// Обновить номер документа для магазина
   static Future<bool> updateDocumentNumber(String shopAddress, int documentNumber) async {
     try {
-      final url = '$serverUrl/api/shop-settings/${Uri.encodeComponent(shopAddress)}/document-number';
+      final url = '${ApiConstants.serverUrl}/api/shop-settings/${Uri.encodeComponent(shopAddress)}/document-number';
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode({'documentNumber': documentNumber}),
-      ).timeout(
-        const Duration(seconds: 10),
-      );
+      ).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
