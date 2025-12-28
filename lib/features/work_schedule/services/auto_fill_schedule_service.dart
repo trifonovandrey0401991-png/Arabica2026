@@ -2,6 +2,7 @@ import '../models/work_schedule_model.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
+import '../../../core/utils/logger.dart';
 
 /// Сервис для автоматического заполнения графика работы
 class AutoFillScheduleService {
@@ -137,9 +138,9 @@ class AutoFillScheduleService {
     final validationWarnings = _validateSchedule(workingSchedule, shops, days);
     warnings.addAll(validationWarnings);
 
-    print('✅ Автозаполнение завершено: создано ${newEntries.length} смен');
+    Logger.debug('✅ Автозаполнение завершено: создано ${newEntries.length} смен');
     if (warnings.isNotEmpty) {
-      print('⚠️ Предупреждения: ${warnings.length}');
+      Logger.debug('⚠️ Предупреждения: ${warnings.length}');
     }
 
     return newEntries;
