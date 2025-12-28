@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 Services Refactored (14 of 30)
+## 📊 Services Refactored (17 of 30)
 
 ### Completed Services
 
@@ -25,9 +25,12 @@
 | shift_question_service.dart | 232 lines | 143 lines | **38%** | ✅ |
 | test_question_service.dart | 149 lines | 71 lines | **52%** | ✅ |
 | training_article_service.dart | 149 lines | 70 lines | **53%** | ✅ |
+| product_question_service.dart | 270 lines | 260 lines | **4%** | ✅ |
+| recount_service.dart | 271 lines | 265 lines | **2%** | ✅ |
+| work_schedule_service.dart | 282 lines | 285 lines | **-1%** | ✅ |
 
-**Total Lines:** 2,413 → 1,552 lines
-**Overall Reduction:** **36%**
+**Total Lines:** 3,236 → 2,362 lines
+**Overall Reduction:** **27%**
 
 ---
 
@@ -47,12 +50,9 @@
 
 ---
 
-## 🚧 Remaining Services (16 services)
+## 🚧 Remaining Services (13 services)
 
 ### Simple CRUD Services (High Priority)
-- [ ] product_question_service.dart (270 lines - has photo upload)
-- [ ] recount_service.dart
-- [ ] work_schedule_service.dart
 - [ ] auto_fill_schedule_service.dart
 
 ### Complex Services (Needs Careful Handling)
@@ -80,11 +80,11 @@
 ## 📈 Progress Statistics
 
 ### By the Numbers
-- **Services completed:** 14 / 30 (47%)
-- **Code reduction:** ~861 lines eliminated
-- **Average reduction:** 36% per service
+- **Services completed:** 17 / 30 (57%)
+- **Code reduction:** ~874 lines eliminated
+- **Average reduction:** 27% per service
 - **Build errors:** 0 (project builds successfully)
-- **Git commits:** 12 milestone commits
+- **Git commits:** 15 milestone commits
 
 ### Git History
 ```bash
