@@ -1,10 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter/material.dart';
 import '../models/attendance_model.dart';
 import '../../shops/models/shop_model.dart';
-import '../../shops/models/shop_settings_model.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
@@ -106,7 +104,7 @@ class AttendanceService {
         distance: distance,
       );
       
-      Logger.debug('📝 Создание отметки прихода: ${employeeName}, время: ${finalTimestamp.toIso8601String()}');
+      Logger.debug('📝 Создание отметки прихода: $employeeName, время: ${finalTimestamp.toIso8601String()}');
 
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),

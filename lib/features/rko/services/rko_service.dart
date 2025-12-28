@@ -142,7 +142,7 @@ class RKOService {
   static Future<Shop?> getShopFromLastShift(String employeeName) async {
     try {
       final lastShift = await getLastShift(employeeName);
-      if (lastShift == null || lastShift.shopAddress == null) {
+      if (lastShift == null) {
         return null;
       }
 
