@@ -1,42 +1,22 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/recount_question_model.dart';
+import '../../../core/services/base_http_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class RecountQuestionService {
-  static const String serverUrl = 'https://arabica26.ru';
-  static const String baseUrl = '$serverUrl/api/recount-questions';
+  static const String baseEndpoint = '/api/recount-questions';
 
   /// Получить все вопросы
   static Future<List<RecountQuestion>> getQuestions() async {
-    try {
-      Logger.debug('📥 Загрузка вопросов пересчета с сервера...');
-      
-      final response = await http.get(
-        Uri.parse(baseUrl),
-      ).timeout(const Duration(seconds: 15));
+    Logger.debug('📥 Загрузка вопросов пересчета с сервера...');
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final questionsJson = result['questions'] as List<dynamic>;
-          final questions = questionsJson
-              .map((json) => RecountQuestion.fromJson(json as Map<String, dynamic>))
-              .toList();
-          Logger.debug('✅ Загружено вопросов пересчета: ${questions.length}');
-          return questions;
-        } else {
-          Logger.error('❌ Ошибка загрузки вопросов: ${result['error']}');
-          return [];
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки вопросов пересчета', e);
-      return [];
-    }
+    return await BaseHttpService.getList<RecountQuestion>(
+      endpoint: baseEndpoint,
+      fromJson: (json) => RecountQuestion.fromJson(json),
+      listKey: 'questions',
+    );
   }
 
   /// Создать новый вопрос
@@ -44,36 +24,17 @@ class RecountQuestionService {
     required String question,
     required int grade,
   }) async {
-    try {
-      Logger.debug('📤 Создание вопроса пересчета: $question');
-      
-      final requestBody = <String, dynamic>{
+    Logger.debug('📤 Создание вопроса пересчета: $question');
+
+    return await BaseHttpService.post<RecountQuestion>(
+      endpoint: baseEndpoint,
+      body: {
         'question': question,
         'grade': grade,
-      };
-      
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Вопрос создан: ${result['question']['id']}');
-          return RecountQuestion.fromJson(result['question'] as Map<String, dynamic>);
-        } else {
-          Logger.error('❌ Ошибка создания вопроса: ${result['error']}');
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-      }
-      return null;
-    } catch (e) {
-      Logger.error('❌ Ошибка создания вопроса пересчета', e);
-      return null;
-    }
+      },
+      fromJson: (json) => RecountQuestion.fromJson(json),
+      itemKey: 'question',
+    );
   }
 
   /// Обновить вопрос
@@ -82,62 +43,27 @@ class RecountQuestionService {
     String? question,
     int? grade,
   }) async {
-    try {
-      Logger.debug('📤 Обновление вопроса пересчета: $id');
-      
-      final body = <String, dynamic>{};
-      if (question != null) body['question'] = question;
-      if (grade != null) body['grade'] = grade;
-      
-      final response = await http.put(
-        Uri.parse('$baseUrl/$id'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 15));
+    Logger.debug('📤 Обновление вопроса пересчета: $id');
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Вопрос обновлен: $id');
-          return RecountQuestion.fromJson(result['question'] as Map<String, dynamic>);
-        } else {
-          Logger.error('❌ Ошибка обновления вопроса: ${result['error']}');
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-      }
-      return null;
-    } catch (e) {
-      Logger.error('❌ Ошибка обновления вопроса пересчета', e);
-      return null;
-    }
+    final body = <String, dynamic>{};
+    if (question != null) body['question'] = question;
+    if (grade != null) body['grade'] = grade;
+
+    return await BaseHttpService.put<RecountQuestion>(
+      endpoint: '$baseEndpoint/$id',
+      body: body,
+      fromJson: (json) => RecountQuestion.fromJson(json),
+      itemKey: 'question',
+    );
   }
 
   /// Удалить вопрос
   static Future<bool> deleteQuestion(String id) async {
-    try {
-      Logger.debug('📤 Удаление вопроса пересчета: $id');
-      
-      final response = await http.delete(
-        Uri.parse('$baseUrl/$id'),
-      ).timeout(const Duration(seconds: 15));
+    Logger.debug('📤 Удаление вопроса пересчета: $id');
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Вопрос удален: $id');
-          return true;
-        } else {
-          Logger.error('❌ Ошибка удаления вопроса: ${result['error']}');
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-      }
-      return false;
-    } catch (e) {
-      Logger.error('❌ Ошибка удаления вопроса пересчета', e);
-      return false;
-    }
+    return await BaseHttpService.delete(
+      endpoint: '$baseEndpoint/$id',
+    );
   }
 
   /// Массовая загрузка вопросов (заменяет все существующие)
@@ -146,16 +72,16 @@ class RecountQuestionService {
   ) async {
     try {
       Logger.debug('📤 Массовая загрузка вопросов пересчета: ${questions.length} вопросов');
-      
+
       final requestBody = <String, dynamic>{
         'questions': questions,
       };
-      
+
       final response = await http.post(
-        Uri.parse('$baseUrl/bulk-upload'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/bulk-upload'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
         // Проверяем, что ответ - JSON, а не HTML
@@ -164,7 +90,7 @@ class RecountQuestionService {
           Logger.error('❌ Сервер вернул не JSON: ${response.body.substring(0, 200)}');
           return null;
         }
-        
+
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
           final questionsJson = result['questions'] as List<dynamic>;
