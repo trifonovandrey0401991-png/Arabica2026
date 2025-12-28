@@ -2,7 +2,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_role_model.dart';
-import '../../../server_config.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 
 /// Сервис для работы с ролями пользователей
 class UserRoleService {
@@ -11,31 +12,31 @@ class UserRoleService {
     try {
       // Нормализуем номер телефона: убираем + и пробелы, оставляем только цифры
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      
-      print('🔍 Проверка сотрудника через API с номером: $normalizedPhone');
-      
+
+      Logger.debug('🔍 Проверка сотрудника через API с номером: $normalizedPhone');
+
       // Загружаем список сотрудников с сервера
-      final uri = Uri.parse('https://arabica26.ru/api/employees');
+      final uri = Uri.parse('${ApiConstants.serverUrl}/api/employees');
       final response = await http.get(uri).timeout(
-        const Duration(seconds: 10),
+        ApiConstants.shortTimeout,
         onTimeout: () {
           throw Exception('Таймаут при получении списка сотрудников');
         },
       );
 
       if (response.statusCode != 200) {
-        print('⚠️ Ошибка получения списка сотрудников: ${response.statusCode}');
+        Logger.debug('⚠️ Ошибка получения списка сотрудников: ${response.statusCode}');
         return null;
       }
 
       final data = jsonDecode(response.body);
       if (data['success'] != true || data['employees'] == null) {
-        print('⚠️ Неверный формат ответа от API сотрудников');
+        Logger.debug('⚠️ Неверный формат ответа от API сотрудников');
         return null;
       }
 
       final employees = data['employees'] as List;
-      print('📋 Загружено сотрудников: ${employees.length}');
+      Logger.debug('📋 Загружено сотрудников: ${employees.length}');
 
       // Ищем сотрудника по телефону
       for (var emp in employees) {
@@ -45,18 +46,18 @@ class UserRoleService {
           if (empNormalizedPhone == normalizedPhone) {
             final employeeName = emp['name']?.toString().trim() ?? '';
             final isAdmin = emp['isAdmin'] == true || emp['isAdmin'] == 1 || emp['isAdmin'] == '1';
-            
-            print('✅ Сотрудник найден через API:');
-            print('   ID: ${emp['id']}');
-            print('   Имя: $employeeName');
-            print('   Админ: $isAdmin');
-            
+
+            Logger.debug('✅ Сотрудник найден через API:');
+            Logger.debug('   ID: ${emp['id']}');
+            Logger.debug('   Имя: $employeeName');
+            Logger.debug('   Админ: $isAdmin');
+
             // Сохраняем employeeId для последующего использования
             if (emp['id'] != null) {
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString('currentEmployeeId', emp['id'].toString());
               await prefs.setString('currentEmployeeName', employeeName);
-              print('💾 Сохранен employeeId: ${emp['id']}');
+              Logger.debug('💾 Сохранен employeeId: ${emp['id']}');
             }
             
             return UserRoleData(
@@ -68,11 +69,11 @@ class UserRoleService {
           }
         }
       }
-      
-      print('ℹ️ Сотрудник не найден через API');
+
+      Logger.debug('ℹ️ Сотрудник не найден через API');
       return null;
     } catch (e) {
-      print('⚠️ Ошибка проверки сотрудника через API: $e');
+      Logger.debug('⚠️ Ошибка проверки сотрудника через API: $e');
       return null;
     }
   }
@@ -82,33 +83,33 @@ class UserRoleService {
     try {
       // Нормализуем номер телефона: убираем + и пробелы, оставляем только цифры
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      
-      print('🔍 Проверка роли пользователя с номером: $normalizedPhone');
-      
+
+      Logger.debug('🔍 Проверка роли пользователя с номером: $normalizedPhone');
+
       // СНАЧАЛА проверяем через API сотрудников (для сотрудников, созданных через API)
       final apiRole = await checkEmployeeViaAPI(phone);
       if (apiRole != null) {
-        print('✅ Роль определена через API: ${apiRole.role.name}');
+        Logger.debug('✅ Роль определена через API: ${apiRole.role.name}');
         return apiRole;
       }
-      
+
       // ЕСЛИ не найден через API, проверяем через сервер
-      print('📊 Проверка роли через сервер...');
+      Logger.debug('📊 Проверка роли через сервер...');
       final uri = Uri.parse(
-        '$serverUrl?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+        '${ApiConstants.serverUrl}?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
       );
-      
-      print('🔗 URL запроса: $uri');
+
+      Logger.debug('🔗 URL запроса: $uri');
 
       final response = await http.get(uri).timeout(
-        const Duration(seconds: 10),
+        ApiConstants.shortTimeout,
         onTimeout: () {
           throw Exception('Таймаут при получении роли пользователя');
         },
       );
 
       if (response.statusCode != 200) {
-        print('❌ Ошибка получения роли: ${response.statusCode}');
+        Logger.debug('❌ Ошибка получения роли: ${response.statusCode}');
         // По умолчанию возвращаем роль клиента
         return UserRoleData(
           role: UserRole.client,
@@ -118,9 +119,9 @@ class UserRoleService {
       }
 
       final data = jsonDecode(response.body);
-      
+
       if (data['success'] != true) {
-        print('⚠️ Сервер вернул success: false, используем роль клиента по умолчанию');
+        Logger.debug('⚠️ Сервер вернул success: false, используем роль клиента по умолчанию');
         return UserRoleData(
           role: UserRole.client,
           displayName: data['clientName'] ?? '',
@@ -148,10 +149,10 @@ class UserRoleService {
         displayName = employeeName;
       }
 
-      print('✅ Роль определена через сервер: ${role.name}');
-      print('   Имя для отображения: $displayName');
+      Logger.debug('✅ Роль определена через сервер: ${role.name}');
+      Logger.debug('   Имя для отображения: $displayName');
       if (employeeName != null) {
-        print('   Имя сотрудника (G): $employeeName');
+        Logger.debug('   Имя сотрудника (G): $employeeName');
       }
 
       return UserRoleData(
@@ -161,7 +162,7 @@ class UserRoleService {
         employeeName: employeeName,
       );
     } catch (e) {
-      print('❌ Ошибка получения роли: $e');
+      Logger.debug('❌ Ошибка получения роли: $e');
       // При ошибке (таймаут) не перезаписываем роль - возвращаем null,
       // чтобы вызывающий код мог использовать кэшированную роль
       rethrow; // Пробрасываем исключение дальше, чтобы вызывающий код мог обработать
@@ -179,9 +180,9 @@ class UserRoleService {
       } else {
         await prefs.remove('user_employee_name');
       }
-      print('✅ Роль сохранена: ${roleData.role.name}');
+      Logger.debug('✅ Роль сохранена: ${roleData.role.name}');
     } catch (e) {
-      print('❌ Ошибка сохранения роли: $e');
+      Logger.debug('❌ Ошибка сохранения роли: $e');
     }
   }
 
@@ -217,7 +218,7 @@ class UserRoleService {
         employeeName: employeeName,
       );
     } catch (e) {
-      print('❌ Ошибка загрузки роли: $e');
+      Logger.debug('❌ Ошибка загрузки роли: $e');
       return null;
     }
   }
@@ -229,9 +230,9 @@ class UserRoleService {
       await prefs.remove('user_role');
       await prefs.remove('user_display_name');
       await prefs.remove('user_employee_name');
-      print('✅ Роль очищена');
+      Logger.debug('✅ Роль очищена');
     } catch (e) {
-      print('❌ Ошибка очистки роли: $e');
+      Logger.debug('❌ Ошибка очистки роли: $e');
     }
   }
 }

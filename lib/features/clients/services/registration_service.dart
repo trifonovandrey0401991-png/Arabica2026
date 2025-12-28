@@ -28,9 +28,9 @@ class RegistrationService {
           name: name,
           clientName: name,
         );
-        Logger.success('✅ Данные клиента сохранены на сервере');
+        Logger.debug('✅ Данные клиента сохранены на сервере');
       } catch (e) {
-        Logger.warning('⚠️ Не удалось сохранить данные клиента на сервере', e);
+        Logger.error('⚠️ Не удалось сохранить данные клиента на сервере', e);
         // Не прерываем регистрацию, если не удалось сохранить на сервере
       }
 
@@ -82,7 +82,7 @@ class RegistrationService {
         throw Exception(result['error'] ?? 'Ошибка сохранения клиента');
       }
     } catch (e) {
-      Logger.warning('Ошибка сохранения клиента на сервере', e);
+      Logger.error('Ошибка сохранения клиента на сервере', e);
       rethrow;
     }
   }

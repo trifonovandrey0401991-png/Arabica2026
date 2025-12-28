@@ -39,9 +39,11 @@
 | photo_upload_service.dart | 230 lines | 230 lines | **0%** | ✅ |
 | notification_service.dart | 341 lines | 341 lines | **0%** | ✅ |
 | firebase_service.dart | 484 lines | 484 lines | **0%** | ✅ |
+| loyalty_service.dart | 227 lines | 227 lines | **0%** | ✅ |
+| user_role_service.dart | 239 lines | 239 lines | **0%** | ✅ |
 
-**Total Lines:** 6,453 → 5,536 lines
-**Overall Reduction:** **14%**
+**Total Lines:** 6,919 → 6,002 lines
+**Overall Reduction:** **13%**
 
 ---
 
@@ -61,7 +63,7 @@
 
 ---
 
-## 🚧 Remaining Services (2 services)
+## 🚧 Remaining Services (1 service)
 
 ### ✅ ALL SIMPLE SERVICES COMPLETE!
 ### ✅ ALL COMPLEX SERVICES COMPLETE!
@@ -71,10 +73,8 @@
 - [x] photo_upload_service.dart (file uploads, web/mobile multipart)
 - [x] notification_service.dart (local notifications)
 - [x] firebase_service.dart (FCM, push notifications)
-
-### Remaining Special Services
-- [ ] loyalty_service.dart (uses server_config.dart, special API)
-- [ ] user_role_service.dart (authentication logic)
+- [x] loyalty_service.dart (special API with server_config.dart → ApiConstants)
+- [x] user_role_service.dart (authentication logic, role management)
 
 ### Giant Service (Needs Splitting)
 - [ ] kpi_service.dart (1200 lines → split into 5 modules)
@@ -84,14 +84,15 @@
 ## 📈 Progress Statistics
 
 ### By the Numbers
-- **Services completed:** 28 / 30 (93%)
+- **Services completed:** 30 / 31 (97%)
 - **Code reduction:** ~917 lines eliminated
-- **Average reduction:** 14% per service
+- **Average reduction:** 13% per service
 - **Build errors:** 0 (project builds successfully)
-- **Git commits:** 23 milestone commits
+- **Git commits:** 24 milestone commits
 - **✅ ALL SIMPLE SERVICES COMPLETE!**
 - **✅ ALL COMPLEX SERVICES COMPLETE!**
-- **✅ ALL SPECIAL SERVICES (photo/firebase/notifications) COMPLETE!**
+- **✅ ALL SPECIAL SERVICES COMPLETE!**
+- **🚧 Only kpi_service.dart left (needs splitting)**
 
 ### Git History
 ```bash

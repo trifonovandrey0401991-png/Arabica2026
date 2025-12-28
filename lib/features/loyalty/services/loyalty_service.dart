@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../../server_config.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class LoyaltyInfo {
@@ -67,16 +67,16 @@ class LoyaltyService {
     // Нормализуем номер телефона: убираем + и пробелы
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     final uri = Uri.parse(
-      '$serverUrl?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+      '${ApiConstants.serverUrl}?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
     );
-    
+
     Logger.debug('📞 Поиск пользователя с номером: $normalizedPhone');
 
     http.Response response;
     try {
       final stopwatch = Stopwatch()..start();
       response = await http.get(uri).timeout(
-        const Duration(seconds: 15), // Уменьшен таймаут с 30 до 15 секунд
+        ApiConstants.defaultTimeout,
         onTimeout: () {
           stopwatch.stop();
           Logger.error('ТАЙМАУТ: Запрос не завершился за 15 секунд', Exception('Таймаут'));
@@ -110,7 +110,7 @@ class LoyaltyService {
         throw Exception('Клиент не найден в базе данных');
       }
 
-    Logger.success('Пользователь найден: ${data['client']['name']}');
+    Logger.debug('Пользователь найден: ${data['client']['name']}');
     return LoyaltyInfo.fromJson(data['client']);
     } catch (e, stackTrace) {
       Logger.error('КРИТИЧЕСКАЯ ОШИБКА в fetchByPhone', e, stackTrace);
@@ -124,10 +124,10 @@ class LoyaltyService {
   static Future<LoyaltyInfo> fetchByQr(String qr) async {
     try {
     final uri = Uri.parse(
-      '$serverUrl?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
+      '${ApiConstants.serverUrl}?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
     );
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 30));
+    final response = await http.get(uri).timeout(ApiConstants.longTimeout);
       
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
@@ -171,18 +171,18 @@ class LoyaltyService {
 
   static Future<Map<String, dynamic>> _post(Map<String, dynamic> body) async {
     try {
-      final uri = Uri.parse(serverUrl);
+      final uri = Uri.parse(ApiConstants.serverUrl);
       if (!uri.hasScheme || !uri.hasAuthority) {
-        throw Exception('Invalid URL: $serverUrl');
+        throw Exception('Invalid URL: ${ApiConstants.serverUrl}');
       }
-      
+
       final response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: ApiConstants.jsonHeaders,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(ApiConstants.longTimeout);
 
       if (response.statusCode != 200) {
         throw Exception('Ошибка сервера: ${response.statusCode}');
