@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../models/client_model.dart';
-import '../services/client_service.dart';
+import '../../features/clients/models/client_model.dart';
+import '../../features/clients/services/client_service.dart';
 
 /// Диалог для отправки сообщения клиенту или всем клиентам
 class SendMessageDialog extends StatefulWidget {

@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../../shops/models/shop_settings_model.dart';
-import 'employee_registration_model.dart';
+import '../../employees/models/employee_registration_model.dart';
 import 'rko_reports_service.dart';
 
 class RKOPDFService {

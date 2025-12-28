@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'menu_page.dart';
+import '../../features/menu/pages/menu_page.dart';
 
 /// Элемент корзины
 class CartItem {

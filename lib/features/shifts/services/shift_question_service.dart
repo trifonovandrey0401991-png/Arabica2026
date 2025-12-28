@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import '../models/shift_question_model.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 class ShiftQuestionService {
   static const String serverUrl = 'https://arabica26.ru';

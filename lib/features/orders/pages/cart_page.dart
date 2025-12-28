@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/services/notification_service.dart';
-import 'employees_page.dart';
+import '../../employees/pages/employees_page.dart';
 import 'orders_page.dart';
 
 /// Страница корзины

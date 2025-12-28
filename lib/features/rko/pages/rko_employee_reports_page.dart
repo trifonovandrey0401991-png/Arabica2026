@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'employees_page.dart';
-import 'services/rko_reports_service.dart';
+import '../../employees/pages/employees_page.dart';
+import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
 
 /// Страница отчетов по сотрудникам

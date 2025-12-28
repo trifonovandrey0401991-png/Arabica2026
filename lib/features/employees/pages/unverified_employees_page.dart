@@ -3,7 +3,7 @@ import 'employees_page.dart';
 import '../services/employee_service.dart';
 import '../services/employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
-import 'employee_registration_model.dart';
+import '../models/employee_registration_model.dart';
 
 /// Страница не верифицированных сотрудников (у которых была снята верификация)
 class UnverifiedEmployeesPage extends StatefulWidget {

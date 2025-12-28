@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/work_schedule_model.dart';
 import '../services/work_schedule_service.dart';
 import '../../employees/services/employee_service.dart';
-import 'employees_page.dart';
+import '../../employees/pages/employees_page.dart';
 
 /// Страница моего графика (для просмотра личного графика сотрудника)
 class MySchedulePage extends StatefulWidget {

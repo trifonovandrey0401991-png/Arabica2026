@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
-import 'core/utils/logger.dart';
+import '../utils/logger.dart';
 
 /// Обертка для Firebase, которая работает на всех платформах
 class FirebaseWrapper {

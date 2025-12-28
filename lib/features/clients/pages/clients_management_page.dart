@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/client_model.dart';
 import '../services/client_service.dart';
-import 'send_message_dialog.dart';
+import '../../../shared/dialogs/send_message_dialog.dart';
 import 'client_chat_page.dart';
 
 /// Страница управления клиентами

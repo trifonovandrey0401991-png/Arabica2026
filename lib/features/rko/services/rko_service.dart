@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../employees/services/employee_registration_service.dart';
-import 'employee_registration_model.dart';
+import '../../employees/models/employee_registration_model.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../shops/models/shop_model.dart';
-import 'employees_page.dart';
-import 'core/utils/logger.dart';
-import 'core/utils/cache_manager.dart';
+import '../../employees/pages/employees_page.dart';
+import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 class RKOService {
   static const String serverUrl = 'https://arabica26.ru';

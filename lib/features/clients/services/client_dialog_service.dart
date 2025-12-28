@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/client_dialog_model.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 class ClientDialogService {
   static const String serverUrl = 'https://arabica26.ru';

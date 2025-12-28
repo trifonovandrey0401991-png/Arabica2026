@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
-import 'services/rko_reports_service.dart';
+import '../services/rko_reports_service.dart';
 
 /// Страница просмотра РКО (PDF или DOCX)
 class RKOPDFViewerPage extends StatefulWidget {

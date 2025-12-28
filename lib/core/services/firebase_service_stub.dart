@@ -3,8 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'my_dialogs_page.dart';
-import 'review_detail_page.dart';
+import '../../app/pages/my_dialogs_page.dart';
+import '../../features/reviews/pages/review_detail_page.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/models/review_model.dart';
 

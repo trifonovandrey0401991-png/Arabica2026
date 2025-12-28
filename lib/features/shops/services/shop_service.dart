@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'models/shop_model.dart';
-import 'core/utils/logger.dart';
+import '../models/shop_model.dart';
+import '../../../core/utils/logger.dart';
 
 class ShopService {
   static const String serverUrl = 'https://arabica26.ru';

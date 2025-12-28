@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../shops/models/shop_model.dart';
-import 'services/rko_reports_service.dart';
+import '../../shops/models/shop_model.dart';
+import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
 
 /// Страница отчетов по магазинам

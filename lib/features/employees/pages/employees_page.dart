@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user_role_service.dart';
-import 'server_config.dart';
+import '../services/user_role_service.dart';
+import '../../../server_config.dart';
 import '../services/employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'employee_registration_page.dart';
 import '../services/employee_service.dart';
 import '../models/user_role_model.dart';
 import 'unverified_employees_page.dart';
-import 'shops_management_page.dart';
+import '../../shops/pages/shops_management_page.dart';
 
 /// Модель сотрудника
 class Employee {

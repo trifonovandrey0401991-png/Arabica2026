@@ -1,8 +1,8 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'user_role_model.dart';
-import 'server_config.dart';
+import '../models/user_role_model.dart';
+import '../../../server_config.dart';
 
 /// Сервис для работы с ролями пользователей
 class UserRoleService {

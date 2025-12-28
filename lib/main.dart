@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'main_menu_page.dart';
+import 'app/pages/main_menu_page.dart';
 import 'features/clients/pages/registration_page.dart';
 import 'shared/providers/cart_provider.dart';
 import 'shared/providers/order_provider.dart';
@@ -8,8 +8,8 @@ import 'core/services/notification_service.dart';
 import 'features/loyalty/services/loyalty_service.dart';
 import 'features/loyalty/services/loyalty_storage.dart';
 import 'features/shifts/services/shift_sync_service.dart';
-import 'firebase_wrapper.dart';
-import 'features/employees/models/user_role_service.dart';
+import 'core/services/firebase_wrapper.dart';
+import 'features/employees/services/user_role_service.dart';
 import 'core/utils/logger.dart';
 import 'features/clients/services/registration_service.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -17,7 +17,7 @@ import 'features/clients/services/registration_service.dart';
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
 
 // Условный импорт Firebase (для веб используется заглушка)
-import 'firebase_service.dart' if (dart.library.html) 'firebase_service_stub.dart';
+import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

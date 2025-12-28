@@ -5,9 +5,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/services/notification_service.dart';
-import 'employees_page.dart';
+import '../../employees/pages/employees_page.dart';
 import '../../../shared/providers/cart_provider.dart';
-import 'menu_page.dart';
+import '../../menu/pages/menu_page.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../attendance/models/attendance_model.dart';
 import '../../shifts/models/shift_report_model.dart';
@@ -18,11 +18,11 @@ import '../../recount/models/recount_report_model.dart';
 import '../../recount/models/recount_question_model.dart';
 import '../../recount/models/recount_answer_model.dart';
 import '../../employees/services/employee_registration_service.dart';
-import 'employee_registration_model.dart';
+import '../../employees/models/employee_registration_model.dart';
 import '../../shops/models/shop_model.dart';
-import 'rko_type_selection_page.dart';
+import '../../rko/pages/rko_type_selection_page.dart';
 import '../../rko/services/rko_reports_service.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 /// Тестовая страница для проверки всех функций приложения
 class TestNotificationsPage extends StatefulWidget {

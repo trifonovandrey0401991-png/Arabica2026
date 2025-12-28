@@ -4,7 +4,7 @@ import '../../shops/models/shop_model.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import 'kpi_shop_day_detail_dialog.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 bool isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;

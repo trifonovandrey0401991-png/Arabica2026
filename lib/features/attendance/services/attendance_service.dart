@@ -2,10 +2,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
-import 'models/attendance_model.dart';
-import '../shops/models/shop_model.dart';
-import '../shops/models/shop_settings_model.dart';
-import 'core/utils/logger.dart';
+import '../models/attendance_model.dart';
+import '../../shops/models/shop_model.dart';
+import '../../shops/models/shop_settings_model.dart';
+import '../../../core/utils/logger.dart';
 
 class AttendanceService {
   static const String serverUrl = 'https://arabica26.ru';

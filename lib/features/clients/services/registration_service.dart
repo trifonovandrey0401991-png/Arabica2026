@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../loyalty/services/loyalty_service.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 /// Сервис регистрации клиентов.
 class RegistrationService {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'models/attendance_model.dart';
-import 'services/attendance_service.dart';
+import '../models/attendance_model.dart';
+import '../services/attendance_service.dart';
 
 class AttendanceReportsPage extends StatefulWidget {
   const AttendanceReportsPage({super.key});

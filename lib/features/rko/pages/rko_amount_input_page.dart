@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'services/rko_service.dart';
-import '../shops/models/shop_model.dart';
-import '../shops/models/shop_settings_model.dart';
-import 'services/rko_pdf_service.dart';
+import '../services/rko_service.dart';
+import '../../shops/models/shop_model.dart';
+import '../../shops/models/shop_settings_model.dart';
+import '../services/rko_pdf_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'employees_page.dart';
-import '../kpi/services/kpi_service.dart';
-import 'core/utils/logger.dart';
+import '../../employees/pages/employees_page.dart';
+import '../../kpi/services/kpi_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {

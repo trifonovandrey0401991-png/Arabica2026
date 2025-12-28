@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/shops/models/shop_model.dart';
+import '../../shops/models/shop_model.dart';
 import 'product_question_input_page.dart';
 
 class ProductSearchShopSelectionPage extends StatefulWidget {

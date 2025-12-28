@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'training_page.dart';
-import 'test_page.dart';
-import 'shift_shop_selection_page.dart';
-import 'recount_shop_selection_page.dart';
-import 'recipes_list_page.dart';
-import 'attendance_shop_selection_page.dart';
+import '../../training/pages/training_page.dart';
+import '../../tests/pages/test_page.dart';
+import '../../shifts/pages/shift_shop_selection_page.dart';
+import '../../recount/pages/recount_shop_selection_page.dart';
+import '../../recipes/pages/recipes_list_page.dart';
+import '../../attendance/pages/attendance_shop_selection_page.dart';
 import '../../attendance/services/attendance_service.dart';
 import 'employees_page.dart';
-import 'user_role_service.dart';
-import 'user_role_model.dart';
-import 'rko_type_selection_page.dart';
+import '../services/user_role_service.dart';
+import '../models/user_role_model.dart';
+import '../../rko/pages/rko_type_selection_page.dart';
 import '../services/employee_registration_service.dart';
 
 /// Страница панели работника

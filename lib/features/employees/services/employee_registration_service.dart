@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'employee_registration_model.dart';
+import '../models/employee_registration_model.dart';
 
 class EmployeeRegistrationService {
   static const String serverUrl = 'https://arabica26.ru';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница управления условиями акций для админа
 class LoyaltyPromoManagementPage extends StatefulWidget {

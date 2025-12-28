@@ -6,7 +6,7 @@ import '../models/recount_report_model.dart';
 import '../models/recount_answer_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
-import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
+import '../../../core/services/html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 /// Сервис для работы с пересчетом товаров
 class RecountService {

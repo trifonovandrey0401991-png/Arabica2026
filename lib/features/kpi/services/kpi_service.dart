@@ -9,8 +9,8 @@ import '../../recount/models/recount_report_model.dart';
 import '../../rko/services/rko_reports_service.dart';
 import '../../rko/models/rko_report_model.dart';
 import '../../employees/services/employee_registration_service.dart';
-import 'core/utils/logger.dart';
-import 'core/utils/cache_manager.dart';
+import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Сервис для получения и агрегации KPI данных
 class KPIService {

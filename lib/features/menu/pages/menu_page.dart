@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../../../shared/providers/cart_provider.dart';
-import 'cart_page.dart';
+import '../../orders/pages/cart_page.dart';
 import '../services/menu_service.dart';
 
 class MenuItem {

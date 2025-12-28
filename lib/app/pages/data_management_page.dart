@@ -6,16 +6,16 @@ import '../../features/recount/services/recount_question_service.dart';
 import '../../features/tests/services/test_question_service.dart';
 import '../../features/training/services/training_article_service.dart';
 import '../../features/menu/services/menu_service.dart';
-import 'shops_management_page.dart';
-import 'employees_page.dart';
-import 'shift_questions_management_page.dart';
-import 'recount_questions_management_page.dart';
-import 'test_questions_management_page.dart';
-import 'training_articles_management_page.dart';
+import '../../features/shops/pages/shops_management_page.dart';
+import '../../features/employees/pages/employees_page.dart';
+import '../../features/shifts/pages/shift_questions_management_page.dart';
+import '../../features/recount/pages/recount_questions_management_page.dart';
+import '../../features/tests/pages/test_questions_management_page.dart';
+import '../../features/training/pages/training_articles_management_page.dart';
 import '../../features/clients/pages/clients_management_page.dart';
-import 'product_questions_management_page.dart';
+import '../../features/product_questions/pages/product_questions_management_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'test_notifications_page.dart';
+import '../../features/tests/pages/test_notifications_page.dart';
 import 'role_test_page.dart';
 
 /// Страница управления данными (только для администраторов)

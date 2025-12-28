@@ -5,8 +5,8 @@ import 'package:uuid/uuid.dart';
 import '../services/registration_service.dart';
 import '../../loyalty/services/loyalty_storage.dart';
 import '../../loyalty/services/loyalty_service.dart';
-import '../../employees/models/user_role_service.dart';
-import 'core/utils/logger.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/kpi_service.dart';
 import 'kpi_employee_detail_page.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница списка всех сотрудников для KPI
 class KPIEmployeesListPage extends StatefulWidget {

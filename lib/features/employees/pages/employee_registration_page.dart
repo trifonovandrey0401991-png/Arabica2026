@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'employee_registration_model.dart';
+import '../models/employee_registration_model.dart';
 import '../services/employee_registration_service.dart';
 import '../services/employee_service.dart';
 import 'employees_page.dart';

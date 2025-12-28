@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
-import 'employees_page.dart';
+import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
 import '../../features/shops/models/shop_settings_model.dart';
 

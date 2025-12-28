@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'employees_page.dart';
-import 'core/utils/logger.dart';
+import '../pages/employees_page.dart';
+import '../../../core/utils/logger.dart';
 
 class EmployeeService {
   static const String serverUrl = 'https://arabica26.ru';

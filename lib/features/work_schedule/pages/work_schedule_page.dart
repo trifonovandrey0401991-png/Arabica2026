@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'models/work_schedule_model.dart';
-import 'services/work_schedule_service.dart';
-import '../employees/services/employee_service.dart';
-import '../shops/models/shop_model.dart';
-import 'abbreviation_selection_dialog.dart';
-import 'schedule_bulk_operations_dialog.dart';
-import 'employees_page.dart';
+import '../models/work_schedule_model.dart';
+import '../services/work_schedule_service.dart';
+import '../../employees/services/employee_service.dart';
+import '../../shops/models/shop_model.dart';
+import '../../../shared/dialogs/abbreviation_selection_dialog.dart';
+import '../../../shared/dialogs/schedule_bulk_operations_dialog.dart';
+import '../../employees/pages/employees_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../shops/models/shop_settings_model.dart';
-import 'services/work_schedule_validator.dart';
-import 'schedule_validation_dialog.dart';
-import 'employee_schedule_page.dart';
-import 'auto_fill_schedule_dialog.dart';
-import 'services/auto_fill_schedule_service.dart';
+import '../../shops/models/shop_settings_model.dart';
+import '../work_schedule_validator.dart';
+import '../../../shared/dialogs/schedule_validation_dialog.dart';
+import '../../employees/pages/employee_schedule_page.dart';
+import '../../../shared/dialogs/auto_fill_schedule_dialog.dart';
+import '../services/auto_fill_schedule_service.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {

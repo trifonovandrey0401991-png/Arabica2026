@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import '../shops/models/shop_model.dart';
-import 'services/attendance_service.dart';
-import 'models/attendance_model.dart';
+import '../../shops/models/shop_model.dart';
+import '../services/attendance_service.dart';
+import '../models/attendance_model.dart';
 
 class AttendanceShopSelectionPage extends StatefulWidget {
   final String employeeName;

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'employee_registration_model.dart';
+import '../models/employee_registration_model.dart';
 import '../services/employee_registration_service.dart';
 import 'employee_registration_page.dart';
-import 'user_role_service.dart';
-import 'user_role_model.dart';
+import '../services/user_role_service.dart';
+import '../models/user_role_model.dart';
 import 'employees_page.dart';
 import '../services/employee_service.dart';
 import 'employee_preferences_dialog.dart';

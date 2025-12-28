@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/client_dialog_model.dart';
-import '../services/client_dialog_service.dart';
+import '../../features/clients/models/client_dialog_model.dart';
+import '../../features/clients/services/client_dialog_service.dart';
 import '../../features/clients/pages/client_dialog_page.dart';
 
 /// Страница "Мои диалоги" для клиента

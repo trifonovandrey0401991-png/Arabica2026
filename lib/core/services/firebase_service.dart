@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'my_dialogs_page.dart';
-import 'review_detail_page.dart';
+import '../../app/pages/my_dialogs_page.dart';
+import '../../features/reviews/pages/review_detail_page.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/models/review_model.dart';
-import 'product_question_dialog_page.dart';
-import 'product_question_answer_page.dart';
-import 'core/utils/logger.dart';
+import '../../features/product_questions/pages/product_question_dialog_page.dart';
+import '../../features/product_questions/pages/product_question_answer_page.dart';
+import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;

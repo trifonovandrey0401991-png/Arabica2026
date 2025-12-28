@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'services/loyalty_service.dart';
-import 'services/loyalty_storage.dart';
+import '../services/loyalty_service.dart';
+import '../services/loyalty_storage.dart';
 import 'loyalty_promo_management_page.dart';
-import '../employees/models/user_role_service.dart';
-import '../employees/models/user_role_model.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 
 class LoyaltyPage extends StatefulWidget {
   const LoyaltyPage({super.key});

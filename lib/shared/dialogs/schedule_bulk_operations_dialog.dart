@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/employees/services/employee_service.dart';
-import 'employees_page.dart';
+import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
 
 class ScheduleBulkOperationsDialog extends StatefulWidget {

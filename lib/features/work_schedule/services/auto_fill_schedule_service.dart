@@ -1,5 +1,5 @@
 import '../models/work_schedule_model.dart';
-import 'employees_page.dart';
+import '../../employees/pages/employees_page.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 

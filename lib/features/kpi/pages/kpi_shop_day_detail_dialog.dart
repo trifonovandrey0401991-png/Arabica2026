@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'models/kpi_models.dart';
+import '../models/kpi_models.dart';
 
 /// Диалог с сотрудниками и их показателями за день
 class KPIShopDayDetailDialog extends StatelessWidget {

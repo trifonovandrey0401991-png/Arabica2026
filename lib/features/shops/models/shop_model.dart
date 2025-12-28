@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'core/utils/logger.dart';
-import 'core/utils/cache_manager.dart';
-import 'services/shop_service.dart';
+import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
+import '../services/shop_service.dart';
 
 /// Модель магазина
 class Shop {

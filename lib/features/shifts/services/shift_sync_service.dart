@@ -1,6 +1,6 @@
 import '../models/shift_report_model.dart';
 import '../../../core/services/photo_upload_service.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис синхронизации отчетов

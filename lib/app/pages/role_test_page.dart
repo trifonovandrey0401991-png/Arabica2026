@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/models/user_role_model.dart';
-import '../../features/employees/models/user_role_service.dart';
+import '../../features/employees/services/user_role_service.dart';
 
 /// Тестовая страница для переключения ролей
 class RoleTestPage extends StatefulWidget {

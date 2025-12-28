@@ -3,9 +3,9 @@ import '../models/recipe_model.dart';
 import 'recipe_view_page.dart';
 import 'recipe_edit_page.dart';
 import 'recipe_list_edit_page.dart';
-import '../../employees/models/user_role_service.dart';
+import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
-import 'core/utils/logger.dart';
+import '../../../core/utils/logger.dart';
 
 class RecipesListPage extends StatefulWidget {
   const RecipesListPage({super.key});

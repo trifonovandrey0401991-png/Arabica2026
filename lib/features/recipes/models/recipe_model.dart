@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'services/recipe_service.dart';
-import 'core/utils/logger.dart';
+import '../services/recipe_service.dart';
+import '../../../core/utils/logger.dart';
 
 class Recipe {
   final String id;

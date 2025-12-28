@@ -2,8 +2,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/providers/order_provider.dart';
-import 'employees_page.dart';
-import '../../features/employees/models/user_role_service.dart';
+import '../../features/employees/pages/employees_page.dart';
+import '../../features/employees/services/user_role_service.dart';
 
 /// Сервис для работы с уведомлениями
 class NotificationService {
