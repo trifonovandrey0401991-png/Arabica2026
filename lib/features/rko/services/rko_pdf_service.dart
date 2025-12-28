@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../../shops/models/shop_settings_model.dart';
 import '../../employees/models/employee_registration_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import 'rko_reports_service.dart';
 
 class RKOPDFService {
@@ -162,12 +164,11 @@ class RKOPDFService {
     required String rkoType,
   }) async {
     try {
-      final serverUrl = 'https://arabica26.ru';
-      final url = Uri.parse('$serverUrl/api/rko/generate-from-docx');
-      
+      final url = Uri.parse('${ApiConstants.serverUrl}/api/rko/generate-from-docx');
+
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'shopAddress': shopAddress,
           'shopSettings': shopSettings.toJson(),
@@ -193,7 +194,7 @@ class RKOPDFService {
         throw Exception('Ошибка генерации РКО: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Ошибка генерации РКО из .docx: $e');
+      Logger.error('Ошибка генерации РКО из .docx', e);
       // Fallback на старый метод
       return generateRKO(
         shopAddress: shopAddress,
@@ -242,8 +243,8 @@ class RKOPDFService {
     // Создаем шрифт из ByteData
     // pw.Font.ttf принимает ByteData напрямую
     final ttf = pw.Font.ttf(fontData);
-    
-    print('✅ Шрифт LiberationSerif успешно загружен, размер: ${fontData.lengthInBytes} байт');
+
+    Logger.debug('✅ Шрифт LiberationSerif успешно загружен, размер: ${fontData.lengthInBytes} байт');
     
     // Создаем стили текста с поддержкой кириллицы
     // ВАЖНО: Все стили должны использовать font: ttf для поддержки кириллицы

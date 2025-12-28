@@ -38,7 +38,7 @@ class ShiftSyncService {
             try {
               await PhotoUploadService.deletePhoto(answer.photoDriveId!);
             } catch (e) {
-              Logger.warning('Ошибка удаления фото ${answer.photoDriveId}: $e');
+              Logger.debug('⚠️ Ошибка удаления фото ${answer.photoDriveId}: $e');
             }
           }
         }
@@ -90,13 +90,13 @@ class ShiftSyncService {
 
           await ShiftReport.updateReport(syncedReport);
         } catch (e) {
-          Logger.warning('Ошибка синхронизации отчета ${report.id}: $e');
+          Logger.debug('⚠️ Ошибка синхронизации отчета ${report.id}: $e');
         }
       }
       
       // Сохраняем время последней синхронизации
       await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
-      Logger.success('Синхронизация завершена');
+      Logger.debug('✅ Синхронизация завершена');
     } catch (e) {
       Logger.error('Ошибка синхронизации отчетов', e);
     }
