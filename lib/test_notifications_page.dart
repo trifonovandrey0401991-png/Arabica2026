@@ -22,7 +22,7 @@ import 'employee_registration_model.dart';
 import 'shop_model.dart';
 import 'rko_type_selection_page.dart';
 import 'rko_reports_service.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 /// Тестовая страница для проверки всех функций приложения
 class TestNotificationsPage extends StatefulWidget {

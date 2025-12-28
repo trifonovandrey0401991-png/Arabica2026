@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'server_config.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 class LoyaltyInfo {
   final String name;

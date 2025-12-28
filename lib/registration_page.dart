@@ -6,7 +6,7 @@ import 'registration_service.dart';
 import 'loyalty_storage.dart';
 import 'loyalty_service.dart';
 import 'user_role_service.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {

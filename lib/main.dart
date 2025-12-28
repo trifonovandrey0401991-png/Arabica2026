@@ -10,7 +10,7 @@ import 'loyalty_storage.dart';
 import 'shift_sync_service.dart';
 import 'firebase_wrapper.dart';
 import 'user_role_service.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 import 'registration_service.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием

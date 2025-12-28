@@ -12,7 +12,7 @@ import 'review_service.dart';
 import 'review_model.dart';
 import 'product_question_dialog_page.dart';
 import 'product_question_answer_page.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
 // На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
 import 'package:firebase_core/firebase_core.dart' as firebase_core;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'recipe_model.dart';
 import 'recipe_service.dart';
 import 'recipe_form_page.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 class RecipeListEditPage extends StatefulWidget {
   const RecipeListEditPage({super.key});

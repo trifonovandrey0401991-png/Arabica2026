@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'attendance_model.dart';
 import 'shop_model.dart';
 import 'shop_settings_model.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 class AttendanceService {
   static const String serverUrl = 'https://arabica26.ru';

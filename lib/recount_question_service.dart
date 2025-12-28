@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'recount_question_model.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 class RecountQuestionService {
   static const String serverUrl = 'https://arabica26.ru';

@@ -7,7 +7,7 @@ import 'rko_pdf_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'employees_page.dart';
 import 'kpi_service.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {

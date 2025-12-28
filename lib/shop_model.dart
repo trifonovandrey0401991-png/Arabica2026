@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'utils/logger.dart';
-import 'utils/cache_manager.dart';
+import 'core/utils/logger.dart';
+import 'core/utils/cache_manager.dart';
 import 'shop_service.dart';
 
 /// Модель магазина

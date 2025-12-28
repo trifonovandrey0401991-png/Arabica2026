@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'kpi_service.dart';
 import 'kpi_models.dart';
 import 'kpi_employee_day_detail_page.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 /// Детальная страница сотрудника со списком магазинов и дат работы
 class KPIEmployeeDetailPage extends StatefulWidget {

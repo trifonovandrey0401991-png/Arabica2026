@@ -9,7 +9,7 @@ import 'shift_report_service.dart';
 import 'shift_report_model.dart';
 import 'rko_reports_service.dart';
 import 'photo_upload_service.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 /// Детальная страница одного дня работы сотрудника в магазине
 class KPIEmployeeDayDetailPage extends StatefulWidget {

@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'order_provider.dart';
 import 'cart_provider.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 class OrderService {
   static const String serverUrl = 'https://arabica26.ru';

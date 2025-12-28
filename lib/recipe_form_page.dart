@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'recipe_model.dart';
 import 'recipe_service.dart';
-import 'utils/logger.dart';
+import 'core/utils/logger.dart';
 
 class RecipeFormPage extends StatefulWidget {
   final Recipe? recipe; // Если передан, то редактирование, иначе создание

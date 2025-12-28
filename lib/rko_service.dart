@@ -7,8 +7,8 @@ import 'employee_registration_model.dart';
 import 'shift_report_model.dart';
 import 'shop_model.dart';
 import 'employees_page.dart';
-import 'utils/logger.dart';
-import 'utils/cache_manager.dart';
+import 'core/utils/logger.dart';
+import 'core/utils/cache_manager.dart';
 
 class RKOService {
   static const String serverUrl = 'https://arabica26.ru';
