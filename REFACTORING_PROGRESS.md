@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 Services Refactored (5 of 30)
+## 📊 Services Refactored (14 of 30)
 
 ### Completed Services
 
@@ -18,9 +18,16 @@
 | employee_service.dart | 183 lines | 95 lines | **48%** | ✅ |
 | review_service.dart | 251 lines | 164 lines | **35%** | ✅ |
 | recipe_service.dart | 236 lines | 138 lines | **42%** | ✅ |
+| client_dialog_service.dart | 73 lines | 69 lines | **5%** | ✅ |
+| registration_service.dart | 91 lines | 89 lines | **2%** | ✅ |
+| employee_registration_service.dart | 288 lines | 279 lines | **3%** | ✅ |
+| recount_question_service.dart | 194 lines | 120 lines | **38%** | ✅ |
+| shift_question_service.dart | 232 lines | 143 lines | **38%** | ✅ |
+| test_question_service.dart | 149 lines | 71 lines | **52%** | ✅ |
+| training_article_service.dart | 149 lines | 70 lines | **53%** | ✅ |
 
-**Total Lines:** 1,237 → 711 lines
-**Overall Reduction:** **43%**
+**Total Lines:** 2,413 → 1,552 lines
+**Overall Reduction:** **36%**
 
 ---
 
@@ -40,19 +47,13 @@
 
 ---
 
-## 🚧 Remaining Services (24 services)
+## 🚧 Remaining Services (16 services)
 
 ### Simple CRUD Services (High Priority)
-- [ ] registration_service.dart
-- [ ] client_dialog_service.dart
-- [ ] employee_registration_service.dart
-- [ ] product_question_service.dart
-- [ ] recount_question_service.dart
+- [ ] product_question_service.dart (270 lines - has photo upload)
 - [ ] recount_service.dart
-- [ ] shift_question_service.dart
-- [ ] test_question_service.dart
-- [ ] training_article_service.dart
 - [ ] work_schedule_service.dart
+- [ ] auto_fill_schedule_service.dart
 
 ### Complex Services (Needs Careful Handling)
 - [ ] attendance_service.dart (259 lines - has geolocation logic)
@@ -79,11 +80,11 @@
 ## 📈 Progress Statistics
 
 ### By the Numbers
-- **Services completed:** 6 / 30 (20%)
-- **Code reduction:** ~526 lines eliminated
-- **Average reduction:** 43% per service
+- **Services completed:** 14 / 30 (47%)
+- **Code reduction:** ~861 lines eliminated
+- **Average reduction:** 36% per service
 - **Build errors:** 0 (project builds successfully)
-- **Git commits:** 8 milestone commits
+- **Git commits:** 12 milestone commits
 
 ### Git History
 ```bash
