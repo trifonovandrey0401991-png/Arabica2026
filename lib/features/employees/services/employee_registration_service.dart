@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/employee_registration_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 
 class EmployeeRegistrationService {
-  static const String serverUrl = 'https://arabica26.ru';
 
   /// Валидация серии паспорта (4 цифры)
   static bool isValidPassportSeries(String series) {
@@ -70,7 +71,7 @@ class EmployeeRegistrationService {
         // Для мобильных - файл
         final file = File(photoPath);
         if (!await file.exists()) {
-          print('⚠️ Файл не найден: $photoPath');
+          Logger.warning('⚠️ Файл не найден: $photoPath');
           return null;
         }
         bytes = await file.readAsBytes();
@@ -78,13 +79,13 @@ class EmployeeRegistrationService {
 
       // Нормализуем телефон
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      
-      final uri = Uri.parse('$serverUrl/upload-employee-photo');
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-employee-photo');
       final request = http.MultipartRequest('POST', uri);
-      
+
       final fileName = '${normalizedPhone}_$photoType.jpg';
-      print('📤 Загрузка фото: $fileName');
-      print('   Размер: ${bytes.length} байт');
+      Logger.debug('📤 Загрузка фото: $fileName');
+      Logger.debug('   Размер: ${bytes.length} байт');
       
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -96,30 +97,28 @@ class EmployeeRegistrationService {
       request.fields['phone'] = normalizedPhone;
       request.fields['photoType'] = photoType;
 
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 120),
-      );
+      final streamedResponse = await request.send().timeout(ApiConstants.uploadTimeout);
 
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('   Статус ответа: ${response.statusCode}');
+      Logger.debug('   Статус ответа: ${response.statusCode}');
       final responseBody = response.body;
-      print('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
+      Logger.debug('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
           final url = result['url'] as String?;
-          print('   ✅ Фото загружено, URL: $url');
+          Logger.debug('   ✅ Фото загружено, URL: $url');
           return url;
         } else {
-          print('   ❌ Ошибка загрузки: ${result['error']}');
+          Logger.error('   ❌ Ошибка загрузки: ${result['error']}');
         }
       }
 
       return null;
     } catch (e) {
-      print('❌ Ошибка загрузки фото: $e');
+      Logger.error('❌ Ошибка загрузки фото', e);
       return null;
     }
   }
@@ -130,40 +129,38 @@ class EmployeeRegistrationService {
       // Нормализуем телефон перед сохранением
       final normalizedPhone = registration.phone.replaceAll(RegExp(r'[\s\+]'), '');
       final registrationToSave = registration.copyWith(phone: normalizedPhone);
-      
-      final url = '$serverUrl/api/employee-registration';
+
+      final url = '${ApiConstants.serverUrl}/api/employee-registration';
       final jsonData = jsonEncode(registrationToSave.toJson());
-      print('💾 Сохранение регистрации для телефона: $normalizedPhone');
-      print('   URL: $url');
-      print('   Данные: ${jsonData.length > 200 ? jsonData.substring(0, 200) + "..." : jsonData}');
-      
+      Logger.debug('💾 Сохранение регистрации для телефона: $normalizedPhone');
+      Logger.debug('   URL: $url');
+      Logger.debug('   Данные: ${jsonData.length > 200 ? jsonData.substring(0, 200) + "..." : jsonData}');
+
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(registrationToSave.toJson()),
-      ).timeout(
-        const Duration(seconds: 30),
-      );
+      ).timeout(ApiConstants.longTimeout);
 
-      print('   Статус ответа: ${response.statusCode}');
+      Logger.debug('   Статус ответа: ${response.statusCode}');
       final responseBody = response.body;
-      print('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
+      Logger.debug('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         final success = result['success'] == true;
         if (success) {
-          print('   ✅ Регистрация успешно сохранена');
+          Logger.debug('   ✅ Регистрация успешно сохранена');
         } else {
-          print('   ❌ Ошибка сохранения: ${result['error']}');
+          Logger.error('   ❌ Ошибка сохранения: ${result['error']}');
         }
         return success;
       }
 
-      print('   ❌ HTTP ошибка: ${response.statusCode}');
+      Logger.error('   ❌ HTTP ошибка: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('❌ Ошибка сохранения регистрации: $e');
+      Logger.error('❌ Ошибка сохранения регистрации', e);
       return false;
     }
   }
@@ -173,37 +170,35 @@ class EmployeeRegistrationService {
     try {
       // Нормализуем телефон (убираем пробелы и +)
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      final url = '$serverUrl/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}';
-      
-      print('🔍 Запрос регистрации для телефона: $normalizedPhone');
-      print('   URL: $url');
-      
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final url = '${ApiConstants.serverUrl}/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}';
 
-      print('   Статус ответа: ${response.statusCode}');
-      
+      Logger.debug('🔍 Запрос регистрации для телефона: $normalizedPhone');
+      Logger.debug('   URL: $url');
+
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+
+      Logger.debug('   Статус ответа: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         final resultJson = jsonEncode(result);
-        print('   Ответ сервера: ${resultJson.length > 200 ? resultJson.substring(0, 200) + "..." : resultJson}');
-        
+        Logger.debug('   Ответ сервера: ${resultJson.length > 200 ? resultJson.substring(0, 200) + "..." : resultJson}');
+
         if (result['success'] == true && result['registration'] != null) {
           final registration = EmployeeRegistration.fromJson(result['registration']);
-          print('   ✅ Регистрация найдена, isVerified: ${registration.isVerified}');
+          Logger.debug('   ✅ Регистрация найдена, isVerified: ${registration.isVerified}');
           return registration;
         } else {
-          print('   ⚠️ Регистрация не найдена или success=false');
+          Logger.warning('   ⚠️ Регистрация не найдена или success=false');
         }
       } else {
-        print('   ❌ Ошибка HTTP: ${response.statusCode}');
-        print('   Тело ответа: ${response.body.substring(0, 200)}');
+        Logger.error('   ❌ HTTP ${response.statusCode}');
+        Logger.error('   Тело ответа: ${response.body.substring(0, 200)}');
       }
 
       return null;
     } catch (e) {
-      print('❌ Ошибка загрузки регистрации: $e');
+      Logger.error('❌ Ошибка загрузки регистрации', e);
       return null;
     }
   }
@@ -217,44 +212,42 @@ class EmployeeRegistrationService {
     try {
       // Нормализуем телефон
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      final url = '$serverUrl/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}/verify';
-      
-      print('🔐 Верификация сотрудника:');
-      print('   Телефон: $normalizedPhone');
-      print('   Статус: $isVerified');
-      print('   Админ: $adminName');
-      print('   URL: $url');
-      
+      final url = '${ApiConstants.serverUrl}/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}/verify';
+
+      Logger.debug('🔐 Верификация сотрудника:');
+      Logger.debug('   Телефон: $normalizedPhone');
+      Logger.debug('   Статус: $isVerified');
+      Logger.debug('   Админ: $adminName');
+      Logger.debug('   URL: $url');
+
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode({
           'isVerified': isVerified,
           'verifiedBy': adminName,
         }),
-      ).timeout(
-        const Duration(seconds: 10),
-      );
+      ).timeout(ApiConstants.shortTimeout);
 
-      print('   Статус ответа: ${response.statusCode}');
+      Logger.debug('   Статус ответа: ${response.statusCode}');
       final responseBody = response.body;
-      print('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
+      Logger.debug('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         final success = result['success'] == true;
         if (success) {
-          print('   ✅ Статус верификации успешно обновлен');
+          Logger.debug('   ✅ Статус верификации успешно обновлен');
         } else {
-          print('   ❌ Ошибка обновления статуса: ${result['error']}');
+          Logger.error('   ❌ Ошибка обновления статуса: ${result['error']}');
         }
         return success;
       }
 
-      print('   ❌ HTTP ошибка: ${response.statusCode}');
+      Logger.error('   ❌ HTTP ошибка: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('❌ Ошибка верификации сотрудника: $e');
+      Logger.error('❌ Ошибка верификации сотрудника', e);
       return false;
     }
   }
@@ -262,10 +255,8 @@ class EmployeeRegistrationService {
   /// Получить список всех регистраций (для админа)
   static Future<List<EmployeeRegistration>> getAllRegistrations() async {
     try {
-      final url = '$serverUrl/api/employee-registrations';
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 30),
-      );
+      final url = '${ApiConstants.serverUrl}/api/employee-registrations';
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -279,7 +270,7 @@ class EmployeeRegistrationService {
 
       return [];
     } catch (e) {
-      print('❌ Ошибка загрузки регистраций: $e');
+      Logger.error('❌ Ошибка загрузки регистраций', e);
       return [];
     }
   }
