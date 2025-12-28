@@ -5,18 +5,20 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/recount_report_model.dart';
 import '../models/recount_answer_model.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import '../../../core/services/html_stub.dart' as html if (dart.library.html) 'dart:html';
 
 /// Сервис для работы с пересчетом товаров
 class RecountService {
-  static const String serverUrl = 'https://arabica26.ru';
+  static const String baseEndpoint = '/api/recount-reports';
 
   /// Создать отчет пересчета
   static Future<bool> createReport(RecountReport report) async {
     try {
-      print('📤 Создание отчета пересчета...');
-      
+      Logger.debug('📤 Создание отчета пересчета...');
+
       // Загружаем фото на сервер, если есть
       final List<RecountAnswer> answersWithPhotos = [];
       for (var answer in report.answers) {
@@ -27,7 +29,7 @@ class RecountService {
               answer.photoPath!,
               fileName,
             );
-            
+
             if (photoUrl != null) {
               answersWithPhotos.add(RecountAnswer(
                 question: answer.question,
@@ -46,7 +48,7 @@ class RecountService {
               answersWithPhotos.add(answer);
             }
           } catch (e) {
-            print('⚠️ Ошибка загрузки фото: $e');
+            Logger.error('⚠️ Ошибка загрузки фото', e);
             // Продолжаем без фото
             answersWithPhotos.add(answer);
           }
@@ -67,18 +69,18 @@ class RecountService {
       );
 
       // Отправляем на сервер
-      final url = '$serverUrl/api/recount-reports';
+      final url = '${ApiConstants.serverUrl}$baseEndpoint';
       final body = reportWithPhotos.toJson();
-      
-      print('   URL: $url');
-      print('   Отчет ID: ${report.id}');
-      print('   Сотрудник: ${report.employeeName}');
-      print('   Магазин: ${report.shopAddress}');
-      print('   Длительность: ${report.formattedDuration}');
-      print('   Ответов: ${report.answers.length}');
+
+      Logger.debug('   URL: $url');
+      Logger.debug('   Отчет ID: ${report.id}');
+      Logger.debug('   Сотрудник: ${report.employeeName}');
+      Logger.debug('   Магазин: ${report.shopAddress}');
+      Logger.debug('   Длительность: ${report.formattedDuration}');
+      Logger.debug('   Ответов: ${report.answers.length}');
 
       http.Response response;
-      
+
       if (kIsWeb) {
         // Для веб используем альтернативный способ
         try {
@@ -87,7 +89,7 @@ class RecountService {
           httpRequest.open('POST', url, true);
           httpRequest.setRequestHeader('Content-Type', 'application/json');
           httpRequest.setRequestHeader('Accept', 'application/json');
-          
+
           final completer = Completer<void>();
           httpRequest.onLoad.listen((_) {
             if (!completer.isCompleted) {
@@ -99,18 +101,18 @@ class RecountService {
               completer.completeError(error);
             }
           });
-          
+
           httpRequest.send(jsonEncode(body));
           await completer.future;
-          
+
           final status = httpRequest.status;
           final responseBody = httpRequest.responseText;
-          
+
           if (status != null && status >= 200 && status < 300) {
             if (responseBody != null && responseBody.isNotEmpty) {
               final result = jsonDecode(responseBody);
               if (result['success'] == true) {
-                print('✅ Отчет успешно создан');
+                Logger.debug('✅ Отчет успешно создан');
                 // Отправляем push-уведомление
                 await _sendPushNotification(report);
                 return true;
@@ -119,19 +121,19 @@ class RecountService {
           }
           return false;
         } catch (e) {
-          print('⚠️ Ошибка веб-запроса: $e');
+          Logger.error('⚠️ Ошибка веб-запроса', e);
           // Пробуем обычный способ как fallback
         }
       }
-      
+
       // Обычный способ для мобильных платформ или fallback для веб
       {
         response = await http.post(
           Uri.parse(url),
-          headers: {'Content-Type': 'application/json'},
+          headers: ApiConstants.jsonHeaders,
           body: jsonEncode(body),
         ).timeout(
-          const Duration(seconds: 30),
+          ApiConstants.longTimeout,
           onTimeout: () {
             throw Exception('Таймаут при создании отчета');
           },
@@ -140,19 +142,19 @@ class RecountService {
         if (response.statusCode == 200 || response.statusCode == 201) {
           final result = jsonDecode(response.body);
           if (result['success'] == true) {
-            print('✅ Отчет успешно создан');
+            Logger.debug('✅ Отчет успешно создан');
             // Отправляем push-уведомление
             await _sendPushNotification(report);
             return true;
           }
         }
-        
-        print('❌ Ошибка создания отчета: ${response.statusCode}');
-        print('   Ответ: ${response.body}');
+
+        Logger.error('❌ Ошибка создания отчета: ${response.statusCode}');
+        Logger.error('   Ответ: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('❌ Ошибка создания отчета: $e');
+      Logger.error('❌ Ошибка создания отчета', e);
       return false;
     }
   }
@@ -164,26 +166,19 @@ class RecountService {
     DateTime? date,
   }) async {
     try {
-      var url = '$serverUrl/api/recount-reports?';
-      final params = <String>[];
-      
-      if (shopAddress != null) {
-        params.add('shop=${Uri.encodeComponent(shopAddress)}');
-      }
-      if (employeeName != null) {
-        params.add('employee=${Uri.encodeComponent(employeeName)}');
-      }
-      if (date != null) {
-        params.add('date=${date.toIso8601String()}');
-      }
-      
-      url += params.join('&');
-      
-      print('📥 Загрузка отчетов пересчета...');
-      print('   URL: $url');
+      final queryParams = <String, String>{};
+      if (shopAddress != null) queryParams['shop'] = shopAddress;
+      if (employeeName != null) queryParams['employee'] = employeeName;
+      if (date != null) queryParams['date'] = date.toIso8601String();
 
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 30),
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      Logger.debug('📥 Загрузка отчетов пересчета...');
+      Logger.debug('   URL: $uri');
+
+      final response = await http.get(uri).timeout(
+        ApiConstants.longTimeout,
         onTimeout: () {
           throw Exception('Таймаут при загрузке отчетов');
         },
@@ -196,15 +191,15 @@ class RecountService {
           final reports = reportsJson
               .map((json) => RecountReport.fromJson(json))
               .toList();
-          print('✅ Загружено отчетов: ${reports.length}');
+          Logger.debug('✅ Загружено отчетов: ${reports.length}');
           return reports;
         }
       }
-      
-      print('❌ Ошибка загрузки отчетов: ${response.statusCode}');
+
+      Logger.error('❌ Ошибка загрузки отчетов: ${response.statusCode}');
       return [];
     } catch (e) {
-      print('❌ Ошибка загрузки отчетов: $e');
+      Logger.error('❌ Ошибка загрузки отчетов', e);
       return [];
     }
   }
@@ -214,23 +209,23 @@ class RecountService {
     try {
       // URL-кодируем reportId для безопасной передачи в URL
       final encodedReportId = Uri.encodeComponent(reportId);
-      final url = '$serverUrl/api/recount-reports/$encodedReportId/rating';
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/$encodedReportId/rating';
       final body = {
         'rating': rating,
         'adminName': adminName,
       };
-      
-      print('📤 Постановка оценки отчету...');
-      print('   URL: $url');
-      print('   Оценка: $rating');
-      print('   Админ: $adminName');
+
+      Logger.debug('📤 Постановка оценки отчету...');
+      Logger.debug('   URL: $url');
+      Logger.debug('   Оценка: $rating');
+      Logger.debug('   Админ: $adminName');
 
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(body),
       ).timeout(
-        const Duration(seconds: 30),
+        ApiConstants.longTimeout,
         onTimeout: () {
           throw Exception('Таймаут при постановке оценки');
         },
@@ -239,15 +234,15 @@ class RecountService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
-          print('✅ Оценка успешно поставлена');
+          Logger.debug('✅ Оценка успешно поставлена');
           return true;
         }
       }
-      
-      print('❌ Ошибка постановки оценки: ${response.statusCode}');
+
+      Logger.error('❌ Ошибка постановки оценки: ${response.statusCode}');
       return false;
     } catch (e) {
-      print('❌ Ошибка постановки оценки: $e');
+      Logger.error('❌ Ошибка постановки оценки', e);
       return false;
     }
   }
@@ -256,15 +251,14 @@ class RecountService {
   static Future<void> _sendPushNotification(RecountReport report) async {
     try {
       // Отправляем через сервер (сервер сам отправит всем админам)
-      final url = '$serverUrl/api/recount-reports/${report.id}/notify';
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/${report.id}/notify';
       await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.shortTimeout);
     } catch (e) {
-      print('⚠️ Ошибка отправки уведомления: $e');
+      Logger.error('⚠️ Ошибка отправки уведомления', e);
       // Не критично, продолжаем
     }
   }
 }
-

@@ -2,11 +2,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/product_question_model.dart';
 import '../models/product_question_message_model.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class ProductQuestionService {
-  static const String serverUrl = 'https://arabica26.ru';
-  static const String baseUrl = '$serverUrl/api/product-questions';
+  static const String baseEndpoint = '/api/product-questions';
 
   /// Создать вопрос о товаре
   static Future<String?> createQuestion({
@@ -18,7 +18,7 @@ class ProductQuestionService {
   }) async {
     try {
       Logger.debug('📤 Создание вопроса о товаре: $clientName, магазин: $shopAddress');
-      
+
       final requestBody = {
         'clientPhone': clientPhone,
         'clientName': clientName,
@@ -26,12 +26,12 @@ class ProductQuestionService {
         'questionText': questionText,
         if (questionImageUrl != null) 'questionImageUrl': questionImageUrl,
       };
-      
+
       final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -42,11 +42,11 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка создания вопроса: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка создания вопроса: $e');
+      Logger.error('❌ Ошибка создания вопроса', e);
       return null;
     }
   }
@@ -58,22 +58,15 @@ class ProductQuestionService {
   }) async {
     try {
       Logger.debug('📥 Загрузка вопросов: shopAddress=$shopAddress, isAnswered=$isAnswered');
-      
-      var url = baseUrl + '?';
-      final params = <String>[];
-      
-      if (shopAddress != null) {
-        params.add('shopAddress=${Uri.encodeComponent(shopAddress)}');
-      }
-      if (isAnswered != null) {
-        params.add('isAnswered=$isAnswered');
-      }
-      
-      url += params.join('&');
-      
-      final response = await http.get(
-        Uri.parse(url),
-      ).timeout(const Duration(seconds: 15));
+
+      final queryParams = <String, String>{};
+      if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
+      if (isAnswered != null) queryParams['isAnswered'] = isAnswered.toString();
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -88,11 +81,11 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка загрузки вопросов: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return [];
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки вопросов: $e');
+      Logger.error('❌ Ошибка загрузки вопросов', e);
       return [];
     }
   }
@@ -101,10 +94,10 @@ class ProductQuestionService {
   static Future<ProductQuestion?> getQuestion(String questionId) async {
     try {
       Logger.debug('📥 Загрузка вопроса: $questionId');
-      
+
       final response = await http.get(
-        Uri.parse('$baseUrl/$questionId'),
-      ).timeout(const Duration(seconds: 15));
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/$questionId'),
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -116,11 +109,11 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка загрузки вопроса: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки вопроса: $e');
+      Logger.error('❌ Ошибка загрузки вопроса', e);
       return null;
     }
   }
@@ -135,19 +128,19 @@ class ProductQuestionService {
   }) async {
     try {
       Logger.debug('📤 Отправка ответа на вопрос: $questionId, магазин: $shopAddress');
-      
+
       final requestBody = {
         'shopAddress': shopAddress,
         'text': text,
         if (senderPhone != null) 'senderPhone': senderPhone,
         if (imageUrl != null) 'imageUrl': imageUrl,
       };
-      
+
       final response = await http.post(
-        Uri.parse('$baseUrl/$questionId/messages'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/$questionId/messages'),
+        headers: ApiConstants.jsonHeaders,
         body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -160,11 +153,11 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка отправки ответа: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка отправки ответа: $e');
+      Logger.error('❌ Ошибка отправки ответа', e);
       return null;
     }
   }
@@ -173,10 +166,10 @@ class ProductQuestionService {
   static Future<List<ProductQuestionDialog>> getClientQuestions(String clientPhone) async {
     try {
       Logger.debug('📥 Загрузка диалогов клиента: $clientPhone');
-      
+
       final response = await http.get(
-        Uri.parse('$baseUrl/client/$clientPhone'),
-      ).timeout(const Duration(seconds: 15));
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/client/$clientPhone'),
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -191,11 +184,11 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка загрузки диалогов: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return [];
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки диалогов: $e');
+      Logger.error('❌ Ошибка загрузки диалогов', e);
       return [];
     }
   }
@@ -204,10 +197,10 @@ class ProductQuestionService {
   static Future<List<ProductQuestion>> getShopQuestions(String shopAddress) async {
     try {
       Logger.debug('📥 Загрузка вопросов по магазину: $shopAddress');
-      
+
       final response = await http.get(
-        Uri.parse('$baseUrl/shop/${Uri.encodeComponent(shopAddress)}'),
-      ).timeout(const Duration(seconds: 15));
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/shop/${Uri.encodeComponent(shopAddress)}'),
+      ).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -222,11 +215,11 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка загрузки вопросов: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return [];
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки вопросов: $e');
+      Logger.error('❌ Ошибка загрузки вопросов', e);
       return [];
     }
   }
@@ -235,17 +228,17 @@ class ProductQuestionService {
   static Future<String?> uploadPhoto(String imagePath) async {
     try {
       Logger.debug('📤 Загрузка фото: $imagePath');
-      
+
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/upload-photo'),
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/upload-photo'),
       );
-      
+
       request.files.add(await http.MultipartFile.fromPath('photo', imagePath));
-      
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+
+      final streamedResponse = await request.send().timeout(ApiConstants.longTimeout);
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
@@ -255,15 +248,12 @@ class ProductQuestionService {
           Logger.error('❌ Ошибка загрузки фото: ${result['error']}');
         }
       } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        Logger.error('❌ HTTP ${response.statusCode}');
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки фото: $e');
+      Logger.error('❌ Ошибка загрузки фото', e);
       return null;
     }
   }
 }
-
-
-
