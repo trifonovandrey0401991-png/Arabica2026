@@ -2,10 +2,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import '../models/rko_report_model.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class RKOReportsService {
-  static const String serverUrl = 'https://arabica26.ru';
+  static const String baseEndpoint = '/api/rko';
 
   /// Загрузить РКО на сервер
   static Future<bool> uploadRKO({
@@ -32,9 +33,11 @@ class RKOReportsService {
       Logger.debug('   amount: $amount');
       Logger.debug('   rkoType: $rkoType');
       Logger.debug('═══════════════════════════════════════════════════════');
-      
-      final url = '$serverUrl/api/rko/upload';
-      final request = http.MultipartRequest('POST', Uri.parse(url));
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/upload'),
+      );
       
       // Добавляем файл (.docx)
       request.files.add(
@@ -49,9 +52,7 @@ class RKOReportsService {
       request.fields['amount'] = amount.toString();
       request.fields['rkoType'] = rkoType;
       
-      final response = await request.send().timeout(
-        const Duration(seconds: 30),
-      );
+      final response = await request.send().timeout(ApiConstants.longTimeout);
       
       final responseBody = await response.stream.bytesToString();
       final result = jsonDecode(responseBody);
@@ -75,10 +76,8 @@ class RKOReportsService {
   /// Получить список РКО сотрудника
   static Future<Map<String, dynamic>?> getEmployeeRKOs(String employeeName) async {
     try {
-      final url = '$serverUrl/api/rko/list/employee/${Uri.encodeComponent(employeeName)}';
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/list/employee/${Uri.encodeComponent(employeeName)}';
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -88,7 +87,7 @@ class RKOReportsService {
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения списка РКО сотрудника: $e');
+      Logger.error('Ошибка получения списка РКО сотрудника', e);
       return null;
     }
   }
@@ -96,12 +95,10 @@ class RKOReportsService {
   /// Получить список РКО магазина
   static Future<Map<String, dynamic>?> getShopRKOs(String shopAddress) async {
     try {
-      final url = '$serverUrl/api/rko/list/shop/${Uri.encodeComponent(shopAddress)}';
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/list/shop/${Uri.encodeComponent(shopAddress)}';
       Logger.debug('📋 Запрос РКО для магазина: "$shopAddress"');
       Logger.debug('📋 URL: $url');
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
       Logger.debug('📋 Ответ API: statusCode=${response.statusCode}');
       if (response.statusCode == 200) {
@@ -124,7 +121,7 @@ class RKOReportsService {
 
   /// Получить URL для просмотра DOCX
   static String getPDFUrl(String fileName) {
-    return '$serverUrl/api/rko/file/${Uri.encodeComponent(fileName)}';
+    return '${ApiConstants.serverUrl}$baseEndpoint/file/${Uri.encodeComponent(fileName)}';
   }
 
   /// Получить список всех сотрудников, у которых есть РКО
@@ -135,7 +132,7 @@ class RKOReportsService {
       // Пока возвращаем пустой список, будет реализовано через endpoint
       return [];
     } catch (e) {
-      print('❌ Ошибка получения списка сотрудников с РКО: $e');
+      Logger.error('Ошибка получения списка сотрудников с РКО', e);
       return [];
     }
   }
