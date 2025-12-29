@@ -94,15 +94,20 @@ class RKOReportsService {
   /// Получить список РКО магазина
   static Future<Map<String, dynamic>?> getShopRKOs(String shopAddress) async {
     try {
-      final url = '${ApiConstants.serverUrl}$baseEndpoint/list/shop/${Uri.encodeComponent(shopAddress)}';
+      // Используем новый endpoint с query параметром для правильной обработки кириллицы
+      final uri = Uri.parse('${ApiConstants.serverUrl}/api/rko/list-by-shop').replace(
+        queryParameters: {'shopAddress': shopAddress},
+      );
       Logger.debug('📋 Запрос РКО для магазина: "$shopAddress"');
-      Logger.debug('📋 URL: $url');
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      Logger.debug('📋 URL: $uri');
+      final response = await http.get(uri).timeout(ApiConstants.shortTimeout);
 
       Logger.debug('📋 Ответ API: statusCode=${response.statusCode}');
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        Logger.debug('📋 Результат: success=${result['success']}, items count=${(result['items'] as List?)?.length ?? 0}');
+        final currentMonth = (result['currentMonth'] as List?)?.length ?? 0;
+        final totalMonths = (result['months'] as List?)?.length ?? 0;
+        Logger.debug('📋 Результат: success=${result['success']}, currentMonth=$currentMonth, totalMonths=$totalMonths');
         if (result['success'] == true) {
           return result;
         } else {
