@@ -145,9 +145,16 @@ class AutoFillScheduleService {
     final validationWarnings = _validateSchedule(workingSchedule, shops, days);
     warnings.addAll(validationWarnings);
 
+    // 4. Проверка задействования всех сотрудников
+    final employeeUsageWarnings = _validateAllEmployeesUsed(workingSchedule, employees, days);
+    warnings.addAll(employeeUsageWarnings);
+
     Logger.debug('✅ Автозаполнение завершено: создано ${newEntries.length} смен');
     if (warnings.isNotEmpty) {
       Logger.debug('⚠️ Предупреждения: ${warnings.length}');
+      for (var warning in warnings) {
+        Logger.debug('   - $warning');
+      }
     }
 
     return newEntries;
@@ -203,6 +210,14 @@ class AutoFillScheduleService {
       if (!_hasConflict(employee, day, shiftType, schedule)) {
         score += 2;
       }
+
+      // Приоритет 5: Балансировка нагрузки (от +15 до 0)
+      // Чем меньше смен назначено, тем выше приоритет
+      final assignedShiftsCount = schedule.entries
+          .where((e) => e.employeeId == employee.id)
+          .length;
+      final loadBalanceBonus = (15 - assignedShiftsCount).clamp(0, 15);
+      score += loadBalanceBonus;
 
       return {'employee': employee, 'score': score};
     }).toList();
@@ -349,6 +364,54 @@ class AutoFillScheduleService {
           warnings.add('${shop.name}, ${day.day}.${day.month}: отсутствует вечерняя смена');
         }
       }
+    }
+
+    return warnings;
+  }
+
+  /// Проверка задействования всех сотрудников
+  static List<String> _validateAllEmployeesUsed(
+    WorkSchedule schedule,
+    List<Employee> employees,
+    List<DateTime> days,
+  ) {
+    final warnings = <String>[];
+
+    // Подсчитываем смены для каждого сотрудника
+    final employeeShiftCounts = <String, int>{};
+
+    for (var employee in employees) {
+      final shiftsCount = schedule.entries
+          .where((e) =>
+            e.employeeId == employee.id &&
+            days.any((day) =>
+              e.date.year == day.year &&
+              e.date.month == day.month &&
+              e.date.day == day.day
+            )
+          )
+          .length;
+
+      employeeShiftCounts[employee.name] = shiftsCount;
+
+      if (shiftsCount == 0) {
+        warnings.add('⚠️ Сотрудник ${employee.name} не задействован в графике');
+        Logger.debug('⚠️ Сотрудник ${employee.name} не получил ни одной смены');
+      }
+    }
+
+    // Статистика распределения
+    if (employeeShiftCounts.isNotEmpty) {
+      final totalShifts = employeeShiftCounts.values.reduce((a, b) => a + b);
+      final avgShifts = totalShifts / employeeShiftCounts.length;
+      final minShifts = employeeShiftCounts.values.reduce((a, b) => a < b ? a : b);
+      final maxShifts = employeeShiftCounts.values.reduce((a, b) => a > b ? a : b);
+
+      Logger.debug('📊 Статистика распределения смен:');
+      Logger.debug('   Всего смен: $totalShifts');
+      Logger.debug('   Среднее на сотрудника: ${avgShifts.toStringAsFixed(1)}');
+      Logger.debug('   Минимум: $minShifts, Максимум: $maxShifts');
+      Logger.debug('   Сотрудников с 0 смен: ${employeeShiftCounts.values.where((c) => c == 0).length}');
     }
 
     return warnings;
