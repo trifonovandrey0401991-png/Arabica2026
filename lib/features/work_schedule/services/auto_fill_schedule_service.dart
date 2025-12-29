@@ -260,20 +260,10 @@ class AutoFillScheduleService {
       e.date.day == day.day
     );
 
-    // Разрешаем несколько смен подряд, если это не нарушает правило "утро после вечера"
-    if (hasShift && shiftType == ShiftType.morning) {
-      // Проверяем, не работал ли сотрудник вечером предыдущего дня
-      final previousDay = day.subtract(const Duration(days: 1));
-      final workedEvening = schedule.entries.any((e) =>
-        e.employeeId == employee.id &&
-        e.date.year == previousDay.year &&
-        e.date.month == previousDay.month &&
-        e.date.day == previousDay.day &&
-        e.shiftType == ShiftType.evening
-      );
-      if (workedEvening) {
-        return false;
-      }
+    // НЕ разрешаем сотруднику работать несколько смен в один день
+    // Это обеспечит равномерное распределение работы между всеми сотрудниками
+    if (hasShift) {
+      return false;
     }
 
     return true;
