@@ -180,16 +180,25 @@ class RKOPDFService {
       ).timeout(const Duration(seconds: 60));
       
       if (response.statusCode == 200) {
-        // Сохраняем PDF во временный файл
-        final directory = await getTemporaryDirectory();
+        // Генерируем имя файла
         final fileName = generateFileName(
           date: DateTime.now(),
           shopAddress: shopAddress,
           employeeLastName: employeeData.fullName.split(' ').first,
         );
-        final file = File(path.join(directory.path, fileName));
-        await file.writeAsBytes(response.bodyBytes);
-        return file;
+
+        if (kIsWeb) {
+          // Для веб создаем временный файл в памяти без использования file system
+          // Создаем виртуальный путь для идентификации
+          final virtualFile = _MemoryFile(fileName, response.bodyBytes);
+          return virtualFile;
+        } else {
+          // Для мобильных сохраняем в временную директорию
+          final directory = await getTemporaryDirectory();
+          final file = File(path.join(directory.path, fileName));
+          await file.writeAsBytes(response.bodyBytes);
+          return file;
+        }
       } else {
         throw Exception('Ошибка генерации РКО: ${response.statusCode}');
       }
@@ -685,7 +694,7 @@ class RKOPDFService {
                 left: 250.0,
                 top: 443.5,
                 child: pw.Text(
-                  '$directorDisplayName',
+                  directorDisplayName,
                   style: textStyle,
                 ),
               ),
@@ -804,13 +813,22 @@ class RKOPDFService {
       ),
     );
 
+    // Генерируем имя файла
+    final fileName = generateFileName(
+      date: now,
+      shopAddress: shopSettings.address,
+      employeeLastName: employeeLastName,
+    );
+
     // Сохраняем PDF
-    Directory directory;
+    final pdfBytes = await pdf.save();
+
     if (kIsWeb) {
-      // Для веб используем временную директорию
-      directory = await getTemporaryDirectory();
+      // Для веб создаем файл в памяти
+      return _MemoryFile(fileName, pdfBytes);
     } else {
       // Для мобильных используем Downloads или Documents
+      Directory directory;
       try {
         directory = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
         // Пытаемся найти папку Downloads
@@ -835,18 +853,11 @@ class RKOPDFService {
         }
         directory = rkoDir;
       }
+
+      final file = File(path.join(directory.path, fileName));
+      await file.writeAsBytes(pdfBytes);
+      return file;
     }
-
-    final fileName = generateFileName(
-      date: now,
-      shopAddress: shopSettings.address,
-      employeeLastName: employeeLastName,
-    );
-    
-    final file = File(path.join(directory.path, fileName));
-    await file.writeAsBytes(await pdf.save());
-
-    return file;
   }
 
   /// Загрузить РКО на сервер после генерации
@@ -877,5 +888,34 @@ class RKOPDFService {
     ];
     return months[month - 1];
   }
+}
+
+/// Класс для работы с файлами в памяти (для веб-платформы)
+/// Имитирует интерфейс File, но хранит данные в памяти
+class _MemoryFile implements File {
+  final String _path;
+  final Uint8List _bytes;
+
+  _MemoryFile(String path, List<int> bytes)
+      : _path = path,
+        _bytes = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+
+  @override
+  String get path => _path;
+
+  @override
+  Future<Uint8List> readAsBytes() async => _bytes;
+
+  @override
+  Uint8List readAsBytesSync() => _bytes;
+
+  // Минимальная реализация остальных методов File для совместимости
+  @override
+  Future<File> writeAsBytes(List<int> bytes, {FileMode mode = FileMode.write, bool flush = false}) async {
+    throw UnsupportedError('writeAsBytes not supported in web memory file');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
