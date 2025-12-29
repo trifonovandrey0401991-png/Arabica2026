@@ -118,9 +118,13 @@ class RKOReportsService {
     }
   }
 
-  /// Получить URL для просмотра DOCX
+  /// Получить URL для просмотра PDF/DOCX
   static String getPDFUrl(String fileName) {
-    return '${ApiConstants.serverUrl}$baseEndpoint/file/${Uri.encodeComponent(fileName)}';
+    // Используем новый endpoint с query параметром для правильной обработки кириллицы
+    final uri = Uri.parse('${ApiConstants.serverUrl}/api/rko/download').replace(
+      queryParameters: {'fileName': fileName},
+    );
+    return uri.toString();
   }
 
   /// Получить список всех сотрудников, у которых есть РКО

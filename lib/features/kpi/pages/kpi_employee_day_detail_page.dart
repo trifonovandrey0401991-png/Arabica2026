@@ -87,9 +87,13 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
     if (widget.shopDayData.rkoFileName == null) return;
 
     try {
+      Logger.debug('📄 Попытка загрузки РКО: ${widget.shopDayData.rkoFileName}');
       const serverUrl = 'https://arabica26.ru';
-      final url = '$serverUrl/api/rko/file/${Uri.encodeComponent(widget.shopDayData.rkoFileName!)}';
-      final uri = Uri.parse(url);
+      // Используем query параметр вместо path параметра для правильной обработки кириллицы
+      final uri = Uri.parse('$serverUrl/api/rko/download').replace(
+        queryParameters: {'fileName': widget.shopDayData.rkoFileName!},
+      );
+      Logger.debug('📄 URL РКО: $uri');
       
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
