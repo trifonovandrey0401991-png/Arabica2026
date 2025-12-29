@@ -211,13 +211,20 @@ class AutoFillScheduleService {
         score += 2;
       }
 
-      // Приоритет 5: Балансировка нагрузки (от +15 до 0)
+      // Приоритет 5: Усиленная балансировка нагрузки
       // Чем меньше смен назначено, тем выше приоритет
       final assignedShiftsCount = schedule.entries
           .where((e) => e.employeeId == employee.id)
           .length;
-      final loadBalanceBonus = (15 - assignedShiftsCount).clamp(0, 15);
-      score += loadBalanceBonus;
+
+      // Экстра-бонус для сотрудников без смен (+100)
+      // Обычная балансировка (от +30 до 0)
+      if (assignedShiftsCount == 0) {
+        score += 100; // Гарантированный максимальный приоритет
+      } else {
+        final loadBalanceBonus = (30 - assignedShiftsCount).clamp(0, 30);
+        score += loadBalanceBonus;
+      }
 
       return {'employee': employee, 'score': score};
     }).toList();
