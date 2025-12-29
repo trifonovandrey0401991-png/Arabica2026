@@ -19,6 +19,12 @@ class AutoFillScheduleService {
     final List<WorkScheduleEntry> newEntries = [];
     final List<String> warnings = [];
 
+    Logger.debug('🔄 Начало автозаполнения');
+    Logger.debug('   Период: ${startDate.day}.${startDate.month}.${startDate.year} - ${endDate.day}.${endDate.month}.${endDate.year}');
+    Logger.debug('   Сотрудников: ${employees.length}');
+    Logger.debug('   Магазинов: ${shops.length}');
+    Logger.debug('   Режим: ${replaceExisting ? "Заменить все" : "Заполнить пустые"}');
+
     // 1. Подготовка данных
     final days = _getDaysInPeriod(startDate, endDate);
     
@@ -125,6 +131,7 @@ class AutoFillScheduleService {
             );
             newEntries.add(entry);
             workingSchedule.entries.add(entry);
+            Logger.debug('📝 Назначен: ${selectedEmployee.name} → ${shop.name}, ${day.day}.${day.month}.${day.year}, ${shiftType.label}');
           } else {
             warnings.add(
               'Не удалось найти сотрудника для ${shop.name}, ${day.day}.${day.month}, ${shiftType.label}'
