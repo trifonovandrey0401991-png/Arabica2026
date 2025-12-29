@@ -126,6 +126,27 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
           const SizedBox(height: 8),
           _buildSection(
             context,
+            title: 'Сдать Смену',
+            icon: Icons.assignment_turned_in,
+            onTap: () async {
+              // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
+              final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+              final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShiftShopSelectionPage(
+                    employeeName: employeeName,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
             title: 'Пересчет товаров',
             icon: Icons.inventory,
             onTap: () {
