@@ -361,8 +361,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // Отчеты - для админов и верифицированных сотрудников
-    if (role == UserRole.admin || role == UserRole.employee) {
+    // Отчеты - только для админов
+    if (role == UserRole.admin) {
       items.add(_tile(context, Icons.assessment, 'Отчеты', () {
         Navigator.push(
           context,
