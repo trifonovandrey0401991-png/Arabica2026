@@ -193,20 +193,29 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
     final fileName = rko['fileName'] ?? '';
     final employeeName = rko['employeeName'] ?? '';
     final date = rko['date'] ?? '';
-    
+    final amount = rko['amount']?.toString() ?? '';
+    final rkoType = rko['rkoType'] ?? '';
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         leading: Icon(
-          fileName.toLowerCase().endsWith('.docx') 
-            ? Icons.description 
+          fileName.toLowerCase().endsWith('.docx')
+            ? Icons.description
             : Icons.picture_as_pdf,
-          color: fileName.toLowerCase().endsWith('.docx') 
-            ? Colors.blue 
+          color: fileName.toLowerCase().endsWith('.docx')
+            ? Colors.blue
             : Colors.red,
         ),
         title: Text(employeeName),
-        subtitle: Text('Дата: ${date.substring(0, 10)}'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Дата: ${date.substring(0, 10)}'),
+            if (amount.isNotEmpty) Text('Сумма: $amount ₽', style: const TextStyle(fontWeight: FontWeight.bold)),
+            if (rkoType.isNotEmpty) Text('Тип: $rkoType', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          ],
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.push(

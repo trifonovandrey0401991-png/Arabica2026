@@ -109,13 +109,12 @@ class RKOReportsService {
   /// Получить список РКО магазина
   static Future<Map<String, dynamic>?> getShopRKOs(String shopAddress) async {
     try {
-      // Используем новый endpoint с query параметром для правильной обработки кириллицы
-      final uri = Uri.parse('${ApiConstants.serverUrl}/api/rko/list-by-shop').replace(
-        queryParameters: {'shopAddress': shopAddress},
-      );
+      // Используем правильный endpoint с параметром в URL
+      final encodedAddress = Uri.encodeComponent(shopAddress);
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/list/shop/$encodedAddress';
       Logger.debug('📋 Запрос РКО для магазина: "$shopAddress"');
-      Logger.debug('📋 URL: $uri');
-      final response = await http.get(uri).timeout(ApiConstants.shortTimeout);
+      Logger.debug('📋 URL: $url');
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
       Logger.debug('📋 Ответ API: statusCode=${response.statusCode}');
       if (response.statusCode == 200) {
@@ -140,11 +139,9 @@ class RKOReportsService {
 
   /// Получить URL для просмотра PDF/DOCX
   static String getPDFUrl(String fileName) {
-    // Используем новый endpoint с query параметром для правильной обработки кириллицы
-    final uri = Uri.parse('${ApiConstants.serverUrl}/api/rko/download').replace(
-      queryParameters: {'fileName': fileName},
-    );
-    return uri.toString();
+    // Используем правильный endpoint с параметром в URL
+    final encodedFileName = Uri.encodeComponent(fileName);
+    return '${ApiConstants.serverUrl}$baseEndpoint/file/$encodedFileName';
   }
 
   /// Получить список всех сотрудников, у которых есть РКО

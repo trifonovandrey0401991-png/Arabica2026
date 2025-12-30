@@ -200,18 +200,19 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       
       // ВАЖНО: Используем единый источник истины - меню "Сотрудники"
       // Это гарантирует, что имя будет совпадать с отображением в системе
+      // ВАЖНО: Приводим к нижнему регистру для совместимости с поиском в отчетах
       final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
       if (systemEmployeeName != null && systemEmployeeName.isNotEmpty) {
         // Используем имя из меню "Сотрудники" (то же, что используется везде в системе)
-        employeeNameForRKO = systemEmployeeName.trim().replaceAll(RegExp(r'\s+'), ' ');
+        employeeNameForRKO = systemEmployeeName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         Logger.debug('📤 Используем имя из меню "Сотрудники": "$employeeNameForRKO"');
       } else if (_employeeName != null && _employeeName!.isNotEmpty) {
         // Fallback: используем имя из сервер, только убираем лишние пробелы
-        employeeNameForRKO = _employeeName!.trim().replaceAll(RegExp(r'\s+'), ' ');
+        employeeNameForRKO = _employeeName!.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         Logger.debug('📤 Fallback: используем имя из сервер: "$employeeNameForRKO"');
       } else {
         // Последний fallback: используем имя из регистрации
-        employeeNameForRKO = employeeData.fullName.trim().replaceAll(RegExp(r'\s+'), ' ');
+        employeeNameForRKO = employeeData.fullName.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
         Logger.debug('📤 Fallback: используем имя из регистрации: "$employeeNameForRKO"');
       }
       Logger.debug('📤 Оригинальное имя из регистрации: "${employeeData.fullName}"');
