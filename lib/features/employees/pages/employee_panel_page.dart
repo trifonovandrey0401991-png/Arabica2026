@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../training/pages/training_page.dart';
 import '../../tests/pages/test_page.dart';
 import '../../shifts/pages/shift_shop_selection_page.dart';
+import '../../shift_handover/pages/shift_handover_shop_selection_page.dart';
 import '../../recount/pages/recount_shop_selection_page.dart';
 import '../../recipes/pages/recipes_list_page.dart';
 import '../../attendance/pages/attendance_shop_selection_page.dart';
@@ -137,7 +138,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ShiftShopSelectionPage(
+                  builder: (context) => ShiftHandoverShopSelectionPage(
                     employeeName: employeeName,
                   ),
                 ),

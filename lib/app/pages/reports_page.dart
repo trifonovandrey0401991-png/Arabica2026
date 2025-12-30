@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../features/rko/pages/rko_reports_page.dart';
 import '../../features/shifts/pages/shift_reports_list_page.dart';
+import '../../features/shift_handover/pages/shift_handover_reports_list_page.dart';
 import '../../features/recount/pages/recount_reports_list_page.dart';
 import '../../features/attendance/pages/attendance_reports_page.dart';
 import '../../features/kpi/pages/kpi_type_selection_page.dart';
@@ -120,6 +121,21 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ShiftReportsListPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет по сдаче смены - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет (Сдача Смены)',
+              icon: Icons.assignment_turned_in,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ShiftHandoverReportsListPage()),
                 );
               },
             ),
