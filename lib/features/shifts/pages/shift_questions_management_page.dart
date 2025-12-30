@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/shift_question_model.dart';
 import '../services/shift_question_service.dart';
@@ -336,15 +337,26 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         source: ImageSource.gallery,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
+        // Создаем веб-совместимый файл
+        final File photoFile;
+        if (kIsWeb) {
+          // На веб создаем файл из байтов
+          final bytes = await image.readAsBytes();
+          photoFile = _XFileWrapper(image.path, bytes);
+        } else {
+          // На мобильных используем обычный File
+          photoFile = File(image.path);
+        }
+
         setState(() {
-          _referencePhotoFiles[shopAddress] = File(image.path);
+          _referencePhotoFiles[shopAddress] = photoFile;
         });
-        
+
         // Загружаем фото на сервер, если вопрос уже создан
         if (widget.question != null) {
-          await _uploadReferencePhoto(widget.question!.id, shopAddress, File(image.path));
+          await _uploadReferencePhoto(widget.question!.id, shopAddress, photoFile);
         }
       }
     } catch (e) {
@@ -362,18 +374,52 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
   Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
     try {
       setState(() => _isUploadingPhotos = true);
-      
+
       final photoUrl = await ShiftQuestionService.uploadReferencePhoto(
         questionId: questionId,
         shopAddress: shopAddress,
         photoFile: photoFile,
       );
-      
+
       if (photoUrl != null) {
         setState(() {
           _referencePhotoUrls[shopAddress] = photoUrl;
-          _isUploadingPhotos = false;
         });
+
+        // КРИТИЧЕСКИ ВАЖНО: Обновляем вопрос с новым URL эталонного фото
+        print('📝 Обновление вопроса с новым эталонным фото: $questionId');
+        print('   Магазин: $shopAddress');
+        print('   URL фото: $photoUrl');
+
+        final updatedQuestion = await ShiftQuestionService.updateQuestion(
+          id: questionId,
+          referencePhotos: _referencePhotoUrls,
+        );
+
+        if (updatedQuestion != null) {
+          print('✅ Вопрос успешно обновлен с эталонным фото');
+          setState(() => _isUploadingPhotos = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Эталонное фото успешно загружено'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          print('❌ Не удалось обновить вопрос с эталонным фото');
+          setState(() => _isUploadingPhotos = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Фото загружено, но не удалось обновить вопрос'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
       } else {
         setState(() => _isUploadingPhotos = false);
         if (mounted) {
@@ -386,6 +432,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         }
       }
     } catch (e) {
+      print('❌ Исключение при загрузке эталонного фото: $e');
       setState(() => _isUploadingPhotos = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -873,5 +920,28 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       ),
     );
   }
+}
+
+/// Класс-обертка для работы с XFile на веб-платформе
+/// Имитирует интерфейс File, но хранит данные в памяти
+class _XFileWrapper implements File {
+  final String _path;
+  final Uint8List _bytes;
+
+  _XFileWrapper(String path, List<int> bytes)
+      : _path = path,
+        _bytes = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+
+  @override
+  String get path => _path;
+
+  @override
+  Future<Uint8List> readAsBytes() async => _bytes;
+
+  @override
+  Uint8List readAsBytesSync() => _bytes;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

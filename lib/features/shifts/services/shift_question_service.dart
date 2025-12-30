@@ -99,9 +99,18 @@ class ShiftQuestionService {
       final url = '${ApiConstants.serverUrl}$baseEndpoint/$questionId/reference-photo';
       final request = http.MultipartRequest('POST', Uri.parse(url));
 
-      // Добавляем файл
+      // Добавляем файл - читаем байты для поддержки веб и мобильных платформ
+      final bytes = await photoFile.readAsBytes();
+
+      // Генерируем безопасное имя файла с timestamp
+      final filename = 'shift_ref_${questionId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
       request.files.add(
-        await http.MultipartFile.fromPath('photo', photoFile.path),
+        http.MultipartFile.fromBytes(
+          'photo',
+          bytes,
+          filename: filename,
+        ),
       );
 
       // Добавляем адрес магазина
@@ -113,7 +122,19 @@ class ShiftQuestionService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
-          final photoUrl = result['photoUrl'] as String;
+          String photoUrl = result['photoUrl'] as String;
+
+          // Если URL относительный, делаем его абсолютным
+          if (!photoUrl.startsWith('http://') && !photoUrl.startsWith('https://')) {
+            // Убираем начальный слеш если есть
+            if (photoUrl.startsWith('/')) {
+              photoUrl = '${ApiConstants.serverUrl}$photoUrl';
+            } else {
+              photoUrl = '${ApiConstants.serverUrl}/$photoUrl';
+            }
+            Logger.debug('📝 Преобразован относительный URL в абсолютный: $photoUrl');
+          }
+
           Logger.debug('✅ Эталонное фото загружено: $photoUrl');
           return photoUrl;
         } else {
