@@ -23,12 +23,20 @@ echo "2. Установка зависимостей..."
 npm install
 echo "✅ Зависимости установлены"
 
-# 3. Создание директории для фото (если не существует)
+# 3. Создание директорий для фото и данных (если не существует)
 echo ""
-echo "3. Проверка директории для фото..."
+echo "3. Проверка директорий..."
 mkdir -p /var/www/shift-photos
 chmod 755 /var/www/shift-photos
 echo "✅ Директория готова: /var/www/shift-photos"
+
+mkdir -p /var/www/shift-handover-question-photos
+chmod 755 /var/www/shift-handover-question-photos
+echo "✅ Директория готова: /var/www/shift-handover-question-photos"
+
+mkdir -p /var/www/shift-handover-questions
+chmod 755 /var/www/shift-handover-questions
+echo "✅ Директория готова: /var/www/shift-handover-questions"
 
 # 4. Перезапуск сервера
 echo ""
