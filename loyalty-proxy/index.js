@@ -10,7 +10,7 @@ const util = require('util');
 const execPromise = util.promisify(exec);
 
 const app = express();
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
 // Статические файлы для редактора координат
@@ -35,6 +35,28 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
+// Настройка multer для загрузки эталонных фото сдачи смены
+const shiftHandoverPhotoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = '/var/www/shift-handover-question-photos';
+    // Создаем директорию, если её нет
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Используем оригинальное имя файла
+    const safeName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    cb(null, safeName);
+  }
+});
+
+const uploadShiftHandoverPhoto = multer({
+  storage: shiftHandoverPhotoStorage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
@@ -694,6 +716,285 @@ app.get('/api/employee-registrations', async (req, res) => {
       success: false,
       error: error.message || 'Ошибка при получении регистраций'
     });
+  }
+});
+
+// ========== API для сотрудников ==========
+
+const EMPLOYEES_DIR = '/var/www/employees';
+
+// GET /api/employees - получить всех сотрудников
+app.get('/api/employees', (req, res) => {
+  try {
+    console.log('GET /api/employees');
+    
+    const employees = [];
+    
+    if (!fs.existsSync(EMPLOYEES_DIR)) {
+      fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
+    }
+    
+    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    
+    for (const file of files) {
+      try {
+        const filePath = path.join(EMPLOYEES_DIR, file);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const employee = JSON.parse(content);
+        employees.push(employee);
+      } catch (e) {
+        console.error(`Ошибка чтения файла ${file}:`, e);
+      }
+    }
+    
+    // Сортируем по дате создания (новые первыми)
+    employees.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA;
+    });
+    
+    res.json({ success: true, employees });
+  } catch (error) {
+    console.error('Ошибка получения сотрудников:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/employees/:id - получить сотрудника по ID
+app.get('/api/employees/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log('GET /api/employees:', id);
+    
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    if (!fs.existsSync(employeeFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Сотрудник не найден'
+      });
+    }
+    
+    const content = fs.readFileSync(employeeFile, 'utf8');
+    const employee = JSON.parse(content);
+    
+    res.json({ success: true, employee });
+  } catch (error) {
+    console.error('Ошибка получения сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/employees - создать нового сотрудника
+app.post('/api/employees', async (req, res) => {
+  try {
+    console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
+    
+    if (!fs.existsSync(EMPLOYEES_DIR)) {
+      fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
+    }
+    
+    // Валидация обязательных полей
+    if (!req.body.name || req.body.name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Имя сотрудника обязательно'
+      });
+    }
+    
+    // Генерируем ID если не указан
+    const id = req.body.id || `employee_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    const employee = {
+      id: sanitizedId,
+      name: req.body.name.trim(),
+      position: req.body.position || null,
+      department: req.body.department || null,
+      phone: req.body.phone || null,
+      email: req.body.email || null,
+      isAdmin: req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1,
+      employeeName: req.body.employeeName || null,
+      preferredWorkDays: req.body.preferredWorkDays || [],
+      preferredShops: req.body.preferredShops || [],
+      shiftPreferences: req.body.shiftPreferences || {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+    console.log('Сотрудник создан:', employeeFile);
+    
+    res.json({ success: true, employee });
+  } catch (error) {
+    console.error('Ошибка создания сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/employees/:id - обновить сотрудника
+app.put('/api/employees/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log('PUT /api/employees:', id);
+    
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    if (!fs.existsSync(employeeFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Сотрудник не найден'
+      });
+    }
+    
+    // Валидация обязательных полей
+    if (!req.body.name || req.body.name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Имя сотрудника обязательно'
+      });
+    }
+    
+    // Читаем существующие данные для сохранения createdAt
+    const oldContent = fs.readFileSync(employeeFile, 'utf8');
+    const oldEmployee = JSON.parse(oldContent);
+    
+    const employee = {
+      id: sanitizedId,
+      name: req.body.name.trim(),
+      position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
+      department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
+      phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
+      email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
+      isAdmin: req.body.isAdmin !== undefined ? (req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1) : oldEmployee.isAdmin,
+      employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
+      preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
+      preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
+      shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : oldEmployee.shiftPreferences,
+      createdAt: oldEmployee.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+    console.log('Сотрудник обновлен:', employeeFile);
+    
+    res.json({ success: true, employee });
+  } catch (error) {
+    console.error('Ошибка обновления сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/employees/:id - удалить сотрудника
+app.delete('/api/employees/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log('DELETE /api/employees:', id);
+    
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+    
+    if (!fs.existsSync(employeeFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Сотрудник не найден'
+      });
+    }
+    
+    fs.unlinkSync(employeeFile);
+    console.log('Сотрудник удален:', employeeFile);
+    
+    res.json({ success: true, message: 'Сотрудник удален' });
+  } catch (error) {
+    console.error('Ошибка удаления сотрудника:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для магазинов ==========
+
+// GET /api/shops - получить все магазины
+app.get('/api/shops', (req, res) => {
+  try {
+    console.log('GET /api/shops');
+    
+    // Возвращаем список магазинов по умолчанию
+    // Это те же магазины, что и в shop_model.dart _getDefaultShops()
+    const shops = [
+      {
+        id: 'shop_1',
+        name: 'Арабика Винсады',
+        address: 'с.Винсады,ул Подгорная 156д (На Выезде)',
+        icon: 'store_outlined',
+        latitude: 44.091173,
+        longitude: 42.952451,
+      },
+      {
+        id: 'shop_2',
+        name: 'Арабика Лермонтов',
+        address: 'Лермонтов,ул Пятигорская 19',
+        icon: 'store_outlined',
+        latitude: 44.100923,
+        longitude: 42.967543,
+      },
+      {
+        id: 'shop_3',
+        name: 'Арабика Лермонтов (Площадь)',
+        address: 'Лермонтов,Комсомольская 1 (На Площади)',
+        icon: 'store_outlined',
+        latitude: 44.104619,
+        longitude: 42.970543,
+      },
+      {
+        id: 'shop_4',
+        name: 'Арабика Лермонтов (Остановка)',
+        address: 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )',
+        icon: 'store_outlined',
+        latitude: 44.105379,
+        longitude: 42.978421,
+      },
+      {
+        id: 'shop_5',
+        name: 'Арабика Ессентуки',
+        address: 'Ессентуки , ул пятигорская 149/1 (Золотушка)',
+        icon: 'store_mall_directory_outlined',
+        latitude: 44.055559,
+        longitude: 42.911012,
+      },
+      {
+        id: 'shop_6',
+        name: 'Арабика Иноземцево',
+        address: 'Иноземцево , ул Гагарина 1',
+        icon: 'store_outlined',
+        latitude: 44.080153,
+        longitude: 43.081593,
+      },
+      {
+        id: 'shop_7',
+        name: 'Арабика Пятигорск (Ромашка)',
+        address: 'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)',
+        icon: 'store_outlined',
+        latitude: 44.061053,
+        longitude: 43.063672,
+      },
+      {
+        id: 'shop_8',
+        name: 'Арабика Пятигорск',
+        address: 'Пятигорск,ул Коллективная 26а',
+        icon: 'store_outlined',
+        latitude: 44.032997,
+        longitude: 43.042525,
+      },
+    ];
+    
+    res.json({ success: true, shops });
+  } catch (error) {
+    console.error('Ошибка получения магазинов:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -2051,27 +2352,741 @@ app.delete('/api/suppliers/:id', (req, res) => {
   }
 });
 
-// Директория для хранения клиентов
+// API для вопросов пересчета (Recount Questions)
+// ============================================================================
+
+const RECOUNT_QUESTIONS_DIR = '/var/www/recount-questions';
+
+// Создаем директорию, если её нет
+if (!fs.existsSync(RECOUNT_QUESTIONS_DIR)) {
+  fs.mkdirSync(RECOUNT_QUESTIONS_DIR, { recursive: true });
+}
+
+// Получить все вопросы пересчета
+app.get('/api/recount-questions', async (req, res) => {
+  try {
+    console.log('GET /api/recount-questions:', req.query);
+
+    const files = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    const questions = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          const filePath = path.join(RECOUNT_QUESTIONS_DIR, file);
+          const data = fs.readFileSync(filePath, 'utf8');
+          const question = JSON.parse(data);
+          questions.push(question);
+        } catch (error) {
+          console.error(`Ошибка чтения вопроса ${file}:`, error);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      questions: questions
+    });
+  } catch (error) {
+    console.error('Ошибка получения вопросов пересчета:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Создать вопрос пересчета
+app.post('/api/recount-questions', async (req, res) => {
+  try {
+    console.log('POST /api/recount-questions:', JSON.stringify(req.body).substring(0, 200));
+
+    const questionId = req.body.id || `recount_question_${Date.now()}`;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    const questionData = {
+      id: questionId,
+      question: req.body.question,
+      grade: req.body.grade || 1,
+      referencePhotos: req.body.referencePhotos || {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(questionData, null, 2), 'utf8');
+    console.log('Вопрос пересчета сохранен:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно создан',
+      question: questionData
+    });
+  } catch (error) {
+    console.error('Ошибка создания вопроса пересчета:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Обновить вопрос пересчета
+app.put('/api/recount-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    const existingData = fs.readFileSync(filePath, 'utf8');
+    const existingQuestion = JSON.parse(existingData);
+
+    const updatedQuestion = {
+      ...existingQuestion,
+      ...(req.body.question !== undefined && { question: req.body.question }),
+      ...(req.body.grade !== undefined && { grade: req.body.grade }),
+      ...(req.body.referencePhotos !== undefined && { referencePhotos: req.body.referencePhotos }),
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
+    console.log('Вопрос пересчета обновлен:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно обновлен',
+      question: updatedQuestion
+    });
+  } catch (error) {
+    console.error('Ошибка обновления вопроса пересчета:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Загрузить эталонное фото для вопроса пересчета
+app.post('/api/recount-questions/:questionId/reference-photo', upload.single('photo'), async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { shopAddress } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Файл не загружен'
+      });
+    }
+
+    if (!shopAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Не указан адрес магазина'
+      });
+    }
+
+    const photoUrl = `https://arabica26.ru/shift-photos/${req.file.filename}`;
+    console.log('Эталонное фото загружено:', req.file.filename, 'для магазина:', shopAddress);
+
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (fs.existsSync(filePath)) {
+      const existingData = fs.readFileSync(filePath, 'utf8');
+      const question = JSON.parse(existingData);
+
+      if (!question.referencePhotos) {
+        question.referencePhotos = {};
+      }
+      question.referencePhotos[shopAddress] = photoUrl;
+      question.updatedAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      console.log('Эталонное фото добавлено в вопрос пересчета:', questionId);
+    }
+
+    res.json({
+      success: true,
+      photoUrl: photoUrl,
+      shopAddress: shopAddress
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки эталонного фото:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Удалить вопрос пересчета
+app.delete('/api/recount-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    fs.unlinkSync(filePath);
+    console.log('Вопрос пересчета удален:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно удален'
+    });
+  } catch (error) {
+    console.error('Ошибка удаления вопроса пересчета:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// API для вопросов пересменки (Shift Questions)
+// ============================================================================
+
+const SHIFT_QUESTIONS_DIR = '/var/www/shift-questions';
+
+// Создаем директорию, если её нет
+if (!fs.existsSync(SHIFT_QUESTIONS_DIR)) {
+  fs.mkdirSync(SHIFT_QUESTIONS_DIR, { recursive: true });
+}
+
+// Получить все вопросы
+app.get('/api/shift-questions', async (req, res) => {
+  try {
+    console.log('GET /api/shift-questions:', req.query);
+
+    const files = fs.readdirSync(SHIFT_QUESTIONS_DIR);
+    const questions = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          const filePath = path.join(SHIFT_QUESTIONS_DIR, file);
+          const data = fs.readFileSync(filePath, 'utf8');
+          const question = JSON.parse(data);
+          questions.push(question);
+        } catch (error) {
+          console.error(`Ошибка чтения вопроса ${file}:`, error);
+        }
+      }
+    }
+
+    // Фильтр по магазину (если указан)
+    let filteredQuestions = questions;
+    if (req.query.shopAddress) {
+      filteredQuestions = questions.filter(q => {
+        // Если shops === null, вопрос для всех магазинов
+        if (!q.shops || q.shops.length === 0) return true;
+        // Иначе проверяем, есть ли магазин в списке
+        return q.shops.includes(req.query.shopAddress);
+      });
+    }
+
+    res.json({
+      success: true,
+      questions: filteredQuestions
+    });
+  } catch (error) {
+    console.error('Ошибка получения вопросов:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Получить один вопрос по ID
+app.get('/api/shift-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    const data = fs.readFileSync(filePath, 'utf8');
+    const question = JSON.parse(data);
+
+    res.json({
+      success: true,
+      question
+    });
+  } catch (error) {
+    console.error('Ошибка получения вопроса:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Создать новый вопрос
+app.post('/api/shift-questions', async (req, res) => {
+  try {
+    console.log('POST /api/shift-questions:', JSON.stringify(req.body).substring(0, 200));
+
+    const questionId = req.body.id || `shift_question_${Date.now()}`;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    const questionData = {
+      id: questionId,
+      question: req.body.question,
+      answerFormatB: req.body.answerFormatB || null,
+      answerFormatC: req.body.answerFormatC || null,
+      shops: req.body.shops || null,
+      referencePhotos: req.body.referencePhotos || {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(questionData, null, 2), 'utf8');
+    console.log('Вопрос сохранен:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно создан',
+      question: questionData
+    });
+  } catch (error) {
+    console.error('Ошибка создания вопроса:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Обновить вопрос
+app.put('/api/shift-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    // Читаем существующий вопрос
+    const existingData = fs.readFileSync(filePath, 'utf8');
+    const existingQuestion = JSON.parse(existingData);
+
+    // Обновляем только переданные поля
+    const updatedQuestion = {
+      ...existingQuestion,
+      ...(req.body.question !== undefined && { question: req.body.question }),
+      ...(req.body.answerFormatB !== undefined && { answerFormatB: req.body.answerFormatB }),
+      ...(req.body.answerFormatC !== undefined && { answerFormatC: req.body.answerFormatC }),
+      ...(req.body.shops !== undefined && { shops: req.body.shops }),
+      ...(req.body.referencePhotos !== undefined && { referencePhotos: req.body.referencePhotos }),
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
+    console.log('Вопрос обновлен:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно обновлен',
+      question: updatedQuestion
+    });
+  } catch (error) {
+    console.error('Ошибка обновления вопроса:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Загрузить эталонное фото для вопроса
+app.post('/api/shift-questions/:questionId/reference-photo', upload.single('photo'), async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { shopAddress } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Файл не загружен'
+      });
+    }
+
+    if (!shopAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Не указан адрес магазина'
+      });
+    }
+
+    const photoUrl = `https://arabica26.ru/shift-photos/${req.file.filename}`;
+    console.log('Эталонное фото загружено:', req.file.filename, 'для магазина:', shopAddress);
+
+    // Обновляем вопрос, добавляя URL эталонного фото
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (fs.existsSync(filePath)) {
+      const existingData = fs.readFileSync(filePath, 'utf8');
+      const question = JSON.parse(existingData);
+
+      // Добавляем или обновляем эталонное фото для данного магазина
+      if (!question.referencePhotos) {
+        question.referencePhotos = {};
+      }
+      question.referencePhotos[shopAddress] = photoUrl;
+      question.updatedAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      console.log('Эталонное фото добавлено в вопрос:', questionId);
+    }
+
+    res.json({
+      success: true,
+      photoUrl: photoUrl,
+      shopAddress: shopAddress
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки эталонного фото:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Удалить вопрос
+app.delete('/api/shift-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    fs.unlinkSync(filePath);
+    console.log('Вопрос удален:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно удален'
+    });
+  } catch (error) {
+    console.error('Ошибка удаления вопроса:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// API для вопросов сдачи смены (Shift Handover Questions)
+// ============================================================================
+
+const SHIFT_HANDOVER_QUESTIONS_DIR = '/var/www/shift-handover-questions';
+
+// Создаем директорию, если её нет
+if (!fs.existsSync(SHIFT_HANDOVER_QUESTIONS_DIR)) {
+  fs.mkdirSync(SHIFT_HANDOVER_QUESTIONS_DIR, { recursive: true });
+}
+
+// Получить все вопросы
+app.get('/api/shift-handover-questions', async (req, res) => {
+  try {
+    console.log('GET /api/shift-handover-questions:', req.query);
+
+    const files = fs.readdirSync(SHIFT_HANDOVER_QUESTIONS_DIR);
+    const questions = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, file);
+        const data = fs.readFileSync(filePath, 'utf8');
+        const question = JSON.parse(data);
+
+        // Фильтр по магазину, если указан
+        if (req.query.shopAddress) {
+          if (question.shops && question.shops.includes(req.query.shopAddress)) {
+            questions.push(question);
+          }
+        } else {
+          questions.push(question);
+        }
+      }
+    }
+
+    // Сортировка по дате создания (новые в начале)
+    questions.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA;
+    });
+
+    res.json({
+      success: true,
+      questions: questions
+    });
+  } catch (error) {
+    console.error('Ошибка получения вопросов сдачи смены:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      questions: []
+    });
+  }
+});
+
+// Получить один вопрос по ID
+app.get('/api/shift-handover-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    const data = fs.readFileSync(filePath, 'utf8');
+    const question = JSON.parse(data);
+
+    res.json({
+      success: true,
+      question: question
+    });
+  } catch (error) {
+    console.error('Ошибка получения вопроса сдачи смены:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Создать новый вопрос
+app.post('/api/shift-handover-questions', async (req, res) => {
+  try {
+    console.log('POST /api/shift-handover-questions:', JSON.stringify(req.body).substring(0, 200));
+
+    const questionId = req.body.id || `shift_handover_question_${Date.now()}`;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    const question = {
+      id: questionId,
+      question: req.body.question,
+      answerFormatB: req.body.answerFormatB || null,
+      answerFormatC: req.body.answerFormatC || null,
+      shops: req.body.shops || [],
+      referencePhotos: req.body.referencePhotos || {},
+      targetRole: req.body.targetRole || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    console.log('Вопрос сдачи смены создан:', filePath);
+
+    res.json({
+      success: true,
+      question: question
+    });
+  } catch (error) {
+    console.error('Ошибка создания вопроса сдачи смены:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Обновить вопрос
+app.put('/api/shift-handover-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    const existingData = fs.readFileSync(filePath, 'utf8');
+    const question = JSON.parse(existingData);
+
+    // Обновляем только переданные поля
+    if (req.body.question !== undefined) question.question = req.body.question;
+    if (req.body.answerFormatB !== undefined) question.answerFormatB = req.body.answerFormatB;
+    if (req.body.answerFormatC !== undefined) question.answerFormatC = req.body.answerFormatC;
+    if (req.body.shops !== undefined) question.shops = req.body.shops;
+    if (req.body.referencePhotos !== undefined) question.referencePhotos = req.body.referencePhotos;
+    if (req.body.targetRole !== undefined) question.targetRole = req.body.targetRole;
+    question.updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    console.log('Вопрос сдачи смены обновлен:', filePath);
+
+    res.json({
+      success: true,
+      question: question
+    });
+  } catch (error) {
+    console.error('Ошибка обновления вопроса сдачи смены:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Загрузить эталонное фото для вопроса
+app.post('/api/shift-handover-questions/:questionId/reference-photo', uploadShiftHandoverPhoto.single('photo'), async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const { shopAddress } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Файл не загружен'
+      });
+    }
+
+    if (!shopAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Не указан адрес магазина'
+      });
+    }
+
+    const photoUrl = `https://arabica26.ru/shift-handover-question-photos/${req.file.filename}`;
+    console.log('Эталонное фото загружено:', req.file.filename, 'для магазина:', shopAddress);
+
+    // Обновляем вопрос, добавляя URL эталонного фото
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (fs.existsSync(filePath)) {
+      const existingData = fs.readFileSync(filePath, 'utf8');
+      const question = JSON.parse(existingData);
+
+      // Добавляем или обновляем эталонное фото для данного магазина
+      if (!question.referencePhotos) {
+        question.referencePhotos = {};
+      }
+      question.referencePhotos[shopAddress] = photoUrl;
+      question.updatedAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      console.log('Эталонное фото добавлено в вопрос:', questionId);
+    }
+
+    res.json({
+      success: true,
+      photoUrl: photoUrl,
+      shopAddress: shopAddress
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки эталонного фото:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Удалить вопрос
+app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
+  try {
+    const { questionId } = req.params;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Вопрос не найден'
+      });
+    }
+
+    fs.unlinkSync(filePath);
+    console.log('Вопрос сдачи смены удален:', filePath);
+
+    res.json({
+      success: true,
+      message: 'Вопрос успешно удален'
+    });
+  } catch (error) {
+    console.error('Ошибка удаления вопроса сдачи смены:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ========== API для клиентов ==========
 const CLIENTS_DIR = '/var/www/clients';
 if (!fs.existsSync(CLIENTS_DIR)) {
   fs.mkdirSync(CLIENTS_DIR, { recursive: true });
 }
 
-// GET /api/clients - получить всех клиентов
-app.get('/api/clients', (req, res) => {
+app.get('/api/clients', async (req, res) => {
   try {
     const clients = [];
     if (fs.existsSync(CLIENTS_DIR)) {
-      const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
-      for (const file of files) {
+      const files = await fs.promises.readdir(CLIENTS_DIR);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      const readPromises = jsonFiles.map(async (file) => {
         try {
-          const content = fs.readFileSync(path.join(CLIENTS_DIR, file), 'utf8');
-          const client = JSON.parse(content);
-          clients.push(client);
+          const content = await fs.promises.readFile(path.join(CLIENTS_DIR, file), 'utf8');
+          return JSON.parse(content);
         } catch (e) {
-          console.error(`Ошибка чтения файла ${file}:`, e);
+          console.error(`Ошибка чтения ${file}:`, e);
+          return null;
         }
-      }
+      });
+      const results = await Promise.all(readPromises);
+      clients.push(...results.filter(r => r !== null));
     }
     res.json({ success: true, clients });
   } catch (error) {
@@ -2080,40 +3095,403 @@ app.get('/api/clients', (req, res) => {
   }
 });
 
-// POST /api/clients - создать/обновить клиента
 app.post('/api/clients', async (req, res) => {
   try {
-    console.log('POST /api/clients:', JSON.stringify(req.body).substring(0, 200));
-    
     if (!req.body.phone) {
-      return res.status(400).json({
-        success: false,
-        error: 'Номер телефона обязателен'
-      });
+      return res.status(400).json({ success: false, error: 'Номер телефона обязателен' });
     }
-    
-    // Нормализуем номер телефона
     const normalizedPhone = req.body.phone.replace(/[\s\+]/g, '');
     const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
     const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
-    
     const client = {
       phone: normalizedPhone,
       name: req.body.name || '',
       clientName: req.body.clientName || req.body.name || '',
-      isAdmin: req.body.isAdmin || false,
-      employeeName: req.body.employeeName || '',
       fcmToken: req.body.fcmToken || null,
       createdAt: fs.existsSync(clientFile) ? JSON.parse(fs.readFileSync(clientFile, 'utf8')).createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
     fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
-    console.log('Клиент сохранен:', clientFile);
-    
     res.json({ success: true, client });
   } catch (error) {
     console.error('Ошибка сохранения клиента:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для отчетов пересменки ==========
+const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
+if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
+  fs.mkdirSync(SHIFT_REPORTS_DIR, { recursive: true });
+}
+
+app.get('/api/shift-reports', async (req, res) => {
+  try {
+    const { employeeName, shopAddress, date } = req.query;
+    const reports = [];
+    if (fs.existsSync(SHIFT_REPORTS_DIR)) {
+      const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+          const report = JSON.parse(content);
+          if ((!employeeName || report.employeeName === employeeName) &&
+              (!shopAddress || report.shopAddress === shopAddress) &&
+              (!date || report.timestamp?.startsWith(date))) {
+            reports.push(report);
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+    res.json({ success: true, reports });
+  } catch (error) {
+    console.error('Ошибка получения отчетов пересменки:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/shift-reports', async (req, res) => {
+  try {
+    const report = {
+      id: req.body.id || `shift_report_${Date.now()}`,
+      employeeName: req.body.employeeName,
+      shopAddress: req.body.shopAddress,
+      timestamp: req.body.timestamp || new Date().toISOString(),
+      answers: req.body.answers || [],
+      createdAt: new Date().toISOString(),
+    };
+    const reportFile = path.join(SHIFT_REPORTS_DIR, `${report.id}.json`);
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error('Ошибка сохранения отчета пересменки:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для статей обучения ==========
+const TRAINING_ARTICLES_DIR = '/var/www/training-articles';
+if (!fs.existsSync(TRAINING_ARTICLES_DIR)) {
+  fs.mkdirSync(TRAINING_ARTICLES_DIR, { recursive: true });
+}
+
+app.get('/api/training-articles', async (req, res) => {
+  try {
+    const articles = [];
+    if (fs.existsSync(TRAINING_ARTICLES_DIR)) {
+      const files = fs.readdirSync(TRAINING_ARTICLES_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(TRAINING_ARTICLES_DIR, file), 'utf8');
+          articles.push(JSON.parse(content));
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+    res.json({ success: true, articles });
+  } catch (error) {
+    console.error('Ошибка получения статей обучения:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/training-articles', async (req, res) => {
+  try {
+    const article = {
+      id: `training_article_${Date.now()}`,
+      group: req.body.group,
+      title: req.body.title,
+      url: req.body.url,
+      createdAt: new Date().toISOString(),
+    };
+    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
+    fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
+    res.json({ success: true, article });
+  } catch (error) {
+    console.error('Ошибка создания статьи обучения:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/training-articles/:id', async (req, res) => {
+  try {
+    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(articleFile)) {
+      return res.status(404).json({ success: false, error: 'Статья не найдена' });
+    }
+    const article = JSON.parse(fs.readFileSync(articleFile, 'utf8'));
+    if (req.body.group) article.group = req.body.group;
+    if (req.body.title) article.title = req.body.title;
+    if (req.body.url) article.url = req.body.url;
+    article.updatedAt = new Date().toISOString();
+    fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
+    res.json({ success: true, article });
+  } catch (error) {
+    console.error('Ошибка обновления статьи обучения:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/training-articles/:id', async (req, res) => {
+  try {
+    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(articleFile)) {
+      return res.status(404).json({ success: false, error: 'Статья не найдена' });
+    }
+    fs.unlinkSync(articleFile);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления статьи обучения:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для вопросов тестирования ==========
+const TEST_QUESTIONS_DIR = '/var/www/test-questions';
+if (!fs.existsSync(TEST_QUESTIONS_DIR)) {
+  fs.mkdirSync(TEST_QUESTIONS_DIR, { recursive: true });
+}
+
+app.get('/api/test-questions', async (req, res) => {
+  try {
+    const questions = [];
+    if (fs.existsSync(TEST_QUESTIONS_DIR)) {
+      const files = fs.readdirSync(TEST_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
+          questions.push(JSON.parse(content));
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+    res.json({ success: true, questions });
+  } catch (error) {
+    console.error('Ошибка получения вопросов тестирования:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/test-questions', async (req, res) => {
+  try {
+    const question = {
+      id: `test_question_${Date.now()}`,
+      question: req.body.question,
+      answerA: req.body.answerA,
+      answerB: req.body.answerB,
+      answerC: req.body.answerC,
+      correctAnswer: req.body.correctAnswer,
+      createdAt: new Date().toISOString(),
+    };
+    const questionFile = path.join(TEST_QUESTIONS_DIR, `${question.id}.json`);
+    fs.writeFileSync(questionFile, JSON.stringify(question, null, 2), 'utf8');
+    res.json({ success: true, question });
+  } catch (error) {
+    console.error('Ошибка создания вопроса тестирования:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/test-questions/:id', async (req, res) => {
+  try {
+    const questionFile = path.join(TEST_QUESTIONS_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(questionFile)) {
+      return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+    }
+    const question = JSON.parse(fs.readFileSync(questionFile, 'utf8'));
+    if (req.body.question) question.question = req.body.question;
+    if (req.body.answerA) question.answerA = req.body.answerA;
+    if (req.body.answerB) question.answerB = req.body.answerB;
+    if (req.body.answerC) question.answerC = req.body.answerC;
+    if (req.body.correctAnswer) question.correctAnswer = req.body.correctAnswer;
+    question.updatedAt = new Date().toISOString();
+    fs.writeFileSync(questionFile, JSON.stringify(question, null, 2), 'utf8');
+    res.json({ success: true, question });
+  } catch (error) {
+    console.error('Ошибка обновления вопроса тестирования:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete('/api/test-questions/:id', async (req, res) => {
+  try {
+    const questionFile = path.join(TEST_QUESTIONS_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(questionFile)) {
+      return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+    }
+    fs.unlinkSync(questionFile);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления вопроса тестирования:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для отзывов ==========
+const REVIEWS_DIR = '/var/www/reviews';
+if (!fs.existsSync(REVIEWS_DIR)) {
+  fs.mkdirSync(REVIEWS_DIR, { recursive: true });
+}
+
+app.get('/api/reviews', async (req, res) => {
+  try {
+    const { phone } = req.query;
+    const reviews = [];
+    if (fs.existsSync(REVIEWS_DIR)) {
+      const files = fs.readdirSync(REVIEWS_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(REVIEWS_DIR, file), 'utf8');
+          const review = JSON.parse(content);
+          if (!phone || review.clientPhone === phone) {
+            reviews.push(review);
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+    res.json({ success: true, reviews });
+  } catch (error) {
+    console.error('Ошибка получения отзывов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/reviews', async (req, res) => {
+  try {
+    const review = {
+      id: `review_${Date.now()}`,
+      clientPhone: req.body.clientPhone,
+      clientName: req.body.clientName,
+      shopAddress: req.body.shopAddress,
+      reviewType: req.body.reviewType,
+      reviewText: req.body.reviewText,
+      messages: [],
+      createdAt: new Date().toISOString(),
+    };
+    const reviewFile = path.join(REVIEWS_DIR, `${review.id}.json`);
+    fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+    res.json({ success: true, review });
+  } catch (error) {
+    console.error('Ошибка создания отзыва:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/reviews/:id', async (req, res) => {
+  try {
+    const reviewFile = path.join(REVIEWS_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(reviewFile)) {
+      return res.status(404).json({ success: false, error: 'Отзыв не найден' });
+    }
+    const review = JSON.parse(fs.readFileSync(reviewFile, 'utf8'));
+    res.json({ success: true, review });
+  } catch (error) {
+    console.error('Ошибка получения отзыва:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/reviews/:id/messages', async (req, res) => {
+  try {
+    const reviewFile = path.join(REVIEWS_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(reviewFile)) {
+      return res.status(404).json({ success: false, error: 'Отзыв не найден' });
+    }
+    const review = JSON.parse(fs.readFileSync(reviewFile, 'utf8'));
+    const message = {
+      id: `message_${Date.now()}`,
+      sender: req.body.sender,
+      senderName: req.body.senderName,
+      text: req.body.text,
+      timestamp: new Date().toISOString(),
+    };
+    review.messages = review.messages || [];
+    review.messages.push(message);
+    fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Ошибка добавления сообщения:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
+// ============================================
+// Recipes API
+// ============================================
+const RECIPES_DIR = '/var/www/recipes';
+const RECIPE_PHOTOS_DIR = '/var/www/recipe-photos';
+
+if (!fs.existsSync(RECIPES_DIR)) {
+  fs.mkdirSync(RECIPES_DIR, { recursive: true });
+}
+if (!fs.existsSync(RECIPE_PHOTOS_DIR)) {
+  fs.mkdirSync(RECIPE_PHOTOS_DIR, { recursive: true });
+}
+
+// GET /api/recipes - получить все рецепты
+app.get('/api/recipes', async (req, res) => {
+  try {
+    console.log('GET /api/recipes');
+    const recipes = [];
+    
+    if (fs.existsSync(RECIPES_DIR)) {
+      const files = fs.readdirSync(RECIPES_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(RECIPES_DIR, file), 'utf8');
+          const recipe = JSON.parse(content);
+          recipes.push(recipe);
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+    
+    console.log(`✅ Найдено рецептов: ${recipes.length}`);
+    res.json({ success: true, recipes });
+  } catch (error) {
+    console.error('Ошибка получения рецептов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/recipes/:id - получить рецепт по ID
+app.get('/api/recipes/:id', async (req, res) => {
+  try {
+    const recipeFile = path.join(RECIPES_DIR, `${req.params.id}.json`);
+    
+    if (!fs.existsSync(recipeFile)) {
+      return res.status(404).json({ success: false, error: 'Рецепт не найден' });
+    }
+    
+    const recipe = JSON.parse(fs.readFileSync(recipeFile, 'utf8'));
+    res.json({ success: true, recipe });
+  } catch (error) {
+    console.error('Ошибка получения рецепта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/recipes/photo/:recipeId - получить фото рецепта
+app.get('/api/recipes/photo/:recipeId', async (req, res) => {
+  try {
+    const { recipeId } = req.params;
+    const photoPath = path.join(RECIPE_PHOTOS_DIR, `${recipeId}.jpg`);
+    
+    if (fs.existsSync(photoPath)) {
+      res.sendFile(photoPath);
+    } else {
+      res.status(404).json({ success: false, error: 'Фото не найдено' });
+    }
+  } catch (error) {
+    console.error('Ошибка получения фото рецепта:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
