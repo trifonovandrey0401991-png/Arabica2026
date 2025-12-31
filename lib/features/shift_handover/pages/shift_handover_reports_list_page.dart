@@ -293,14 +293,18 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                                 Text('Вопросов: ${report.answers.length}'),
                                 if (report.isConfirmed)
                                   Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       const Icon(Icons.check_circle, color: Colors.green, size: 16),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        'Подтвержден',
-                                        style: const TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.bold,
+                                      Flexible(
+                                        child: Text(
+                                          'Подтвержден',
+                                          style: const TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
