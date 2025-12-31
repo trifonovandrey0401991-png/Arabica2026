@@ -276,12 +276,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     size: 28,
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    'Привет, $_userName!',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Flexible(
+                    child: Text(
+                      'Привет, $_userName!',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                 ],

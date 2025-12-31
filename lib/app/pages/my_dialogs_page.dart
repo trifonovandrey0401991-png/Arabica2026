@@ -13,7 +13,7 @@ class MyDialogsPage extends StatefulWidget {
 }
 
 class _MyDialogsPageState extends State<MyDialogsPage> {
-  late Future<List<ClientDialog>> _dialogsFuture;
+  late Future<List<ClientDialog>> _dialogsFuture = Future.value([]);
 
   @override
   void initState() {
