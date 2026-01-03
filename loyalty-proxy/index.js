@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
+const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
 
 const app = express();
@@ -3787,82 +3788,44 @@ if (!fs.existsSync(ORDERS_DIR)) {
 // POST /api/orders - создать заказ
 app.post('/api/orders', async (req, res) => {
   try {
-    const orderData = req.body;
-    console.log('POST /api/orders:', orderData.clientName);
-
-    // Генерируем ID заказа
-    const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    const order = {
-      id: orderId,
-      clientPhone: orderData.clientPhone,
-      clientName: orderData.clientName,
-      shopAddress: orderData.shopAddress,
-      items: orderData.items,
-      totalPrice: orderData.totalPrice,
-      comment: orderData.comment || null,
-      status: 'pending',
-      acceptedBy: null,
-      rejectedBy: null,
-      rejectionReason: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const orderFile = path.join(ORDERS_DIR, `${orderId}.json`);
-    fs.writeFileSync(orderFile, JSON.stringify(order, null, 2), 'utf8');
-
+    const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
+    const normalizedPhone = clientPhone.replace(/[\s+]/g, '');
+    
+    const order = await ordersModule.createOrder({
+      clientPhone: normalizedPhone,
+      clientName,
+      shopAddress,
+      items,
+      totalPrice,
+      comment
+    });
+    
+    console.log(`✅ Создан заказ #${order.orderNumber} от ${clientName}`);
     res.json({ success: true, order });
-  } catch (error) {
-    console.error('Ошибка создания заказа:', error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (err) {
+    console.error('❌ Ошибка создания заказа:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET /api/orders - получить заказы (с фильтрацией по clientPhone)
+// GET /api/orders - получить заказы (с фильтрацией)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { clientPhone } = req.query;
-    console.log('GET /api/orders:', clientPhone || 'all');
-
-    const orders = [];
-
-    if (!fs.existsSync(ORDERS_DIR)) {
-      return res.json({ success: true, orders: [] });
+    const filters = {};
+    if (req.query.clientPhone) {
+      filters.clientPhone = req.query.clientPhone.replace(/[\s+]/g, '');
     }
-
-    const files = fs.readdirSync(ORDERS_DIR).filter(f => f.endsWith('.json'));
-
-    for (const file of files) {
-      try {
-        const filePath = path.join(ORDERS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const order = JSON.parse(content);
-
-        // Фильтрация по clientPhone
-        if (clientPhone && order.clientPhone !== clientPhone) {
-          continue;
-        }
-
-        orders.push(order);
-      } catch (e) {
-        console.error(`Ошибка чтения файла ${file}:`, e);
-      }
-    }
-
-    // Сортируем по дате создания (новые первыми)
-    orders.sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateB - dateA;
-    });
-
+    if (req.query.status) filters.status = req.query.status;
+    if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;
+    
+    const orders = await ordersModule.getOrders(filters);
     res.json({ success: true, orders });
-  } catch (error) {
-    console.error('Ошибка получения заказов:', error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (err) {
+    console.error('❌ Ошибка получения заказов:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
+
 
 // GET /api/orders/:id - получить заказ по ID
 app.get('/api/orders/:id', async (req, res) => {
@@ -3893,35 +3856,19 @@ app.get('/api/orders/:id', async (req, res) => {
 app.patch('/api/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-    console.log('PATCH /api/orders/:id', id, updates);
-
-    const orderFile = path.join(ORDERS_DIR, `${id}.json`);
-
-    if (!fs.existsSync(orderFile)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Заказ не найден'
-      });
-    }
-
-    const content = fs.readFileSync(orderFile, 'utf8');
-    const order = JSON.parse(content);
-
-    // Обновляем поля
-    if (updates.status !== undefined) order.status = updates.status;
-    if (updates.acceptedBy !== undefined) order.acceptedBy = updates.acceptedBy;
-    if (updates.rejectedBy !== undefined) order.rejectedBy = updates.rejectedBy;
-    if (updates.rejectionReason !== undefined) order.rejectionReason = updates.rejectionReason;
-
-    order.updatedAt = new Date().toISOString();
-
-    fs.writeFileSync(orderFile, JSON.stringify(order, null, 2), 'utf8');
-
+    const updates = {};
+    
+    if (req.body.status) updates.status = req.body.status;
+    if (req.body.acceptedBy) updates.acceptedBy = req.body.acceptedBy;
+    if (req.body.rejectedBy) updates.rejectedBy = req.body.rejectedBy;
+    if (req.body.rejectionReason) updates.rejectionReason = req.body.rejectionReason;
+    
+    const order = await ordersModule.updateOrderStatus(id, updates);
+    console.log(`✅ Заказ #${order.orderNumber} обновлен: ${updates.status}`);
     res.json({ success: true, order });
-  } catch (error) {
-    console.error('Ошибка обновления заказа:', error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (err) {
+    console.error('❌ Ошибка обновления заказа:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -3949,4 +3896,5 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
+// POST /api/fcm-tokens - сохранение FCM токенаapp.post('/api/fcm-tokens', async (req, res) => {  try {    const { phone, token } = req.body;    const normalizedPhone = phone.replace(/[s+]/g, '');        const tokenDir = '/var/www/fcm-tokens';    if (!fs.existsSync(tokenDir)) {      fs.mkdirSync(tokenDir, { recursive: true });    }        const tokenFile = path.join(tokenDir, `${normalizedPhone}.json`);    fs.writeFileSync(tokenFile, JSON.stringify({      phone: normalizedPhone,      token,      updatedAt: new Date().toISOString()    }, null, 2), 'utf8');        console.log(`✅ FCM токен сохранен для ${normalizedPhone}`);    res.json({ success: true });  } catch (err) {    console.error('❌ Ошибка сохранения токена:', err);    res.status(500).json({ success: false, error: err.message });  }});
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
