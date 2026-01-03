@@ -1,9 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/providers/order_provider.dart';
+import '../services/order_service.dart';
 
 /// Страница "Мои заказы"
-class OrdersPage extends StatelessWidget {
+class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
+
+  @override
+  State<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends State<OrdersPage> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final clientPhone = prefs.getString('user_phone') ?? '';
+
+      if (clientPhone.isNotEmpty && mounted) {
+        final orderProvider = OrderProvider.of(context);
+        await orderProvider.loadClientOrders(clientPhone);
+      }
+    } catch (e) {
+      print('Ошибка загрузки заказов: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   String _getStatusText(String status) {
     switch (status) {
@@ -55,7 +94,9 @@ class OrdersPage extends StatelessWidget {
             opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
           ),
         ),
-        child: ListenableBuilder(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : ListenableBuilder(
         listenable: OrderProvider.of(context),
         builder: (context, _) {
           final orderProvider = OrderProvider.of(context);
@@ -90,32 +131,39 @@ class OrdersPage extends StatelessWidget {
               final order = orderProvider.orders[index];
               final dateTime = order.createdAt;
 
+              // Получаем фото первого товара
+              final firstItemPhotoId = order.itemsData?.isNotEmpty == true
+                  ? order.itemsData![0]['photoId'] as String?
+                  : null;
+
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: ExpansionTile(
                   leading: CircleAvatar(
-                    backgroundColor: order.status == 'completed'
-                        ? Colors.green
-                        : order.status == 'rejected'
-                            ? Colors.red
-                            : _getStatusColor(order.status),
-                    child: order.status == 'completed'
-                        ? const Icon(
-                            Icons.check,
-                            color: Colors.white,
+                    radius: 28,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: firstItemPhotoId != null && firstItemPhotoId.isNotEmpty
+                        ? AssetImage('assets/images/$firstItemPhotoId.jpg')
+                        : null,
+                    child: firstItemPhotoId == null || firstItemPhotoId.isEmpty
+                        ? Icon(
+                            order.status == 'completed'
+                                ? Icons.check
+                                : order.status == 'rejected'
+                                    ? Icons.close
+                                    : Icons.receipt,
+                            color: order.status == 'completed'
+                                ? Colors.green
+                                : order.status == 'rejected'
+                                    ? Colors.red
+                                    : _getStatusColor(order.status),
                           )
-                        : order.status == 'rejected'
-                            ? const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                              )
-                            : const Icon(
-                                Icons.receipt,
-                                color: Colors.white,
-                              ),
+                        : null,
                   ),
                   title: Text(
-                    'Заказ #${order.id.substring(order.id.length - 6)}',
+                    order.orderNumber != null
+                        ? 'Заказ #${order.orderNumber}'
+                        : 'Заказ #${order.id.substring(order.id.length - 6)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                     ),
@@ -282,7 +330,7 @@ class OrdersPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...order.items.map((item) => Padding(
+                          ...(order.itemsData ?? []).map((item) => Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 4),
                                 child: Row(
                                   mainAxisAlignment:
@@ -290,12 +338,12 @@ class OrdersPage extends StatelessWidget {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        '${item.menuItem.name} × ${item.quantity}',
+                                        '${item['name']} × ${item['quantity']}',
                                         style: const TextStyle(fontSize: 14),
                                       ),
                                     ),
                                     Text(
-                                      '${item.totalPrice.toStringAsFixed(0)} ₽',
+                                      '${(item['total'] as num).toStringAsFixed(0)} ₽',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,

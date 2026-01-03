@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Order {
   final String id;
   final List<CartItem> items;
+  final List<Map<String, dynamic>>? itemsData; // Сырые данные товаров с photoId
   final double totalPrice;
   final DateTime createdAt;
   final String? comment;
@@ -14,10 +15,15 @@ class Order {
   final String? acceptedBy; // Имя сотрудника, который принял заказ
   final String? rejectedBy; // Имя сотрудника, который отказал от заказа
   final String? rejectionReason; // Причина отказа
+  final int? orderNumber; // Глобальный номер заказа
+  final String? clientPhone; // Телефон клиента
+  final String? clientName; // Имя клиента
+  final String? shopAddress; // Адрес магазина
 
   Order({
     required this.id,
     required this.items,
+    this.itemsData,
     required this.totalPrice,
     required this.createdAt,
     this.comment,
@@ -25,6 +31,10 @@ class Order {
     this.acceptedBy,
     this.rejectedBy,
     this.rejectionReason,
+    this.orderNumber,
+    this.clientPhone,
+    this.clientName,
+    this.shopAddress,
   });
 
   Map<String, dynamic> toJson() {
@@ -43,15 +53,23 @@ class Order {
       'acceptedBy': acceptedBy,
       'rejectedBy': rejectedBy,
       'rejectionReason': rejectionReason,
+      'orderNumber': orderNumber,
+      'clientPhone': clientPhone,
+      'clientName': clientName,
+      'shopAddress': shopAddress,
     };
   }
 
   factory Order.fromJson(Map<String, dynamic> json) {
     // Для упрощения, создаем заказ из JSON
     // В реальном приложении нужно будет восстановить MenuItem из данных
+    final itemsList = json['items'] as List<dynamic>?;
+    final itemsData = itemsList?.map((item) => item as Map<String, dynamic>).toList();
+
     return Order(
       id: json['id'] as String,
       items: [], // Упрощенная версия
+      itemsData: itemsData,
       totalPrice: (json['totalPrice'] as num).toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       comment: json['comment'] as String?,
@@ -59,6 +77,10 @@ class Order {
       acceptedBy: json['acceptedBy'] as String?,
       rejectedBy: json['rejectedBy'] as String?,
       rejectionReason: json['rejectionReason'] as String?,
+      orderNumber: json['orderNumber'] as int?,
+      clientPhone: json['clientPhone'] as String?,
+      clientName: json['clientName'] as String?,
+      shopAddress: json['shopAddress'] as String?,
     );
   }
 }
@@ -67,9 +89,26 @@ class Order {
 class OrderProvider with ChangeNotifier {
   final List<Order> _orders = [];
 
-  List<Order> get orders => List.unmodifiable(_orders.reversed); // Новые заказы сверху
+  List<Order> get orders => List.unmodifiable(_orders); // Новые заказы сверху (сервер уже сортирует по orderNumber DESC)
 
   int get orderCount => _orders.length;
+
+  /// Загрузить заказы клиента с сервера
+  Future<void> loadClientOrders(String clientPhone) async {
+    if (clientPhone.isEmpty) return;
+
+    try {
+      final ordersData = await OrderService.getClientOrders(clientPhone);
+      _orders.clear();
+      for (var orderData in ordersData) {
+        final order = Order.fromJson(orderData);
+        _orders.add(order);
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Ошибка загрузки заказов: $e');
+    }
+  }
 
   /// Создать новый заказ из корзины
   Future<void> createOrder(List<CartItem> items, double totalPrice, {String? comment}) async {
@@ -120,6 +159,7 @@ class OrderProvider with ChangeNotifier {
       _orders[index] = Order(
         id: order.id,
         items: order.items,
+        itemsData: order.itemsData,
         totalPrice: order.totalPrice,
         createdAt: order.createdAt,
         comment: order.comment,
@@ -127,6 +167,10 @@ class OrderProvider with ChangeNotifier {
         acceptedBy: order.acceptedBy,
         rejectedBy: order.rejectedBy,
         rejectionReason: order.rejectionReason,
+        orderNumber: order.orderNumber,
+        clientPhone: order.clientPhone,
+        clientName: order.clientName,
+        shopAddress: order.shopAddress,
       );
       notifyListeners();
     }
@@ -140,6 +184,7 @@ class OrderProvider with ChangeNotifier {
       _orders[index] = Order(
         id: order.id,
         items: order.items,
+        itemsData: order.itemsData,
         totalPrice: order.totalPrice,
         createdAt: order.createdAt,
         comment: order.comment,
@@ -147,6 +192,10 @@ class OrderProvider with ChangeNotifier {
         acceptedBy: employeeName,
         rejectedBy: null,
         rejectionReason: null,
+        orderNumber: order.orderNumber,
+        clientPhone: order.clientPhone,
+        clientName: order.clientName,
+        shopAddress: order.shopAddress,
       );
       notifyListeners();
     }
@@ -160,6 +209,7 @@ class OrderProvider with ChangeNotifier {
       _orders[index] = Order(
         id: order.id,
         items: order.items,
+        itemsData: order.itemsData,
         totalPrice: order.totalPrice,
         createdAt: order.createdAt,
         comment: order.comment,
@@ -167,6 +217,10 @@ class OrderProvider with ChangeNotifier {
         acceptedBy: null,
         rejectedBy: employeeName,
         rejectionReason: reason,
+        orderNumber: order.orderNumber,
+        clientPhone: order.clientPhone,
+        clientName: order.clientName,
+        shopAddress: order.shopAddress,
       );
       notifyListeners();
     }
@@ -180,6 +234,7 @@ class OrderProvider with ChangeNotifier {
       _orders[index] = Order(
         id: order.id,
         items: order.items,
+        itemsData: order.itemsData,
         totalPrice: order.totalPrice,
         createdAt: order.createdAt,
         comment: comment,
@@ -187,6 +242,10 @@ class OrderProvider with ChangeNotifier {
         acceptedBy: order.acceptedBy,
         rejectedBy: order.rejectedBy,
         rejectionReason: order.rejectionReason,
+        orderNumber: order.orderNumber,
+        clientPhone: order.clientPhone,
+        clientName: order.clientName,
+        shopAddress: order.shopAddress,
       );
       notifyListeners();
     }

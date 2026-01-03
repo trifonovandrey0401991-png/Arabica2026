@@ -13,6 +13,7 @@ import '../services/user_role_service.dart';
 import '../models/user_role_model.dart';
 import '../../rko/pages/rko_type_selection_page.dart';
 import '../services/employee_registration_service.dart';
+import '../../orders/pages/employee_orders_page.dart';
 
 /// Страница панели работника
 class EmployeePanelPage extends StatefulWidget {
@@ -223,6 +224,20 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
                   );
                 }
               }
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Заказы (Клиенты)',
+            icon: Icons.shopping_cart,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmployeeOrdersPage(),
+                ),
+              );
             },
           ),
         ],

@@ -259,7 +259,9 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Заказ #${orderId.toString().substring(orderId.toString().length - 6)}',
+                      message.data['orderNumber'] != null
+                          ? 'Заказ #${message.data['orderNumber']}'
+                          : 'Заказ #${orderId.toString().substring(orderId.toString().length - 6)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,

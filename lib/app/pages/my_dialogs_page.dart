@@ -65,6 +65,10 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
         case 'product_question':
           return message.data['questionText'] ?? 'Вопрос о товаре';
         case 'order':
+          final orderNumber = message.data['orderNumber'];
+          if (orderNumber != null) {
+            return 'Заказ #$orderNumber';
+          }
           final orderId = message.data['orderId']?.toString() ?? message.id.toString();
           final shortId = orderId.length > 6 ? orderId.substring(orderId.length - 6) : orderId;
           return 'Заказ #$shortId';

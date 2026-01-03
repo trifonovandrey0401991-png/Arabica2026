@@ -25,6 +25,7 @@ class OrderService {
         'price': item.menuItem.price,
         'quantity': item.quantity,
         'total': item.totalPrice,
+        'photoId': item.menuItem.photoId,
       }).toList();
       
       final requestBody = {
@@ -48,9 +49,13 @@ class OrderService {
           Logger.debug('✅ Заказ создан: ${result['order']['id']}');
           // Возвращаем упрощенный Order (без полного восстановления CartItem)
           final orderData = result['order'];
+          final itemsList = orderData['items'] as List<dynamic>?;
+          final itemsData = itemsList?.map((item) => item as Map<String, dynamic>).toList();
+
           return Order(
             id: orderData['id'],
             items: [], // Упрощенная версия
+            itemsData: itemsData,
             totalPrice: (orderData['totalPrice'] as num).toDouble(),
             createdAt: DateTime.parse(orderData['createdAt']),
             comment: orderData['comment'] as String?,
@@ -58,6 +63,10 @@ class OrderService {
             acceptedBy: orderData['acceptedBy'] as String?,
             rejectedBy: orderData['rejectedBy'] as String?,
             rejectionReason: orderData['rejectionReason'] as String?,
+            orderNumber: orderData['orderNumber'] as int?,
+            clientPhone: orderData['clientPhone'] as String?,
+            clientName: orderData['clientName'] as String?,
+            shopAddress: orderData['shopAddress'] as String?,
           );
         } else {
           Logger.error('❌ Ошибка создания заказа: ${result['error']}');
@@ -79,6 +88,40 @@ class OrderService {
 
       final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
           .replace(queryParameters: {'clientPhone': clientPhone});
+
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final ordersJson = result['orders'] as List<dynamic>;
+          Logger.debug('✅ Загружено заказов: ${ordersJson.length}');
+          return ordersJson.map((o) => o as Map<String, dynamic>).toList();
+        } else {
+          Logger.error('❌ Ошибка загрузки заказов: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+      }
+      return [];
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки заказов: $e');
+      return [];
+    }
+  }
+
+  /// Получить все заказы (для сотрудников)
+  static Future<List<Map<String, dynamic>>> getAllOrders({String? status}) async {
+    try {
+      Logger.debug('📥 Загрузка всех заказов${status != null ? ' со статусом: $status' : ''}');
+
+      final queryParams = <String, String>{};
+      if (status != null) {
+        queryParams['status'] = status;
+      }
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
 
