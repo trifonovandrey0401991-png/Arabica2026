@@ -57,6 +57,54 @@ ssh root@arabica26.ru "pm2 restart loyalty-proxy"
 
 ---
 
+## ПРАВИЛА ДЕПЛОЯ (КРИТИЧЕСКИ ВАЖНО!)
+
+### Перед выгрузкой в Git:
+
+1. **НЕ ДЕЛАТЬ `git reset --hard`** на сервере без бэкапа!
+2. **Проверить что серверный код синхронизирован** - `loyalty-proxy/index.js` должен быть актуальным в репозитории
+3. **Если изменял серверный код** - сначала скачай актуальную версию с сервера:
+   ```bash
+   ssh root@arabica26.ru "cat /root/arabica_app/loyalty-proxy/index.js" > loyalty-proxy/index.js
+   ```
+
+### Безопасный деплой на сервер:
+
+**ШАГ 1: Создать бэкап на сервере**
+```bash
+ssh root@arabica26.ru "cp /root/arabica_app/loyalty-proxy/index.js /root/arabica_app/loyalty-proxy/index.js.backup-$(date +%Y%m%d-%H%M%S)"
+```
+
+**ШАГ 2: Обновить код (БЕЗ reset --hard!)**
+```bash
+ssh root@arabica26.ru "cd /root/arabica_app && git fetch origin && git pull origin refactoring/full-restructure"
+```
+
+**ШАГ 3: Перезапустить сервер**
+```bash
+ssh root@arabica26.ru "pm2 restart loyalty-proxy && pm2 logs loyalty-proxy --lines 10 --nostream"
+```
+
+**ШАГ 4: Проверить что сервер работает**
+- Логи должны показать "Proxy listening on port 3000"
+- Не должно быть ошибок MODULE_NOT_FOUND
+
+### Если что-то сломалось:
+
+**Откат из бэкапа:**
+```bash
+ssh root@arabica26.ru "cp /root/arabica_app/loyalty-proxy/index.js.backup-YYYYMMDD /root/arabica_app/loyalty-proxy/index.js && pm2 restart loyalty-proxy"
+```
+
+### НИКОГДА НЕ ДЕЛАТЬ:
+
+- `git reset --hard` на сервере без бэкапа
+- Заменять index.js на уменьшенную версию
+- Удалять папку `modules/` на сервере
+- Деплоить без проверки что сервер запустился
+
+---
+
 ## Напоминание
 
 При долгом диалоге контекст может теряться. Если сомневаешься - **перечитай LOCKED_CODE.md**!
