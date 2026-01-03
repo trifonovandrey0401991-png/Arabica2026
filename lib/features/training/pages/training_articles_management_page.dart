@@ -233,7 +233,16 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
           ),
         ],
       ),
-      body: _isLoading
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40),
+          image: DecorationImage(
+            image: AssetImage('assets/images/arabica_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.6,
+          ),
+        ),
+        child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _articles.isEmpty
               ? Center(
@@ -255,6 +264,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                   ),
                 )
               : _buildGroupedList(),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddArticleDialog,
         backgroundColor: const Color(0xFF004D40),
@@ -284,7 +294,7 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF004D40),
+                  color: Colors.white,
                 ),
               ),
             ),

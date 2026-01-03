@@ -87,7 +87,7 @@ class _TrainingPageState extends State<TrainingPage> {
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF004D40),
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -102,13 +102,17 @@ class _TrainingPageState extends State<TrainingPage> {
                       trailing: const Icon(Icons.open_in_new),
                       onTap: () async {
                         final uri = Uri.parse(article.url);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
+                        try {
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } catch (e) {
+                          print('❌ Ошибка открытия ссылки: $e');
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Не удалось открыть ссылку'),
+                              SnackBar(
+                                content: Text('Не удалось открыть ссылку: ${article.url}'),
                                 backgroundColor: Colors.red,
                               ),
                             );

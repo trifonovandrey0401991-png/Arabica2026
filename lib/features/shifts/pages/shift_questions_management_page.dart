@@ -312,7 +312,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
   Future<void> _loadShops() async {
     try {
       setState(() => _isLoadingShops = true);
-      final shops = await Shop.loadShopsFromGoogleSheets();
+      final shops = await Shop.loadShopsFromServer();
       setState(() {
         _allShops = shops;
         _isLoadingShops = false;
@@ -589,13 +589,15 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.question == null ? 'Добавить вопрос' : 'Редактировать вопрос'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               TextFormField(
                 controller: _questionController,
                 decoration: const InputDecoration(
@@ -754,7 +756,8 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                     }),
                 ],
               ],
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -543,13 +543,16 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       backgroundColor: _selectedAnswer == 'сходится'
                                           ? Colors.green
                                           : Colors.grey[300],
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                                     ),
-                                    child: const Text(
-                                      'Сходится',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                    child: const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Сходится',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -566,13 +569,16 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                       backgroundColor: _selectedAnswer == 'не сходится'
                                           ? Colors.red
                                           : Colors.grey[300],
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                                     ),
-                                    child: const Text(
-                                      'Не сходится',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                    child: const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Не сходится',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -677,12 +683,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 children: [
                                   const Icon(Icons.camera_alt, color: Colors.orange),
                                   const SizedBox(width: 8),
-                                  const Text(
-                                    'Требуется фото для подтверждения',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange,
+                                  const Flexible(
+                                    child: Text(
+                                      'Требуется фото для подтверждения',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange,
+                                      ),
                                     ),
                                   ),
                                 ],

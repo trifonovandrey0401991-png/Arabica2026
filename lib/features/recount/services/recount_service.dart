@@ -261,4 +261,36 @@ class RecountService {
       // Не критично, продолжаем
     }
   }
+
+  /// Получить просроченные отчёты пересчёта с сервера
+  static Future<List<RecountReport>> getExpiredReports() async {
+    try {
+      Logger.debug('📥 Загрузка просроченных отчётов пересчёта...');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/expired'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final reportsJson = result['reports'] as List<dynamic>;
+          final reports = reportsJson
+              .map((json) => RecountReport.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Загружено просроченных пересчётов: ${reports.length}');
+          return reports;
+        } else {
+          Logger.error('❌ Ошибка загрузки просроченных: ${result['error']}');
+          return [];
+        }
+      } else {
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки просроченных пересчётов', e);
+      return [];
+    }
+  }
 }

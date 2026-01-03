@@ -192,14 +192,55 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               ),
                             ),
                           ],
+                          // Блок "Отчёт просрочен"
+                          if (_currentReport.isExpired && !_currentReport.isRated) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.withOpacity(0.5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning_amber, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Отчёт просрочен',
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        if (_currentReport.expiredAt != null)
+                                          Text(
+                                            'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
+                                            style: TextStyle(
+                                              color: Colors.red[700],
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Оценка (если еще не оценено)
-                  if (!_currentReport.isRated)
+                  // Оценка (если еще не оценено и не просрочено)
+                  if (!_currentReport.isRated && !_currentReport.isExpired)
                     Card(
                       color: Colors.white.withOpacity(0.95),
                       child: Padding(
@@ -270,7 +311,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                         ),
                       ),
                     ),
-                  if (!_currentReport.isRated) const SizedBox(height: 16),
+                  if (!_currentReport.isRated && !_currentReport.isExpired) const SizedBox(height: 16),
 
                   // Ответы на вопросы
                   ..._currentReport.answers.asMap().entries.map((entry) {

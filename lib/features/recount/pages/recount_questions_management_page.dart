@@ -638,6 +638,7 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
               ),
               RadioListTile<int>(
                 title: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 20,
@@ -648,7 +649,9 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('Грейд 2: Средней важности'),
+                    const Flexible(
+                      child: Text('Грейд 2: Средней важности'),
+                    ),
                   ],
                 ),
                 value: 2,

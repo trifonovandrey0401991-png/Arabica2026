@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shift_report_model.dart';
+import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import 'shift_photo_gallery_page.dart';
 
@@ -28,20 +30,152 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
   }
 
   Future<void> _confirmReport() async {
-    final confirmedReport = _currentReport.copyWith(confirmedAt: DateTime.now());
+    // Показываем диалог выбора оценки
+    final result = await _showRatingDialog();
+    if (result == null) return; // Пользователь отменил
+
+    final int rating = result;
+
+    // Получаем имя админа
+    final prefs = await SharedPreferences.getInstance();
+    final adminName = prefs.getString('currentEmployeeName') ??
+                      prefs.getString('user_display_name') ??
+                      'Неизвестный';
+
+    final confirmedReport = _currentReport.copyWith(
+      confirmedAt: DateTime.now(),
+      rating: rating,
+      confirmedByAdmin: adminName,
+    );
+
+    // Сохраняем локально
     await ShiftReport.updateReport(confirmedReport);
+
+    // Отправляем на сервер
+    final serverSuccess = await ShiftReportService.updateReport(confirmedReport);
+
     setState(() {
       _currentReport = confirmedReport;
     });
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Отчет подтвержден'),
+        SnackBar(
+          content: Text(serverSuccess
+              ? 'Отчет подтвержден с оценкой $rating'
+              : 'Отчет подтвержден локально с оценкой $rating'),
           backgroundColor: Colors.green,
         ),
       );
     }
+  }
+
+  Future<int?> _showRatingDialog() async {
+    int selectedRating = 5;
+
+    return showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Оценка пересменки'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Выберите оценку от 1 до 10:',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 20),
+                  // Отображение выбранной оценки
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _getRatingColor(selectedRating),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$selectedRating',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Кнопки выбора оценки
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: List.generate(10, (index) {
+                      final rating = index + 1;
+                      final isSelected = rating == selectedRating;
+                      return InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedRating = rating;
+                          });
+                        },
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? _getRatingColor(rating)
+                                : Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                            border: isSelected
+                                ? Border.all(color: Colors.black, width: 2)
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$rating',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(selectedRating),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF004D40),
+                  ),
+                  child: const Text(
+                    'Подтвердить',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Color _getRatingColor(int rating) {
+    if (rating <= 3) return Colors.red;
+    if (rating <= 5) return Colors.orange;
+    if (rating <= 7) return Colors.amber;
+    return Colors.green;
   }
 
   @override
@@ -367,33 +501,127 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 ],
               ),
             ),
-            // Кнопка подтверждения внизу
+            // Кнопка подтверждения внизу (не показываем для просроченных)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
               ),
               child: SafeArea(
-                child: _currentReport.isConfirmed
+                child: _currentReport.isExpired
                     ? Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.cancel, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Отчет просрочен',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_currentReport.expiredAt != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Просрочен: ${_currentReport.expiredAt!.day}.${_currentReport.expiredAt!.month}.${_currentReport.expiredAt!.year}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Подтверждение невозможно',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _currentReport.isConfirmed
+                    ? Container(
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.green,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.check_circle, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text(
-                              'Отчет подтвержден',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Отчет подтвержден',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
+                            if (_currentReport.rating != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'Оценка: ',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${_currentReport.rating}',
+                                      style: TextStyle(
+                                        color: _getRatingColor(_currentReport.rating!),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            if (_currentReport.confirmedByAdmin != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Проверил: ${_currentReport.confirmedByAdmin}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       )

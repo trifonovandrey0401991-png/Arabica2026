@@ -47,6 +47,10 @@ class ShiftReport {
   final List<ShiftAnswer> answers;
   final bool isSynced; // Синхронизирован ли с облаком
   final DateTime? confirmedAt; // Время подтверждения отчета
+  final int? rating; // Оценка от 1 до 10
+  final String? confirmedByAdmin; // Имя админа, который подтвердил
+  final String? status; // "pending" | "confirmed" | "expired"
+  final DateTime? expiredAt; // Когда был просрочен
 
   ShiftReport({
     required this.id,
@@ -56,6 +60,10 @@ class ShiftReport {
     required this.answers,
     this.isSynced = false,
     this.confirmedAt,
+    this.rating,
+    this.confirmedByAdmin,
+    this.status,
+    this.expiredAt,
   });
 
   /// Генерировать уникальный ID на основе комбинации
@@ -73,6 +81,10 @@ class ShiftReport {
     'answers': answers.map((a) => a.toJson()).toList(),
     'isSynced': isSynced,
     'confirmedAt': confirmedAt?.toIso8601String(),
+    'rating': rating,
+    'confirmedByAdmin': confirmedByAdmin,
+    'status': status,
+    'expiredAt': expiredAt?.toIso8601String(),
   };
 
   factory ShiftReport.fromJson(Map<String, dynamic> json) => ShiftReport(
@@ -84,8 +96,14 @@ class ShiftReport {
         ?.map((a) => ShiftAnswer.fromJson(a))
         .toList() ?? [],
     isSynced: json['isSynced'] ?? false,
-    confirmedAt: json['confirmedAt'] != null 
-        ? DateTime.parse(json['confirmedAt']) 
+    confirmedAt: json['confirmedAt'] != null
+        ? DateTime.parse(json['confirmedAt'])
+        : null,
+    rating: json['rating'],
+    confirmedByAdmin: json['confirmedByAdmin'],
+    status: json['status'],
+    expiredAt: json['expiredAt'] != null
+        ? DateTime.parse(json['expiredAt'])
         : null,
   );
 
@@ -98,6 +116,9 @@ class ShiftReport {
 
   /// Проверить, подтвержден ли отчет
   bool get isConfirmed => confirmedAt != null;
+
+  /// Проверить, просрочен ли отчет (> 24ч без подтверждения)
+  bool get isExpired => status == 'expired' || expiredAt != null;
 
   /// Проверить, не подтвержден ли отчет в течение 6 часов
   bool get isNotVerified {
@@ -115,8 +136,14 @@ class ShiftReport {
     return 'pending';
   }
 
-  /// Создать копию отчета с обновленным временем подтверждения
-  ShiftReport copyWith({DateTime? confirmedAt}) {
+  /// Создать копию отчета с обновленными полями
+  ShiftReport copyWith({
+    DateTime? confirmedAt,
+    int? rating,
+    String? confirmedByAdmin,
+    String? status,
+    DateTime? expiredAt,
+  }) {
     return ShiftReport(
       id: id,
       employeeName: employeeName,
@@ -125,6 +152,10 @@ class ShiftReport {
       answers: answers,
       isSynced: isSynced,
       confirmedAt: confirmedAt ?? this.confirmedAt,
+      rating: rating ?? this.rating,
+      confirmedByAdmin: confirmedByAdmin ?? this.confirmedByAdmin,
+      status: status ?? this.status,
+      expiredAt: expiredAt ?? this.expiredAt,
     );
   }
 

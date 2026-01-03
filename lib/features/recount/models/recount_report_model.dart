@@ -13,6 +13,8 @@ class RecountReport {
   final int? adminRating; // Оценка админа (1-10)
   final String? adminName; // Имя админа, поставившего оценку
   final DateTime? ratedAt; // Время оценки
+  final String? status; // "pending" | "rated" | "expired"
+  final DateTime? expiredAt; // Когда был просрочен
 
   RecountReport({
     required this.id,
@@ -25,6 +27,8 @@ class RecountReport {
     this.adminRating,
     this.adminName,
     this.ratedAt,
+    this.status,
+    this.expiredAt,
   });
 
   /// Генерировать уникальный ID
@@ -48,6 +52,9 @@ class RecountReport {
   /// Проверить, оценен ли отчет
   bool get isRated => adminRating != null;
 
+  /// Проверить, просрочен ли отчет
+  bool get isExpired => status == 'expired' || expiredAt != null;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'employeeName': employeeName,
@@ -59,6 +66,8 @@ class RecountReport {
     'adminRating': adminRating,
     'adminName': adminName,
     'ratedAt': ratedAt?.toIso8601String(),
+    'status': status,
+    'expiredAt': expiredAt?.toIso8601String(),
   };
 
   factory RecountReport.fromJson(Map<String, dynamic> json) {
@@ -113,6 +122,10 @@ class RecountReport {
       ratedAt: json['ratedAt'] != null && json['ratedAt'] is String
           ? DateTime.tryParse(json['ratedAt'])
           : null,
+      status: json['status']?.toString(),
+      expiredAt: json['expiredAt'] != null && json['expiredAt'] is String
+          ? DateTime.tryParse(json['expiredAt'])
+          : null,
     );
   }
 
@@ -121,6 +134,8 @@ class RecountReport {
     int? adminRating,
     String? adminName,
     DateTime? ratedAt,
+    String? status,
+    DateTime? expiredAt,
   }) {
     return RecountReport(
       id: id,
@@ -133,6 +148,8 @@ class RecountReport {
       adminRating: adminRating ?? this.adminRating,
       adminName: adminName ?? this.adminName,
       ratedAt: ratedAt ?? this.ratedAt,
+      status: status ?? this.status,
+      expiredAt: expiredAt ?? this.expiredAt,
     );
   }
 }
