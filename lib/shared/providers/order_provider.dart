@@ -111,11 +111,11 @@ class OrderProvider with ChangeNotifier {
   }
 
   /// Создать новый заказ из корзины
-  Future<void> createOrder(List<CartItem> items, double totalPrice, {String? comment}) async {
+  Future<void> createOrder(List<CartItem> items, double totalPrice, {String? comment, String? shopAddress}) async {
     if (items.isEmpty) return;
-    
-    // Получаем shopAddress из первого товара (все товары должны быть из одного магазина)
-    final shopAddress = items.first.menuItem.shop;
+
+    // Используем переданный shopAddress, иначе пытаемся взять из первого товара
+    final effectiveShopAddress = shopAddress ?? items.first.menuItem.shop;
     
     // Получаем данные клиента
     final prefs = await SharedPreferences.getInstance();
@@ -130,7 +130,7 @@ class OrderProvider with ChangeNotifier {
     final serverOrder = await OrderService.createOrder(
       clientPhone: clientPhone,
       clientName: clientName,
-      shopAddress: shopAddress,
+      shopAddress: effectiveShopAddress,
       items: items,
       totalPrice: totalPrice,
       comment: comment,

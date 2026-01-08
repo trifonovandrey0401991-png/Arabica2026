@@ -10,11 +10,13 @@ import '../../../core/services/photo_upload_service.dart';
 class RecountReportViewPage extends StatefulWidget {
   final RecountReport report;
   final VoidCallback? onReportUpdated;
+  final bool isReadOnly;
 
   const RecountReportViewPage({
     super.key,
     required this.report,
     this.onReportUpdated,
+    this.isReadOnly = false,
   });
 
   @override
@@ -233,14 +235,54 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               ),
                             ),
                           ],
+                          // Блок "Отчёт не оценен вовремя" (ожидает более 5 часов)
+                          if (widget.isReadOnly && !_currentReport.isRated && !_currentReport.isExpired) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.access_time, color: Colors.orange),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Отчёт не оценен вовремя',
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Ожидает более 5 часов - только просмотр',
+                                          style: TextStyle(
+                                            color: Colors.orange[700],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Оценка (если еще не оценено и не просрочено)
-                  if (!_currentReport.isRated && !_currentReport.isExpired)
+                  // Оценка (если еще не оценено, не просрочено и не read-only)
+                  if (!_currentReport.isRated && !_currentReport.isExpired && !widget.isReadOnly)
                     Card(
                       color: Colors.white.withOpacity(0.95),
                       child: Padding(
@@ -311,7 +353,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                         ),
                       ),
                     ),
-                  if (!_currentReport.isRated && !_currentReport.isExpired) const SizedBox(height: 16),
+                  if (!_currentReport.isRated && !_currentReport.isExpired && !widget.isReadOnly) const SizedBox(height: 16),
 
                   // Ответы на вопросы
                   ..._currentReport.answers.asMap().entries.map((entry) {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "390223777820",
+    "project_id": "arabica-75358",
+    "storage_bucket": "arabica-75358.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:390223777820:android:281a04062aa628cd000fd9",
+        "android_client_info": {
+          "package_name": "com.example.arabica2026"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDPIDtZRr0n032MX8X_FN8mjRtOb3CVKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -134,10 +134,26 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     return filtered;
   }
 
-  /// Неподтверждённые отчёты (ожидают проверки)
+  /// Неподтверждённые отчёты (ожидают проверки) - только менее 5 часов
   List<ShiftReport> get _awaitingReports {
-    final pending = _allReports.where((r) => !r.isConfirmed).toList();
+    final now = DateTime.now();
+    final pending = _allReports.where((r) {
+      if (r.isConfirmed) return false;
+      // Показываем только отчёты, которые ожидают менее 5 часов
+      final hours = now.difference(r.createdAt).inHours;
+      return hours < 5;
+    }).toList();
     return _applyFilters(pending);
+  }
+
+  /// Отчёты, которые ожидают более 5 часов (не подтверждённые)
+  List<ShiftReport> get _overdueUnconfirmedReports {
+    final now = DateTime.now();
+    return _allReports.where((r) {
+      if (r.isConfirmed) return false;
+      final hours = now.difference(r.createdAt).inHours;
+      return hours >= 5;
+    }).toList();
   }
 
   /// Подтверждённые отчёты
@@ -201,7 +217,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 children: [
                   const Icon(Icons.hourglass_empty, size: 16),
                   const SizedBox(width: 4),
-                  Text('Ожидают (${_allReports.where((r) => !r.isConfirmed).length})',
+                  Text('Ожидают (${_awaitingReports.length})',
                       style: const TextStyle(fontSize: 13)),
                 ],
               ),
@@ -223,7 +239,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 children: [
                   const Icon(Icons.cancel, size: 16),
                   const SizedBox(width: 4),
-                  Text('Не подтверждённые (${_expiredReports.length})',
+                  Text('Не подтверждённые (${_expiredReports.length + _overdueUnconfirmedReports.length})',
                       style: const TextStyle(fontSize: 13)),
                 ],
               ),
@@ -466,7 +482,24 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
   /// Виджет для списка просроченных (не подтверждённых) отчётов
   Widget _buildExpiredReportsList() {
-    if (_expiredReports.isEmpty) {
+    // Объединяем просроченные с сервера и отчеты ожидающие более 5 часов
+    final allUnconfirmed = [
+      ..._expiredReports,
+      ..._overdueUnconfirmedReports,
+    ];
+
+    // Сортируем по дате создания (новые сначала)
+    allUnconfirmed.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // Убираем дубликаты по ID
+    final Map<String, ShiftReport> uniqueReports = {};
+    for (final report in allUnconfirmed) {
+      uniqueReports[report.id] = report;
+    }
+    final reports = uniqueReports.values.toList();
+    reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    if (reports.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -489,17 +522,23 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _expiredReports.length,
+      itemCount: reports.length,
       itemBuilder: (context, index) {
-        final report = _expiredReports[index];
+        final report = reports[index];
+        final now = DateTime.now();
+        final waitingHours = now.difference(report.createdAt).inHours;
+        final isFromExpiredList = report.isExpired || report.expiredAt != null;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           color: Colors.red.shade50,
           child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Colors.red,
-              child: Icon(Icons.cancel, color: Colors.white),
+            leading: CircleAvatar(
+              backgroundColor: isFromExpiredList ? Colors.red : Colors.orange,
+              child: Icon(
+                isFromExpiredList ? Icons.cancel : Icons.access_time,
+                color: Colors.white,
+              ),
             ),
             title: Text(
               report.shopAddress,
@@ -513,10 +552,15 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                   'Сдан: ${report.createdAt.day}.${report.createdAt.month}.${report.createdAt.year} '
                   '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')}',
                 ),
-                if (report.expiredAt != null)
+                if (isFromExpiredList && report.expiredAt != null)
                   Text(
                     'Просрочен: ${report.expiredAt!.day}.${report.expiredAt!.month}.${report.expiredAt!.year}',
                     style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  )
+                else
+                  Text(
+                    'Ожидает: $waitingHours ч. (более 5 часов)',
+                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                 Text('Вопросов: ${report.answers.length}'),
               ],
@@ -535,6 +579,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                 MaterialPageRoute(
                   builder: (context) => ShiftReportViewPage(
                     report: report,
+                    isReadOnly: true, // Только просмотр
                   ),
                 ),
               );

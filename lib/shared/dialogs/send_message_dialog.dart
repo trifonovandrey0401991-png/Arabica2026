@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../features/clients/models/client_model.dart';
 import '../../features/clients/services/client_service.dart';
+import '../../core/services/media_upload_service.dart';
+import '../../core/utils/logger.dart';
 
 /// Диалог для отправки сообщения клиенту или всем клиентам
 class SendMessageDialog extends StatefulWidget {
@@ -20,8 +20,11 @@ class SendMessageDialog extends StatefulWidget {
 class _SendMessageDialogState extends State<SendMessageDialog> {
   final _formKey = GlobalKey<FormState>();
   final _textController = TextEditingController();
-  File? _selectedImage;
+  File? _selectedMedia;
+  bool _isVideo = false;
   bool _isSending = false;
+  bool _isUploading = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -29,62 +32,79 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
+  Future<void> _showMediaPicker() async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera, color: Color(0xFF004D40)),
+              title: const Text('Сделать фото'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF004D40)),
+              title: const Text('Выбрать фото из галереи'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam, color: Color(0xFF004D40)),
+              title: const Text('Записать видео'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library, color: Color(0xFF004D40)),
+              title: const Text('Выбрать видео из галереи'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
 
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
+    if (result == null) return;
+
+    XFile? file;
+    bool isVideo = result['type'] == 'video';
+
+    if (isVideo) {
+      file = await _picker.pickVideo(
+        source: result['source'] as ImageSource,
+        maxDuration: const Duration(minutes: 2),
+      );
+    } else {
+      file = await _picker.pickImage(
+        source: result['source'] as ImageSource,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+    }
+
+    if (file != null) {
+      Logger.debug('📁 Выбран файл: ${file.path}');
+      final mediaFile = File(file.path);
+      final exists = await mediaFile.exists();
+      Logger.debug('📁 Файл существует: $exists');
+      if (exists) {
+        final size = await mediaFile.length();
+        Logger.debug('📁 Размер файла: ${(size / 1024).toStringAsFixed(2)} KB');
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка выбора изображения: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      setState(() {
+        _selectedMedia = mediaFile;
+        _isVideo = isVideo;
+      });
     }
   }
 
-  Future<String?> _uploadImage(File imageFile) async {
-    try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://arabica26.ru/upload-photo'),
-      );
-
-      request.files.add(
-        await http.MultipartFile.fromPath('file', imageFile.path),
-      );
-
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      final result = jsonDecode(responseBody);
-
-      if (result['success'] == true) {
-        return result['url'] ?? result['filePath'];
-      } else {
-        throw Exception(result['error'] ?? 'Ошибка загрузки изображения');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки изображения: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return null;
-    }
+  void _clearMedia() {
+    setState(() {
+      _selectedMedia = null;
+      _isVideo = false;
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -97,15 +117,32 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
     });
 
     try {
-      String? imageUrl;
-      
-      // Загружаем изображение, если оно выбрано
-      if (_selectedImage != null) {
-        imageUrl = await _uploadImage(_selectedImage!);
-        if (imageUrl == null) {
-          setState(() {
-            _isSending = false;
-          });
+      String? mediaUrl;
+
+      // Загружаем медиа, если выбрано
+      if (_selectedMedia != null) {
+        Logger.debug('📤 Начинаем загрузку медиа: ${_selectedMedia!.path}');
+        setState(() => _isUploading = true);
+
+        mediaUrl = await MediaUploadService.uploadMedia(
+          _selectedMedia!.path,
+          type: _isVideo ? MediaType.video : MediaType.image,
+        );
+
+        setState(() => _isUploading = false);
+        Logger.debug('📤 Результат загрузки медиа: $mediaUrl');
+
+        if (mediaUrl == null) {
+          Logger.error('❌ Ошибка загрузки медиа - URL не получен');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Ошибка загрузки ${_isVideo ? "видео" : "фото"}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() => _isSending = false);
           return;
         }
       }
@@ -120,7 +157,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
         final result = await ClientService.sendMessage(
           clientPhone: widget.client!.phone,
           text: _textController.text.trim(),
-          imageUrl: imageUrl,
+          imageUrl: mediaUrl,
           senderPhone: senderPhone,
         );
         success = result != null;
@@ -128,7 +165,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
         // Отправляем всем клиентам
         final result = await ClientService.sendBroadcastMessage(
           text: _textController.text.trim(),
-          imageUrl: imageUrl,
+          imageUrl: mediaUrl,
           senderPhone: senderPhone,
         );
         success = result != null;
@@ -159,6 +196,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
       if (mounted) {
         setState(() {
           _isSending = false;
+          _isUploading = false;
         });
       }
     }
@@ -167,16 +205,18 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.client != null 
+      title: Text(widget.client != null
         ? 'Отправить сообщение'
         : 'Отправить сообщение всем'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               if (widget.client != null) ...[
                 Text(
                   'Клиент: ${widget.client!.name.isNotEmpty ? widget.client!.name : widget.client!.phone}',
@@ -200,28 +240,58 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                 },
               ),
               const SizedBox(height: 16),
-              if (_selectedImage != null) ...[
+              if (_selectedMedia != null) ...[
                 Stack(
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _selectedImage!,
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
+                      child: _isVideo
+                          ? Container(
+                              height: 150,
+                              width: double.infinity,
+                              color: Colors.black87,
+                              child: const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.videocam, color: Colors.white, size: 48),
+                                    SizedBox(height: 8),
+                                    Text('Видео выбрано', style: TextStyle(color: Colors.white)),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : Image.file(
+                              _selectedMedia!,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                Logger.error('❌ Ошибка загрузки изображения: $error');
+                                return Container(
+                                  height: 150,
+                                  width: double.infinity,
+                                  color: Colors.grey[300],
+                                  child: const Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.broken_image, color: Colors.grey, size: 48),
+                                        SizedBox(height: 8),
+                                        Text('Ошибка загрузки', style: TextStyle(color: Colors.grey)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                     ),
                     Positioned(
                       top: 8,
                       right: 8,
                       child: IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () {
-                          setState(() {
-                            _selectedImage = null;
-                          });
-                        },
+                        onPressed: _clearMedia,
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black54,
                         ),
@@ -231,15 +301,33 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                 ),
                 const SizedBox(height: 8),
               ],
+              if (_isUploading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Загрузка...'),
+                    ],
+                  ),
+                ),
               ElevatedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.photo_library),
-                label: Text(_selectedImage != null ? 'Изменить фото' : 'Прикрепить фото'),
+                onPressed: _isSending || _isUploading ? null : _showMediaPicker,
+                icon: const Icon(Icons.attach_file),
+                label: Text(_selectedMedia != null
+                    ? (_isVideo ? 'Изменить видео' : 'Изменить фото')
+                    : 'Прикрепить фото/видео'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF004D40),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

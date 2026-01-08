@@ -143,12 +143,66 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
     });
   }
 
+  /// Диалог для ручного ввода QR-кода (для тестирования)
+  void _showManualQrDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ввод QR-кода вручную'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Введите QR-код клиента для тестирования:',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'QR-код',
+                hintText: 'например: 2d3b4112-1366-4404-...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final qr = controller.text.trim();
+              if (qr.isNotEmpty) {
+                Navigator.pop(dialogContext);
+                _processScan(qr);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF004D40),
+            ),
+            child: const Text('Начислить балл'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Списать бонусы'),
         actions: [
+          // Кнопка ручного ввода QR (для тестирования)
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Ввести QR вручную',
+            onPressed: _showManualQrDialog,
+          ),
           IconButton(
             icon: Icon(_controller.torchState.value == TorchState.on
                 ? Icons.flashlight_off
@@ -244,14 +298,19 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Баллы: ${client.points}/10'),
+                Text('Баллы: ${client.points}/${client.pointsRequired}'),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: (client.points.clamp(0, 10)) / 10,
+                  value: (client.points.clamp(0, client.pointsRequired)) / client.pointsRequired,
                   backgroundColor: Colors.grey.shade300,
                 ),
                 const SizedBox(height: 8),
                 Text('Бесплатных напитков: ${client.freeDrinks}'),
+                const SizedBox(height: 4),
+                Text(
+                  'Акция: ${client.pointsRequired} + ${client.drinksToGive}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
               ],
             ),
           ),
@@ -261,7 +320,7 @@ class _LoyaltyScannerPageState extends State<LoyaltyScannerPage> {
           ElevatedButton.icon(
             onPressed: _isProcessing ? null : _redeem,
             icon: const Icon(Icons.card_giftcard),
-            label: const Text('Списать баллы и выдать напиток'),
+            label: Text('Списать баллы и выдать ${client.drinksToGive} напиток${client.drinksToGive > 1 ? "а" : ""}'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
             ),

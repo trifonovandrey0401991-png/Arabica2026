@@ -5,6 +5,8 @@ import 'dart:convert';
 import '../models/shop_model.dart';
 import '../models/shop_settings_model.dart';
 import '../services/shop_service.dart';
+import '../../attendance/services/attendance_service.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Страница управления магазинами для РКО
 class ShopsManagementPage extends StatefulWidget {
@@ -267,6 +269,20 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                   },
                   nightAbbreviationController,
                 ),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+                // Кнопка обновления геолокации
+                ElevatedButton.icon(
+                  onPressed: () => _updateShopLocation(context, shop),
+                  icon: const Icon(Icons.my_location),
+                  label: const Text('Обновить геолокацию магазина'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
               ],
             ),
           ),
@@ -358,6 +374,130 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
             ),
           );
         }
+      }
+    }
+  }
+
+  Future<void> _updateShopLocation(BuildContext dialogContext, Shop shop) async {
+    // Показываем диалог загрузки
+    showDialog(
+      context: dialogContext,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Получение геолокации...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Получаем текущую геолокацию
+      final position = await AttendanceService.getCurrentLocation();
+
+      // Закрываем диалог загрузки
+      if (dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
+
+      if (position == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Не удалось получить геолокацию. Проверьте разрешения.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Показываем диалог подтверждения с координатами
+      final confirm = await showDialog<bool>(
+        context: dialogContext,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Обновить геолокацию?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Магазин: ${shop.name}'),
+              const SizedBox(height: 8),
+              Text('Новые координаты:'),
+              Text('Широта: ${position.latitude.toStringAsFixed(6)}'),
+              Text('Долгота: ${position.longitude.toStringAsFixed(6)}'),
+              if (shop.latitude != null && shop.longitude != null) ...[
+                const SizedBox(height: 12),
+                const Text('Текущие координаты:', style: TextStyle(color: Colors.grey)),
+                Text('Широта: ${shop.latitude!.toStringAsFixed(6)}', style: const TextStyle(color: Colors.grey)),
+                Text('Долгота: ${shop.longitude!.toStringAsFixed(6)}', style: const TextStyle(color: Colors.grey)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Обновить'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        // Обновляем геолокацию магазина
+        final updatedShop = await ShopService.updateShop(
+          id: shop.id,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+
+        if (mounted) {
+          if (updatedShop != null) {
+            // Очищаем кэш магазинов чтобы новые координаты применились везде
+            CacheManager.remove('shops_list');
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Геолокация магазина обновлена'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            // Перезагружаем данные
+            await _loadShops();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ошибка обновления геолокации'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      // Закрываем диалог загрузки если он открыт
+      if (dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -588,6 +728,33 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                                         color: Colors.orange,
                                       ),
                                     ),
+                                  // Показываем статус геолокации
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        shop.latitude != null && shop.longitude != null
+                                            ? Icons.location_on
+                                            : Icons.location_off,
+                                        size: 14,
+                                        color: shop.latitude != null && shop.longitude != null
+                                            ? Colors.green
+                                            : Colors.orange,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        shop.latitude != null && shop.longitude != null
+                                            ? 'Геолокация установлена'
+                                            : 'Геолокация не установлена',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: shop.latitude != null && shop.longitude != null
+                                              ? Colors.green
+                                              : Colors.orange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                               trailing: IconButton(

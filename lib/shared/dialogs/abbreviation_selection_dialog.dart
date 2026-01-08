@@ -69,31 +69,46 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
               
               // Добавляем аббревиатуры для каждой смены
               if (settings.morningAbbreviation != null && settings.morningAbbreviation!.isNotEmpty) {
+                String? morningTimeRange;
+                if (settings.morningShiftStart != null && settings.morningShiftEnd != null) {
+                  morningTimeRange = '${_formatTime(settings.morningShiftStart!)}-${_formatTime(settings.morningShiftEnd!)}';
+                }
                 abbreviations.add(ShopAbbreviation(
                   abbreviation: settings.morningAbbreviation!,
                   shopAddress: shop.address,
                   shopName: shop.name,
                   shiftType: ShiftType.morning,
+                  timeRange: morningTimeRange,
                 ));
-                print('     ✅ Добавлена аббревиатура: ${settings.morningAbbreviation} (утро)');
+                print('     ✅ Добавлена аббревиатура: ${settings.morningAbbreviation} (утро, ${morningTimeRange ?? 'дефолт'})');
               }
               if (settings.dayAbbreviation != null && settings.dayAbbreviation!.isNotEmpty) {
+                String? dayTimeRange;
+                if (settings.dayShiftStart != null && settings.dayShiftEnd != null) {
+                  dayTimeRange = '${_formatTime(settings.dayShiftStart!)}-${_formatTime(settings.dayShiftEnd!)}';
+                }
                 abbreviations.add(ShopAbbreviation(
                   abbreviation: settings.dayAbbreviation!,
                   shopAddress: shop.address,
                   shopName: shop.name,
                   shiftType: ShiftType.day,
+                  timeRange: dayTimeRange,
                 ));
-                print('     ✅ Добавлена аббревиатура: ${settings.dayAbbreviation} (день)');
+                print('     ✅ Добавлена аббревиатура: ${settings.dayAbbreviation} (день, ${dayTimeRange ?? 'дефолт'})');
               }
               if (settings.nightAbbreviation != null && settings.nightAbbreviation!.isNotEmpty) {
+                String? nightTimeRange;
+                if (settings.nightShiftStart != null && settings.nightShiftEnd != null) {
+                  nightTimeRange = '${_formatTime(settings.nightShiftStart!)}-${_formatTime(settings.nightShiftEnd!)}';
+                }
                 abbreviations.add(ShopAbbreviation(
                   abbreviation: settings.nightAbbreviation!,
                   shopAddress: shop.address,
                   shopName: shop.name,
                   shiftType: ShiftType.evening, // night = evening
+                  timeRange: nightTimeRange,
                 ));
-                print('     ✅ Добавлена аббревиатура: ${settings.nightAbbreviation} (ночь)');
+                print('     ✅ Добавлена аббревиатура: ${settings.nightAbbreviation} (ночь, ${nightTimeRange ?? 'дефолт'})');
               }
             }
           } else {
@@ -172,7 +187,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
                     
                     return RadioListTile<String>(
                       title: Text(abbrev.abbreviation),
-                      subtitle: Text('${abbrev.shopName} - ${abbrev.shiftType.label}'),
+                      subtitle: Text('${abbrev.shopName} - ${abbrev.shiftType.label} (${abbrev.displayTimeRange})'),
                       value: abbrev.abbreviation,
                       groupValue: _selectedAbbreviation,
                       onChanged: (value) {
@@ -213,6 +228,10 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  }
+
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   void _save() {
@@ -295,12 +314,17 @@ class ShopAbbreviation {
   final String shopAddress;
   final String shopName;
   final ShiftType shiftType;
+  final String? timeRange; // Время смены из настроек магазина
 
   ShopAbbreviation({
     required this.abbreviation,
     required this.shopAddress,
     required this.shopName,
     required this.shiftType,
+    this.timeRange,
   });
+
+  /// Получить отображаемое время смены (из настроек или дефолт)
+  String get displayTimeRange => timeRange ?? shiftType.timeRange;
 }
 

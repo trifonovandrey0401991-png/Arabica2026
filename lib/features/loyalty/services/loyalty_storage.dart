@@ -7,6 +7,8 @@ class LoyaltyStorage {
   static const _pointsKey = 'loyalty_points';
   static const _freeDrinksKey = 'loyalty_free_drinks';
   static const _promoKey = 'loyalty_promo';
+  static const _pointsRequiredKey = 'loyalty_points_required';
+  static const _drinksToGiveKey = 'loyalty_drinks_to_give';
 
   static Future<void> save(LoyaltyInfo info) async {
     final prefs = await SharedPreferences.getInstance();
@@ -14,6 +16,8 @@ class LoyaltyStorage {
     await prefs.setInt(_pointsKey, info.points);
     await prefs.setInt(_freeDrinksKey, info.freeDrinks);
     await prefs.setString(_promoKey, info.promoText);
+    await prefs.setInt(_pointsRequiredKey, info.pointsRequired);
+    await prefs.setInt(_drinksToGiveKey, info.drinksToGive);
   }
 
   static Future<LoyaltyInfo?> read({
@@ -26,14 +30,25 @@ class LoyaltyStorage {
       return null;
     }
 
+    final points = prefs.getInt(_pointsKey) ?? 0;
+    final pointsRequired = prefs.getInt(_pointsRequiredKey);
+    final drinksToGive = prefs.getInt(_drinksToGiveKey);
+
+    // Если настройки не сохранены в кэше - возвращаем null, чтобы загрузить с сервера
+    if (pointsRequired == null || drinksToGive == null) {
+      return null;
+    }
+
     return LoyaltyInfo(
       name: name,
       phone: phone,
       qr: qr,
-      points: prefs.getInt(_pointsKey) ?? 0,
+      points: points,
       freeDrinks: prefs.getInt(_freeDrinksKey) ?? 0,
       promoText: prefs.getString(_promoKey) ?? '',
-      readyForRedeem: (prefs.getInt(_pointsKey) ?? 0) >= 10,
+      readyForRedeem: pointsRequired > 0 && points >= pointsRequired,
+      pointsRequired: pointsRequired,
+      drinksToGive: drinksToGive,
     );
   }
 
@@ -43,6 +58,8 @@ class LoyaltyStorage {
     await prefs.remove(_pointsKey);
     await prefs.remove(_freeDrinksKey);
     await prefs.remove(_promoKey);
+    await prefs.remove(_pointsRequiredKey);
+    await prefs.remove(_drinksToGiveKey);
   }
 }
 

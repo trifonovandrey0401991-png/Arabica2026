@@ -5,7 +5,6 @@ import '../../features/shifts/services/shift_question_service.dart';
 import '../../features/recount/services/recount_question_service.dart';
 import '../../features/tests/services/test_question_service.dart';
 import '../../features/training/services/training_article_service.dart';
-import '../../features/menu/services/menu_service.dart';
 import '../../features/shops/pages/shops_management_page.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shifts/pages/shift_questions_management_page.dart';
@@ -13,10 +12,9 @@ import '../../features/recount/pages/recount_questions_management_page.dart';
 import '../../features/tests/pages/test_questions_management_page.dart';
 import '../../features/training/pages/training_articles_management_page.dart';
 import '../../features/clients/pages/clients_management_page.dart';
-import '../../features/product_questions/pages/product_questions_management_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../features/tests/pages/test_notifications_page.dart';
-import 'role_test_page.dart';
+import '../../features/shift_handover/pages/shift_handover_questions_management_page.dart';
+import '../../features/suppliers/pages/suppliers_management_page.dart';
+import '../../features/efficiency/pages/points_settings_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -106,6 +104,20 @@ class DataManagementPage extends StatelessWidget {
           const SizedBox(height: 8),
           _buildSection(
             context,
+            title: 'Вопросы (Сдать Смену)',
+            icon: Icons.assignment_turned_in,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ShiftHandoverQuestionsManagementPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
             title: 'Статьи обучения',
             icon: Icons.article,
             onTap: () {
@@ -134,13 +146,13 @@ class DataManagementPage extends StatelessWidget {
           const SizedBox(height: 8),
           _buildSection(
             context,
-            title: 'Ответы (поиск товара)',
-            icon: Icons.search,
+            title: 'Поставщики',
+            icon: Icons.local_shipping,
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const ProductQuestionsManagementPage(),
+                  builder: (context) => const SuppliersManagementPage(),
                 ),
               );
             },
@@ -148,38 +160,14 @@ class DataManagementPage extends StatelessWidget {
           const SizedBox(height: 8),
           _buildSection(
             context,
-            title: 'Меню заказов',
-            icon: Icons.restaurant_menu,
+            title: 'Установка баллов',
+            icon: Icons.star,
             onTap: () {
-              // TODO: Создать страницу управления меню
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Страница управления меню в разработке'),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PointsSettingsPage(),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Тест',
-            icon: Icons.science,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TestNotificationsPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Тест ролей',
-            icon: Icons.science,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const RoleTestPage()),
               );
             },
           ),

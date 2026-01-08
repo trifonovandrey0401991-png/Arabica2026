@@ -54,13 +54,24 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       return;
     }
 
-    final cached = await LoyaltyStorage.read(name: name, phone: phone);
-    setState(() {
-      _info = cached;
-      _loading = false;
-    });
+    // Сначала загружаем актуальные настройки акции с сервера
+    final settings = await LoyaltyService.fetchPromoSettings();
 
-    await _refresh(showSpinner: false);
+    // Проверяем, изменились ли настройки - если да, очищаем локальный кэш
+    final cachedPointsRequired = prefs.getInt('loyalty_points_required');
+    final cachedDrinksToGive = prefs.getInt('loyalty_drinks_to_give');
+
+    if (cachedPointsRequired != null && cachedDrinksToGive != null) {
+      if (cachedPointsRequired != settings.pointsRequired ||
+          cachedDrinksToGive != settings.drinksToGive) {
+        // Настройки изменились - обновляем локальный кэш
+        await prefs.setInt('loyalty_points_required', settings.pointsRequired);
+        await prefs.setInt('loyalty_drinks_to_give', settings.drinksToGive);
+      }
+    }
+
+    // Не показываем кэшированные данные - сразу загружаем с сервера
+    await _refresh(showSpinner: true);
   }
 
   Future<void> _refresh({bool showSpinner = true}) async {
@@ -233,6 +244,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   }
 
   Widget _pointsCard(LoyaltyInfo info) {
+    final pointsRequired = info.pointsRequired;
+    final drinksToGive = info.drinksToGive;
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -240,23 +254,43 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Баллы',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Баллы',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$pointsRequired + $drinksToGive',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal.shade700,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            Text('Собрано: ${info.points}/10'),
+            Text('Собрано: ${info.points}/$pointsRequired'),
             const SizedBox(height: 8),
             LinearProgressIndicator(
-              value: (info.points.clamp(0, 10)) / 10,
+              value: (info.points.clamp(0, pointsRequired)) / pointsRequired,
               borderRadius: BorderRadius.circular(8),
-              color: info.points >= 10 ? Colors.orange : Colors.teal,
+              color: info.readyForRedeem ? Colors.orange : Colors.teal,
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: List.generate(10, (index) {
+              children: List.generate(pointsRequired, (index) {
                 final active = index < info.points;
                 return CircleAvatar(
                   radius: 12,
@@ -271,13 +305,13 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Row(
-                  children: const [
-                    Icon(Icons.card_giftcard, color: Colors.orange),
-                    SizedBox(width: 8),
+                  children: [
+                    const Icon(Icons.card_giftcard, color: Colors.orange),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Баллов достаточно для бесплатного напитка. Покажите код сотруднику.',
-                        style: TextStyle(color: Colors.orange),
+                        'Баллов достаточно для $drinksToGive бесплатн${drinksToGive > 1 ? "ых напитков" : "ого напитка"}. Покажите код сотруднику.',
+                        style: const TextStyle(color: Colors.orange),
                       ),
                     ),
                   ],

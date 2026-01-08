@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/client_model.dart';
 import '../models/client_message_model.dart';
 import '../services/client_service.dart';
+import '../../../core/services/media_upload_service.dart';
+import '../../../shared/widgets/media_message_widget.dart';
 
 /// Страница переписки с клиентом
 class ClientChatPage extends StatefulWidget {
@@ -17,8 +20,12 @@ class ClientChatPage extends StatefulWidget {
 class _ClientChatPageState extends State<ClientChatPage> {
   List<ClientMessage> _messages = [];
   bool _isLoading = true;
+  bool _isUploading = false;
+  String? _pendingMediaUrl;
+  bool _pendingIsVideo = false;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _picker = ImagePicker();
   bool _isSending = false;
 
   @override
@@ -54,13 +61,15 @@ class _ClientChatPageState extends State<ClientChatPage> {
           _isLoading = false;
         });
         // Прокручиваем вниз после загрузки
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -77,10 +86,102 @@ class _ClientChatPageState extends State<ClientChatPage> {
     }
   }
 
+  Future<void> _showMediaPicker() async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera, color: Color(0xFF004D40)),
+              title: const Text('Сделать фото'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'image'}),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF004D40)),
+              title: const Text('Выбрать фото из галереи'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'image'}),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam, color: Color(0xFF004D40)),
+              title: const Text('Записать видео'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.camera, 'type': 'video'}),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library, color: Color(0xFF004D40)),
+              title: const Text('Выбрать видео из галереи'),
+              onTap: () => Navigator.pop(context, {'source': ImageSource.gallery, 'type': 'video'}),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    XFile? file;
+    bool isVideo = result['type'] == 'video';
+
+    if (isVideo) {
+      file = await _picker.pickVideo(
+        source: result['source'] as ImageSource,
+        maxDuration: const Duration(minutes: 2),
+      );
+    } else {
+      file = await _picker.pickImage(
+        source: result['source'] as ImageSource,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+    }
+
+    if (file == null) return;
+
+    setState(() => _isUploading = true);
+
+    final mediaUrl = await MediaUploadService.uploadMedia(
+      file.path,
+      type: isVideo ? MediaType.video : MediaType.image,
+    );
+
+    setState(() => _isUploading = false);
+
+    if (mediaUrl != null) {
+      setState(() {
+        _pendingMediaUrl = mediaUrl;
+        _pendingIsVideo = isVideo;
+      });
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка загрузки ${isVideo ? "видео" : "фото"}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _clearPendingMedia() {
+    setState(() {
+      _pendingMediaUrl = null;
+      _pendingIsVideo = false;
+    });
+  }
+
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _isSending) {
+    final text = _messageController.text.trim();
+    final hasMedia = _pendingMediaUrl != null;
+
+    if (text.isEmpty && !hasMedia) {
       return;
     }
+
+    if (_isSending) return;
 
     setState(() {
       _isSending = true;
@@ -92,12 +193,17 @@ class _ClientChatPageState extends State<ClientChatPage> {
 
       final result = await ClientService.sendMessage(
         clientPhone: widget.client.phone,
-        text: _messageController.text.trim(),
+        text: text.isNotEmpty ? text : (_pendingIsVideo ? 'Видео' : 'Фото'),
         senderPhone: senderPhone,
+        imageUrl: _pendingMediaUrl,
       );
 
       if (result != null) {
         _messageController.clear();
+        setState(() {
+          _pendingMediaUrl = null;
+          _pendingIsVideo = false;
+        });
         await _loadMessages();
       } else {
         if (mounted) {
@@ -167,7 +273,6 @@ class _ClientChatPageState extends State<ClientChatPage> {
                       )
                     : ListView.builder(
                         controller: _scrollController,
-                        reverse: true,
                         padding: const EdgeInsets.all(16),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
@@ -204,14 +309,7 @@ class _ClientChatPageState extends State<ClientChatPage> {
                                   ),
                                   if (message.imageUrl != null) ...[
                                     const SizedBox(height: 8),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        message.imageUrl!,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
+                                    MediaMessageWidget(mediaUrl: message.imageUrl, maxHeight: 200),
                                   ],
                                   const SizedBox(height: 4),
                                   Text(
@@ -230,6 +328,49 @@ class _ClientChatPageState extends State<ClientChatPage> {
                         },
                       ),
           ),
+          // Предпросмотр прикреплённого медиа
+          if (_pendingMediaUrl != null)
+            Container(
+              padding: const EdgeInsets.all(8),
+              color: Colors.grey[200],
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _pendingIsVideo
+                        ? Container(
+                            width: 60,
+                            height: 60,
+                            color: Colors.black87,
+                            child: const Icon(Icons.videocam, color: Colors.white),
+                          )
+                        : Image.network(
+                            _pendingMediaUrl!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey,
+                              child: const Icon(Icons.image),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _pendingIsVideo ? 'Видео прикреплено' : 'Фото прикреплено',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    onPressed: _clearPendingMedia,
+                  ),
+                ],
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -244,6 +385,17 @@ class _ClientChatPageState extends State<ClientChatPage> {
             ),
             child: Row(
               children: [
+                IconButton(
+                  onPressed: _isUploading ? null : _showMediaPicker,
+                  icon: _isUploading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.attach_file, color: Color(0xFF004D40)),
+                  tooltip: 'Прикрепить фото/видео',
+                ),
                 Expanded(
                   child: TextField(
                     controller: _messageController,

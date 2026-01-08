@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/work_schedule_model.dart';
+import '../../shops/models/shop_settings_model.dart';
+import '../../rko/services/rko_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
@@ -280,5 +283,106 @@ class WorkScheduleService {
       Logger.error('❌ Ошибка применения шаблона', e);
       return false;
     }
+  }
+
+  /// Получить время смены из настроек магазина
+  /// Возвращает (startTime, endTime, timeRange) для указанного типа смены
+  static Future<ShiftTimeInfo> getShiftTimeFromSettings(
+    String shopAddress,
+    ShiftType shiftType,
+  ) async {
+    try {
+      final settings = await RKOService.getShopSettings(shopAddress);
+      if (settings != null) {
+        return ShiftTimeInfo.fromSettings(settings, shiftType);
+      }
+    } catch (e) {
+      Logger.error('Ошибка получения времени смены из настроек', e);
+    }
+    // Возвращаем дефолтные значения из enum
+    return ShiftTimeInfo.fromDefault(shiftType);
+  }
+
+  /// Получить время смен для нескольких записей графика
+  /// Возвращает Map<shopAddress, Map<ShiftType, ShiftTimeInfo>>
+  static Future<Map<String, Map<ShiftType, ShiftTimeInfo>>> getShiftTimesForEntries(
+    List<WorkScheduleEntry> entries,
+  ) async {
+    final result = <String, Map<ShiftType, ShiftTimeInfo>>{};
+    final uniqueShops = entries.map((e) => e.shopAddress).toSet();
+
+    for (final shopAddress in uniqueShops) {
+      result[shopAddress] = {};
+      for (final shiftType in ShiftType.values) {
+        result[shopAddress]![shiftType] = await getShiftTimeFromSettings(shopAddress, shiftType);
+      }
+    }
+
+    return result;
+  }
+}
+
+/// Информация о времени смены
+class ShiftTimeInfo {
+  final TimeOfDay startTime;
+  final TimeOfDay endTime;
+  final String timeRange;
+  final bool isFromSettings; // true если из настроек магазина, false если дефолт
+
+  ShiftTimeInfo({
+    required this.startTime,
+    required this.endTime,
+    required this.timeRange,
+    this.isFromSettings = false,
+  });
+
+  /// Создать из настроек магазина
+  factory ShiftTimeInfo.fromSettings(ShopSettings settings, ShiftType shiftType) {
+    TimeOfDay? start;
+    TimeOfDay? end;
+
+    switch (shiftType) {
+      case ShiftType.morning:
+        start = settings.morningShiftStart;
+        end = settings.morningShiftEnd;
+        break;
+      case ShiftType.day:
+        start = settings.dayShiftStart;
+        end = settings.dayShiftEnd;
+        break;
+      case ShiftType.evening:
+        start = settings.nightShiftStart;
+        end = settings.nightShiftEnd;
+        break;
+    }
+
+    // Если настройки магазина есть - используем их
+    if (start != null && end != null) {
+      final startStr = _formatTime(start);
+      final endStr = _formatTime(end);
+      return ShiftTimeInfo(
+        startTime: start,
+        endTime: end,
+        timeRange: '$startStr-$endStr',
+        isFromSettings: true,
+      );
+    }
+
+    // Иначе - дефолтные значения из enum
+    return ShiftTimeInfo.fromDefault(shiftType);
+  }
+
+  /// Создать из дефолтных значений enum
+  factory ShiftTimeInfo.fromDefault(ShiftType shiftType) {
+    return ShiftTimeInfo(
+      startTime: shiftType.startTime,
+      endTime: shiftType.endTime,
+      timeRange: shiftType.timeRange,
+      isFromSettings: false,
+    );
+  }
+
+  static String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }

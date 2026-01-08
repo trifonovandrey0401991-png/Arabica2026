@@ -37,6 +37,36 @@ class ShiftHandoverReportService {
     }
   }
 
+  /// Обновить отчет сдачи смены на сервере (например, подтвердить)
+  static Future<bool> updateReport(ShiftHandoverReport report) async {
+    try {
+      Logger.debug('📤 Обновление отчета сдачи смены на сервере: ${report.id}');
+
+      final response = await http.put(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/${Uri.encodeComponent(report.id)}'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(report.toJson()),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Отчет сдачи смены успешно обновлен на сервере');
+          return true;
+        } else {
+          Logger.error('❌ Ошибка обновления отчета: ${result['error']}');
+          return false;
+        }
+      } else {
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      Logger.error('❌ Ошибка обновления отчета сдачи смены', e);
+      return false;
+    }
+  }
+
   /// Получить отчеты сдачи смены с сервера
   static Future<List<ShiftHandoverReport>> getReports({
     String? employeeName,
@@ -106,6 +136,38 @@ class ShiftHandoverReportService {
     } catch (e) {
       Logger.error('❌ Ошибка загрузки отчета сдачи смены', e);
       return null;
+    }
+  }
+
+  /// Получить просроченные отчеты сдачи смены с сервера
+  static Future<List<ShiftHandoverReport>> getExpiredReports() async {
+    try {
+      Logger.debug('📥 Загрузка просроченных отчетов сдачи смены...');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/expired'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final reportsJson = result['reports'] as List<dynamic>;
+          final reports = reportsJson
+              .map((json) => ShiftHandoverReport.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Загружено просроченных отчетов: ${reports.length}');
+          return reports;
+        } else {
+          Logger.error('❌ Ошибка загрузки просроченных: ${result['error']}');
+          return [];
+        }
+      } else {
+        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки просроченных отчетов', e);
+      return [];
     }
   }
 

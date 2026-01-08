@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/utils/logger.dart';
+import '../services/loyalty_service.dart';
 
 /// Страница управления условиями акций для админа
 class LoyaltyPromoManagementPage extends StatefulWidget {
@@ -13,6 +15,8 @@ class LoyaltyPromoManagementPage extends StatefulWidget {
 
 class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage> {
   final TextEditingController _promoTextController = TextEditingController();
+  final TextEditingController _pointsRequiredController = TextEditingController(text: '10');
+  final TextEditingController _drinksToGiveController = TextEditingController(text: '1');
   bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
@@ -20,16 +24,18 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
   @override
   void initState() {
     super.initState();
-    _loadPromoText();
+    _loadPromoSettings();
   }
 
   @override
   void dispose() {
     _promoTextController.dispose();
+    _pointsRequiredController.dispose();
+    _drinksToGiveController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadPromoText() async {
+  Future<void> _loadPromoSettings() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -43,17 +49,18 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          final promoText = data['promoText'] ?? '';
-          _promoTextController.text = promoText;
-          Logger.debug('✅ Условия акций загружены: ${promoText.length} символов');
+          _promoTextController.text = data['promoText'] ?? '';
+          _pointsRequiredController.text = (data['pointsRequired'] ?? 10).toString();
+          _drinksToGiveController.text = (data['drinksToGive'] ?? 1).toString();
+          Logger.debug('✅ Настройки акции загружены: ${_pointsRequiredController.text}+${_drinksToGiveController.text}');
         } else {
-          _error = data['error'] ?? 'Не удалось загрузить условия акций';
+          _error = data['error'] ?? 'Не удалось загрузить настройки акции';
         }
       } else {
         _error = 'Ошибка сервера: ${response.statusCode}';
       }
     } catch (e) {
-      Logger.error('Ошибка загрузки условий акций', e);
+      Logger.error('Ошибка загрузки настроек акции', e);
       _error = 'Ошибка загрузки: ${e.toString()}';
     } finally {
       if (mounted) {
@@ -64,11 +71,24 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     }
   }
 
-  Future<void> _savePromoText() async {
-    if (_promoTextController.text.trim().isEmpty) {
+  Future<void> _savePromoSettings() async {
+    final pointsRequired = int.tryParse(_pointsRequiredController.text) ?? 0;
+    final drinksToGive = int.tryParse(_drinksToGiveController.text) ?? 0;
+
+    if (pointsRequired < 1 || pointsRequired > 100) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Введите текст условий акции'),
+          content: Text('Количество баллов должно быть от 1 до 100'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (drinksToGive < 1 || drinksToGive > 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Количество напитков должно быть от 1 до 10'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -88,29 +108,33 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'promoText': _promoTextController.text.trim(),
+          'pointsRequired': pointsRequired,
+          'drinksToGive': drinksToGive,
         }),
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          Logger.debug('✅ Условия акций сохранены');
+          // Очищаем кэш чтобы изменения применились сразу
+          LoyaltyService.clearSettingsCache();
+          Logger.debug('✅ Настройки акции сохранены: $pointsRequired+$drinksToGive');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Условия акций успешно сохранены'),
+                content: Text('Настройки акции успешно сохранены'),
                 backgroundColor: Colors.green,
               ),
             );
           }
         } else {
-          _error = data['error'] ?? 'Не удалось сохранить условия акций';
+          _error = data['error'] ?? 'Не удалось сохранить настройки акции';
         }
       } else {
         _error = 'Ошибка сервера: ${response.statusCode}';
       }
     } catch (e) {
-      Logger.error('Ошибка сохранения условий акций', e);
+      Logger.error('Ошибка сохранения настроек акции', e);
       _error = 'Ошибка сохранения: ${e.toString()}';
     } finally {
       if (mounted) {
@@ -125,7 +149,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Управление условиями акций'),
+        title: const Text('Управление акцией'),
         backgroundColor: const Color(0xFF004D40),
       ),
       body: _isLoading
@@ -135,6 +159,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Карточка с настройками формулы акции
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -142,7 +167,7 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Условия акции',
+                            'Формула акции',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -150,7 +175,110 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Введите текст условий акции, который будет отображаться в карте лояльности для всех клиентов.',
+                            'Укажите сколько напитков нужно купить и сколько получить бесплатно',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _pointsRequiredController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(3),
+                                  ],
+                                  decoration: const InputDecoration(
+                                    labelText: 'Сколько купить',
+                                    hintText: '10',
+                                    border: OutlineInputBorder(),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    prefixIcon: Icon(Icons.shopping_cart),
+                                  ),
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  '+',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF004D40),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _drinksToGiveController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(2),
+                                  ],
+                                  decoration: const InputDecoration(
+                                    labelText: 'Сколько выдать',
+                                    hintText: '1',
+                                    border: OutlineInputBorder(),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    prefixIcon: Icon(Icons.card_giftcard),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.teal.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.teal.shade700),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Пример: ${_pointsRequiredController.text.isEmpty ? "10" : _pointsRequiredController.text} + ${_drinksToGiveController.text.isEmpty ? "1" : _drinksToGiveController.text} означает "купи ${_pointsRequiredController.text.isEmpty ? "10" : _pointsRequiredController.text} напитков, получи ${_drinksToGiveController.text.isEmpty ? "1" : _drinksToGiveController.text} бесплатно"',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.teal.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Карточка с текстом условий
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Текст условий акции',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Этот текст будет отображаться в карте лояльности клиента',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey,
@@ -159,94 +287,62 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
                           const SizedBox(height: 16),
                           TextField(
                             controller: _promoTextController,
-                            maxLines: 10,
+                            maxLines: 6,
                             decoration: const InputDecoration(
-                              labelText: 'Текст условий акции',
+                              labelText: 'Текст условий',
                               hintText: 'Например: При покупке 10 напитков получите 1 бесплатный...',
                               border: OutlineInputBorder(),
                               filled: true,
                               fillColor: Colors.white,
                             ),
                           ),
-                          if (_error != null) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.red[50],
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.error, color: Colors.red),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _error!,
-                                      style: const TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _isSaving ? null : _savePromoText,
-                              icon: _isSaving
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : const Icon(Icons.save),
-                              label: Text(_isSaving ? 'Сохранение...' : 'Сохранить'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF004D40),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: Colors.red),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Предпросмотр',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _promoTextController.text.isEmpty
-                                  ? 'Текст условий акции появится здесь...'
-                                  : _promoTextController.text,
-                              style: const TextStyle(fontSize: 15),
-                            ),
-                          ),
-                        ],
+                  ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSaving ? null : _savePromoSettings,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.save),
+                      label: Text(_isSaving ? 'Сохранение...' : 'Сохранить настройки'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF004D40),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                     ),
                   ),
@@ -256,4 +352,3 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     );
   }
 }
-

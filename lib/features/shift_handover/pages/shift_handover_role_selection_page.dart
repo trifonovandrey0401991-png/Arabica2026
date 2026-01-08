@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'shift_handover_questions_page.dart';
+import '../../envelope/pages/envelope_form_page.dart';
 
-/// Страница выбора роли для сдачи смены (Сотрудник или Заведующая)
+/// Страница выбора типа сдачи смены
 class ShiftHandoverRoleSelectionPage extends StatelessWidget {
   final String employeeName;
   final String shopAddress;
@@ -16,7 +17,7 @@ class ShiftHandoverRoleSelectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Выберите роль'),
+        title: const Text('Сдача смены'),
         backgroundColor: const Color(0xFF004D40),
       ),
       body: Container(
@@ -28,14 +29,15 @@ class ShiftHandoverRoleSelectionPage extends StatelessWidget {
             opacity: 0.6,
           ),
         ),
-        child: Center(
+        child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header
                 const Text(
-                  'Вы сдаете смену как:',
+                  'Выберите тип:',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -43,21 +45,97 @@ class ShiftHandoverRoleSelectionPage extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 40),
-                _buildRoleCard(
+                const SizedBox(height: 8),
+                Text(
+                  shopAddress,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Формирование конверта - главная опция
+                _buildOptionCard(
+                  context,
+                  title: 'Формирование конверта',
+                  icon: Icons.mail,
+                  description: 'Выручка, расходы, итог',
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EnvelopeFormPage(
+                          employeeName: employeeName,
+                          shopAddress: shopAddress,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Divider
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Вопросы',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Сотрудник
+                _buildOptionCard(
                   context,
                   title: 'Сотрудник',
                   icon: Icons.person,
-                  role: 'employee',
                   description: 'Вопросы для сотрудников',
+                  color: Colors.blue,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ShiftHandoverQuestionsPage(
+                          employeeName: employeeName,
+                          shopAddress: shopAddress,
+                          targetRole: 'employee',
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 20),
-                _buildRoleCard(
+                const SizedBox(height: 16),
+
+                // Заведующая
+                _buildOptionCard(
                   context,
                   title: 'Заведующая',
                   icon: Icons.supervisor_account,
-                  role: 'manager',
                   description: 'Вопросы для заведующих',
+                  color: Colors.purple,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ShiftHandoverQuestionsPage(
+                          employeeName: employeeName,
+                          shopAddress: shopAddress,
+                          targetRole: 'manager',
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -67,61 +145,76 @@ class ShiftHandoverRoleSelectionPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRoleCard(
+  Widget _buildOptionCard(
     BuildContext context, {
     required String title,
     required IconData icon,
-    required String role,
     required String description,
+    required Color color,
+    required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ShiftHandoverQuestionsPage(
-              employeeName: employeeName,
-              shopAddress: shopAddress,
-              targetRole: role,
-            ),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.white.withOpacity(0.5),
+            color: color,
             width: 2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Column(
+        child: Row(
           children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                size: 32,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Icon(
-              icon,
-              size: 64,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
+              Icons.chevron_right,
+              color: color,
+              size: 28,
             ),
           ],
         ),

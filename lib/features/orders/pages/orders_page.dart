@@ -78,6 +78,17 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
+  /// Форматирование цены из разных типов данных
+  String _formatPrice(dynamic value) {
+    if (value == null) return '0';
+    if (value is num) return value.toStringAsFixed(0);
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      return parsed?.toStringAsFixed(0) ?? '0';
+    }
+    return '0';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -338,12 +349,12 @@ class _OrdersPageState extends State<OrdersPage> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        '${item['name']} × ${item['quantity']}',
+                                        '${item['name'] ?? 'Товар'} × ${item['quantity'] ?? 1}',
                                         style: const TextStyle(fontSize: 14),
                                       ),
                                     ),
                                     Text(
-                                      '${(item['total'] as num).toStringAsFixed(0)} ₽',
+                                      '${_formatPrice(item['total'] ?? item['price'] ?? 0)} ₽',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,

@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
-import '../services/menu_service.dart';
+import '../../recipes/models/recipe_model.dart';
 
 class MenuItem {
   final String id;
@@ -12,6 +10,7 @@ class MenuItem {
   final String category;
   final String shop;
   final String photoId;
+  final String? photoUrl; // URL фото с сервера
 
   MenuItem({
     required this.id,
@@ -20,6 +19,7 @@ class MenuItem {
     required this.category,
     required this.shop,
     required this.photoId,
+    this.photoUrl,
   });
 
   factory MenuItem.fromJson(Map<String, dynamic> json) {
@@ -30,6 +30,7 @@ class MenuItem {
       category: (json['category'] ?? '').toString(),
       shop: (json['shop'] ?? '').toString(),
       photoId: (json['photo_id'] ?? '').toString(),
+      photoUrl: json['photoUrl'],
     );
   }
 
@@ -41,8 +42,23 @@ class MenuItem {
       'category': category,
       'shop': shop,
       'photo_id': photoId,
+      'photoUrl': photoUrl,
     };
   }
+
+  /// Получить URL фото для отображения
+  String? get imageUrl {
+    if (photoUrl != null && photoUrl!.isNotEmpty) {
+      if (photoUrl!.startsWith('http')) {
+        return photoUrl;
+      }
+      return 'https://arabica26.ru$photoUrl';
+    }
+    return null;
+  }
+
+  /// Проверить, есть ли URL фото
+  bool get hasNetworkPhoto => imageUrl != null;
 }
 
 class MenuPage extends StatefulWidget {
@@ -71,36 +87,21 @@ class _MenuPageState extends State<MenuPage> {
 
   Future<List<MenuItem>> _loadMenu() async {
     try {
-      // Пытаемся загрузить с сервера
-      final items = await MenuService.getMenuItems();
-      if (items.isNotEmpty) {
-        return items;
-      }
+      // Загружаем напитки из рецептов - в меню показываем только позиции с рецептами
+      final recipes = await Recipe.loadRecipesFromServer();
+
+      // Преобразуем рецепты в MenuItem
+      return recipes.map((recipe) => MenuItem(
+        id: recipe.id,
+        name: recipe.name,
+        price: recipe.price ?? '',
+        category: recipe.category,
+        shop: '', // Магазин не привязан к рецепту
+        photoId: recipe.photoId ?? '',
+        photoUrl: recipe.photoUrl,
+      )).toList();
     } catch (e) {
-      print('⚠️ Ошибка загрузки меню с сервера: $e');
-    }
-    
-    // Fallback на локальный файл
-    try {
-      final jsonString = await rootBundle.loadString('assets/menu.json');
-      final List<dynamic> jsonData = json.decode(jsonString);
-      return jsonData.map((e) {
-        final item = MenuItem.fromJson(e);
-        // Добавляем временный ID, если его нет
-        if (item.id.isEmpty) {
-          return MenuItem(
-            id: 'menu_${item.name.hashCode}',
-            name: item.name,
-            price: item.price,
-            category: item.category,
-            shop: item.shop,
-            photoId: item.photoId,
-          );
-        }
-        return item;
-      }).toList();
-    } catch (e) {
-      print('❌ Ошибка загрузки меню из файла: $e');
+      print('⚠️ Ошибка загрузки рецептов: $e');
       return [];
     }
   }
@@ -122,7 +123,47 @@ class _MenuPageState extends State<MenuPage> {
     return searchTokens.every((token) => normalizedItem.contains(token));
   }
 
-  Widget _buildDialog(MenuItem item, String imagePath) {
+  /// Строит виджет изображения для MenuItem
+  Widget _buildItemImage(MenuItem item, {double? height, double? width, BoxFit fit = BoxFit.cover}) {
+    if (item.hasNetworkPhoto) {
+      return Image.network(
+        item.imageUrl!,
+        height: height,
+        width: width,
+        fit: fit,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return SizedBox(
+            height: height,
+            width: width,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        },
+        errorBuilder: (_, __, ___) => Image.asset(
+          'assets/images/no_photo.png',
+          height: height,
+          width: width,
+          fit: fit,
+        ),
+      );
+    } else {
+      final imagePath = 'assets/images/${item.photoId}.jpg';
+      return Image.asset(
+        imagePath,
+        height: height,
+        width: width,
+        fit: fit,
+        errorBuilder: (_, __, ___) => Image.asset(
+          'assets/images/no_photo.png',
+          height: height,
+          width: width,
+          fit: fit,
+        ),
+      );
+    }
+  }
+
+  Widget _buildDialog(MenuItem item) {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       title: Text(item.name),
@@ -131,18 +172,7 @@ class _MenuPageState extends State<MenuPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              imagePath,
-              height: 150,
-              width: 150,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Image.asset(
-                'assets/images/no_photo.png',
-                height: 150,
-                width: 150,
-                fit: BoxFit.cover,
-              ),
-            ),
+            child: _buildItemImage(item, height: 150, width: 150),
           ),
           const SizedBox(height: 10),
           Text(
@@ -157,6 +187,10 @@ class _MenuPageState extends State<MenuPage> {
             // Добавляем товар в корзину
             final cart = CartProvider.of(context);
             cart.addItem(item);
+            // Сохраняем адрес магазина для заказа
+            if (widget.selectedShop != null && widget.selectedShop!.isNotEmpty) {
+              cart.setShopAddress(widget.selectedShop);
+            }
             Navigator.pop(context);
             // Показываем уведомление
             ScaffoldMessenger.of(context).showSnackBar(
@@ -213,12 +247,11 @@ class _MenuPageState extends State<MenuPage> {
 
           final all = snapshot.data!;
 
-          // Фильтруем по выбранному магазину и категории
+          // Фильтруем по категории (магазин не учитываем - рецепты общие для всех)
           final filtered = all.where((item) {
             final byName = item.name.toLowerCase().contains(_searchQuery.toLowerCase());
-            final byShop = widget.selectedShop == null || item.shop == widget.selectedShop;
             final byCategory = widget.selectedCategory == null || _matchCategory(item);
-            return byName && byShop && byCategory;
+            return byName && byCategory;
           }).toList();
 
           final categories = filtered.map((e) => e.category).toSet().toList()
@@ -309,14 +342,11 @@ class _MenuPageState extends State<MenuPage> {
                                     itemCount: itemsOfCategory.length,
                                     itemBuilder: (context, i) {
                                       final item = itemsOfCategory[i];
-                                      final imagePath =
-                                          'assets/images/${item.photoId}.jpg';
 
                                       return GestureDetector(
                                         onTap: () => showDialog(
                                           context: context,
-                                          builder: (_) =>
-                                              _buildDialog(item, imagePath),
+                                          builder: (_) => _buildDialog(item),
                                         ),
                                         child: Container(
                                           decoration: BoxDecoration(
@@ -340,15 +370,7 @@ class _MenuPageState extends State<MenuPage> {
                                                       const BorderRadius.vertical(
                                                     top: Radius.circular(18),
                                                   ),
-                                                  child: Image.asset(
-                                                    imagePath,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (_, __, ___) =>
-                                                        Image.asset(
-                                                      'assets/images/no_photo.png',
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  ),
+                                                  child: _buildItemImage(item),
                                                 ),
                                               ),
                                               Padding(

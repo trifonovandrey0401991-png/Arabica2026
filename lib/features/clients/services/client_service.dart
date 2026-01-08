@@ -140,4 +140,29 @@ class ClientService {
       return false;
     }
   }
+
+  /// Отметить сетевые сообщения клиента как прочитанные админом
+  static Future<bool> markNetworkMessagesAsReadByAdmin(String clientPhone) async {
+    try {
+      Logger.debug('📤 Отметка сетевых сообщений клиента как прочитанных: $clientPhone');
+
+      final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/client-dialogs/$normalizedPhone/network/read-by-admin'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Сообщения отмечены как прочитанные');
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      Logger.error('❌ Ошибка отметки сообщений: $e');
+      return false;
+    }
+  }
 }

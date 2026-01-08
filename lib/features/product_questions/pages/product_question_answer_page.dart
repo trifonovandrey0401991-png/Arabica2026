@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../models/product_question_model.dart';
@@ -8,10 +9,14 @@ import '../../shops/models/shop_model.dart';
 
 class ProductQuestionAnswerPage extends StatefulWidget {
   final String questionId;
+  final String? shopAddress;
+  final bool canAnswer;
 
   const ProductQuestionAnswerPage({
     super.key,
     required this.questionId,
+    this.shopAddress,
+    this.canAnswer = true,
   });
 
   @override
@@ -28,18 +33,36 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
   bool _isLoading = true;
   bool _isSending = false;
   final ScrollController _scrollController = ScrollController();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    // Автообновление каждые 5 секунд
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _refreshMessages());
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _answerController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshMessages() async {
+    if (_isSending) return; // Не обновлять во время отправки
+    try {
+      final question = await ProductQuestionService.getQuestion(widget.questionId);
+      if (question != null && mounted) {
+        setState(() {
+          _question = question;
+        });
+      }
+    } catch (e) {
+      // Игнорируем ошибки автообновления
+    }
   }
 
   Future<void> _loadData() async {
@@ -54,6 +77,10 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
       setState(() {
         _shops = shops;
         _question = question;
+        // Используем переданный shopAddress или первый магазин из списка
+        if (widget.shopAddress != null && widget.shopAddress!.isNotEmpty) {
+          _selectedShopAddress = widget.shopAddress;
+        }
         _isLoading = false;
       });
       
@@ -194,6 +221,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final senderPhone = prefs.getString('user_phone') ?? '';
+      final senderName = prefs.getString('user_name') ?? 'Сотрудник';
 
       // Загружаем фото, если есть
       String? photoUrl;
@@ -210,6 +238,7 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
         shopAddress: _selectedShopAddress!,
         text: _answerController.text.trim(),
         senderPhone: senderPhone.isNotEmpty ? senderPhone : null,
+        senderName: senderName,
         imageUrl: photoUrl,
       );
 
@@ -286,29 +315,51 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
                 )
               : Column(
                   children: [
-                    // Выбор магазина (обязательное поле)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      color: Colors.orange[50],
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedShopAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Магазин *',
-                          hintText: 'Выберите магазин',
-                          border: const OutlineInputBorder(),
-                          errorText: _selectedShopAddress == null ? 'Обязательное поле' : null,
+                    // Выбор магазина (только если можно отвечать)
+                    if (widget.canAnswer)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        color: Colors.orange[50],
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedShopAddress,
+                          decoration: InputDecoration(
+                            labelText: 'Магазин *',
+                            hintText: 'Выберите магазин',
+                            border: const OutlineInputBorder(),
+                            errorText: _selectedShopAddress == null ? 'Обязательное поле' : null,
+                          ),
+                          items: _shops.map((shop) => DropdownMenuItem<String>(
+                            value: shop.address,
+                            child: Text(shop.address),
+                          )).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedShopAddress = value;
+                            });
+                          },
                         ),
-                        items: _shops.map((shop) => DropdownMenuItem<String>(
-                          value: shop.address,
-                          child: Text(shop.address),
-                        )).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedShopAddress = value;
-                          });
-                        },
                       ),
-                    ),
+                    // Предупреждение если нельзя отвечать
+                    if (!widget.canAnswer)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        color: Colors.red[50],
+                        child: Row(
+                          children: [
+                            Icon(Icons.lock, color: Colors.red[700], size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Время ответа истекло. Просмотр без возможности ответа.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     // История диалога
                     Expanded(
                       child: ListView.builder(
@@ -387,93 +438,94 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
                         },
                       ),
                     ),
-                    // Поле ввода ответа
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Превью фото
-                          if (_selectedImage != null) ...[
-                            Stack(
+                    // Поле ввода ответа (только если можно отвечать)
+                    if (widget.canAnswer)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, -2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Превью фото
+                            if (_selectedImage != null) ...[
+                              Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.file(
+                                      _selectedImage!,
+                                      width: double.infinity,
+                                      height: 150,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.white),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.black54,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedImage = null;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            Row(
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(
-                                    _selectedImage!,
-                                    width: double.infinity,
-                                    height: 150,
-                                    fit: BoxFit.cover,
+                                Expanded(
+                                  child: TextField(
+                                    controller: _answerController,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Введите ответ...',
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    maxLines: null,
+                                    textInputAction: TextInputAction.send,
+                                    onSubmitted: (_) => _sendAnswer(),
                                   ),
                                 ),
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.close, color: Colors.white),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.black54,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedImage = null;
-                                      });
-                                    },
-                                  ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.photo),
+                                  onPressed: _isSending ? null : _showImageSourceDialog,
+                                  tooltip: 'Прикрепить фото',
+                                ),
+                                IconButton(
+                                  icon: _isSending
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                                          ),
+                                        )
+                                      : const Icon(Icons.send, color: Color(0xFF004D40)),
+                                  onPressed: _isSending ? null : _sendAnswer,
+                                  tooltip: 'Отправить',
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
                           ],
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _answerController,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Введите ответ...',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  ),
-                                  maxLines: null,
-                                  textInputAction: TextInputAction.send,
-                                  onSubmitted: (_) => _sendAnswer(),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.photo),
-                                onPressed: _isSending ? null : _showImageSourceDialog,
-                                tooltip: 'Прикрепить фото',
-                              ),
-                              IconButton(
-                                icon: _isSending
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
-                                        ),
-                                      )
-                                    : const Icon(Icons.send, color: Color(0xFF004D40)),
-                                onPressed: _isSending ? null : _sendAnswer,
-                                tooltip: 'Отправить',
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
     );

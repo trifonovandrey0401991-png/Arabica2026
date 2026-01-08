@@ -9,6 +9,7 @@ import '../models/shift_handover_question_model.dart';
 import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../envelope/pages/envelope_form_page.dart';
 
 /// Страница с вопросами сдачи смены
 class ShiftHandoverQuestionsPage extends StatefulWidget {
@@ -486,6 +487,46 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             backgroundColor: Colors.green,
           ),
         );
+
+        // Для заведующей предлагаем сформировать конверт
+        if (widget.targetRole == 'manager') {
+          final shouldCreateEnvelope = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Сформировать конверт?'),
+              content: const Text(
+                'Вы закончили сдачу смены. Хотите сформировать конверт с выручкой?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Нет, на главную'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF004D40),
+                  ),
+                  child: const Text('Да, сформировать'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldCreateEnvelope == true && mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => EnvelopeFormPage(
+                  employeeName: widget.employeeName,
+                  shopAddress: widget.shopAddress,
+                ),
+              ),
+            );
+            return;
+          }
+        }
+
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {

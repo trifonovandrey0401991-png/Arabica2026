@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import '../models/recount_question_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -23,15 +24,19 @@ class RecountQuestionService {
   static Future<RecountQuestion?> createQuestion({
     required String question,
     required int grade,
+    Map<String, String>? referencePhotos,
   }) async {
     Logger.debug('📤 Создание вопроса пересчета: $question');
 
+    final requestBody = <String, dynamic>{
+      'question': question,
+      'grade': grade,
+    };
+    if (referencePhotos != null) requestBody['referencePhotos'] = referencePhotos;
+
     return await BaseHttpService.post<RecountQuestion>(
       endpoint: baseEndpoint,
-      body: {
-        'question': question,
-        'grade': grade,
-      },
+      body: requestBody,
       fromJson: (json) => RecountQuestion.fromJson(json),
       itemKey: 'question',
     );
@@ -42,12 +47,14 @@ class RecountQuestionService {
     required String id,
     String? question,
     int? grade,
+    Map<String, String>? referencePhotos,
   }) async {
     Logger.debug('📤 Обновление вопроса пересчета: $id');
 
     final body = <String, dynamic>{};
     if (question != null) body['question'] = question;
     if (grade != null) body['grade'] = grade;
+    if (referencePhotos != null) body['referencePhotos'] = referencePhotos;
 
     return await BaseHttpService.put<RecountQuestion>(
       endpoint: '$baseEndpoint/$id',
@@ -55,6 +62,57 @@ class RecountQuestionService {
       fromJson: (json) => RecountQuestion.fromJson(json),
       itemKey: 'question',
     );
+  }
+
+  /// Загрузить эталонное фото для вопроса
+  static Future<String?> uploadReferencePhoto({
+    required String questionId,
+    required String shopAddress,
+    required File photoFile,
+  }) async {
+    try {
+      Logger.debug('📤 Загрузка эталонного фото для вопроса: $questionId, магазин: $shopAddress');
+
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/$questionId/reference-photo';
+      final request = http.MultipartRequest('POST', Uri.parse(url));
+
+      // Добавляем файл - читаем байты для поддержки веб и мобильных платформ
+      final bytes = await photoFile.readAsBytes();
+
+      // Генерируем безопасное имя файла с timestamp
+      final filename = 'recount_ref_${questionId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'photo',
+          bytes,
+          filename: filename,
+        ),
+      );
+
+      // Добавляем адрес магазина
+      request.fields['shopAddress'] = shopAddress;
+
+      final streamedResponse = await request.send().timeout(ApiConstants.longTimeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final photoUrl = result['photoUrl'] as String;
+          Logger.debug('✅ Эталонное фото загружено: $photoUrl');
+          return photoUrl;
+        } else {
+          Logger.error('❌ Ошибка загрузки эталонного фото: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки эталонного фото', e);
+      return null;
+    }
   }
 
   /// Удалить вопрос

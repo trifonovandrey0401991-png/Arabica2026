@@ -1,0 +1,4 @@
+===  ===
+tail: cannot open '' for reading: No such file or directory
+===  ===
+tail: cannot open '' for reading: No such file or directory

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/recount_report_model.dart';
+import '../models/pending_recount_model.dart';
 import '../services/recount_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'recount_report_view_page.dart';
@@ -20,7 +21,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   DateTime? _selectedDate;
   List<RecountReport> _allReports = [];
   List<Shop> _allShops = [];
-  List<Shop> _pendingShops = []; // Магазины без пересчёта сегодня
+  List<PendingRecount> _pendingRecounts = []; // Непройденные пересчёты (магазин + смена)
   List<RecountReport> _expiredReports = [];
 
   @override
@@ -68,8 +69,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       _allReports = serverReports;
       _allReports.sort((a, b) => b.completedAt.compareTo(a.completedAt));
 
-      // Вычисляем магазины без пересчёта за сегодня
-      _calculatePendingShops();
+      // Вычисляем непройденные пересчёты за сегодня (магазин + смена)
+      _calculatePendingRecounts();
 
       print('✅ Всего отчетов: ${_allReports.length}');
       setState(() {});
@@ -79,26 +80,70 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     }
   }
 
-  /// Вычислить магазины без пересчёта за сегодня
-  void _calculatePendingShops() {
+  /// Определить тип смены по времени отчёта
+  String _getShiftType(DateTime dateTime) {
+    final hour = dateTime.hour;
+    // Утренняя смена: до 14:00
+    // Вечерняя смена: после 14:00
+    return hour < 14 ? 'morning' : 'evening';
+  }
+
+  /// Вычислить непройденные пересчёты за сегодня (магазин + смена)
+  void _calculatePendingRecounts() {
     final today = DateTime.now();
     final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final currentHour = today.hour;
 
-    // Магазины, которые сдали пересчёт сегодня
-    final shopsWithRecountToday = <String>{};
+    // Собираем пройденные пересчёты за сегодня (ключ: магазин_смена)
+    final completedRecounts = <String>{};
     for (final report in _allReports) {
       final reportDate = '${report.completedAt.year}-${report.completedAt.month.toString().padLeft(2, '0')}-${report.completedAt.day.toString().padLeft(2, '0')}';
       if (reportDate == todayStr) {
-        shopsWithRecountToday.add(report.shopAddress.toLowerCase().trim());
+        final shiftType = _getShiftType(report.completedAt);
+        final key = '${report.shopAddress.toLowerCase().trim()}_$shiftType';
+        completedRecounts.add(key);
       }
     }
 
-    // Фильтруем магазины - оставляем только те, которые не сдали пересчёт
-    _pendingShops = _allShops.where((shop) {
-      return !shopsWithRecountToday.contains(shop.address.toLowerCase().trim());
-    }).toList();
+    // Формируем список непройденных пересчётов
+    _pendingRecounts = [];
+    for (final shop in _allShops) {
+      final shopKey = shop.address.toLowerCase().trim();
 
-    print('📋 Магазинов без пересчёта сегодня: ${_pendingShops.length}');
+      // Утренняя смена - показываем если текущее время >= 8:00
+      if (currentHour >= 8) {
+        final morningKey = '${shopKey}_morning';
+        if (!completedRecounts.contains(morningKey)) {
+          _pendingRecounts.add(PendingRecount(
+            shopAddress: shop.address,
+            shiftType: 'morning',
+            shiftName: 'Утренняя смена',
+          ));
+        }
+      }
+
+      // Вечерняя смена - показываем если текущее время >= 14:00
+      if (currentHour >= 14) {
+        final eveningKey = '${shopKey}_evening';
+        if (!completedRecounts.contains(eveningKey)) {
+          _pendingRecounts.add(PendingRecount(
+            shopAddress: shop.address,
+            shiftType: 'evening',
+            shiftName: 'Вечерняя смена',
+          ));
+        }
+      }
+    }
+
+    // Сортируем: сначала по магазину, потом по смене
+    _pendingRecounts.sort((a, b) {
+      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+      if (shopCompare != 0) return shopCompare;
+      // Утренняя смена первой
+      return a.shiftType == 'morning' ? -1 : 1;
+    });
+
+    print('📋 Непройденных пересчётов сегодня: ${_pendingRecounts.length}');
   }
 
   List<RecountReport> _applyFilters(List<RecountReport> reports) {
@@ -123,10 +168,28 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return filtered;
   }
 
-  /// Не оценённые отчёты (ожидают проверки)
+  /// Не оценённые отчёты (ожидают проверки) - только менее 5 часов
   List<RecountReport> get _awaitingReports {
-    final pending = _allReports.where((r) => !r.isRated && !r.isExpired).toList();
+    final now = DateTime.now();
+    final pending = _allReports.where((r) {
+      if (r.isRated) return false;
+      if (r.isExpired) return false;
+      // Показываем только отчёты, которые ожидают менее 5 часов
+      final hours = now.difference(r.completedAt).inHours;
+      return hours < 5;
+    }).toList();
     return _applyFilters(pending);
+  }
+
+  /// Отчёты, которые ожидают более 5 часов (не оценённые)
+  List<RecountReport> get _overdueUnratedReports {
+    final now = DateTime.now();
+    return _allReports.where((r) {
+      if (r.isRated) return false;
+      if (r.isExpired) return true; // Просроченные тоже включаем
+      final hours = now.difference(r.completedAt).inHours;
+      return hours >= 5;
+    }).toList();
   }
 
   /// Оценённые отчёты
@@ -183,7 +246,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                 children: [
                   const Icon(Icons.warning_amber, size: 16),
                   const SizedBox(width: 4),
-                  Text('Не пройдены (${_pendingShops.length})',
+                  Text('Не пройдены (${_pendingRecounts.length})',
                       style: const TextStyle(fontSize: 13)),
                 ],
               ),
@@ -194,7 +257,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                 children: [
                   const Icon(Icons.hourglass_empty, size: 16),
                   const SizedBox(width: 4),
-                  Text('Ожидают (${_allReports.where((r) => !r.isRated && !r.isExpired).length})',
+                  Text('Ожидают (${_awaitingReports.length})',
                       style: const TextStyle(fontSize: 13)),
                 ],
               ),
@@ -216,7 +279,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                 children: [
                   const Icon(Icons.cancel, size: 16),
                   const SizedBox(width: 4),
-                  Text('Не оценённые (${_expiredReports.length})',
+                  Text('Не оценённые (${_expiredReports.length + _overdueUnratedReports.length})',
                       style: const TextStyle(fontSize: 13)),
                 ],
               ),
@@ -350,7 +413,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
   /// Виджет для списка непройденных пересчётов
   Widget _buildPendingRecountsList() {
-    if (_pendingShops.isEmpty) {
+    if (_pendingRecounts.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -371,25 +434,50 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _pendingShops.length,
+      itemCount: _pendingRecounts.length,
       itemBuilder: (context, index) {
-        final shop = _pendingShops[index];
+        final pending = _pendingRecounts[index];
+        final isMorning = pending.shiftType == 'morning';
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.orange,
-              child: Icon(shop.icon, color: Colors.white),
+              backgroundColor: isMorning ? Colors.orange : Colors.deepOrange,
+              child: Icon(
+                isMorning ? Icons.wb_sunny : Icons.nights_stay,
+                color: Colors.white,
+              ),
             ),
             title: Text(
-              shop.address,
+              pending.shopAddress,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Дата: $todayStr'),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        color: isMorning ? Colors.blue.shade100 : Colors.purple.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        pending.shiftName,
+                        style: TextStyle(
+                          color: isMorning ? Colors.blue.shade700 : Colors.purple.shade700,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 const Text(
                   'Пересчёт не проведён',
                   style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
@@ -409,7 +497,24 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
   /// Виджет для списка просроченных (не оценённых) отчётов
   Widget _buildExpiredReportsList() {
-    if (_expiredReports.isEmpty) {
+    // Объединяем просроченные с сервера и отчеты ожидающие более 5 часов
+    final allUnrated = [
+      ..._expiredReports,
+      ..._overdueUnratedReports,
+    ];
+
+    // Сортируем по дате (новые сначала)
+    allUnrated.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+
+    // Убираем дубликаты по ID
+    final Map<String, RecountReport> uniqueReports = {};
+    for (final report in allUnrated) {
+      uniqueReports[report.id] = report;
+    }
+    final reports = uniqueReports.values.toList();
+    reports.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+
+    if (reports.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -432,17 +537,23 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _expiredReports.length,
+      itemCount: reports.length,
       itemBuilder: (context, index) {
-        final report = _expiredReports[index];
+        final report = reports[index];
+        final now = DateTime.now();
+        final waitingHours = now.difference(report.completedAt).inHours;
+        final isFromExpiredList = report.isExpired || report.expiredAt != null;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           color: Colors.red.shade50,
           child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Colors.red,
-              child: Icon(Icons.cancel, color: Colors.white),
+            leading: CircleAvatar(
+              backgroundColor: isFromExpiredList ? Colors.red : Colors.orange,
+              child: Icon(
+                isFromExpiredList ? Icons.cancel : Icons.access_time,
+                color: Colors.white,
+              ),
             ),
             title: Text(
               report.shopAddress,
@@ -457,10 +568,15 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                   'Сдан: ${report.completedAt.day}.${report.completedAt.month}.${report.completedAt.year} '
                   '${report.completedAt.hour.toString().padLeft(2, '0')}:${report.completedAt.minute.toString().padLeft(2, '0')}',
                 ),
-                if (report.expiredAt != null)
+                if (isFromExpiredList && report.expiredAt != null)
                   Text(
                     'Просрочен: ${report.expiredAt!.day}.${report.expiredAt!.month}.${report.expiredAt!.year}',
                     style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  )
+                else
+                  Text(
+                    'Ожидает: $waitingHours ч. (более 5 часов)',
+                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
               ],
             ),
@@ -478,6 +594,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
                 MaterialPageRoute(
                   builder: (context) => RecountReportViewPage(
                     report: report,
+                    isReadOnly: true, // Только просмотр
                     onReportUpdated: () {
                       _loadData();
                     },

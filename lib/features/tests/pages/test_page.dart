@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../models/test_model.dart';
+import '../services/test_result_service.dart';
 
 /// Страница тестирования
 class TestPage extends StatefulWidget {
@@ -112,9 +114,9 @@ class _TestPageState extends State<TestPage> {
     }
   }
 
-  void _finishTest({bool timeExpired = false}) {
+  void _finishTest({bool timeExpired = false}) async {
     _timer?.cancel();
-    
+
     if (timeExpired) {
       setState(() {
         _testFinished = true;
@@ -129,12 +131,38 @@ class _TestPageState extends State<TestPage> {
           score++;
         }
       }
-      
+
       setState(() {
         _score = score;
         _testFinished = true;
       });
+
+      // Сохраняем результат на сервер
+      await _saveTestResult(score);
+
       _showResultsDialog();
+    }
+  }
+
+  Future<void> _saveTestResult(int score) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final employeeName = prefs.getString('userName') ?? 'Неизвестный сотрудник';
+      final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+
+      final timeSpent = 420 - _timeRemaining; // Сколько времени потрачено
+
+      await TestResultService.saveResult(
+        employeeName: employeeName,
+        employeePhone: employeePhone.replaceAll(RegExp(r'[\s\+]'), ''),
+        score: score,
+        totalQuestions: _questions.length,
+        timeSpent: timeSpent,
+      );
+
+      print('✅ Результат теста сохранен: $employeeName - $score/${_questions.length}');
+    } catch (e) {
+      print('❌ Ошибка сохранения результата теста: $e');
     }
   }
 

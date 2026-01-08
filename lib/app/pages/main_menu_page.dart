@@ -10,7 +10,6 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import '../../features/loyalty/pages/loyalty_page.dart';
-import '../../features/loyalty/pages/loyalty_scanner_page.dart';
 import '../../features/shops/models/shop_model.dart';
 import '../../features/training/pages/training_page.dart';
 import '../../features/tests/pages/test_page.dart';
@@ -20,6 +19,7 @@ import '../../features/shifts/services/shift_sync_service.dart';
 import '../../features/rko/services/rko_service.dart';
 import '../../features/recipes/pages/recipes_list_page.dart';
 import '../../features/recipes/pages/recipe_edit_page.dart';
+import '../../features/recipes/models/recipe_model.dart';
 import '../../features/reviews/pages/review_type_selection_page.dart';
 import '../../features/reviews/pages/reviews_list_page.dart';
 import 'my_dialogs_page.dart';
@@ -45,7 +45,6 @@ import '../../features/loyalty/services/loyalty_storage.dart';
 import '../../features/product_questions/pages/product_search_shop_selection_page.dart';
 import '../../features/employees/pages/employee_panel_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
-import '../../features/work_schedule/pages/my_schedule_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -385,16 +384,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
-    // Списать бонусы - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.qr_code_scanner, 'Списать бонусы', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const LoyaltyScannerPage()),
-        );
-      }));
-    }
-
     // Отзывы - видно всем
     items.add(_tile(context, Icons.rate_review, 'Отзывы', () {
       print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
@@ -449,16 +438,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const WorkSchedulePage()),
-        );
-      }));
-    }
-
-    // Мой график - для сотрудников и админов (просмотр личного графика)
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.calendar_month, 'Мой график', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MySchedulePage()),
         );
       }));
     }
@@ -562,25 +541,28 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           shop.icon,
-                          size: 40,
+                          size: 36,
                           color: Colors.white,
                         ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            shop.address,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                        const SizedBox(height: 4),
+                        Flexible(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              shop.address,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -598,25 +580,20 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  /// Загрузить категории для конкретного магазина
+  /// Загрузить категории для конкретного магазина (только те, что есть в рецептах)
   Future<List<String>> _loadCategoriesForShop(BuildContext context, String shopAddress) async {
     try {
-      // Загружаем меню из menu.json
-      final jsonString = await rootBundle.loadString('assets/menu.json');
-      final List<dynamic> jsonData = json.decode(jsonString);
-      
-      // Фильтруем по магазину и получаем уникальные категории
-      final categories = jsonData
-          .map((e) => {
-                'category': (e['category'] ?? '').toString(),
-                'shop': (e['shop'] ?? '').toString(),
-              })
-          .where((item) => item['shop'] == shopAddress)
-          .map((e) => e['category'] as String)
+      // Загружаем рецепты с сервера - в меню показываем только категории с рецептами
+      final recipes = await Recipe.loadRecipesFromServer();
+
+      // Получаем уникальные категории из рецептов
+      final categories = recipes
+          .map((r) => r.category)
+          .where((c) => c.isNotEmpty)
           .toSet()
           .toList()
         ..sort();
-      
+
       return categories;
     } catch (e) {
       print('Ошибка загрузки категорий: $e');

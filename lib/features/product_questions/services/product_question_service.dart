@@ -5,6 +5,10 @@ import '../models/product_question_message_model.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
+// Endpoints
+const String _baseEndpoint = '/api/product-questions';
+const String _dialogsEndpoint = '/api/product-question-dialogs';
+
 class ProductQuestionService {
   static const String baseEndpoint = '/api/product-questions';
 
@@ -124,6 +128,7 @@ class ProductQuestionService {
     required String shopAddress,
     required String text,
     String? senderPhone,
+    String? senderName,
     String? imageUrl,
   }) async {
     try {
@@ -133,6 +138,7 @@ class ProductQuestionService {
         'shopAddress': shopAddress,
         'text': text,
         if (senderPhone != null) 'senderPhone': senderPhone,
+        if (senderName != null) 'senderName': senderName,
         if (imageUrl != null) 'imageUrl': imageUrl,
       };
 
@@ -162,7 +168,7 @@ class ProductQuestionService {
     }
   }
 
-  /// Получить диалоги клиента
+  /// Получить диалоги клиента (старый метод для совместимости)
   static Future<List<ProductQuestionDialog>> getClientQuestions(String clientPhone) async {
     try {
       Logger.debug('📥 Загрузка диалогов клиента: $clientPhone');
@@ -174,7 +180,7 @@ class ProductQuestionService {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
-          final dialogsJson = result['dialogs'] as List<dynamic>;
+          final dialogsJson = result['dialogs'] as List<dynamic>? ?? [];
           final dialogs = dialogsJson
               .map((json) => ProductQuestionDialog.fromJson(json as Map<String, dynamic>))
               .toList();
@@ -190,6 +196,78 @@ class ProductQuestionService {
     } catch (e) {
       Logger.error('❌ Ошибка загрузки диалогов', e);
       return [];
+    }
+  }
+
+  /// Получить данные диалога клиента (единый чат "Поиск Товара")
+  static Future<ProductQuestionClientDialogData?> getClientDialog(String clientPhone) async {
+    try {
+      final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+      Logger.debug('📥 Загрузка диалога клиента: $normalizedPhone');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/client/$normalizedPhone'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final data = ProductQuestionClientDialogData.fromJson(result);
+          Logger.debug('✅ Загружено сообщений: ${data.messages.length}, hasQuestions: ${data.hasQuestions}');
+          return data;
+        } else {
+          Logger.error('❌ Ошибка загрузки диалога: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки диалога', e);
+      return null;
+    }
+  }
+
+  /// Отправить ответ клиента (продолжить диалог)
+  static Future<ProductQuestionMessage?> sendClientReply({
+    required String clientPhone,
+    required String text,
+    String? imageUrl,
+    String? questionId,
+  }) async {
+    try {
+      final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+      Logger.debug('📤 Отправка ответа клиента: $normalizedPhone');
+
+      final requestBody = {
+        'text': text,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (questionId != null) 'questionId': questionId,
+      };
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/client/$normalizedPhone/reply'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(requestBody),
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Ответ клиента отправлен');
+          if (result['message'] != null) {
+            return ProductQuestionMessage.fromJson(result['message'] as Map<String, dynamic>);
+          }
+        } else {
+          Logger.error('❌ Ошибка отправки ответа: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка отправки ответа клиента', e);
+      return null;
     }
   }
 
@@ -255,5 +333,256 @@ class ProductQuestionService {
       Logger.error('❌ Ошибка загрузки фото', e);
       return null;
     }
+  }
+
+  // ========== Персональные диалоги ==========
+
+  /// Создать персональный диалог с магазином
+  static Future<PersonalProductDialog?> createPersonalDialog({
+    required String clientPhone,
+    required String clientName,
+    required String shopAddress,
+    String? originalQuestionId,
+    String? initialMessage,
+    String? initialImageUrl,
+  }) async {
+    try {
+      Logger.debug('📤 Создание персонального диалога: $clientName → $shopAddress');
+
+      final requestBody = {
+        'clientPhone': clientPhone,
+        'clientName': clientName,
+        'shopAddress': shopAddress,
+        if (originalQuestionId != null) 'originalQuestionId': originalQuestionId,
+        if (initialMessage != null) 'initialMessage': initialMessage,
+        if (initialImageUrl != null) 'initialImageUrl': initialImageUrl,
+      };
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(requestBody),
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true && result['dialog'] != null) {
+          Logger.debug('✅ Диалог создан: ${result['dialog']['id']}');
+          return PersonalProductDialog.fromJson(result['dialog'] as Map<String, dynamic>);
+        } else {
+          Logger.error('❌ Ошибка создания диалога: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка создания персонального диалога', e);
+      return null;
+    }
+  }
+
+  /// Получить все персональные диалоги клиента
+  static Future<List<PersonalProductDialog>> getClientPersonalDialogs(String clientPhone) async {
+    try {
+      final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+      Logger.debug('📥 Загрузка персональных диалогов клиента: $normalizedPhone');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint/client/$normalizedPhone'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final dialogsJson = result['dialogs'] as List<dynamic>? ?? [];
+          final dialogs = dialogsJson
+              .map((json) => PersonalProductDialog.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Загружено персональных диалогов: ${dialogs.length}');
+          return dialogs;
+        } else {
+          Logger.error('❌ Ошибка загрузки диалогов: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return [];
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки персональных диалогов', e);
+      return [];
+    }
+  }
+
+  /// Получить все персональные диалоги для магазина (для сотрудников)
+  static Future<List<PersonalProductDialog>> getShopPersonalDialogs(String shopAddress) async {
+    try {
+      Logger.debug('📥 Загрузка персональных диалогов магазина: $shopAddress');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint/shop/${Uri.encodeComponent(shopAddress)}'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final dialogsJson = result['dialogs'] as List<dynamic>? ?? [];
+          final dialogs = dialogsJson
+              .map((json) => PersonalProductDialog.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Загружено персональных диалогов магазина: ${dialogs.length}');
+          return dialogs;
+        } else {
+          Logger.error('❌ Ошибка загрузки диалогов: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return [];
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки персональных диалогов магазина', e);
+      return [];
+    }
+  }
+
+  /// Получить все персональные диалоги (для сотрудников)
+  static Future<List<PersonalProductDialog>> getAllPersonalDialogs() async {
+    try {
+      Logger.debug('📥 Загрузка всех персональных диалогов');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint/all'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final dialogsJson = result['dialogs'] as List<dynamic>? ?? [];
+          final dialogs = dialogsJson
+              .map((json) => PersonalProductDialog.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Загружено всех диалогов: ${dialogs.length}');
+          return dialogs;
+        } else {
+          Logger.error('❌ Ошибка загрузки диалогов: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return [];
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки всех диалогов', e);
+      return [];
+    }
+  }
+
+  /// Получить конкретный персональный диалог
+  static Future<PersonalProductDialog?> getPersonalDialog(String dialogId) async {
+    try {
+      Logger.debug('📥 Загрузка персонального диалога: $dialogId');
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint/$dialogId'),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true && result['dialog'] != null) {
+          final dialog = PersonalProductDialog.fromJson(result['dialog'] as Map<String, dynamic>);
+          Logger.debug('✅ Диалог загружен: ${dialog.id}');
+          return dialog;
+        } else {
+          Logger.error('❌ Ошибка загрузки диалога: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки персонального диалога', e);
+      return null;
+    }
+  }
+
+  /// Отправить сообщение в персональный диалог
+  static Future<ProductQuestionMessage?> sendPersonalDialogMessage({
+    required String dialogId,
+    required String senderType,
+    required String text,
+    String? senderPhone,
+    String? senderName,
+    String? imageUrl,
+  }) async {
+    try {
+      Logger.debug('📤 Отправка сообщения в диалог: $dialogId ($senderType)');
+
+      final requestBody = {
+        'senderType': senderType,
+        'text': text,
+        if (senderPhone != null) 'senderPhone': senderPhone,
+        if (senderName != null) 'senderName': senderName,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+      };
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint/$dialogId/messages'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(requestBody),
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true && result['message'] != null) {
+          Logger.debug('✅ Сообщение отправлено');
+          return ProductQuestionMessage.fromJson(result['message'] as Map<String, dynamic>);
+        } else {
+          Logger.error('❌ Ошибка отправки сообщения: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка отправки сообщения в диалог', e);
+      return null;
+    }
+  }
+
+  /// Отметить персональный диалог как прочитанный
+  static Future<bool> markPersonalDialogRead({
+    required String dialogId,
+    required String readerType,
+  }) async {
+    try {
+      Logger.debug('📤 Отметка диалога как прочитанного: $dialogId ($readerType)');
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$_dialogsEndpoint/$dialogId/mark-read'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({'readerType': readerType}),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Диалог отмечен как прочитанный');
+          return true;
+        } else {
+          Logger.error('❌ Ошибка отметки диалога: ${result['error']}');
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode}');
+      }
+      return false;
+    } catch (e) {
+      Logger.error('❌ Ошибка отметки диалога', e);
+      return false;
+    }
+  }
+
+  /// Проверить, есть ли персональные диалоги у клиента
+  static Future<bool> hasPersonalDialogs(String clientPhone) async {
+    final dialogs = await getClientPersonalDialogs(clientPhone);
+    return dialogs.isNotEmpty;
   }
 }

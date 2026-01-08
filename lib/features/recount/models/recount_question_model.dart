@@ -7,19 +7,30 @@ class RecountQuestion {
   final String id;
   final String question;
   final int grade; // 1 - очень важный, 2 - средней важности, 3 - не очень важный
+  final Map<String, String>? referencePhotos; // Объект с ключами-адресами магазинов и значениями-URL эталонных фото
 
   RecountQuestion({
     required this.id,
     required this.question,
     required this.grade,
+    this.referencePhotos,
   });
 
   /// Создать RecountQuestion из JSON
   factory RecountQuestion.fromJson(Map<String, dynamic> json) {
+    // Парсим referencePhotos (может быть null, объект или отсутствовать)
+    Map<String, String>? referencePhotos;
+    if (json['referencePhotos'] != null && json['referencePhotos'] is Map) {
+      referencePhotos = Map<String, String>.from(
+        (json['referencePhotos'] as Map).map((key, value) => MapEntry(key.toString(), value.toString()))
+      );
+    }
+
     return RecountQuestion(
       id: json['id'] ?? '',
       question: json['question'] ?? '',
       grade: json['grade'] is int ? json['grade'] : int.tryParse(json['grade'].toString()) ?? 1,
+      referencePhotos: referencePhotos,
     );
   }
 
@@ -29,6 +40,7 @@ class RecountQuestion {
       'id': id,
       'question': question,
       'grade': grade,
+      if (referencePhotos != null) 'referencePhotos': referencePhotos,
     };
   }
 

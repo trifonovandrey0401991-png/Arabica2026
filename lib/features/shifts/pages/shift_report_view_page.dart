@@ -10,10 +10,12 @@ import 'shift_photo_gallery_page.dart';
 /// Страница просмотра отчета пересменки
 class ShiftReportViewPage extends StatefulWidget {
   final ShiftReport report;
+  final bool isReadOnly;
 
   const ShiftReportViewPage({
     super.key,
     required this.report,
+    this.isReadOnly = false,
   });
 
   @override
@@ -501,7 +503,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                 ],
               ),
             ),
-            // Кнопка подтверждения внизу (не показываем для просроченных)
+            // Кнопка подтверждения внизу (не показываем для просроченных и read-only)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -546,6 +548,50 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                             const SizedBox(height: 4),
                             const Text(
                               'Подтверждение невозможно',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : widget.isReadOnly
+                    ? Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.access_time, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Отчет не подтвержден вовремя',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Ожидает более 5 часов',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Только для просмотра',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,

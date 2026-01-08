@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/client_model.dart';
 import '../services/client_service.dart';
 import '../../../shared/dialogs/send_message_dialog.dart';
 import 'client_chat_page.dart';
+import 'admin_management_dialog_page.dart';
 
 /// Страница управления клиентами
 class ClientsManagementPage extends StatefulWidget {
@@ -39,6 +39,25 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
 
     try {
       final clients = await ClientService.getClients();
+      // Сортируем: клиенты с непрочитанными сообщениями сверху
+      clients.sort((a, b) {
+        // Сначала по наличию непрочитанных (management имеет приоритет)
+        final aHasUnread = a.hasUnreadFromClient || a.hasUnreadManagement;
+        final bHasUnread = b.hasUnreadFromClient || b.hasUnreadManagement;
+        if (aHasUnread && !bHasUnread) return -1;
+        if (!aHasUnread && bHasUnread) return 1;
+        // Management сообщения имеют приоритет
+        if (a.hasUnreadManagement && !b.hasUnreadManagement) return -1;
+        if (!a.hasUnreadManagement && b.hasUnreadManagement) return 1;
+        // Затем по времени последнего сообщения (новые сверху)
+        if (a.lastClientMessageTime != null && b.lastClientMessageTime != null) {
+          return b.lastClientMessageTime!.compareTo(a.lastClientMessageTime!);
+        }
+        if (a.lastClientMessageTime != null) return -1;
+        if (b.lastClientMessageTime != null) return 1;
+        // По имени
+        return a.name.compareTo(b.name);
+      });
       setState(() {
         _clients = clients;
         _filteredClients = clients;
@@ -95,6 +114,32 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
               title: const Text('Начать диалог'),
               onTap: () => Navigator.pop(context, 'chat'),
             ),
+            ListTile(
+              leading: Icon(
+                Icons.business,
+                color: client.hasUnreadManagement ? Colors.orange : const Color(0xFF004D40),
+              ),
+              title: Row(
+                children: [
+                  const Text('Связь с руководством'),
+                  if (client.hasUnreadManagement) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'NEW',
+                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              onTap: () => Navigator.pop(context, 'management'),
+            ),
           ],
         ),
         actions: [
@@ -110,7 +155,20 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
       await _showSendMessageDialog(client);
     } else if (action == 'chat') {
       await _openChat(client);
+    } else if (action == 'management') {
+      await _openManagementChat(client);
     }
+  }
+
+  Future<void> _openManagementChat(Client client) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminManagementDialogPage(client: client),
+      ),
+    );
+    // После возврата обновляем список
+    _loadClients();
   }
 
   Future<void> _showSendMessageDialog(Client? client) async {
@@ -134,12 +192,20 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
   }
 
   Future<void> _openChat(Client client) async {
+    // Отмечаем сетевые сообщения как прочитанные
+    if (client.hasUnreadFromClient) {
+      ClientService.markNetworkMessagesAsReadByAdmin(client.phone);
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ClientChatPage(client: client),
       ),
     );
+
+    // После возврата обновляем список
+    _loadClients();
   }
 
   @override
@@ -219,18 +285,81 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                             elevation: 2,
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: const Color(0xFF004D40),
-                                child: Text(
-                                  client.name.isNotEmpty
-                                      ? client.name[0].toUpperCase()
-                                      : client.phone[0],
-                                  style: const TextStyle(color: Colors.white),
-                                ),
+                              leading: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: const Color(0xFF004D40),
+                                    child: Text(
+                                      client.name.isNotEmpty
+                                          ? client.name[0].toUpperCase()
+                                          : client.phone[0],
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                  if (client.hasUnreadFromClient)
+                                    Positioned(
+                                      right: -4,
+                                      top: -4,
+                                      child: Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            '!',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                              title: Text(
-                                client.name.isNotEmpty ? client.name : 'Без имени',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      client.name.isNotEmpty ? client.name : 'Без имени',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: client.hasUnreadFromClient || client.hasUnreadManagement
+                                            ? Colors.red
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  if (client.hasUnreadManagement)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      margin: const EdgeInsets.only(left: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(Icons.business, size: 12, color: Colors.white),
+                                          SizedBox(width: 2),
+                                          Text(
+                                            'Рук.',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
                               subtitle: Text(client.phone),
                               trailing: const Icon(Icons.chevron_right),

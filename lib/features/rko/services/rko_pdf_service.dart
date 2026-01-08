@@ -178,8 +178,18 @@ class RKOPDFService {
           'rkoType': rkoType,
         }),
       ).timeout(const Duration(seconds: 60));
-      
+
       if (response.statusCode == 200) {
+        // Проверяем, не вернул ли сервер JSON ошибку вместо PDF
+        // Сервер может вернуть 200 с {"success":false,"error":"..."}
+        final contentType = response.headers['content-type'] ?? '';
+        if (contentType.contains('application/json') ||
+            (response.bodyBytes.length < 500 && response.body.contains('"success"'))) {
+          // Это JSON ответ с ошибкой, а не PDF
+          Logger.debug('Сервер вернул JSON вместо PDF: ${response.body}');
+          throw Exception('Сервер не поддерживает генерацию из DOCX');
+        }
+
         // Генерируем имя файла
         final fileName = generateFileName(
           date: DateTime.now(),

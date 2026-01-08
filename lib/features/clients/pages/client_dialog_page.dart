@@ -64,13 +64,15 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
         });
         
         // Прокручиваем вниз после загрузки
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -403,11 +405,10 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                 )
               : ListView.builder(
                   controller: _scrollController,
-                  reverse: true,
                   padding: const EdgeInsets.all(16),
                   itemCount: _dialog!.messages.length,
                   itemBuilder: (context, index) {
-                    final message = _dialog!.messages[_dialog!.messages.length - 1 - index];
+                    final message = _dialog!.messages[index];
                     return _buildMessage(message);
                   },
                 ),

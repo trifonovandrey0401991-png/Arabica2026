@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' as excel;
+import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
+import '../../shops/models/shop_model.dart';
 
 /// Страница управления вопросами пересчета
 class RecountQuestionsManagementPage extends StatefulWidget {
@@ -135,10 +138,10 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         return;
       }
       
-      final excel = Excel.decodeBytes(bytes);
+      final excelFile = excel.Excel.decodeBytes(bytes);
 
       // Получаем первый лист
-      if (excel.tables.isEmpty) {
+      if (excelFile.tables.isEmpty) {
         if (mounted) {
           Navigator.pop(context); // Закрываем индикатор
           ScaffoldMessenger.of(context).showSnackBar(
@@ -151,7 +154,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         return;
       }
 
-      final sheet = excel.tables[excel.tables.keys.first]!;
+      final sheet = excelFile.tables[excelFile.tables.keys.first]!;
       final questions = <Map<String, dynamic>>[];
 
       // Парсим данные (данные начинаются с первой строки, без заголовка)
@@ -491,6 +494,12 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
   final _questionController = TextEditingController();
   int? _selectedGrade;
   bool _isSaving = false;
+  List<Shop> _allShops = [];
+  Map<String, String> _referencePhotoUrls = {};
+  Map<String, File?> _referencePhotoFiles = {};
+  Map<String, Uint8List?> _referencePhotoBytes = {}; // Для веб-платформы
+  bool _isLoadingShops = true;
+  bool _isUploadingPhotos = false;
 
   @override
   void initState() {
@@ -498,8 +507,106 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
     if (widget.question != null) {
       _questionController.text = widget.question!.question;
       _selectedGrade = widget.question!.grade;
+
+      if (widget.question!.referencePhotos != null) {
+        _referencePhotoUrls = Map<String, String>.from(widget.question!.referencePhotos!);
+      }
     } else {
       _selectedGrade = 1; // По умолчанию грейд 1
+    }
+    _loadShops();
+  }
+
+  Future<void> _loadShops() async {
+    try {
+      setState(() => _isLoadingShops = true);
+      final shops = await Shop.loadShopsFromServer();
+      setState(() {
+        _allShops = shops;
+        _isLoadingShops = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingShops = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка загрузки магазинов: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickReferencePhoto(String shopAddress) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        // Читаем bytes для веб-платформы
+        final bytes = await image.readAsBytes();
+
+        setState(() {
+          _referencePhotoFiles[shopAddress] = File(image.path);
+          _referencePhotoBytes[shopAddress] = bytes;
+        });
+
+        if (widget.question != null) {
+          await _uploadReferencePhoto(widget.question!.id, shopAddress, File(image.path));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка выбора фото: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
+    try {
+      setState(() => _isUploadingPhotos = true);
+
+      final photoUrl = await RecountQuestionService.uploadReferencePhoto(
+        questionId: questionId,
+        shopAddress: shopAddress,
+        photoFile: photoFile,
+      );
+
+      if (photoUrl != null) {
+        setState(() {
+          _referencePhotoUrls[shopAddress] = photoUrl;
+          _isUploadingPhotos = false;
+        });
+      } else {
+        setState(() => _isUploadingPhotos = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка загрузки эталонного фото'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isUploadingPhotos = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -536,13 +643,55 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
           id: widget.question!.id,
           question: _questionController.text.trim(),
           grade: _selectedGrade,
+          referencePhotos: _referencePhotoUrls.isNotEmpty ? _referencePhotoUrls : null,
         );
+
+        // Загружаем новые эталонные фото, если есть
+        if (result != null) {
+          for (final entry in _referencePhotoFiles.entries) {
+            if (entry.value != null && !_referencePhotoUrls.containsKey(entry.key)) {
+              await _uploadReferencePhoto(result.id, entry.key, entry.value!);
+            }
+          }
+          final updatedResult = await RecountQuestionService.getQuestions();
+          if (updatedResult.isNotEmpty) {
+            result = updatedResult.firstWhere((q) => q.id == result!.id, orElse: () => result!);
+          }
+        }
       } else {
         // Создание нового вопроса
         result = await RecountQuestionService.createQuestion(
           question: _questionController.text.trim(),
           grade: _selectedGrade!,
+          referencePhotos: null,
         );
+
+        // Загружаем эталонные фото для нового вопроса
+        if (result != null) {
+          final Map<String, String> uploadedPhotos = {};
+          for (final entry in _referencePhotoFiles.entries) {
+            if (entry.value != null) {
+              final photoUrl = await RecountQuestionService.uploadReferencePhoto(
+                questionId: result.id,
+                shopAddress: entry.key,
+                photoFile: entry.value!,
+              );
+              if (photoUrl != null) {
+                uploadedPhotos[entry.key] = photoUrl;
+              }
+            }
+          }
+
+          if (uploadedPhotos.isNotEmpty) {
+            final updatedResult = await RecountQuestionService.updateQuestion(
+              id: result.id,
+              referencePhotos: uploadedPhotos,
+            );
+            if (updatedResult != null) {
+              result = updatedResult;
+            }
+          }
+        }
       }
 
       if (result != null && mounted) {
@@ -638,7 +787,6 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
               ),
               RadioListTile<int>(
                 title: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 20,
@@ -649,9 +797,7 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Flexible(
-                      child: Text('Грейд 2: Средней важности'),
-                    ),
+                    const Text('Грейд 2: Средней важности'),
                   ],
                 ),
                 value: 2,
@@ -688,6 +834,26 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
                   });
                 },
               ),
+              const SizedBox(height: 24),
+              const Text(
+                'Эталонные фото для магазинов:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_isLoadingShops)
+                const Center(child: CircularProgressIndicator())
+              else
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: _allShops.map((shop) => _buildReferencePhotoSection(shop.address, shop.name)).toList(),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -714,6 +880,100 @@ class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
               : const Text('Сохранить'),
         ),
       ],
+    );
+  }
+
+  Widget _buildReferencePhotoSection(String shopAddress, String shopName) {
+    final hasPhoto = _referencePhotoUrls.containsKey(shopAddress) ||
+                     _referencePhotoFiles.containsKey(shopAddress) ||
+                     _referencePhotoBytes.containsKey(shopAddress);
+    final photoFile = _referencePhotoFiles[shopAddress];
+    final photoBytes = _referencePhotoBytes[shopAddress];
+    final photoUrl = _referencePhotoUrls[shopAddress];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              shopName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (hasPhoto) ...[
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: photoBytes != null
+                      ? Image.memory(
+                          photoBytes,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(child: Icon(Icons.error));
+                          },
+                        )
+                      : photoFile != null && !kIsWeb
+                          ? Image.file(
+                              photoFile,
+                              fit: BoxFit.cover,
+                            )
+                          : photoUrl != null
+                              ? Image.network(
+                                  photoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(child: Icon(Icons.error));
+                                  },
+                                )
+                              : const Center(child: Icon(Icons.image)),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
+                    icon: const Icon(Icons.add_photo_alternate, size: 18),
+                    label: Text(hasPhoto ? 'Изменить фото' : 'Добавить эталонное фото'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF004D40),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                if (hasPhoto) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      setState(() {
+                        _referencePhotoFiles.remove(shopAddress);
+                        _referencePhotoBytes.remove(shopAddress);
+                        _referencePhotoUrls.remove(shopAddress);
+                      });
+                    },
+                    tooltip: 'Удалить фото',
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

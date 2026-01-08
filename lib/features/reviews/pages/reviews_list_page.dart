@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
-import 'review_detail_page.dart';
+import 'reviews_shop_detail_page.dart';
 
-/// Страница списка всех отзывов (для админа)
+/// Страница списка отзывов, сгруппированных по магазинам (для админа)
 class ReviewsListPage extends StatefulWidget {
   const ReviewsListPage({super.key});
 
@@ -12,20 +12,53 @@ class ReviewsListPage extends StatefulWidget {
 }
 
 class _ReviewsListPageState extends State<ReviewsListPage> {
-  late Future<List<Review>> _reviewsFuture;
-  String _searchQuery = '';
-  String? _selectedType; // 'positive', 'negative', или null (все)
+  bool _isLoading = true;
+  Map<String, ShopReviewStats> _shopStats = {};
 
   @override
   void initState() {
     super.initState();
-    _reviewsFuture = ReviewService.getAllReviews();
+    _loadReviews();
   }
 
-  void _refreshReviews() {
+  Future<void> _loadReviews() async {
     setState(() {
-      _reviewsFuture = ReviewService.getAllReviews();
+      _isLoading = true;
     });
+
+    try {
+      final reviews = await ReviewService.getAllReviews();
+
+      // Группируем по магазинам
+      final stats = <String, ShopReviewStats>{};
+
+      for (final review in reviews) {
+        final shopAddress = review.shopAddress;
+
+        if (!stats.containsKey(shopAddress)) {
+          stats[shopAddress] = ShopReviewStats(shopAddress: shopAddress);
+        }
+
+        stats[shopAddress]!.addReview(review);
+      }
+
+      setState(() {
+        _shopStats = stats;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка загрузки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -37,7 +70,7 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _refreshReviews,
+            onPressed: _loadReviews,
             tooltip: 'Обновить',
           ),
         ],
@@ -51,214 +84,146 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
             opacity: 0.6,
           ),
         ),
-        child: Column(
-          children: [
-            // Поиск и фильтры
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.white.withOpacity(0.1),
-              child: Column(
-                children: [
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Поиск по имени или телефону...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _shopStats.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Нет отзывов',
+                      style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedType,
-                          decoration: InputDecoration(
-                            labelText: 'Тип отзыва',
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: null,
-                              child: Text('Все типы'),
-                            ),
-                            const DropdownMenuItem<String>(
-                              value: 'positive',
-                              child: Text('Положительные'),
-                            ),
-                            const DropdownMenuItem<String>(
-                              value: 'negative',
-                              child: Text('Отрицательные'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedType = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Список отзывов
-            Expanded(
-              child: FutureBuilder<List<Review>>(
-                future: _reviewsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Отзывы не найдены',
-                        style: TextStyle(color: Colors.white, fontSize: 18),
-                      ),
-                    );
-                  }
-
-                  var reviews = snapshot.data!;
-
-                  // Фильтрация
-                  if (_searchQuery.isNotEmpty) {
-                    reviews = reviews.where((r) {
-                      return r.clientName.toLowerCase().contains(_searchQuery) ||
-                          r.clientPhone.contains(_searchQuery) ||
-                          r.shopAddress.toLowerCase().contains(_searchQuery);
-                    }).toList();
-                  }
-
-                  if (_selectedType != null) {
-                    reviews = reviews.where((r) => r.reviewType == _selectedType).toList();
-                  }
-
-                  if (reviews.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Отзывы не найдены',
-                        style: TextStyle(color: Colors.white, fontSize: 18),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
+                  )
+                : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: reviews.length,
+                    itemCount: _shopStats.length,
                     itemBuilder: (context, index) {
-                      final review = reviews[index];
-                      final lastMessage = review.getLastMessage();
-                      final hasUnread = review.messages.any((m) => m.sender == 'admin' && !m.isRead);
+                      final shopAddress = _shopStats.keys.elementAt(index);
+                      final stats = _shopStats[shopAddress]!;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: review.reviewType == 'positive'
-                                ? Colors.green
-                                : Colors.red,
+                          leading: const CircleAvatar(
+                            backgroundColor: Color(0xFF004D40),
                             child: Icon(
-                              review.reviewType == 'positive'
-                                  ? Icons.thumb_up
-                                  : Icons.thumb_down,
+                              Icons.store,
                               color: Colors.white,
                             ),
                           ),
                           title: Text(
-                            review.clientName,
+                            shopAddress,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(review.shopAddress),
-                              if (lastMessage != null)
-                                Text(
-                                  lastMessage.text,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: hasUnread ? Colors.blue : Colors.grey,
-                                    fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                            ],
+                          subtitle: Text(
+                            'Всего отзывов: ${stats.total}',
+                            style: const TextStyle(color: Colors.grey),
                           ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (hasUnread)
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.blue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Text(
-                                    '!',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                              // Положительные
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                              const Icon(Icons.arrow_forward_ios, size: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${stats.positive}',
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Отрицательные
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.cancel,
+                                      color: Colors.red,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${stats.negative}',
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.chevron_right),
                             ],
                           ),
                           onTap: () async {
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => ReviewDetailPage(
-                                  review: review,
-                                  isAdmin: true,
+                                builder: (context) => ReviewsShopDetailPage(
+                                  shopAddress: shopAddress,
+                                  reviews: stats.reviews,
                                 ),
                               ),
                             );
                             if (result == true) {
-                              _refreshReviews();
+                              _loadReviews();
                             }
                           },
                         ),
                       );
                     },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+                  ),
       ),
     );
   }
 }
 
+/// Класс для хранения статистики отзывов магазина
+class ShopReviewStats {
+  final String shopAddress;
+  final List<Review> reviews = [];
+  int positive = 0;
+  int negative = 0;
 
+  ShopReviewStats({required this.shopAddress});
 
+  int get total => positive + negative;
 
-
-
-
-
-
-
-
-
-
-
-
-
+  void addReview(Review review) {
+    reviews.add(review);
+    if (review.reviewType == 'positive') {
+      positive++;
+    } else {
+      negative++;
+    }
+  }
+}

@@ -20,6 +20,18 @@ class CartItem {
 /// Провайдер для управления корзиной
 class CartProvider with ChangeNotifier {
   final List<CartItem> _items = [];
+  String? _selectedShopAddress; // Выбранный магазин для заказа
+
+  /// Получить адрес выбранного магазина
+  String? get selectedShopAddress => _selectedShopAddress;
+
+  /// Установить адрес магазина
+  void setShopAddress(String? address) {
+    if (_selectedShopAddress != address) {
+      _selectedShopAddress = address;
+      notifyListeners();
+    }
+  }
 
   List<CartItem> get items => List.unmodifiable(_items);
 
@@ -76,6 +88,7 @@ class CartProvider with ChangeNotifier {
   /// Очистить корзину
   void clear() {
     _items.clear();
+    _selectedShopAddress = null;
     notifyListeners();
   }
 

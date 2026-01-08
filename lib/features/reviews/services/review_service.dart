@@ -58,16 +58,45 @@ class ReviewService {
     try {
       Logger.debug('📥 Загрузка всех отзывов');
 
-      final reviews = await BaseHttpService.getList<Review>(
-        endpoint: ApiConstants.reviewsEndpoint,
-        fromJson: (json) => Review.fromJson(json),
-        listKey: 'reviews',
-        timeout: ApiConstants.longTimeout,
-      );
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}${ApiConstants.reviewsEndpoint}'),
+      ).timeout(ApiConstants.longTimeout);
 
-      // Сортируем по дате создания (новые первыми)
-      reviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return reviews;
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final items = result['reviews'] as List<dynamic>;
+          final reviews = <Review>[];
+
+          for (final item in items) {
+            // Пропускаем элементы, которые не являются Map или не имеют поля 'id'
+            if (item is Map<String, dynamic> && item.containsKey('id') && item['id'] != null) {
+              try {
+                reviews.add(Review.fromJson(item));
+              } catch (e) {
+                Logger.debug('⚠️ Пропущен некорректный отзыв: ${item['id']}');
+              }
+            } else if (item is List) {
+              // Обрабатываем вложенный массив (на случай если есть)
+              for (final subItem in item) {
+                if (subItem is Map<String, dynamic> && subItem.containsKey('id') && subItem['id'] != null) {
+                  try {
+                    reviews.add(Review.fromJson(subItem));
+                  } catch (e) {
+                    Logger.debug('⚠️ Пропущен некорректный отзыв из вложенного массива');
+                  }
+                }
+              }
+            }
+          }
+
+          // Сортируем по дате создания (новые первыми)
+          reviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          Logger.debug('✅ Загружено ${reviews.length} отзывов');
+          return reviews;
+        }
+      }
+      return [];
     } catch (e) {
       Logger.error('❌ Ошибка загрузки отзывов', e);
       return [];
@@ -79,17 +108,44 @@ class ReviewService {
     try {
       Logger.debug('📥 Загрузка отзывов клиента: $phone');
 
-      final reviews = await BaseHttpService.getList<Review>(
-        endpoint: ApiConstants.reviewsEndpoint,
-        fromJson: (json) => Review.fromJson(json),
-        listKey: 'reviews',
-        queryParams: {'phone': phone},
-        timeout: ApiConstants.longTimeout,
-      );
+      final uri = Uri.parse('${ApiConstants.serverUrl}${ApiConstants.reviewsEndpoint}')
+          .replace(queryParameters: {'phone': phone});
 
-      // Сортируем по дате создания (новые первыми)
-      reviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return reviews;
+      final response = await http.get(uri).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final items = result['reviews'] as List<dynamic>;
+          final reviews = <Review>[];
+
+          for (final item in items) {
+            if (item is Map<String, dynamic> && item.containsKey('id') && item['id'] != null) {
+              try {
+                reviews.add(Review.fromJson(item));
+              } catch (e) {
+                Logger.debug('⚠️ Пропущен некорректный отзыв');
+              }
+            } else if (item is List) {
+              for (final subItem in item) {
+                if (subItem is Map<String, dynamic> && subItem.containsKey('id') && subItem['id'] != null) {
+                  try {
+                    reviews.add(Review.fromJson(subItem));
+                  } catch (e) {
+                    Logger.debug('⚠️ Пропущен некорректный отзыв из вложенного массива');
+                  }
+                }
+              }
+            }
+          }
+
+          // Сортируем по дате создания (новые первыми)
+          reviews.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          Logger.debug('✅ Загружено ${reviews.length} отзывов клиента');
+          return reviews;
+        }
+      }
+      return [];
     } catch (e) {
       Logger.error('❌ Ошибка загрузки отзывов клиента', e);
       return [];

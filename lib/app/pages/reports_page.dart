@@ -6,6 +6,9 @@ import '../../features/recount/pages/recount_reports_list_page.dart';
 import '../../features/attendance/pages/attendance_reports_page.dart';
 import '../../features/kpi/pages/kpi_type_selection_page.dart';
 import '../../features/reviews/pages/reviews_list_page.dart';
+import '../../features/product_questions/pages/product_questions_report_page.dart';
+import '../../features/tests/pages/test_report_page.dart';
+import '../../features/efficiency/pages/employees_efficiency_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../../features/employees/models/user_role_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -196,6 +199,66 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ReviewsListPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет (Поиск товаров) - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет (Поиск товаров)',
+              icon: Icons.search,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProductQuestionsReportPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет (Тестирование) - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет (Тестирование)',
+              icon: Icons.quiz,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TestReportPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет (Главная Касса) - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет (Главная Касса)',
+              icon: Icons.point_of_sale,
+              onTap: () {
+                // TODO: Добавить логику
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Функционал в разработке')),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Эффективность сотрудников - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Эффективность сотрудников',
+              icon: Icons.bar_chart,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EmployeesEfficiencyPage()),
                 );
               },
             ),

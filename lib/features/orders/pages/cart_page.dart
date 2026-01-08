@@ -3,11 +3,52 @@ import '../../../shared/providers/cart_provider.dart';
 import '../../../shared/providers/order_provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../../employees/pages/employees_page.dart';
+import '../../menu/pages/menu_page.dart';
 import 'orders_page.dart';
 
 /// Страница корзины
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
+
+  /// Строит виджет изображения для товара в корзине
+  Widget _buildCartItemImage(MenuItem item) {
+    if (item.hasNetworkPhoto) {
+      return Image.network(
+        item.imageUrl!,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return const SizedBox(
+            width: 60,
+            height: 60,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        },
+        errorBuilder: (_, __, ___) => Image.asset(
+          'assets/images/no_photo.png',
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else {
+      final imagePath = 'assets/images/${item.photoId}.jpg';
+      return Image.asset(
+        imagePath,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.asset(
+          'assets/images/no_photo.png',
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +103,6 @@ class CartPage extends StatelessWidget {
                   itemCount: cart.items.length,
                   itemBuilder: (context, index) {
                     final cartItem = cart.items[index];
-                      final imagePath =
-                          'assets/images/${cartItem.menuItem.photoId}.jpg';
 
                       return Card(
                         margin: const EdgeInsets.symmetric(
@@ -73,18 +112,7 @@ class CartPage extends StatelessWidget {
                         child: ListTile(
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.asset(
-                              imagePath,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.asset(
-                                'assets/images/no_photo.png',
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                            child: _buildCartItemImage(cartItem.menuItem),
                           ),
                           title: Text(
                             cartItem.menuItem.name,
@@ -181,6 +209,7 @@ class CartPage extends StatelessWidget {
                                   await orderProvider.createOrder(
                                     cart.items,
                                     cart.totalPrice,
+                                    shopAddress: cart.selectedShopAddress,
                                   );
                                   
                                   // Очищаем корзину
@@ -348,6 +377,7 @@ class CartPage extends StatelessWidget {
                         cart.items,
                         cart.totalPrice,
                         comment: comment,
+                        shopAddress: cart.selectedShopAddress,
                       );
                       
                       // Получаем последний созданный заказ
@@ -470,6 +500,7 @@ class CartPage extends StatelessWidget {
                             cart.items,
                             cart.totalPrice,
                             comment: comment,
+                            shopAddress: cart.selectedShopAddress,
                           );
                           
                           // Очищаем корзину
