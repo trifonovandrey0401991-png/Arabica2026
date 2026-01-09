@@ -20,6 +20,7 @@ class Employee {
   final String? email;
   final bool? isAdmin;
   final String? employeeName;
+  final int? referralCode; // Уникальный код приглашения (1-1000)
   final List<String> preferredWorkDays; // Желаемые дни работы (monday, tuesday, etc.)
   final List<String> preferredShops; // Желаемые магазины (ID или адреса)
   final Map<String, int> shiftPreferences; // Предпочтения смен: {'morning': 1, 'day': 2, 'night': 3} где 1=хочет, 2=может, 3=не будет
@@ -33,6 +34,7 @@ class Employee {
     this.email,
     this.isAdmin,
     this.employeeName,
+    this.referralCode,
     this.preferredWorkDays = const [],
     this.preferredShops = const [],
     this.shiftPreferences = const {},
@@ -86,6 +88,7 @@ class Employee {
       email: json['email']?.toString().trim(),
       isAdmin: json['isAdmin'] == true || json['isAdmin'] == 1 || json['isAdmin'] == '1',
       employeeName: json['employeeName']?.toString().trim(),
+      referralCode: json['referralCode'] is int ? json['referralCode'] : int.tryParse(json['referralCode']?.toString() ?? ''),
       preferredWorkDays: workDays,
       preferredShops: shops,
       shiftPreferences: shiftPrefs,
@@ -102,6 +105,7 @@ class Employee {
       'email': email,
       'isAdmin': isAdmin,
       'employeeName': employeeName,
+      'referralCode': referralCode,
       'preferredWorkDays': preferredWorkDays,
       'preferredShops': preferredShops,
       'shiftPreferences': shiftPreferences,
@@ -117,6 +121,7 @@ class Employee {
     String? email,
     bool? isAdmin,
     String? employeeName,
+    int? referralCode,
     List<String>? preferredWorkDays,
     List<String>? preferredShops,
     Map<String, int>? shiftPreferences,
@@ -130,6 +135,7 @@ class Employee {
       email: email ?? this.email,
       isAdmin: isAdmin ?? this.isAdmin,
       employeeName: employeeName ?? this.employeeName,
+      referralCode: referralCode ?? this.referralCode,
       preferredWorkDays: preferredWorkDays ?? this.preferredWorkDays,
       preferredShops: preferredShops ?? this.preferredShops,
       shiftPreferences: shiftPreferences ?? this.shiftPreferences,
@@ -606,6 +612,24 @@ class _EmployeesPageState extends State<EmployeesPage> {
                                     employee.phone!,
                                     style: const TextStyle(fontSize: 12),
                                   ),
+                                  if (employee.referralCode != null) ...[
+                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF004D40).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '#${employee.referralCode}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF004D40),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             if (employee.email != null &&

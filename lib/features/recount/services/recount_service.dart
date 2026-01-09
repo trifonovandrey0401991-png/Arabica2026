@@ -62,6 +62,7 @@ class RecountService {
         id: report.id,
         employeeName: report.employeeName,
         shopAddress: report.shopAddress,
+        employeePhone: report.employeePhone,
         startedAt: report.startedAt,
         completedAt: report.completedAt,
         duration: report.duration,

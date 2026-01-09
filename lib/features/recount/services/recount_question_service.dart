@@ -124,15 +124,16 @@ class RecountQuestionService {
     );
   }
 
-  /// Массовая загрузка вопросов (заменяет все существующие)
-  static Future<List<RecountQuestion>?> bulkUploadQuestions(
-    List<Map<String, dynamic>> questions,
+  /// Массовая загрузка товаров (ЗАМЕНЯЕТ ВСЕ существующие)
+  /// products: [{ barcode, productGroup, productName, grade }]
+  static Future<List<RecountQuestion>?> bulkUploadProducts(
+    List<Map<String, dynamic>> products,
   ) async {
     try {
-      Logger.debug('📤 Массовая загрузка вопросов пересчета: ${questions.length} вопросов');
+      Logger.debug('📤 Массовая загрузка товаров (замена всех): ${products.length} товаров');
 
       final requestBody = <String, dynamic>{
-        'questions': questions,
+        'products': products,
       };
 
       final response = await http.post(
@@ -142,7 +143,6 @@ class RecountQuestionService {
       ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
-        // Проверяем, что ответ - JSON, а не HTML
         final contentType = response.headers['content-type'] ?? '';
         if (!contentType.contains('application/json')) {
           Logger.error('❌ Сервер вернул не JSON: ${response.body.substring(0, 200)}');
@@ -152,16 +152,15 @@ class RecountQuestionService {
         final result = jsonDecode(response.body);
         if (result['success'] == true) {
           final questionsJson = result['questions'] as List<dynamic>;
-          final createdQuestions = questionsJson
+          final createdProducts = questionsJson
               .map((json) => RecountQuestion.fromJson(json as Map<String, dynamic>))
               .toList();
-          Logger.debug('✅ Загружено вопросов: ${createdQuestions.length}');
-          return createdQuestions;
+          Logger.debug('✅ Загружено товаров: ${createdProducts.length}');
+          return createdProducts;
         } else {
           Logger.error('❌ Ошибка массовой загрузки: ${result['error']}');
         }
       } else {
-        // Пытаемся распарсить как JSON, если не получается - показываем текст
         try {
           final errorBody = jsonDecode(response.body);
           Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, error=${errorBody['error']}');
@@ -171,9 +170,81 @@ class RecountQuestionService {
       }
       return null;
     } catch (e) {
-      Logger.error('❌ Ошибка массовой загрузки вопросов пересчета', e);
+      Logger.error('❌ Ошибка массовой загрузки товаров', e);
       return null;
     }
   }
+
+  /// Массовое добавление НОВЫХ товаров (только с новыми баркодами)
+  /// products: [{ barcode, productGroup, productName, grade }]
+  /// Возвращает: { added, skipped, total, products }
+  static Future<BulkAddResult?> bulkAddNewProducts(
+    List<Map<String, dynamic>> products,
+  ) async {
+    try {
+      Logger.debug('📤 Добавление новых товаров: ${products.length} товаров');
+
+      final requestBody = <String, dynamic>{
+        'products': products,
+      };
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/bulk-add-new'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(requestBody),
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        final contentType = response.headers['content-type'] ?? '';
+        if (!contentType.contains('application/json')) {
+          Logger.error('❌ Сервер вернул не JSON: ${response.body.substring(0, 200)}');
+          return null;
+        }
+
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          final questionsJson = result['questions'] as List<dynamic>? ?? [];
+          final addedProducts = questionsJson
+              .map((json) => RecountQuestion.fromJson(json as Map<String, dynamic>))
+              .toList();
+          Logger.debug('✅ Добавлено ${result['added']} товаров, пропущено ${result['skipped']}');
+          return BulkAddResult(
+            added: result['added'] ?? 0,
+            skipped: result['skipped'] ?? 0,
+            total: result['total'] ?? 0,
+            products: addedProducts,
+          );
+        } else {
+          Logger.error('❌ Ошибка добавления новых: ${result['error']}');
+        }
+      } else {
+        try {
+          final errorBody = jsonDecode(response.body);
+          Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, error=${errorBody['error']}');
+        } catch (e) {
+          Logger.error('❌ Ошибка API: statusCode=${response.statusCode}, body=${response.body.substring(0, 200)}');
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Ошибка добавления новых товаров', e);
+      return null;
+    }
+  }
+}
+
+/// Результат операции bulk-add-new
+class BulkAddResult {
+  final int added;
+  final int skipped;
+  final int total;
+  final List<RecountQuestion> products;
+
+  BulkAddResult({
+    required this.added,
+    required this.skipped,
+    required this.total,
+    required this.products,
+  });
 }
 

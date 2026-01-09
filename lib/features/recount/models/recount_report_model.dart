@@ -6,6 +6,7 @@ class RecountReport {
   final String id;
   final String employeeName;
   final String shopAddress;
+  final String? employeePhone; // Телефон сотрудника для верификации фото
   final DateTime startedAt;
   final DateTime completedAt;
   final Duration duration;
@@ -15,11 +16,13 @@ class RecountReport {
   final DateTime? ratedAt; // Время оценки
   final String? status; // "pending" | "rated" | "expired"
   final DateTime? expiredAt; // Когда был просрочен
+  final List<Map<String, dynamic>>? photoVerifications; // Верификация фото
 
   RecountReport({
     required this.id,
     required this.employeeName,
     required this.shopAddress,
+    this.employeePhone,
     required this.startedAt,
     required this.completedAt,
     required this.duration,
@@ -29,6 +32,7 @@ class RecountReport {
     this.ratedAt,
     this.status,
     this.expiredAt,
+    this.photoVerifications,
   });
 
   /// Генерировать уникальный ID
@@ -59,6 +63,7 @@ class RecountReport {
     'id': id,
     'employeeName': employeeName,
     'shopAddress': shopAddress,
+    'employeePhone': employeePhone,
     'startedAt': startedAt.toIso8601String(),
     'completedAt': completedAt.toIso8601String(),
     'duration': duration.inSeconds,
@@ -68,6 +73,7 @@ class RecountReport {
     'ratedAt': ratedAt?.toIso8601String(),
     'status': status,
     'expiredAt': expiredAt?.toIso8601String(),
+    'photoVerifications': photoVerifications,
   };
 
   factory RecountReport.fromJson(Map<String, dynamic> json) {
@@ -111,6 +117,7 @@ class RecountReport {
       id: json['id']?.toString() ?? '',
       employeeName: json['employeeName']?.toString() ?? '',
       shopAddress: json['shopAddress']?.toString() ?? '',
+      employeePhone: json['employeePhone']?.toString(),
       startedAt: startedAt,
       completedAt: completedAt,
       duration: duration,
@@ -126,6 +133,9 @@ class RecountReport {
       expiredAt: json['expiredAt'] != null && json['expiredAt'] is String
           ? DateTime.tryParse(json['expiredAt'])
           : null,
+      photoVerifications: (json['photoVerifications'] as List<dynamic>?)
+          ?.map((v) => v as Map<String, dynamic>)
+          .toList(),
     );
   }
 

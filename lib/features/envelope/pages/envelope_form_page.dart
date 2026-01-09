@@ -47,6 +47,9 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   File? _oooEnvelopePhoto;
   String? _oooEnvelopePhotoUrl;
 
+  // ООО расходы
+  List<ExpenseItem> _oooExpenses = [];
+
   // ИП
   File? _ipZReportPhoto;
   String? _ipZReportPhotoUrl;
@@ -98,11 +101,13 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   /// Получить эталонное фото для текущего шага
   String? _getReferencePhotoForStep(int stepIndex) {
     // Маппинг индекса шага на ID вопроса
+    // Шаги: 0-Смена, 1-ООО Z, 2-ООО Выручка, 3-ООО Расходы, 4-ООО Конверт,
+    //       5-ИП Z, 6-ИП Выручка, 7-ИП Расходы, 8-ИП Конверт, 9-Итог
     final stepToQuestionId = {
       1: 'envelope_q_2', // ООО: Z-отчет
-      3: 'envelope_q_4', // ООО: Фото конверта
-      4: 'envelope_q_5', // ИП: Z-отчет
-      7: 'envelope_q_8', // ИП: Фото конверта
+      4: 'envelope_q_4', // ООО: Фото конверта
+      5: 'envelope_q_5', // ИП: Z-отчет
+      8: 'envelope_q_8', // ИП: Фото конверта
     };
 
     final questionId = stepToQuestionId[stepIndex];
@@ -117,15 +122,16 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   }
 
   List<String> get _stepTitles => [
-    'Выбор смены',
-    'ООО: Z-отчет',
-    'ООО: Выручка и наличные',
-    'ООО: Фото конверта',
-    'ИП: Z-отчет',
-    'ИП: Выручка и наличные',
-    'ИП: Расходы',
-    'ИП: Фото конверта',
-    'Итог',
+    'Выбор смены',         // 0
+    'ООО: Z-отчет',        // 1
+    'ООО: Выручка и наличные', // 2
+    'ООО: Расходы',        // 3
+    'ООО: Фото конверта',  // 4
+    'ИП: Z-отчет',         // 5
+    'ИП: Выручка и наличные', // 6
+    'ИП: Расходы',         // 7
+    'ИП: Фото конверта',   // 8
+    'Итог',                // 9
   ];
 
   int get _totalSteps => _stepTitles.length;
@@ -197,19 +203,21 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           return false;
         }
         return true;
-      case 3: // ООО Конверт
+      case 3: // ООО Расходы
+        return true; // Расходы опциональны
+      case 4: // ООО Конверт
         if (_oooEnvelopePhoto == null && _oooEnvelopePhotoUrl == null) {
           _showError('Сфотографируйте конверт ООО');
           return false;
         }
         return true;
-      case 4: // ИП Z-отчет
+      case 5: // ИП Z-отчет
         if (_ipZReportPhoto == null && _ipZReportPhotoUrl == null) {
           _showError('Сфотографируйте Z-отчет ИП');
           return false;
         }
         return true;
-      case 5: // ИП Выручка
+      case 6: // ИП Выручка
         if (_ipRevenueController.text.isEmpty) {
           _showError('Введите сумму выручки ИП');
           return false;
@@ -219,9 +227,9 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           return false;
         }
         return true;
-      case 6: // ИП Расходы
+      case 7: // ИП Расходы
         return true; // Расходы опциональны
-      case 7: // ИП Конверт
+      case 8: // ИП Конверт
         if (_ipEnvelopePhoto == null && _ipEnvelopePhotoUrl == null) {
           _showError('Сфотографируйте конверт ИП');
           return false;
@@ -234,22 +242,47 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 
   double get _oooRevenue => double.tryParse(_oooRevenueController.text) ?? 0;
   double get _oooCash => double.tryParse(_oooCashController.text) ?? 0;
+  double get _oooTotalExpenses => _oooExpenses.fold(0.0, (sum, e) => sum + e.amount);
+  double get _oooEnvelopeAmount => _oooCash - _oooTotalExpenses;
   double get _ipRevenue => double.tryParse(_ipRevenueController.text) ?? 0;
   double get _ipCash => double.tryParse(_ipCashController.text) ?? 0;
   double get _totalExpenses => _expenses.fold(0.0, (sum, e) => sum + e.amount);
   double get _ipEnvelopeAmount => _ipCash - _totalExpenses;
-  double get _totalEnvelopeAmount => _oooCash + _ipEnvelopeAmount;
+  double get _totalEnvelopeAmount => _oooEnvelopeAmount + _ipEnvelopeAmount;
 
-  Future<void> _addExpense() async {
+  Future<void> _addOooExpense() async {
+    // Фильтруем поставщиков - для расходов ООО показываем только поставщиков ООО
+    final oooSuppliers = _suppliers.where((s) => s.legalType == 'ООО').toList();
+
     final result = await showDialog<ExpenseItem>(
       context: context,
-      builder: (context) => AddExpenseDialog(suppliers: _suppliers),
+      builder: (context) => AddExpenseDialog(suppliers: oooSuppliers),
+    );
+    if (result != null) {
+      setState(() => _oooExpenses.add(result));
+    }
+  }
+
+  void _removeOooExpense(int index) {
+    setState(() => _oooExpenses.removeAt(index));
+  }
+
+  Future<void> _addExpense() async {
+    // Фильтруем поставщиков - для расходов ИП показываем только поставщиков ИП
+    final ipSuppliers = _suppliers.where((s) => s.legalType == 'ИП').toList();
+
+    final result = await showDialog<ExpenseItem>(
+      context: context,
+      builder: (context) => AddExpenseDialog(suppliers: ipSuppliers),
     );
     if (result != null) {
       setState(() => _expenses.add(result));
@@ -290,6 +323,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         oooZReportPhotoUrl: _oooZReportPhotoUrl,
         oooRevenue: _oooRevenue,
         oooCash: _oooCash,
+        oooExpenses: _oooExpenses,
         oooEnvelopePhotoUrl: _oooEnvelopePhotoUrl,
         ipZReportPhotoUrl: _ipZReportPhotoUrl,
         ipRevenue: _ipRevenue,
@@ -303,7 +337,10 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       if (created != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Отчет успешно отправлен!'),
+            content: Text(
+              'Отчет успешно отправлен!',
+              style: TextStyle(color: Colors.white),
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -378,38 +415,40 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           cashController: _oooCashController,
         );
       case 3:
+        return _buildOooExpensesStep();
+      case 4:
         return _buildPhotoStep(
           title: 'Сфотографируйте сформированный конверт ООО',
           photo: _oooEnvelopePhoto,
           photoUrl: _oooEnvelopePhotoUrl,
           onPick: (file) => setState(() => _oooEnvelopePhoto = file),
-          referencePhotoUrl: _getReferencePhotoForStep(3),
+          referencePhotoUrl: _getReferencePhotoForStep(4),
         );
-      case 4:
+      case 5:
         return _buildPhotoStep(
           title: 'Сфотографируйте Z-отчет ИП',
           photo: _ipZReportPhoto,
           photoUrl: _ipZReportPhotoUrl,
           onPick: (file) => setState(() => _ipZReportPhoto = file),
-          referencePhotoUrl: _getReferencePhotoForStep(4),
+          referencePhotoUrl: _getReferencePhotoForStep(5),
         );
-      case 5:
+      case 6:
         return _buildRevenueStep(
           title: 'ИП',
           revenueController: _ipRevenueController,
           cashController: _ipCashController,
         );
-      case 6:
-        return _buildExpensesStep();
       case 7:
+        return _buildExpensesStep();
+      case 8:
         return _buildPhotoStep(
           title: 'Сфотографируйте сформированный конверт ИП',
           photo: _ipEnvelopePhoto,
           photoUrl: _ipEnvelopePhotoUrl,
           onPick: (file) => setState(() => _ipEnvelopePhoto = file),
-          referencePhotoUrl: _getReferencePhotoForStep(7),
+          referencePhotoUrl: _getReferencePhotoForStep(8),
         );
-      case 8:
+      case 9:
         return _buildSummaryStep();
       default:
         return const SizedBox();
@@ -653,6 +692,82 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     );
   }
 
+  Widget _buildOooExpensesStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Итоги ООО
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSummaryRow('Выручка ООО:', _oooRevenue),
+                _buildSummaryRow('Наличные ООО:', _oooCash),
+                const Divider(),
+                if (_oooExpenses.isNotEmpty) ...[
+                  const Text(
+                    'Расходы:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._oooExpenses.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final expense = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text('  ${expense.supplierName}'),
+                          ),
+                          Text(
+                            '${expense.amount.toStringAsFixed(0)} ₽',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () => _removeOooExpense(index),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const Divider(),
+                  _buildSummaryRow('Итого расходов:', _oooTotalExpenses, isRed: true),
+                ],
+                const Divider(),
+                _buildSummaryRow(
+                  'Итого в конверте ООО:',
+                  _oooEnvelopeAmount,
+                  isBold: true,
+                  isGreen: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _addOooExpense,
+            icon: const Icon(Icons.add),
+            label: const Text('Добавить расход'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildExpensesStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,8 +909,25 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                 const Divider(),
                 _buildSummaryRow('Выручка:', _oooRevenue),
                 _buildSummaryRow('Наличные:', _oooCash),
+                if (_oooExpenses.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text('Расходы:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ..._oooExpenses.map((e) => Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('- ${e.supplierName}'),
+                        Text(
+                          '-${e.amount.toStringAsFixed(0)} ₽',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
                 const Divider(),
-                _buildSummaryRow('В конверте:', _oooCash, isBold: true, isGreen: true),
+                _buildSummaryRow('В конверте:', _oooEnvelopeAmount, isBold: true, isGreen: true),
               ],
             ),
           ),

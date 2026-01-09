@@ -6,6 +6,8 @@ import '../../shifts/services/shift_report_service.dart';
 import '../../recount/services/recount_service.dart';
 import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../attendance/services/attendance_service.dart';
+import '../../tasks/services/task_service.dart';
+import '../../tasks/models/task_model.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/constants/api_constants.dart';
 
@@ -32,6 +34,7 @@ class EfficiencyDataService {
       _loadShiftHandoverRecords(start, end),
       _loadAttendanceRecords(start, end),
       _loadPenaltyRecords(start, end),
+      _loadTaskRecords(start, end),
       // TODO: Добавить загрузку остальных источников когда будут готовы
       // _loadTestRecords(start, end),
       // _loadReviewRecords(start, end),
@@ -370,6 +373,73 @@ class EfficiencyDataService {
       return [];
     } catch (e) {
       Logger.error('Error loading penalties', e);
+      return [];
+    }
+  }
+
+  /// Загрузить записи по задачам
+  static Future<List<EfficiencyRecord>> _loadTaskRecords(
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      Logger.debug('Loading task assignments...');
+      final assignments = await TaskService.getAllAssignments();
+
+      final records = <EfficiencyRecord>[];
+      for (final assignment in assignments) {
+        // Проверяем период (по времени ответа или проверки)
+        DateTime? recordDate;
+        if (assignment.status == TaskStatus.approved ||
+            assignment.status == TaskStatus.rejected) {
+          recordDate = assignment.reviewedAt;
+        } else if (assignment.status == TaskStatus.declined) {
+          recordDate = assignment.respondedAt ?? assignment.deadline;
+        } else if (assignment.status == TaskStatus.expired) {
+          recordDate = assignment.deadline;
+        }
+
+        if (recordDate == null) continue;
+        if (recordDate.isBefore(start) || recordDate.isAfter(end)) continue;
+
+        // Определяем баллы по статусу
+        double points;
+        switch (assignment.status) {
+          case TaskStatus.approved:
+            points = 1.0; // +1 за выполненную задачу
+            break;
+          case TaskStatus.rejected:
+            points = -3.0; // -3 за отклоненную админом
+            break;
+          case TaskStatus.expired:
+            points = -3.0; // -3 за просроченную
+            break;
+          case TaskStatus.declined:
+            points = -3.0; // -3 за отказ
+            break;
+          default:
+            continue; // Пропускаем pending/submitted
+        }
+
+        records.add(EfficiencyRecord(
+          id: assignment.id,
+          category: EfficiencyCategory.tasks,
+          shopAddress: '', // Задачи не привязаны к магазинам
+          employeeName: assignment.assigneeName,
+          date: recordDate,
+          points: points,
+          rawValue: {
+            'status': assignment.status.name,
+            'taskTitle': assignment.task?.title ?? 'Задача',
+          },
+          sourceId: assignment.taskId,
+        ));
+      }
+
+      Logger.debug('Loaded ${records.length} task efficiency records');
+      return records;
+    } catch (e) {
+      Logger.error('Error loading task records', e);
       return [];
     }
   }

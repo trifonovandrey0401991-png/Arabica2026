@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/efficiency_data_model.dart';
 import '../services/efficiency_data_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../bonuses/models/bonus_penalty_model.dart';
+import '../../bonuses/services/bonus_penalty_service.dart';
+import '../../bonuses/pages/bonus_penalty_history_page.dart';
+import '../../referrals/services/referral_service.dart';
+import '../../referrals/models/referral_stats_model.dart';
 
 /// Страница "Моя эффективность" для сотрудника
 class MyEfficiencyPage extends StatefulWidget {
@@ -18,8 +24,11 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
   EfficiencySummary? _summary;
   String? _error;
   String? _employeeName;
+  String? _employeeId;
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
+  BonusPenaltySummary? _bonusSummary;
+  EmployeeReferralPoints? _referralPoints;
 
   @override
   void initState() {
@@ -49,6 +58,10 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
 
       _employeeName = employeeName;
 
+      // Получаем ID сотрудника для загрузки премий/штрафов (используем телефон)
+      final prefs = await SharedPreferences.getInstance();
+      _employeeId = prefs.getString('user_phone');
+
       // Загружаем данные эффективности за выбранный месяц
       final data = await EfficiencyDataService.loadMonthData(
         _selectedYear,
@@ -64,8 +77,22 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
         }
       }
 
+      // Загружаем премии/штрафы
+      BonusPenaltySummary? bonusSummary;
+      if (_employeeId != null && _employeeId!.isNotEmpty) {
+        bonusSummary = await BonusPenaltyService.getSummary(_employeeId!);
+      }
+
+      // Загружаем баллы за приглашения
+      EmployeeReferralPoints? referralPoints;
+      if (_employeeId != null && _employeeId!.isNotEmpty) {
+        referralPoints = await ReferralService.getEmployeePoints(_employeeId!);
+      }
+
       setState(() {
         _summary = mySummary;
+        _bonusSummary = bonusSummary;
+        _referralPoints = referralPoints;
         _isLoading = false;
       });
     } catch (e) {
@@ -208,7 +235,15 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
       );
     }
 
-    if (_summary == null) {
+    // Проверяем есть ли хоть какие-то данные (эффективность, премии или приглашения)
+    final hasBonusData = _bonusSummary != null &&
+        (_bonusSummary!.currentMonthTotal != 0 || _bonusSummary!.previousMonthTotal != 0 ||
+         _bonusSummary!.currentMonthRecords.isNotEmpty || _bonusSummary!.previousMonthRecords.isNotEmpty);
+    final hasReferralData = _referralPoints != null &&
+        (_referralPoints!.currentMonthPoints > 0 || _referralPoints!.previousMonthPoints > 0 ||
+         _referralPoints!.currentMonthReferrals > 0 || _referralPoints!.previousMonthReferrals > 0);
+
+    if (_summary == null && !hasBonusData && !hasReferralData) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -245,6 +280,58 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
       );
     }
 
+    // Если есть только премии/приглашения, но нет данных эффективности - показываем только их
+    if (_summary == null) {
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Показываем заглушку вместо основной карточки
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Text(
+                        _getMonthName(_selectedMonth, _selectedYear),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '0',
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                      const Text(
+                        'баллов за отчёты',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildBonusPenaltySection(),
+            ],
+          ),
+        ),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: SingleChildScrollView(
@@ -255,6 +342,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
           children: [
             _buildTotalCard(),
             const SizedBox(height: 16),
+            _buildBonusPenaltySection(),
             _buildCategoriesCard(),
             const SizedBox(height: 16),
             _buildShopsCard(),
@@ -345,6 +433,246 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
         ),
       ],
     );
+  }
+
+  Widget _buildBonusPenaltySection() {
+    if (_bonusSummary == null) return const SizedBox.shrink();
+
+    final hasCurrentMonth = _bonusSummary!.currentMonthTotal != 0 ||
+        _bonusSummary!.currentMonthRecords.isNotEmpty;
+    final hasPreviousMonth = _bonusSummary!.previousMonthTotal != 0 ||
+        _bonusSummary!.previousMonthRecords.isNotEmpty;
+
+    if (!hasCurrentMonth && !hasPreviousMonth) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        if (hasCurrentMonth)
+          _buildBonusPenaltyCard(
+            title: 'Премия/Штрафы',
+            total: _bonusSummary!.currentMonthTotal,
+            records: _bonusSummary!.currentMonthRecords,
+            isPreviousMonth: false,
+          ),
+        if (hasPreviousMonth)
+          _buildBonusPenaltyCard(
+            title: 'Премия/Штрафы (прошлый месяц)',
+            total: _bonusSummary!.previousMonthTotal,
+            records: _bonusSummary!.previousMonthRecords,
+            isPreviousMonth: true,
+          ),
+        _buildReferralPointsSection(),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildReferralPointsSection() {
+    if (_referralPoints == null) return const SizedBox.shrink();
+
+    final hasCurrentMonth = _referralPoints!.currentMonthPoints > 0 ||
+        _referralPoints!.currentMonthReferrals > 0;
+    final hasPreviousMonth = _referralPoints!.previousMonthPoints > 0 ||
+        _referralPoints!.previousMonthReferrals > 0;
+
+    if (!hasCurrentMonth && !hasPreviousMonth) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        if (hasCurrentMonth)
+          _buildReferralPointsCard(
+            title: 'Приглашения',
+            points: _referralPoints!.currentMonthPoints,
+            referralsCount: _referralPoints!.currentMonthReferrals,
+            isPreviousMonth: false,
+          ),
+        if (hasPreviousMonth)
+          _buildReferralPointsCard(
+            title: 'Приглашения (прошлый месяц)',
+            points: _referralPoints!.previousMonthPoints,
+            referralsCount: _referralPoints!.previousMonthReferrals,
+            isPreviousMonth: true,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildReferralPointsCard({
+    required String title,
+    required int points,
+    required int referralsCount,
+    required bool isPreviousMonth,
+  }) {
+    return Card(
+      margin: EdgeInsets.only(bottom: isPreviousMonth ? 0 : 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.person_add,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: isPreviousMonth ? Colors.grey[600] : Colors.black,
+                    ),
+                  ),
+                  Text(
+                    '$referralsCount ${_getReferralsLabel(referralsCount)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '+$points',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'балл${_getPointsEnding(points)}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getReferralsLabel(int count) {
+    if (count == 1) return 'приглашение';
+    if (count >= 2 && count <= 4) return 'приглашения';
+    return 'приглашений';
+  }
+
+  String _getPointsEnding(int count) {
+    final lastTwo = count % 100;
+    if (lastTwo >= 11 && lastTwo <= 14) return 'ов';
+    final lastOne = count % 10;
+    if (lastOne == 1) return '';
+    if (lastOne >= 2 && lastOne <= 4) return 'а';
+    return 'ов';
+  }
+
+  Widget _buildBonusPenaltyCard({
+    required String title,
+    required double total,
+    required List<BonusPenalty> records,
+    required bool isPreviousMonth,
+  }) {
+    final isPositive = total >= 0;
+    final color = isPositive ? Colors.green : Colors.red;
+    final formattedTotal = '${isPositive ? '+' : ''}${total.toStringAsFixed(0)} руб';
+
+    return Card(
+      margin: EdgeInsets.only(bottom: isPreviousMonth ? 0 : 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BonusPenaltyHistoryPage(
+                title: title,
+                records: records,
+                total: total,
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.monetization_on,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: isPreviousMonth ? Colors.grey[600] : Colors.black,
+                      ),
+                    ),
+                    if (records.isNotEmpty)
+                      Text(
+                        '${records.length} ${_getRecordsLabel(records.length)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Text(
+                formattedTotal,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getRecordsLabel(int count) {
+    if (count == 1) return 'запись';
+    if (count >= 2 && count <= 4) return 'записи';
+    return 'записей';
   }
 
   Widget _buildCategoriesCard() {
@@ -451,6 +779,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
         return Icons.shopping_cart;
       case EfficiencyCategory.shiftPenalty:
         return Icons.warning;
+      case EfficiencyCategory.tasks:
+        return Icons.assignment;
     }
   }
 
@@ -476,6 +806,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
         return Colors.green;
       case EfficiencyCategory.shiftPenalty:
         return Colors.red;
+      case EfficiencyCategory.tasks:
+        return Colors.deepPurple;
     }
   }
 

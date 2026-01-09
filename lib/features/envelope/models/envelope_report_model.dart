@@ -55,6 +55,7 @@ class EnvelopeReport {
   final String? oooZReportPhotoUrl;
   final double oooRevenue;
   final double oooCash;
+  final List<ExpenseItem> oooExpenses;
   final String? oooEnvelopePhotoUrl;
 
   // ИП данные
@@ -79,6 +80,7 @@ class EnvelopeReport {
     this.oooZReportPhotoUrl,
     this.oooRevenue = 0,
     this.oooCash = 0,
+    this.oooExpenses = const [],
     this.oooEnvelopePhotoUrl,
     this.ipZReportPhotoUrl,
     this.ipRevenue = 0,
@@ -108,6 +110,13 @@ class EnvelopeReport {
           .toList();
     }
 
+    List<ExpenseItem> oooExpenses = [];
+    if (json['oooExpenses'] != null && json['oooExpenses'] is List) {
+      oooExpenses = (json['oooExpenses'] as List)
+          .map((e) => ExpenseItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
     return EnvelopeReport(
       id: json['id'] ?? '',
       employeeName: json['employeeName'] ?? '',
@@ -119,6 +128,7 @@ class EnvelopeReport {
       oooZReportPhotoUrl: json['oooZReportPhotoUrl'],
       oooRevenue: (json['oooRevenue'] ?? 0).toDouble(),
       oooCash: (json['oooCash'] ?? 0).toDouble(),
+      oooExpenses: oooExpenses,
       oooEnvelopePhotoUrl: json['oooEnvelopePhotoUrl'],
       ipZReportPhotoUrl: json['ipZReportPhotoUrl'],
       ipRevenue: (json['ipRevenue'] ?? 0).toDouble(),
@@ -143,6 +153,7 @@ class EnvelopeReport {
     'oooZReportPhotoUrl': oooZReportPhotoUrl,
     'oooRevenue': oooRevenue,
     'oooCash': oooCash,
+    'oooExpenses': oooExpenses.map((e) => e.toJson()).toList(),
     'oooEnvelopePhotoUrl': oooEnvelopePhotoUrl,
     'ipZReportPhotoUrl': ipZReportPhotoUrl,
     'ipRevenue': ipRevenue,
@@ -164,6 +175,7 @@ class EnvelopeReport {
     String? oooZReportPhotoUrl,
     double? oooRevenue,
     double? oooCash,
+    List<ExpenseItem>? oooExpenses,
     String? oooEnvelopePhotoUrl,
     String? ipZReportPhotoUrl,
     double? ipRevenue,
@@ -184,6 +196,7 @@ class EnvelopeReport {
       oooZReportPhotoUrl: oooZReportPhotoUrl ?? this.oooZReportPhotoUrl,
       oooRevenue: oooRevenue ?? this.oooRevenue,
       oooCash: oooCash ?? this.oooCash,
+      oooExpenses: oooExpenses ?? this.oooExpenses,
       oooEnvelopePhotoUrl: oooEnvelopePhotoUrl ?? this.oooEnvelopePhotoUrl,
       ipZReportPhotoUrl: ipZReportPhotoUrl ?? this.ipZReportPhotoUrl,
       ipRevenue: ipRevenue ?? this.ipRevenue,
@@ -202,8 +215,13 @@ class EnvelopeReport {
     return expenses.fold(0.0, (sum, e) => sum + e.amount);
   }
 
-  /// Сумма в конверте ООО (наличные)
-  double get oooEnvelopeAmount => oooCash;
+  /// Общая сумма расходов ООО
+  double get oooTotalExpenses {
+    return oooExpenses.fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  /// Сумма в конверте ООО (наличные минус расходы)
+  double get oooEnvelopeAmount => oooCash - oooTotalExpenses;
 
   /// Сумма в конверте ИП (наличные минус расходы)
   double get ipEnvelopeAmount => ipCash - totalExpenses;

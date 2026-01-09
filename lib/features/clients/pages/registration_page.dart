@@ -6,6 +6,7 @@ import '../services/registration_service.dart';
 import '../../loyalty/services/loyalty_storage.dart';
 import '../../loyalty/services/loyalty_service.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../referrals/services/referral_service.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница регистрации
@@ -20,13 +21,54 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _nameController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   bool _isLoading = false;
+  String? _referralValidationMessage;
+  bool _isReferralValid = false;
+  String? _referralEmployeeName;
 
   @override
   void dispose() {
     _phoneController.dispose();
     _nameController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _validateReferralCode(String value) async {
+    if (value.isEmpty) {
+      setState(() {
+        _referralValidationMessage = null;
+        _isReferralValid = false;
+        _referralEmployeeName = null;
+      });
+      return;
+    }
+
+    final code = int.tryParse(value);
+    if (code == null) {
+      setState(() {
+        _referralValidationMessage = 'Введите число';
+        _isReferralValid = false;
+        _referralEmployeeName = null;
+      });
+      return;
+    }
+
+    final result = await ReferralService.validateReferralCode(code);
+    if (result != null && result['valid'] == true) {
+      setState(() {
+        _referralValidationMessage = 'Сотрудник: ${result['employee']?['name'] ?? 'Найден'}';
+        _isReferralValid = true;
+        _referralEmployeeName = result['employee']?['name'];
+      });
+    } else {
+      setState(() {
+        _referralValidationMessage = result?['message'] ?? 'Код не найден';
+        _isReferralValid = false;
+        _referralEmployeeName = null;
+      });
+    }
   }
 
   Future<void> _register() async {
@@ -68,10 +110,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
             // Сохраняем данные о клиенте на сервере (если это клиент, а не админ/сотрудник)
             if (roleData.role.name == 'client') {
               try {
+                final referralCode = _isReferralValid ? int.tryParse(_referralCodeController.text) : null;
                 await RegistrationService.saveClientToServer(
                   phone: existingUser.phone,
                   name: existingUser.name,
                   clientName: existingUser.name,
+                  referredBy: referralCode,
                 );
                 Logger.debug('✅ Данные существующего клиента сохранены на сервере');
               } catch (e) {
@@ -94,10 +138,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 // Если не найден как сотрудник, регистрируем как клиента
                 print('ℹ️ Пользователь не найден как сотрудник, регистрируем как клиента');
                 try {
+                  final referralCode = _isReferralValid ? int.tryParse(_referralCodeController.text) : null;
                   await RegistrationService.saveClientToServer(
                     phone: existingUser.phone,
                     name: existingUser.name,
                     clientName: existingUser.name,
+                    referredBy: referralCode,
                   );
                   Logger.debug('✅ Данные существующего клиента сохранены на сервере (без роли)');
                 } catch (e2) {
@@ -108,10 +154,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
               print('⚠️ Ошибка проверки через API сотрудников: $apiError');
               // В случае ошибки API тоже регистрируем как клиента
               try {
+                final referralCode = _isReferralValid ? int.tryParse(_referralCodeController.text) : null;
                 await RegistrationService.saveClientToServer(
                   phone: existingUser.phone,
                   name: existingUser.name,
                   clientName: existingUser.name,
+                  referredBy: referralCode,
                 );
                 Logger.debug('✅ Данные существующего клиента сохранены на сервере (ошибка API)');
               } catch (e2) {
@@ -343,6 +391,40 @@ class _RegistrationPageState extends State<RegistrationPage> {
                             return 'Имя должно содержать минимум 2 символа';
                           }
                           return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Поле кода приглашения (необязательное)
+                      TextFormField(
+                        controller: _referralCodeController,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'Код сотрудника (необязательно)',
+                          hintText: 'Если вас пригласили',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          prefixIcon: const Icon(Icons.person_pin),
+                          suffixIcon: _referralCodeController.text.isNotEmpty
+                              ? Icon(
+                                  _isReferralValid ? Icons.check_circle : Icons.error,
+                                  color: _isReferralValid ? Colors.green : Colors.orange,
+                                )
+                              : null,
+                          helperText: _referralValidationMessage,
+                          helperStyle: TextStyle(
+                            color: _isReferralValid ? Colors.green : Colors.orange,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          _validateReferralCode(value);
                         },
                       ),
                       const SizedBox(height: 32),

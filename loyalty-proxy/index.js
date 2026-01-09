@@ -2558,6 +2558,154 @@ app.delete('/api/recount-questions/:questionId', async (req, res) => {
   }
 });
 
+// Массовая загрузка товаров пересчета (ЗАМЕНИТЬ ВСЕ)
+// Формат: { products: [{ barcode, productGroup, productName, grade }] }
+app.post('/api/recount-questions/bulk-upload', async (req, res) => {
+  try {
+    console.log('POST /api/recount-questions/bulk-upload:', req.body?.products?.length, 'товаров');
+
+    const { products } = req.body;
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходим массив products'
+      });
+    }
+
+    // Удаляем все существующие файлы
+    const existingFiles = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    for (const file of existingFiles) {
+      if (file.endsWith('.json')) {
+        fs.unlinkSync(path.join(RECOUNT_QUESTIONS_DIR, file));
+      }
+    }
+    console.log(`Удалено ${existingFiles.length} существующих файлов`);
+
+    // Создаем новые файлы
+    const createdProducts = [];
+    for (const product of products) {
+      const barcode = product.barcode?.toString().trim();
+      if (!barcode) continue;
+
+      const productId = `product_${barcode}`;
+      const sanitizedId = productId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+      const productData = {
+        id: productId,
+        barcode: barcode,
+        productGroup: product.productGroup || '',
+        productName: product.productName || '',
+        grade: product.grade || 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      fs.writeFileSync(filePath, JSON.stringify(productData, null, 2), 'utf8');
+      createdProducts.push(productData);
+    }
+
+    console.log(`Создано ${createdProducts.length} товаров`);
+
+    res.json({
+      success: true,
+      message: `Загружено ${createdProducts.length} товаров`,
+      questions: createdProducts
+    });
+  } catch (error) {
+    console.error('Ошибка массовой загрузки товаров:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Массовое добавление НОВЫХ товаров (только с новыми баркодами)
+// Формат: { products: [{ barcode, productGroup, productName, grade }] }
+app.post('/api/recount-questions/bulk-add-new', async (req, res) => {
+  try {
+    console.log('POST /api/recount-questions/bulk-add-new:', req.body?.products?.length, 'товаров');
+
+    const { products } = req.body;
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Необходим массив products'
+      });
+    }
+
+    // Читаем существующие баркоды
+    const existingBarcodes = new Set();
+    const existingFiles = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    for (const file of existingFiles) {
+      if (file.endsWith('.json')) {
+        try {
+          const data = fs.readFileSync(path.join(RECOUNT_QUESTIONS_DIR, file), 'utf8');
+          const product = JSON.parse(data);
+          if (product.barcode) {
+            existingBarcodes.add(product.barcode.toString());
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+    }
+    console.log(`Существующих товаров: ${existingBarcodes.size}`);
+
+    // Добавляем только новые
+    const addedProducts = [];
+    let skipped = 0;
+    for (const product of products) {
+      const barcode = product.barcode?.toString().trim();
+      if (!barcode) {
+        skipped++;
+        continue;
+      }
+
+      if (existingBarcodes.has(barcode)) {
+        skipped++;
+        continue;
+      }
+
+      const productId = `product_${barcode}`;
+      const sanitizedId = productId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+      const productData = {
+        id: productId,
+        barcode: barcode,
+        productGroup: product.productGroup || '',
+        productName: product.productName || '',
+        grade: product.grade || 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      fs.writeFileSync(filePath, JSON.stringify(productData, null, 2), 'utf8');
+      addedProducts.push(productData);
+      existingBarcodes.add(barcode);
+    }
+
+    console.log(`Добавлено ${addedProducts.length} новых товаров, пропущено ${skipped}`);
+
+    res.json({
+      success: true,
+      message: `Добавлено ${addedProducts.length} новых товаров`,
+      added: addedProducts.length,
+      skipped: skipped,
+      total: existingBarcodes.size,
+      questions: addedProducts
+    });
+  } catch (error) {
+    console.error('Ошибка добавления новых товаров:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ============================================================================
 // API для вопросов пересменки (Shift Questions)
 // ============================================================================
@@ -3860,4 +4008,225 @@ app.delete('/api/orders/:id', async (req, res) => {
 });
 
 // POST /api/fcm-tokens - сохранение FCM токенаapp.post('/api/fcm-tokens', async (req, res) => {  try {    const { phone, token } = req.body;    const normalizedPhone = phone.replace(/[s+]/g, '');        const tokenDir = '/var/www/fcm-tokens';    if (!fs.existsSync(tokenDir)) {      fs.mkdirSync(tokenDir, { recursive: true });    }        const tokenFile = path.join(tokenDir, `${normalizedPhone}.json`);    fs.writeFileSync(tokenFile, JSON.stringify({      phone: normalizedPhone,      token,      updatedAt: new Date().toISOString()    }, null, 2), 'utf8');        console.log(`✅ FCM токен сохранен для ${normalizedPhone}`);    res.json({ success: true });  } catch (err) {    console.error('❌ Ошибка сохранения токена:', err);    res.status(500).json({ success: false, error: err.message });  }});
+
+// ==================== ПРЕМИИ И ШТРАФЫ ====================
+const BONUS_PENALTIES_DIR = '/var/www/bonus-penalties';
+
+// Вспомогательная функция для получения месяца в формате YYYY-MM
+function getCurrentMonth() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+// Вспомогательная функция для получения прошлого месяца
+function getPreviousMonth() {
+  const now = new Date();
+  now.setMonth(now.getMonth() - 1);
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+// GET /api/bonus-penalties - получить премии/штрафы за месяц
+app.get('/api/bonus-penalties', async (req, res) => {
+  try {
+    const month = req.query.month || getCurrentMonth();
+    const employeeId = req.query.employeeId;
+
+    console.log(`📥 GET /api/bonus-penalties month=${month}, employeeId=${employeeId || 'all'}`);
+
+    // Создаем директорию, если её нет
+    if (!fs.existsSync(BONUS_PENALTIES_DIR)) {
+      fs.mkdirSync(BONUS_PENALTIES_DIR, { recursive: true });
+    }
+
+    const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.json({ success: true, records: [], total: 0 });
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+    let records = data.records || [];
+
+    // Фильтрация по сотруднику, если указан
+    if (employeeId) {
+      records = records.filter(r => r.employeeId === employeeId);
+    }
+
+    // Подсчет общей суммы
+    let total = 0;
+    records.forEach(r => {
+      if (r.type === 'bonus') {
+        total += r.amount;
+      } else {
+        total -= r.amount;
+      }
+    });
+
+    res.json({ success: true, records, total });
+  } catch (error) {
+    console.error('❌ Ошибка получения премий/штрафов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/bonus-penalties - создать премию/штраф
+app.post('/api/bonus-penalties', async (req, res) => {
+  try {
+    const { employeeId, employeeName, type, amount, comment, adminName } = req.body;
+
+    console.log(`📤 POST /api/bonus-penalties: ${type} ${amount} для ${employeeName}`);
+
+    // Валидация
+    if (!employeeId || !employeeName || !type || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Обязательные поля: employeeId, employeeName, type, amount'
+      });
+    }
+
+    if (type !== 'bonus' && type !== 'penalty') {
+      return res.status(400).json({
+        success: false,
+        error: 'type должен быть "bonus" или "penalty"'
+      });
+    }
+
+    if (amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount должен быть положительным числом'
+      });
+    }
+
+    // Создаем директорию, если её нет
+    if (!fs.existsSync(BONUS_PENALTIES_DIR)) {
+      fs.mkdirSync(BONUS_PENALTIES_DIR, { recursive: true });
+    }
+
+    const month = getCurrentMonth();
+    const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
+
+    // Читаем существующие данные или создаем новый файл
+    let data = { records: [] };
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      data = JSON.parse(content);
+    }
+
+    // Создаем новую запись
+    const newRecord = {
+      id: `bp_${Date.now()}`,
+      employeeId,
+      employeeName,
+      type,
+      amount: parseFloat(amount),
+      comment: comment || '',
+      adminName: adminName || 'Администратор',
+      createdAt: new Date().toISOString(),
+      month
+    };
+
+    data.records.push(newRecord);
+
+    // Сохраняем
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+
+    console.log(`✅ Создана запись ${type}: ${amount} для ${employeeName}`);
+    res.json({ success: true, record: newRecord });
+  } catch (error) {
+    console.error('❌ Ошибка создания премии/штрафа:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/bonus-penalties/:id - удалить премию/штраф
+app.delete('/api/bonus-penalties/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const month = req.query.month || getCurrentMonth();
+
+    console.log(`🗑️ DELETE /api/bonus-penalties/${id} month=${month}`);
+
+    const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Записи не найдены' });
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    const index = data.records.findIndex(r => r.id === id);
+    if (index === -1) {
+      return res.status(404).json({ success: false, error: 'Запись не найдена' });
+    }
+
+    data.records.splice(index, 1);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+
+    console.log(`✅ Запись ${id} удалена`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка удаления премии/штрафа:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/bonus-penalties/summary/:employeeId - получить сводку для сотрудника
+app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    console.log(`📊 GET /api/bonus-penalties/summary/${employeeId}`);
+
+    if (!fs.existsSync(BONUS_PENALTIES_DIR)) {
+      return res.json({
+        success: true,
+        currentMonth: { total: 0, records: [] },
+        previousMonth: { total: 0, records: [] }
+      });
+    }
+
+    const currentMonth = getCurrentMonth();
+    const previousMonth = getPreviousMonth();
+
+    // Функция для чтения и суммирования по месяцу
+    const getMonthData = (month) => {
+      const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
+      if (!fs.existsSync(filePath)) {
+        return { total: 0, records: [] };
+      }
+
+      const content = fs.readFileSync(filePath, 'utf8');
+      const data = JSON.parse(content);
+      const records = (data.records || []).filter(r => r.employeeId === employeeId);
+
+      let total = 0;
+      records.forEach(r => {
+        if (r.type === 'bonus') {
+          total += r.amount;
+        } else {
+          total -= r.amount;
+        }
+      });
+
+      return { total, records };
+    };
+
+    res.json({
+      success: true,
+      currentMonth: getMonthData(currentMonth),
+      previousMonth: getMonthData(previousMonth)
+    });
+  } catch (error) {
+    console.error('❌ Ошибка получения сводки:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(3000, () => console.log("Proxy listening on port 3000"));

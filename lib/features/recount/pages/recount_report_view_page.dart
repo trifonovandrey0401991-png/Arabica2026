@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recount_report_model.dart';
+import '../models/recount_settings_model.dart';
 import '../services/recount_service.dart';
+import '../services/recount_points_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 
 /// Страница просмотра отчета пересчета с возможностью оценки
@@ -28,6 +30,8 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
   int? _selectedRating;
   bool _isRating = false;
   String? _adminName;
+  Map<int, String> _photoVerificationStatus = {}; // photoIndex -> status
+  Set<int> _verifyingPhotos = {}; // фото в процессе верификации
 
   @override
   void initState() {
@@ -35,6 +39,20 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     _currentReport = widget.report;
     _selectedRating = _currentReport.adminRating;
     _loadAdminName();
+    _loadPhotoVerifications();
+  }
+
+  /// Загрузить статусы верификации фото из отчёта
+  void _loadPhotoVerifications() {
+    if (_currentReport.photoVerifications != null) {
+      for (final v in _currentReport.photoVerifications!) {
+        final photoIndex = v['photoIndex'] as int?;
+        final status = v['status'] as String?;
+        if (photoIndex != null && status != null) {
+          _photoVerificationStatus[photoIndex] = status;
+        }
+      }
+    }
   }
 
   Future<void> _loadAdminName() async {
@@ -43,6 +61,163 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     setState(() {
       _adminName = name;
     });
+  }
+
+  /// Верифицировать фото (принять или отклонить)
+  Future<void> _verifyPhoto(int photoIndex, String status) async {
+    if (_adminName == null || _currentReport.employeePhone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось определить администратора или телефон сотрудника'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _verifyingPhotos.add(photoIndex);
+    });
+
+    try {
+      final success = await RecountPointsService.verifyPhoto(
+        reportId: _currentReport.id,
+        photoIndex: photoIndex,
+        status: status,
+        adminName: _adminName!,
+        employeePhone: _currentReport.employeePhone!,
+      );
+
+      if (success) {
+        setState(() {
+          _photoVerificationStatus[photoIndex] = status;
+        });
+
+        final pointsChange = status == 'approved' ? '+0.2' : '-2.5';
+        final statusText = status == 'approved' ? 'принято' : 'отклонено';
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Фото $statusText ($pointsChange баллов)'),
+              backgroundColor: status == 'approved' ? Colors.green : Colors.red,
+            ),
+          );
+        }
+
+        if (widget.onReportUpdated != null) {
+          widget.onReportUpdated!();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка верификации фото'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Ошибка верификации фото: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _verifyingPhotos.remove(photoIndex);
+      });
+    }
+  }
+
+  /// Построить виджет кнопок верификации фото
+  Widget _buildPhotoVerificationButtons(int photoIndex) {
+    final status = _photoVerificationStatus[photoIndex];
+    final isVerifying = _verifyingPhotos.contains(photoIndex);
+
+    // Если фото уже верифицировано - показываем статус
+    if (status != null && status != 'pending') {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: status == 'approved'
+              ? Colors.green.withOpacity(0.2)
+              : Colors.red.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              status == 'approved' ? Icons.check_circle : Icons.cancel,
+              color: status == 'approved' ? Colors.green : Colors.red,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              status == 'approved' ? 'Принято (+0.2 балла)' : 'Отклонено (-2.5 балла)',
+              style: TextStyle(
+                color: status == 'approved' ? Colors.green[700] : Colors.red[700],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Если read-only или просрочено - не показываем кнопки
+    if (widget.isReadOnly || _currentReport.isExpired) {
+      return const SizedBox.shrink();
+    }
+
+    // Показываем кнопки "Принять" и "Отклонить"
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: isVerifying ? null : () => _verifyPhoto(photoIndex, 'approved'),
+            icon: isVerifying
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.check, size: 18),
+            label: const Text('Принять'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: isVerifying ? null : () => _verifyPhoto(photoIndex, 'rejected'),
+            icon: isVerifying
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.close, size: 18),
+            label: const Text('Отклонить'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _rateReport() async {
@@ -500,6 +675,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                             ),
                                 ),
                               ),
+                              // Кнопки верификации фото
+                              const SizedBox(height: 8),
+                              _buildPhotoVerificationButtons(index),
                             ],
                           ],
                         ),

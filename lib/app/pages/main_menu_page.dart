@@ -45,6 +45,8 @@ import '../../features/loyalty/services/loyalty_storage.dart';
 import '../../features/product_questions/pages/product_search_shop_selection_page.dart';
 import '../../features/employees/pages/employee_panel_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
+import '../../features/shops/pages/shops_on_map_page.dart';
+import '../../features/job_application/pages/job_application_welcome_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -354,6 +356,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
       );
     }));
 
+    // Магазины на карте - видно всем
+    items.add(_tile(context, Icons.map, 'Магазины на карте', () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ShopsOnMapPage()),
+      );
+    }));
+
     // Управление данными - только админ (включает управление сотрудниками)
     if (role == UserRole.admin) {
       items.add(_tile(context, Icons.settings_applications, 'Управление данными', () {
@@ -421,6 +431,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
         ),
       );
     }));
+
+    // Устроиться на работу - только для клиентов
+    if (role == UserRole.client) {
+      items.add(_tile(context, Icons.work_outline, 'Устроиться на работу', () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const JobApplicationWelcomePage()),
+        );
+      }));
+    }
 
     // Панель работника - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {

@@ -10,6 +10,7 @@ import '../../attendance/services/attendance_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'employees_page.dart';
 import '../services/user_role_service.dart';
+import '../services/employee_service.dart';
 import '../models/user_role_model.dart';
 import '../../rko/pages/rko_type_selection_page.dart';
 import '../services/employee_registration_service.dart';
@@ -21,6 +22,7 @@ import '../../loyalty/pages/loyalty_scanner_page.dart';
 import '../../work_schedule/pages/my_schedule_page.dart';
 import '../../product_questions/pages/product_questions_management_page.dart';
 import '../../efficiency/pages/my_efficiency_page.dart';
+import '../../tasks/pages/my_tasks_page.dart';
 
 /// Страница панели работника
 class EmployeePanelPage extends StatefulWidget {
@@ -33,6 +35,7 @@ class EmployeePanelPage extends StatefulWidget {
 class _EmployeePanelPageState extends State<EmployeePanelPage> {
   String? _userName;
   UserRoleData? _userRole;
+  int? _referralCode;
 
   @override
   void initState() {
@@ -47,8 +50,31 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         _userRole = roleData;
         _userName = roleData?.displayName;
       });
+
+      // Загружаем referralCode текущего сотрудника
+      await _loadReferralCode();
     } catch (e) {
       print('Ошибка загрузки данных пользователя: $e');
+    }
+  }
+
+  Future<void> _loadReferralCode() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final employees = await EmployeeService.getEmployees();
+        final employee = employees.firstWhere(
+          (e) => e.id == employeeId,
+          orElse: () => throw StateError('Employee not found'),
+        );
+        if (mounted && employee.referralCode != null) {
+          setState(() {
+            _referralCode = employee.referralCode;
+          });
+        }
+      }
+    } catch (e) {
+      print('Ошибка загрузки referralCode: $e');
     }
   }
 
@@ -253,18 +279,58 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Списать бонусы',
-            icon: Icons.qr_code_scanner,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LoyaltyScannerPage(),
+          // Секция "Списать бонусы" с кодом приглашения
+          Card(
+            elevation: 2,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.qr_code_scanner, color: Color(0xFF004D40)),
+                  title: const Text('Списать бонусы'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoyaltyScannerPage(),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+                if (_referralCode != null) ...[
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_pin, size: 20, color: Color(0xFF004D40)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Ваш код приглашения:',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF004D40),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '#$_referralCode',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           _buildSection(
@@ -305,6 +371,40 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
                 MaterialPageRoute(
                   builder: (context) => const MyEfficiencyPage(),
                 ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Мои Задачи',
+            icon: Icons.assignment,
+            onTap: () async {
+              final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+              final employeeId = await EmployeesPage.getCurrentEmployeeId();
+              final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MyTasksPage(
+                    employeeId: employeeId ?? employeeName,
+                    employeeName: employeeName,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Обучение ИИ',
+            icon: Icons.psychology,
+            onTap: () {
+              // TODO: Логика будет добавлена позже
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Функционал в разработке')),
               );
             },
           ),

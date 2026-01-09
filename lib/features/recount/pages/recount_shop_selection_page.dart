@@ -14,25 +14,31 @@ class RecountShopSelectionPage extends StatefulWidget {
 class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   bool _isLoading = true;
   String? _employeeName;
+  String? _employeePhone;
 
   @override
   void initState() {
     super.initState();
-    _loadEmployeeName();
+    _loadEmployeeData();
   }
 
-  /// Загрузить имя сотрудника
-  Future<void> _loadEmployeeName() async {
+  /// Загрузить данные сотрудника
+  Future<void> _loadEmployeeData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final employeeName = prefs.getString('user_name');
+      // Проверяем оба ключа для телефона (userPhone для сотрудников, user_phone для клиентов)
+      final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+
+      print('📱 Загружены данные: name=$employeeName, phone=$employeePhone');
 
       setState(() {
         _employeeName = employeeName;
+        _employeePhone = employeePhone;
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка загрузки имени сотрудника: $e');
+      print('❌ Ошибка загрузки данных сотрудника: $e');
       setState(() {
         _isLoading = false;
       });
@@ -189,6 +195,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                           builder: (context) => RecountQuestionsPage(
                                             employeeName: _employeeName!,
                                             shopAddress: shop.address,
+                                            employeePhone: _employeePhone,
                                           ),
                                         ),
                                       );

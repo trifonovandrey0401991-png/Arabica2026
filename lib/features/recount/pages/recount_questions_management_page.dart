@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel;
-import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/recount_question_model.dart';
 import '../services/recount_question_service.dart';
-import '../../shops/models/shop_model.dart';
 
-/// Страница управления вопросами пересчета
+/// Страница управления товарами пересчета
 class RecountQuestionsManagementPage extends StatefulWidget {
   const RecountQuestionsManagementPage({super.key});
 
@@ -18,24 +15,44 @@ class RecountQuestionsManagementPage extends StatefulWidget {
 }
 
 class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagementPage> {
-  List<RecountQuestion> _questions = [];
+  List<RecountQuestion> _products = [];
   bool _isLoading = true;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
+  static const _primaryColor = Color(0xFF004D40);
 
   @override
   void initState() {
     super.initState();
-    _loadQuestions();
+    _loadProducts();
   }
 
-  Future<void> _loadQuestions() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<RecountQuestion> get _filteredProducts {
+    if (_searchQuery.isEmpty) return _products;
+    final query = _searchQuery.toLowerCase();
+    return _products.where((p) =>
+      p.barcode.toLowerCase().contains(query) ||
+      p.productName.toLowerCase().contains(query) ||
+      p.productGroup.toLowerCase().contains(query)
+    ).toList();
+  }
+
+  Future<void> _loadProducts() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final questions = await RecountQuestionService.getQuestions();
+      final products = await RecountQuestionService.getQuestions();
       setState(() {
-        _questions = questions;
+        _products = products;
         _isLoading = false;
       });
     } catch (e) {
@@ -45,7 +62,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка загрузки вопросов: $e'),
+            content: Text('Ошибка загрузки товаров: $e', style: const TextStyle(color: Colors.white)),
             backgroundColor: Colors.red,
           ),
         );
@@ -53,45 +70,76 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     }
   }
 
-  Future<void> _showAddQuestionDialog() async {
-    final result = await showDialog<RecountQuestion>(
+  /// Показать диалог выбора режима загрузки
+  Future<void> _showUploadModeDialog() async {
+    final mode = await showDialog<String>(
       context: context,
-      builder: (context) => const RecountQuestionFormDialog(),
+      builder: (context) => AlertDialog(
+        title: const Text('Загрузка из Excel'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Формат файла: только .xlsx\n\nСтолбец 1: Баркод\nСтолбец 2: Группа товара\nСтолбец 3: Наименование\nСтолбец 4: Грейд (1, 2 или 3)',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, 'replace'),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Заменить все'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Удалить текущие товары и загрузить новые из файла',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, 'add_new'),
+                icon: const Icon(Icons.add),
+                label: const Text('Добавить новые'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Добавить только товары с новыми баркодами',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+        ],
+      ),
     );
 
-    if (result != null) {
-      await _loadQuestions();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Вопрос успешно добавлен'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+    if (mode != null) {
+      _uploadFromExcel(mode);
     }
   }
 
-  Future<void> _showEditQuestionDialog(RecountQuestion question) async {
-    final result = await showDialog<RecountQuestion>(
-      context: context,
-      builder: (context) => RecountQuestionFormDialog(question: question),
-    );
-
-    if (result != null) {
-      await _loadQuestions();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Вопрос успешно обновлен'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _uploadFromExcel() async {
+  Future<void> _uploadFromExcel(String mode) async {
     try {
       // Выбор файла
       FilePickerResult? pickerResult = await FilePicker.platform.pickFiles(
@@ -101,11 +149,8 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       );
 
       if (pickerResult == null || pickerResult.files.single.path == null) {
-        return; // Пользователь отменил выбор
+        return;
       }
-
-      final filePath = pickerResult.files.single.path!;
-      final fileName = pickerResult.files.single.name;
 
       // Показываем индикатор загрузки
       if (mounted) {
@@ -127,26 +172,62 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         bytes = await File(file.path!).readAsBytes();
       } else {
         if (mounted) {
-          Navigator.pop(context); // Закрываем индикатор
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Не удалось прочитать файл'),
+              content: Text('Не удалось прочитать файл', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
           );
         }
         return;
       }
-      
-      final excelFile = excel.Excel.decodeBytes(bytes);
 
-      // Получаем первый лист
-      if (excelFile.tables.isEmpty) {
+      // Проверяем формат файла - .xls не поддерживается
+      final fileName = file.name.toLowerCase();
+      if (fileName.endsWith('.xls') && !fileName.endsWith('.xlsx')) {
         if (mounted) {
-          Navigator.pop(context); // Закрываем индикатор
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Excel файл не содержит листов'),
+              content: Text(
+                'Формат .xls не поддерживается.\nСохраните файл в формате .xlsx',
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
+      excel.Excel excelFile;
+      try {
+        excelFile = excel.Excel.decodeBytes(bytes);
+      } catch (e) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Ошибка чтения файла.\nУбедитесь, что файл в формате .xlsx',
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (excelFile.tables.isEmpty) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Excel файл не содержит листов', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
           );
@@ -155,65 +236,62 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       }
 
       final sheet = excelFile.tables[excelFile.tables.keys.first]!;
-      final questions = <Map<String, dynamic>>[];
+      final products = <Map<String, dynamic>>[];
 
-      // Парсим данные (данные начинаются с первой строки, без заголовка)
+      // Парсим данные (формат: баркод, группа, название, грейд)
       for (var rowIndex = 0; rowIndex < sheet.maxRows; rowIndex++) {
         final row = sheet.rows[rowIndex];
-        
-        // Пропускаем пустые строки
-        if (row.isEmpty || (row[0]?.value == null && row.length <= 1)) {
+
+        if (row.isEmpty || row[0]?.value == null) {
           continue;
         }
 
-        // Получаем текст вопроса из первого столбца
-        final questionText = row[0]?.value?.toString().trim();
-        if (questionText == null || questionText.isEmpty) {
-          continue; // Пропускаем строки без текста вопроса
+        // Столбец 0: Баркод
+        final barcode = row[0]?.value?.toString().trim();
+        if (barcode == null || barcode.isEmpty) {
+          continue;
         }
 
-        // Получаем грейд из второго столбца
-        dynamic gradeValue = row.length > 1 ? row[1]?.value : null;
-        int? grade;
+        // Столбец 1: Группа товара
+        final productGroup = row.length > 1 ? row[1]?.value?.toString().trim() ?? '' : '';
+
+        // Столбец 2: Наименование
+        final productName = row.length > 2 ? row[2]?.value?.toString().trim() ?? '' : '';
+
+        // Столбец 3: Грейд
+        dynamic gradeValue = row.length > 3 ? row[3]?.value : null;
+        int grade = 1;
 
         if (gradeValue != null) {
-          // Пытаемся преобразовать в число
           if (gradeValue is int) {
             grade = gradeValue;
           } else if (gradeValue is double) {
             grade = gradeValue.toInt();
           } else {
             final gradeStr = gradeValue.toString().trim();
-            grade = int.tryParse(gradeStr);
+            grade = int.tryParse(gradeStr) ?? 1;
           }
         }
 
         // Валидация грейда
-        if (grade == null || (grade != 1 && grade != 2 && grade != 3)) {
-          if (mounted) {
-            Navigator.pop(context); // Закрываем индикатор
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Ошибка в строке ${rowIndex + 1}: грейд должен быть 1, 2 или 3 (получено: $gradeValue)'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
+        if (grade < 1 || grade > 3) {
+          grade = 1;
         }
 
-        questions.add({
-          'question': questionText,
+        products.add({
+          'barcode': barcode,
+          'productGroup': productGroup,
+          'productName': productName,
           'grade': grade,
         });
       }
 
-      if (questions.isEmpty) {
+      if (products.isEmpty) {
         if (mounted) {
-          Navigator.pop(context); // Закрываем индикатор
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Excel файл не содержит валидных вопросов'),
+              content: Text('Excel файл не содержит валидных товаров', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.orange,
             ),
           );
@@ -230,10 +308,11 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Подтверждение загрузки'),
+          title: Text(mode == 'replace' ? 'Заменить все товары?' : 'Добавить новые товары?'),
           content: Text(
-            'Будет загружено ${questions.length} вопросов.\n\n'
-            'Внимание: все существующие вопросы будут удалены и заменены данными из Excel файла.',
+            mode == 'replace'
+                ? 'Найдено ${products.length} товаров.\n\nВсе существующие товары будут удалены и заменены новыми из файла.'
+                : 'Найдено ${products.length} товаров.\n\nБудут добавлены только товары с баркодами, которых нет в базе.',
           ),
           actions: [
             TextButton(
@@ -242,8 +321,10 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Загрузить'),
+              style: TextButton.styleFrom(
+                foregroundColor: mode == 'replace' ? Colors.orange : _primaryColor,
+              ),
+              child: Text(mode == 'replace' ? 'Заменить' : 'Добавить'),
             ),
           ],
         ),
@@ -265,65 +346,83 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
       }
 
       // Отправляем данные на сервер
-      final uploadResult = await RecountQuestionService.bulkUploadQuestions(questions);
+      if (mode == 'replace') {
+        final uploadResult = await RecountQuestionService.bulkUploadProducts(products);
 
-      // Закрываем индикатор
-      if (mounted) {
-        Navigator.pop(context);
-      }
+        if (mounted) Navigator.pop(context);
 
-      if (uploadResult != null) {
-        // Обновляем список
-        await _loadQuestions();
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Успешно загружено ${uploadResult.length} вопросов'),
-              backgroundColor: Colors.green,
-            ),
-          );
+        if (uploadResult != null) {
+          await _loadProducts();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Загружено ${uploadResult.length} товаров', style: const TextStyle(color: Colors.white)),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ошибка загрузки товаров', style: TextStyle(color: Colors.white)),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка загрузки вопросов. Проверьте, что сервер перезапущен и endpoint доступен.'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 5),
-            ),
-          );
+        final addResult = await RecountQuestionService.bulkAddNewProducts(products);
+
+        if (mounted) Navigator.pop(context);
+
+        if (addResult != null) {
+          await _loadProducts();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Добавлено ${addResult.added} новых товаров\nПропущено ${addResult.skipped} (уже есть в базе)',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ошибка добавления товаров', style: TextStyle(color: Colors.white)),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
     } catch (e) {
-      // Закрываем индикатор, если он открыт
       if (mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      
-      String errorMessage = 'Ошибка при обработке Excel файла: $e';
-      if (e.toString().contains('FormatException') || e.toString().contains('DOCTYPE')) {
-        errorMessage = 'Сервер вернул HTML вместо JSON. Возможно, endpoint не найден. Убедитесь, что сервер перезапущен.';
-      }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text('Ошибка при обработке Excel файла: $e', style: const TextStyle(color: Colors.white)),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
           ),
         );
       }
     }
   }
 
-  Future<void> _deleteQuestion(RecountQuestion question) async {
+  Future<void> _deleteProduct(RecountQuestion product) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить вопрос?'),
-        content: Text('Вы уверены, что хотите удалить вопрос:\n"${question.question}"?'),
+        title: const Text('Удалить товар?'),
+        content: Text('Вы уверены, что хотите удалить:\n"${product.productName}"?\n\nБаркод: ${product.barcode}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -339,13 +438,13 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
     );
 
     if (confirmed == true) {
-      final success = await RecountQuestionService.deleteQuestion(question.id);
+      final success = await RecountQuestionService.deleteQuestion(product.id);
       if (success) {
-        await _loadQuestions();
+        await _loadProducts();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Вопрос успешно удален'),
+              content: Text('Товар успешно удален', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.green,
             ),
           );
@@ -354,7 +453,7 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Ошибка удаления вопроса'),
+              content: Text('Ошибка удаления товара', style: TextStyle(color: Colors.white)),
               backgroundColor: Colors.red,
             ),
           );
@@ -366,11 +465,11 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   Color _getGradeColor(int grade) {
     switch (grade) {
       case 1:
-        return Colors.red; // Очень важный
+        return Colors.red;
       case 2:
-        return Colors.orange; // Средней важности
+        return Colors.orange;
       case 3:
-        return Colors.green; // Не очень важный
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -379,13 +478,13 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   String _getGradeLabel(int grade) {
     switch (grade) {
       case 1:
-        return 'Очень важный';
+        return 'Важный';
       case 2:
-        return 'Средней важности';
+        return 'Средний';
       case 3:
-        return 'Не очень важный';
+        return 'Обычный';
       default:
-        return 'Неизвестно';
+        return '?';
     }
   }
 
@@ -393,588 +492,208 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Вопросы пересчета'),
-        backgroundColor: const Color(0xFF004D40),
+        title: const Text('Товары пересчета'),
+        backgroundColor: _primaryColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.upload_file),
-            onPressed: _uploadFromExcel,
+            onPressed: _showUploadModeDialog,
             tooltip: 'Загрузить из Excel',
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadQuestions,
+            onPressed: _loadProducts,
             tooltip: 'Обновить',
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _questions.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          : Column(
+              children: [
+                // Поиск по баркоду/названию
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Поиск по баркоду или названию...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+                // Счетчик товаров
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
                     children: [
-                      const Icon(Icons.help_outline, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Нет вопросов',
-                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      Text(
+                        'Товаров: ${_filteredProducts.length}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Нажмите + чтобы добавить первый вопрос',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
+                      if (_searchQuery.isNotEmpty && _filteredProducts.length != _products.length)
+                        Text(
+                          ' из ${_products.length}',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                        ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _questions.length,
-                  itemBuilder: (context, index) {
-                    final question = _questions[index];
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.help_outline,
-                          color: _getGradeColor(question.grade),
-                        ),
-                        title: Text(question.question),
-                        subtitle: Text(
-                          'Грейд ${question.grade}: ${_getGradeLabel(question.grade)}',
-                          style: TextStyle(
-                            color: _getGradeColor(question.grade),
-                            fontSize: 12,
-                          ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Color(0xFF004D40)),
-                              onPressed: () => _showEditQuestionDialog(question),
-                              tooltip: 'Редактировать',
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteQuestion(question),
-                              tooltip: 'Удалить',
-                            ),
-                          ],
-                        ),
-                        onTap: () => _showEditQuestionDialog(question),
-                      ),
-                    );
-                  },
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddQuestionDialog,
-        backgroundColor: const Color(0xFF004D40),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-}
-
-/// Диалог для добавления/редактирования вопроса пересчета
-class RecountQuestionFormDialog extends StatefulWidget {
-  final RecountQuestion? question;
-
-  const RecountQuestionFormDialog({super.key, this.question});
-
-  @override
-  State<RecountQuestionFormDialog> createState() => _RecountQuestionFormDialogState();
-}
-
-class _RecountQuestionFormDialogState extends State<RecountQuestionFormDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _questionController = TextEditingController();
-  int? _selectedGrade;
-  bool _isSaving = false;
-  List<Shop> _allShops = [];
-  Map<String, String> _referencePhotoUrls = {};
-  Map<String, File?> _referencePhotoFiles = {};
-  Map<String, Uint8List?> _referencePhotoBytes = {}; // Для веб-платформы
-  bool _isLoadingShops = true;
-  bool _isUploadingPhotos = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.question != null) {
-      _questionController.text = widget.question!.question;
-      _selectedGrade = widget.question!.grade;
-
-      if (widget.question!.referencePhotos != null) {
-        _referencePhotoUrls = Map<String, String>.from(widget.question!.referencePhotos!);
-      }
-    } else {
-      _selectedGrade = 1; // По умолчанию грейд 1
-    }
-    _loadShops();
-  }
-
-  Future<void> _loadShops() async {
-    try {
-      setState(() => _isLoadingShops = true);
-      final shops = await Shop.loadShopsFromServer();
-      setState(() {
-        _allShops = shops;
-        _isLoadingShops = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingShops = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки магазинов: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _pickReferencePhoto(String shopAddress) async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        // Читаем bytes для веб-платформы
-        final bytes = await image.readAsBytes();
-
-        setState(() {
-          _referencePhotoFiles[shopAddress] = File(image.path);
-          _referencePhotoBytes[shopAddress] = bytes;
-        });
-
-        if (widget.question != null) {
-          await _uploadReferencePhoto(widget.question!.id, shopAddress, File(image.path));
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка выбора фото: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _uploadReferencePhoto(String questionId, String shopAddress, File photoFile) async {
-    try {
-      setState(() => _isUploadingPhotos = true);
-
-      final photoUrl = await RecountQuestionService.uploadReferencePhoto(
-        questionId: questionId,
-        shopAddress: shopAddress,
-        photoFile: photoFile,
-      );
-
-      if (photoUrl != null) {
-        setState(() {
-          _referencePhotoUrls[shopAddress] = photoUrl;
-          _isUploadingPhotos = false;
-        });
-      } else {
-        setState(() => _isUploadingPhotos = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка загрузки эталонного фото'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      setState(() => _isUploadingPhotos = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _questionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveQuestion() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_selectedGrade == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Пожалуйста, выберите грейд'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      RecountQuestion? result;
-      if (widget.question != null) {
-        // Обновление существующего вопроса
-        result = await RecountQuestionService.updateQuestion(
-          id: widget.question!.id,
-          question: _questionController.text.trim(),
-          grade: _selectedGrade,
-          referencePhotos: _referencePhotoUrls.isNotEmpty ? _referencePhotoUrls : null,
-        );
-
-        // Загружаем новые эталонные фото, если есть
-        if (result != null) {
-          for (final entry in _referencePhotoFiles.entries) {
-            if (entry.value != null && !_referencePhotoUrls.containsKey(entry.key)) {
-              await _uploadReferencePhoto(result.id, entry.key, entry.value!);
-            }
-          }
-          final updatedResult = await RecountQuestionService.getQuestions();
-          if (updatedResult.isNotEmpty) {
-            result = updatedResult.firstWhere((q) => q.id == result!.id, orElse: () => result!);
-          }
-        }
-      } else {
-        // Создание нового вопроса
-        result = await RecountQuestionService.createQuestion(
-          question: _questionController.text.trim(),
-          grade: _selectedGrade!,
-          referencePhotos: null,
-        );
-
-        // Загружаем эталонные фото для нового вопроса
-        if (result != null) {
-          final Map<String, String> uploadedPhotos = {};
-          for (final entry in _referencePhotoFiles.entries) {
-            if (entry.value != null) {
-              final photoUrl = await RecountQuestionService.uploadReferencePhoto(
-                questionId: result.id,
-                shopAddress: entry.key,
-                photoFile: entry.value!,
-              );
-              if (photoUrl != null) {
-                uploadedPhotos[entry.key] = photoUrl;
-              }
-            }
-          }
-
-          if (uploadedPhotos.isNotEmpty) {
-            final updatedResult = await RecountQuestionService.updateQuestion(
-              id: result.id,
-              referencePhotos: uploadedPhotos,
-            );
-            if (updatedResult != null) {
-              result = updatedResult;
-            }
-          }
-        }
-      }
-
-      if (result != null && mounted) {
-        Navigator.pop(context, result);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка сохранения вопроса'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.question == null ? 'Добавить вопрос' : 'Редактировать вопрос'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _questionController,
-                decoration: const InputDecoration(
-                  labelText: 'Текст вопроса',
-                  border: OutlineInputBorder(),
-                  hintText: 'Введите текст вопроса',
-                ),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Пожалуйста, введите текст вопроса';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Грейд важности:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              RadioListTile<int>(
-                title: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Flexible(
-                      child: Text('Грейд 1: Очень важный'),
-                    ),
-                  ],
-                ),
-                value: 1,
-                groupValue: _selectedGrade,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGrade = value;
-                  });
-                },
-              ),
-              RadioListTile<int>(
-                title: Row(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('Грейд 2: Средней важности'),
-                  ],
-                ),
-                value: 2,
-                groupValue: _selectedGrade,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGrade = value;
-                  });
-                },
-              ),
-              RadioListTile<int>(
-                title: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Flexible(
-                      child: Text('Грейд 3: Не очень важный'),
-                    ),
-                  ],
-                ),
-                value: 3,
-                groupValue: _selectedGrade,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGrade = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Эталонные фото для магазинов:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_isLoadingShops)
-                const Center(child: CircularProgressIndicator())
-              else
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 300),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: _allShops.map((shop) => _buildReferencePhotoSection(shop.address, shop.name)).toList(),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Отмена'),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _saveQuestion,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004D40),
-          ),
-          child: _isSaving
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : const Text('Сохранить'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReferencePhotoSection(String shopAddress, String shopName) {
-    final hasPhoto = _referencePhotoUrls.containsKey(shopAddress) ||
-                     _referencePhotoFiles.containsKey(shopAddress) ||
-                     _referencePhotoBytes.containsKey(shopAddress);
-    final photoFile = _referencePhotoFiles[shopAddress];
-    final photoBytes = _referencePhotoBytes[shopAddress];
-    final photoUrl = _referencePhotoUrls[shopAddress];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              shopName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (hasPhoto) ...[
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: photoBytes != null
-                      ? Image.memory(
-                          photoBytes,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(child: Icon(Icons.error));
-                          },
-                        )
-                      : photoFile != null && !kIsWeb
-                          ? Image.file(
-                              photoFile,
-                              fit: BoxFit.cover,
-                            )
-                          : photoUrl != null
-                              ? Image.network(
-                                  photoUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Center(child: Icon(Icons.error));
-                                  },
-                                )
-                              : const Center(child: Icon(Icons.image)),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Row(
-              children: [
+                const SizedBox(height: 8),
+                // Список товаров
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
-                    icon: const Icon(Icons.add_photo_alternate, size: 18),
-                    label: Text(hasPhoto ? 'Изменить фото' : 'Добавить эталонное фото'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
+                  child: _filteredProducts.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _searchQuery.isNotEmpty ? Icons.search_off : Icons.inventory_2_outlined,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQuery.isNotEmpty
+                                    ? 'Товары не найдены'
+                                    : 'Нет товаров',
+                                style: const TextStyle(fontSize: 18, color: Colors.grey),
+                              ),
+                              if (_searchQuery.isEmpty) ...[
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Нажмите иконку загрузки чтобы добавить товары из Excel',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filteredProducts.length,
+                          itemBuilder: (context, index) {
+                            final product = _filteredProducts[index];
+                            return Card(
+                              elevation: 2,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    // Грейд
+                                    Container(
+                                      width: 8,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: _getGradeColor(product.grade),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Информация о товаре
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Баркод
+                                          Text(
+                                            product.barcode,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'monospace',
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          // Наименование
+                                          Text(
+                                            product.productName.isNotEmpty
+                                                ? product.productName
+                                                : '(без названия)',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: product.productName.isNotEmpty
+                                                  ? Colors.black87
+                                                  : Colors.grey,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (product.productGroup.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            // Группа товара
+                                            Text(
+                                              product.productGroup,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Грейд чип + удаление
+                                    Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _getGradeColor(product.grade).withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            _getGradeLabel(product.grade),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: _getGradeColor(product.grade),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        GestureDetector(
+                                          onTap: () => _deleteProduct(product),
+                                          child: Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.grey[400],
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                 ),
-                if (hasPhoto) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      setState(() {
-                        _referencePhotoFiles.remove(shopAddress);
-                        _referencePhotoBytes.remove(shopAddress);
-                        _referencePhotoUrls.remove(shopAddress);
-                      });
-                    },
-                    tooltip: 'Удалить фото',
-                  ),
-                ],
               ],
             ),
-          ],
-        ),
-      ),
     );
   }
 }
-

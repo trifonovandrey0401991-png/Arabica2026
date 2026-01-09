@@ -46,11 +46,13 @@ class RegistrationService {
     required String phone,
     required String name,
     required String clientName,
+    int? referredBy,
   }) async {
     await _saveClientToServer(
       phone: phone,
       name: name,
       clientName: clientName,
+      referredBy: referredBy,
     );
   }
 
@@ -59,18 +61,26 @@ class RegistrationService {
     required String phone,
     required String name,
     required String clientName,
+    int? referredBy,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'phone': phone,
+        'name': name,
+        'clientName': clientName,
+        'isAdmin': false,
+        'employeeName': '',
+      };
+
+      // Добавляем referredBy только если указан
+      if (referredBy != null) {
+        body['referredBy'] = referredBy;
+      }
+
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}${ApiConstants.clientsEndpoint}'),
         headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({
-          'phone': phone,
-          'name': name,
-          'clientName': clientName,
-          'isAdmin': false,
-          'employeeName': '',
-        }),
+        body: jsonEncode(body),
       ).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode != 200) {

@@ -10,16 +10,20 @@ import '../models/recount_question_model.dart';
 import '../models/recount_answer_model.dart';
 import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
+import '../services/recount_points_service.dart';
+import '../models/recount_settings_model.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
   final String employeeName;
   final String shopAddress;
+  final String? employeePhone;
 
   const RecountQuestionsPage({
     super.key,
     required this.employeeName,
     required this.shopAddress,
+    this.employeePhone,
   });
 
   @override
@@ -53,17 +57,45 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   Future<void> _loadQuestions() async {
     try {
       final allQuestions = await RecountQuestion.loadQuestions();
-      
-      // Выбираем 30 вопросов по алгоритму
-      final selectedQuestions = RecountQuestion.selectQuestions(allQuestions);
-      
-      // Случайно выбираем 3 вопроса для фото
+
+      // Получаем настройки для определения кол-ва вопросов и фото
+      int requiredPhotos = 3; // По умолчанию
+      int questionsCount = 30; // По умолчанию
+
+      if (widget.employeePhone != null && widget.employeePhone!.isNotEmpty) {
+        try {
+          final settings = await RecountPointsService.getSettings();
+          questionsCount = settings.questionsCount;
+          final points = await RecountPointsService.getPointsByPhone(widget.employeePhone!);
+
+          if (points != null) {
+            requiredPhotos = settings.calculateRequiredPhotos(points.points);
+            print('📊 Баллы сотрудника: ${points.points}, требуется фото: $requiredPhotos, вопросов: $questionsCount');
+          }
+        } catch (e) {
+          print('⚠️ Ошибка загрузки настроек, используем значения по умолчанию: $e');
+        }
+      } else {
+        // Если нет телефона, всё равно загружаем настройки для кол-ва вопросов
+        try {
+          final settings = await RecountPointsService.getSettings();
+          questionsCount = settings.questionsCount;
+        } catch (e) {
+          print('⚠️ Ошибка загрузки настроек: $e');
+        }
+      }
+
+      // Выбираем вопросы по алгоритму с учетом настройки
+      final selectedQuestions = RecountQuestion.selectQuestions(allQuestions, totalCount: questionsCount);
+
+      // Случайно выбираем нужное количество вопросов для фото
       final random = Random();
       final photoIndices = <int>{};
-      while (photoIndices.length < 3 && photoIndices.length < selectedQuestions.length) {
+      final maxPhotos = min(requiredPhotos, selectedQuestions.length);
+      while (photoIndices.length < maxPhotos) {
         photoIndices.add(random.nextInt(selectedQuestions.length));
       }
-      
+
       setState(() {
         _allQuestions = allQuestions;
         _selectedQuestions = selectedQuestions;
@@ -362,6 +394,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         ),
         employeeName: widget.employeeName,
         shopAddress: widget.shopAddress,
+        employeePhone: widget.employeePhone,
         startedAt: _startedAt!,
         completedAt: _completedAt!,
         duration: duration,

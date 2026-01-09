@@ -98,4 +98,9 @@ class MediaUploadService {
            lower.endsWith('.webm') ||
            lower.contains('/videos/');
   }
+
+  /// Загрузить фото для задачи
+  static Future<String?> uploadTaskPhoto(File file) async {
+    return uploadMedia(file.path, type: MediaType.image);
+  }
 }

@@ -223,6 +223,8 @@ class EmployeeEfficiencyDetailPage extends StatelessWidget {
         return Icons.shopping_cart;
       case EfficiencyCategory.shiftPenalty:
         return Icons.warning;
+      case EfficiencyCategory.tasks:
+        return Icons.assignment;
     }
   }
 
@@ -248,6 +250,8 @@ class EmployeeEfficiencyDetailPage extends StatelessWidget {
         return Colors.green;
       case EfficiencyCategory.shiftPenalty:
         return Colors.red;
+      case EfficiencyCategory.tasks:
+        return Colors.deepPurple;
     }
   }
 

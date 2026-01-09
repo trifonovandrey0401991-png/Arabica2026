@@ -8,13 +8,15 @@ import '../../features/training/services/training_article_service.dart';
 import '../../features/shops/pages/shops_management_page.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shifts/pages/shift_questions_management_page.dart';
-import '../../features/recount/pages/recount_questions_management_page.dart';
+import '../../features/recount/pages/recount_management_tabs_page.dart';
 import '../../features/tests/pages/test_questions_management_page.dart';
 import '../../features/training/pages/training_articles_management_page.dart';
 import '../../features/clients/pages/clients_management_page.dart';
 import '../../features/shift_handover/pages/shift_handover_questions_management_page.dart';
 import '../../features/suppliers/pages/suppliers_management_page.dart';
 import '../../features/efficiency/pages/points_settings_page.dart';
+import '../../features/tasks/pages/task_management_page.dart';
+import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -82,7 +84,7 @@ class DataManagementPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const RecountQuestionsManagementPage(),
+                  builder: (context) => const RecountManagementTabsPage(),
                 ),
               );
             },
@@ -168,6 +170,46 @@ class DataManagementPage extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => const PointsSettingsPage(),
                 ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Установить Задачи',
+            icon: Icons.assignment_add,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TaskManagementPage(createdBy: 'admin'),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Премия/Штрафы',
+            icon: Icons.monetization_on,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BonusPenaltyManagementPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Вопросы Для Обучения ИИ',
+            icon: Icons.psychology_alt,
+            onTap: () {
+              // TODO: Логика будет добавлена позже
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Функционал в разработке')),
               );
             },
           ),

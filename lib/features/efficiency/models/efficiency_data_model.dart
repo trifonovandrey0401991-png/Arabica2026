@@ -10,6 +10,7 @@ enum EfficiencyCategory {
   rko,            // РКО
   orders,         // Заказы
   shiftPenalty,   // Штраф за пересменку
+  tasks,          // Задачи
 }
 
 extension EfficiencyCategoryExtension on EfficiencyCategory {
@@ -35,6 +36,8 @@ extension EfficiencyCategoryExtension on EfficiencyCategory {
         return 'Заказы';
       case EfficiencyCategory.shiftPenalty:
         return 'Штраф за пересменку';
+      case EfficiencyCategory.tasks:
+        return 'Задачи';
     }
   }
 
@@ -60,6 +63,8 @@ extension EfficiencyCategoryExtension on EfficiencyCategory {
         return 'orders';
       case EfficiencyCategory.shiftPenalty:
         return 'shift_penalty';
+      case EfficiencyCategory.tasks:
+        return 'tasks';
     }
   }
 
@@ -85,6 +90,8 @@ extension EfficiencyCategoryExtension on EfficiencyCategory {
         return EfficiencyCategory.orders;
       case 'shift_penalty':
         return EfficiencyCategory.shiftPenalty;
+      case 'tasks':
+        return EfficiencyCategory.tasks;
       default:
         return EfficiencyCategory.shift;
     }
@@ -142,6 +149,23 @@ class EfficiencyRecord {
           return 'Не пройдена ($shift)';
         }
         return 'Не пройдена';
+      case EfficiencyCategory.tasks:
+        if (rawValue is Map) {
+          final status = rawValue['status'];
+          switch (status) {
+            case 'approved':
+              return 'Выполнено';
+            case 'rejected':
+              return 'Отклонено';
+            case 'expired':
+              return 'Просрочено';
+            case 'declined':
+              return 'Отказ';
+            default:
+              return rawValue.toString();
+          }
+        }
+        return rawValue?.toString() ?? '-';
     }
   }
 

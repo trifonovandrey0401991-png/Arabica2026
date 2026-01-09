@@ -9,7 +9,12 @@ import '../../features/reviews/pages/reviews_list_page.dart';
 import '../../features/product_questions/pages/product_questions_report_page.dart';
 import '../../features/tests/pages/test_report_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
+import '../../features/tasks/pages/task_reports_page.dart';
+import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/employees/services/user_role_service.dart';
+import '../../features/job_application/pages/job_applications_list_page.dart';
+import '../../features/job_application/services/job_application_service.dart';
+import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/employees/models/user_role_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
@@ -26,11 +31,22 @@ class _ReportsPageState extends State<ReportsPage> {
   UserRole? _userRole;
   bool _isVerified = false;
   bool _isLoading = true;
+  int _jobApplicationsUnviewedCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserRole();
+    _loadJobApplicationsCount();
+  }
+
+  Future<void> _loadJobApplicationsCount() async {
+    final count = await JobApplicationService.getUnviewedCount();
+    if (mounted) {
+      setState(() {
+        _jobApplicationsUnviewedCount = count;
+      });
+    }
   }
 
   Future<void> _loadUserRole() async {
@@ -241,9 +257,9 @@ class _ReportsPageState extends State<ReportsPage> {
               title: 'Отчет (Главная Касса)',
               icon: Icons.point_of_sale,
               onTap: () {
-                // TODO: Добавить логику
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Функционал в разработке')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MainCashPage()),
                 );
               },
             ),
@@ -259,6 +275,69 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const EmployeesEfficiencyPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет по задачам - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет по задачам',
+              icon: Icons.assignment,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TaskReportsPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет (Устроиться на Работу) - только админ
+          if (isAdmin)
+            _buildSectionWithBadge(
+              context,
+              title: 'Отчет (Устроиться на Работу)',
+              icon: Icons.work_outline,
+              badgeCount: _jobApplicationsUnviewedCount,
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const JobApplicationsListPage()),
+                );
+                // Обновляем счётчик после возврата
+                _loadJobApplicationsCount();
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет (Приглашения) - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет (Приглашения)',
+              icon: Icons.person_add,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ReferralsReportPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет Обучения ИИ - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет Обучения ИИ',
+              icon: Icons.psychology,
+              onTap: () {
+                // TODO: Логика будет добавлена позже
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Функционал в разработке')),
                 );
               },
             ),
@@ -279,6 +358,46 @@ class _ReportsPageState extends State<ReportsPage> {
         leading: Icon(icon, color: const Color(0xFF004D40)),
         title: Text(title),
         trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildSectionWithBadge(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required int badgeCount,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF004D40)),
+        title: Text(title),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (badgeCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badgeCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            if (badgeCount > 0) const SizedBox(width: 8),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
         onTap: onTap,
       ),
     );
