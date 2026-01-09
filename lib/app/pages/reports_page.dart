@@ -16,6 +16,7 @@ import '../../features/job_application/pages/job_applications_list_page.dart';
 import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/employees/models/user_role_model.dart';
+import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 
@@ -323,6 +324,21 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ReferralsReportPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет (Колесо) - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчет (Колесо)',
+              icon: Icons.casino,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const WheelReportsPage()),
                 );
               },
             ),

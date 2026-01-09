@@ -10,6 +10,7 @@ import '../../bonuses/services/bonus_penalty_service.dart';
 import '../../bonuses/pages/bonus_penalty_history_page.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
+import '../../rating/pages/my_rating_page.dart';
 
 /// Страница "Моя эффективность" для сотрудника
 class MyEfficiencyPage extends StatefulWidget {
@@ -342,6 +343,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
           children: [
             _buildTotalCard(),
             const SizedBox(height: 16),
+            _buildRatingButton(),
+            const SizedBox(height: 16),
             _buildBonusPenaltySection(),
             _buildCategoriesCard(),
             const SizedBox(height: 16),
@@ -349,6 +352,74 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
             const SizedBox(height: 16),
             _buildRecentRecordsCard(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingButton() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {
+          if (_employeeId != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MyRatingPage(
+                  employeeId: 'employee_${_employeeId!.replaceAll(RegExp(r'[^0-9]'), '')}',
+                  employeeName: _employeeName ?? '',
+                ),
+              ),
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF004D40).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.leaderboard,
+                  color: Color(0xFF004D40),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Мой рейтинг',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Позиция среди сотрудников',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.grey,
+              ),
+            ],
+          ),
         ),
       ),
     );

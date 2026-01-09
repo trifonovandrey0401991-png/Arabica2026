@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/points_settings_model.dart';
 import '../services/points_settings_service.dart';
+import '../../fortune_wheel/pages/wheel_settings_page.dart';
 
 /// Page for configuring efficiency points settings
 class PointsSettingsPage extends StatefulWidget {
@@ -69,6 +70,12 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       icon: Icons.shopping_cart,
       description: 'Баллы за обработку заказов',
     ),
+    _PointsCategory(
+      id: 'fortune_wheel',
+      title: 'Колесо Удачи',
+      icon: Icons.casino,
+      description: 'Настройка секторов колеса',
+    ),
   ];
 
   void _openCategorySettings(String categoryId) {
@@ -133,6 +140,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
         context,
         MaterialPageRoute(
           builder: (context) => const OrdersPointsSettingsPage(),
+        ),
+      );
+    } else if (categoryId == 'fortune_wheel') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const WheelSettingsPage(),
         ),
       );
     }

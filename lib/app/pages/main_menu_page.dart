@@ -47,6 +47,7 @@ import '../../features/employees/pages/employee_panel_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
+import '../../features/rating/widgets/rating_badge_widget.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -58,6 +59,7 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   String? _userName;
   UserRoleData? _userRole;
+  String? _employeeId; // ID сотрудника для рейтинга
   bool _isLoadingRole = false; // Флаг для предотвращения параллельных запросов
 
   @override
@@ -69,6 +71,35 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _loadUserData();
     // Синхронизация отчетов при открытии главного меню
     _syncReports();
+    // Загружаем ID сотрудника для рейтинга
+    _loadEmployeeId();
+  }
+
+  Future<void> _loadEmployeeId() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (mounted && employeeId != null) {
+        setState(() {
+          _employeeId = employeeId;
+        });
+      }
+    } catch (e) {
+      print('Ошибка загрузки employeeId: $e');
+    }
+  }
+
+  /// Извлечь имя (второе слово) из ФИО
+  /// Например: "Иванов Иван Иванович" -> "Иван"
+  String _getFirstName(String? fullName) {
+    if (fullName == null || fullName.isEmpty) return 'Гость';
+
+    final parts = fullName.trim().split(' ');
+    // Если есть минимум 2 слова, берём второе (имя)
+    if (parts.length >= 2) {
+      return parts[1];
+    }
+    // Иначе возвращаем первое слово
+    return parts[0];
   }
 
   /// Загрузить кэшированную роль для немедленного отображения
@@ -268,27 +299,48 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   ),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  const Icon(
-                    Icons.waving_hand,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      'Привет, $_userName!',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.waving_hand,
                         color: Colors.white,
+                        size: 28,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          'Привет, ${_getFirstName(_userName)}!',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ),
+                  // Бейдж рейтинга для сотрудников и админов
+                  if ((_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin) && _employeeId != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Ваш Рейтинг: ',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        RatingBadgeWidget(employeeId: _employeeId!),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

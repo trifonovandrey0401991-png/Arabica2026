@@ -23,6 +23,8 @@ import '../../work_schedule/pages/my_schedule_page.dart';
 import '../../product_questions/pages/product_questions_management_page.dart';
 import '../../efficiency/pages/my_efficiency_page.dart';
 import '../../tasks/pages/my_tasks_page.dart';
+import '../../fortune_wheel/pages/fortune_wheel_page.dart';
+import '../../fortune_wheel/services/fortune_wheel_service.dart';
 
 /// Страница панели работника
 class EmployeePanelPage extends StatefulWidget {
@@ -36,11 +38,13 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   String? _userName;
   UserRoleData? _userRole;
   int? _referralCode;
+  int _availableSpins = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadAvailableSpins();
   }
 
   Future<void> _loadUserData() async {
@@ -75,6 +79,22 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       }
     } catch (e) {
       print('Ошибка загрузки referralCode: $e');
+    }
+  }
+
+  Future<void> _loadAvailableSpins() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final spins = await FortuneWheelService.getAvailableSpins(employeeId);
+        if (mounted) {
+          setState(() {
+            _availableSpins = spins?.availableSpins ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      print('Ошибка загрузки прокруток: $e');
     }
   }
 
@@ -397,6 +417,8 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             },
           ),
           const SizedBox(height: 8),
+          _buildFortuneWheelButton(context),
+          const SizedBox(height: 8),
           _buildSection(
             context,
             title: 'Обучение ИИ',
@@ -426,6 +448,73 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         title: Text(title),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildFortuneWheelButton(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF004D40), Color(0xFF00796B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: ListTile(
+          leading: const Text('🎡', style: TextStyle(fontSize: 28)),
+          title: const Text(
+            'Колесо Удачи',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: _availableSpins > 0
+              ? Text(
+                  'Доступно прокруток: $_availableSpins',
+                  style: const TextStyle(color: Colors.white70),
+                )
+              : null,
+          trailing: _availableSpins > 0
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$_availableSpins',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                )
+              : const Icon(Icons.chevron_right, color: Colors.white),
+          onTap: () async {
+            final employeeId = await EmployeesPage.getCurrentEmployeeId();
+            final employeeName = await EmployeesPage.getCurrentEmployeeName() ??
+                _userRole?.displayName ?? _userName ?? 'Сотрудник';
+
+            if (!context.mounted) return;
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FortuneWheelPage(
+                  employeeId: employeeId ?? employeeName,
+                  employeeName: employeeName,
+                ),
+              ),
+            );
+            // Обновляем количество прокруток после возврата
+            _loadAvailableSpins();
+          },
+        ),
       ),
     );
   }
