@@ -3,10 +3,11 @@ import 'package:http/http.dart' as http;
 import '../models/recount_points_model.dart';
 import '../models/recount_settings_model.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/constants/api_constants.dart';
 
 /// Сервис для работы с баллами пересчёта
 class RecountPointsService {
-  static const String _baseUrl = 'https://arabica26.ru/api';
+  static const String _baseUrl = '${ApiConstants.serverUrl}/api';
 
   /// Получить баллы всех сотрудников
   static Future<List<RecountPoints>> getAllPoints() async {

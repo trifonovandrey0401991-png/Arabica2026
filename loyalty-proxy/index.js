@@ -9,8 +9,14 @@ const { exec } = require('child_process');
 const util = require('util');
 const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
+const setupJobApplicationsAPI = require('./job_applications_api');
 
+const setupRecountPointsAPI = require("./recount_points_api");
 const app = express();
+const setupRatingWheelAPI = require("./rating_wheel_api");
+const setupReferralsAPI = require("./referrals_api");
+const { setupTasksAPI } = require("./tasks_api");
+const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
@@ -788,6 +794,35 @@ app.get('/api/employees/:id', (req, res) => {
   }
 });
 
+// Получить следующий свободный referralCode
+function getNextReferralCode() {
+  try {
+    if (!fs.existsSync(EMPLOYEES_DIR)) return 1;
+
+    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const usedCodes = new Set();
+
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const emp = JSON.parse(content);
+        if (emp.referralCode) {
+          usedCodes.add(emp.referralCode);
+        }
+      } catch (e) {}
+    }
+
+    for (let code = 1; code <= 1000; code++) {
+      if (!usedCodes.has(code)) return code;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Ошибка получения referralCode:', error);
+    return 1;
+  }
+}
+
 // POST /api/employees - создать нового сотрудника
 app.post('/api/employees', async (req, res) => {
   try {
@@ -812,6 +847,7 @@ app.post('/api/employees', async (req, res) => {
     
     const employee = {
       id: sanitizedId,
+      referralCode: req.body.referralCode || getNextReferralCode(),
       name: req.body.name.trim(),
       position: req.body.position || null,
       department: req.body.department || null,
@@ -866,6 +902,7 @@ app.put('/api/employees/:id', async (req, res) => {
     
     const employee = {
       id: sanitizedId,
+      referralCode: req.body.referralCode || getNextReferralCode(),
       name: req.body.name.trim(),
       position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
       department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
@@ -2243,6 +2280,7 @@ app.post('/api/suppliers', async (req, res) => {
     
     const supplier = {
       id: sanitizedId,
+      referralCode: req.body.referralCode || getNextReferralCode(),
       name: req.body.name.trim(),
       inn: req.body.inn ? req.body.inn.trim() : null,
       legalType: req.body.legalType,
@@ -2307,6 +2345,7 @@ app.put('/api/suppliers/:id', async (req, res) => {
     
     const supplier = {
       id: sanitizedId,
+      referralCode: req.body.referralCode || getNextReferralCode(),
       name: req.body.name.trim(),
       inn: req.body.inn ? req.body.inn.trim() : null,
       legalType: req.body.legalType,
@@ -3257,6 +3296,8 @@ app.post('/api/clients', async (req, res) => {
       name: req.body.name || '',
       clientName: req.body.clientName || req.body.name || '',
       fcmToken: req.body.fcmToken || null,
+      referredBy: req.body.referredBy || null,
+      referredAt: req.body.referredBy ? new Date().toISOString() : null,
       createdAt: fs.existsSync(clientFile) ? JSON.parse(fs.readFileSync(clientFile, 'utf8')).createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -4229,4 +4270,11 @@ app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
   }
 });
 
+// Initialize Job Applications API
+setupJobApplicationsAPI(app);
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
+setupRecountPointsAPI(app);
+setupReferralsAPI(app);
+setupRatingWheelAPI(app);
+setupTasksAPI(app);
+setupRecurringTasksAPI(app);
