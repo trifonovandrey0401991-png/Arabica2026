@@ -99,26 +99,22 @@ class AutoFillScheduleService {
           );
 
           // Если не нашли с предпочтениями, используем без предпочтений
-          if (selectedEmployee == null) {
-            selectedEmployee = _selectBestEmployee(
-              shop: shop,
-              day: day,
-              shiftType: shiftType,
-              employees: employeesWithoutPreferences,
-              schedule: workingSchedule,
-            );
-          }
+          selectedEmployee ??= _selectBestEmployee(
+            shop: shop,
+            day: day,
+            shiftType: shiftType,
+            employees: employeesWithoutPreferences,
+            schedule: workingSchedule,
+          );
 
           // Если все еще не нашли, используем любого доступного
-          if (selectedEmployee == null) {
-            selectedEmployee = _selectAnyAvailableEmployee(
-              shop: shop,
-              day: day,
-              shiftType: shiftType,
-              employees: employees,
-              schedule: workingSchedule,
-            );
-          }
+          selectedEmployee ??= _selectAnyAvailableEmployee(
+            shop: shop,
+            day: day,
+            shiftType: shiftType,
+            employees: employees,
+            schedule: workingSchedule,
+          );
 
           if (selectedEmployee != null) {
             final entry = WorkScheduleEntry(

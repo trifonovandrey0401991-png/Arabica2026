@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/user_role_service.dart';
-import '../../../server_config.dart';
 import '../services/employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import 'employee_registration_page.dart';
 import '../services/employee_service.dart';
-import '../models/user_role_model.dart';
 import 'unverified_employees_page.dart';
 import '../../shops/pages/shops_management_page.dart';
+import '../../../core/utils/logger.dart';
 
 /// Модель сотрудника
 class Employee {
@@ -156,56 +154,56 @@ class EmployeesPage extends StatefulWidget {
       // 1. Пытаемся получить сохраненный employeeId (основной способ)
       final savedEmployeeId = prefs.getString('currentEmployeeId');
       if (savedEmployeeId != null && savedEmployeeId.isNotEmpty) {
-        print('✅ Найден сохраненный employeeId: $savedEmployeeId');
+        Logger.success('Найден сохраненный employeeId: $savedEmployeeId');
         // Проверяем, что сотрудник все еще существует
         try {
           final employees = await EmployeeService.getEmployees();
           final employee = employees.firstWhere((e) => e.id == savedEmployeeId);
-          print('✅ Сотрудник найден по сохраненному ID: ${employee.name}');
+          Logger.success('Сотрудник найден по сохраненному ID: ${employee.name}');
           return savedEmployeeId;
         } catch (e) {
-          print('⚠️ Сотрудник с сохраненным ID не найден, ищем по телефону');
+          Logger.warning('Сотрудник с сохраненным ID не найден, ищем по телефону');
           // Удаляем невалидный ID
           await prefs.remove('currentEmployeeId');
         }
       }
       
       // 2. Резервный способ: ищем по телефону
-      print('📞 Поиск сотрудника по телефону...');
+      Logger.debug('Поиск сотрудника по телефону...');
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
-      
+
       if (phone == null || phone.isEmpty) {
-        print('❌ Телефон не найден в SharedPreferences');
+        Logger.error('Телефон не найден в SharedPreferences');
         return null;
       }
-      
+
       // Нормализуем телефон (убираем пробелы и +)
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      print('📞 Нормализованный телефон: $normalizedPhone');
-      
+      Logger.debug('Нормализованный телефон: $normalizedPhone');
+
       // Загружаем список сотрудников
       final employees = await loadEmployeesForNotifications();
-      print('📋 Загружено сотрудников для поиска: ${employees.length}');
-      
+      Logger.debug('Загружено сотрудников для поиска: ${employees.length}');
+
       // Ищем сотрудника по телефону
       for (var employee in employees) {
         if (employee.phone != null) {
           final employeePhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
           if (employeePhone == normalizedPhone) {
-            print('✅ Сотрудник найден по телефону: ${employee.name} (ID: ${employee.id})');
+            Logger.success('Сотрудник найден по телефону: ${employee.name} (ID: ${employee.id})');
             // Сохраняем employeeId для будущего использования
             await prefs.setString('currentEmployeeId', employee.id);
             await prefs.setString('currentEmployeeName', employee.name);
-            print('💾 Сохранен employeeId: ${employee.id}');
+            Logger.debug('Сохранен employeeId: ${employee.id}');
             return employee.id;
           }
         }
       }
-      
-      print('❌ Сотрудник не найден по телефону');
+
+      Logger.error('Сотрудник не найден по телефону');
       return null;
     } catch (e) {
-      print('❌ Ошибка получения ID текущего сотрудника: $e');
+      Logger.error('Ошибка получения ID текущего сотрудника', e);
       return null;
     }
   }
@@ -219,7 +217,7 @@ class EmployeesPage extends StatefulWidget {
       // 1. Пытаемся получить сохраненное имя
       final savedName = prefs.getString('currentEmployeeName');
       if (savedName != null && savedName.isNotEmpty) {
-        print('✅ Найдено сохраненное имя сотрудника: $savedName');
+        Logger.success('Найдено сохраненное имя сотрудника: $savedName');
         return savedName;
       }
       
@@ -239,7 +237,7 @@ class EmployeesPage extends StatefulWidget {
       await prefs.setString('currentEmployeeName', employee.name);
       return employee.name;
     } catch (e) {
-      print('❌ Ошибка получения имени текущего сотрудника: $e');
+      Logger.error('Ошибка получения имени текущего сотрудника', e);
       return null;
     }
   }
@@ -252,13 +250,13 @@ class EmployeesPage extends StatefulWidget {
       final allEmployees = await EmployeeService.getEmployees();
       
       // Фильтруем только сотрудников и админов (у которых есть phone или isAdmin = true)
-      final employees = allEmployees.where((emp) => 
+      final employees = allEmployees.where((emp) =>
         emp.phone != null && emp.phone!.isNotEmpty
       ).toList();
-      
+
       return employees;
     } catch (e) {
-      print('❌ Ошибка загрузки сотрудников: $e');
+      Logger.error('Ошибка загрузки сотрудников', e);
       return [];
     }
   }
@@ -290,22 +288,22 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
     try {
       final employees = await _loadEmployees();
-      print('🔍 Загрузка статусов верификации для ${employees.length} сотрудников');
+      Logger.debug('Загрузка статусов верификации для ${employees.length} сотрудников');
       for (var employee in employees) {
         if (employee.phone != null && employee.phone!.isNotEmpty) {
-          print('  📞 Проверка сотрудника: ${employee.name}, телефон: ${employee.phone}');
+          Logger.debug('Проверка сотрудника: ${employee.name}, телефон: ${employee.phone}');
           final registration = await EmployeeRegistrationService.getRegistration(employee.phone!);
           final isVerified = registration?.isVerified ?? false;
           _verificationStatus[employee.phone!] = isVerified;
-          print('  ✅ Статус верификации для ${employee.name}: $isVerified (регистрация: ${registration != null ? "найдена" : "не найдена"})');
+          Logger.debug('Статус верификации для ${employee.name}: $isVerified (регистрация: ${registration != null ? "найдена" : "не найдена"})');
         }
       }
-      print('✅ Загружено статусов верификации: ${_verificationStatus.length}');
+      Logger.success('Загружено статусов верификации: ${_verificationStatus.length}');
       if (mounted) {
         setState(() {});
       }
     } catch (e) {
-      print('❌ Ошибка загрузки статусов верификации: $e');
+      Logger.error('Ошибка загрузки статусов верификации', e);
     } finally {
       if (mounted) {
         setState(() {
@@ -323,13 +321,11 @@ class _EmployeesPageState extends State<EmployeesPage> {
       // Сортируем по имени
       employees.sort((a, b) => a.name.compareTo(b.name));
 
-      // ignore: avoid_print
-      print("👥 Загружено сотрудников и админов: ${employees.length}");
+      Logger.info('Загружено сотрудников и админов: ${employees.length}');
 
       return employees;
     } catch (e) {
-      // ignore: avoid_print
-      print("❌ Ошибка загрузки сотрудников: $e");
+      Logger.error('Ошибка загрузки сотрудников', e);
       rethrow;
     }
   }
@@ -659,9 +655,11 @@ class _EmployeesPageState extends State<EmployeesPage> {
                             employee.email != null,
                         onTap: employee.phone != null && employee.phone!.isNotEmpty
                             ? () async {
+                                // Сохраняем navigator перед async операцией
+                                final navigator = Navigator.of(context);
+
                                 // Открываем страницу просмотра регистрации
-                                final result = await Navigator.push(
-                                  context,
+                                final result = await navigator.push(
                                   MaterialPageRoute(
                                     builder: (context) => EmployeeRegistrationViewPage(
                                       employeePhone: employee.phone!,
@@ -670,6 +668,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
                                   ),
                                 );
                                 // Обновляем статусы верификации после возврата
+                                if (!mounted) return;
                                 if (result == true || result != null) {
                                   await _loadVerificationStatuses();
                                 }
@@ -728,10 +727,10 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
       
       // Сортируем по имени
       employees.sort((a, b) => a.name.compareTo(b.name));
-      
+
       return employees;
     } catch (e) {
-      print('Ошибка загрузки сотрудников: $e');
+      Logger.error('Ошибка загрузки сотрудников', e);
       rethrow;
     }
   }
@@ -752,7 +751,7 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
         setState(() {});
       }
     } catch (e) {
-      print('Ошибка загрузки статусов верификации: $e');
+      Logger.error('Ошибка загрузки статусов верификации', e);
     }
   }
 
@@ -786,14 +785,17 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () async {
+                  // Сохраняем navigator перед async операцией
+                  final navigator = Navigator.of(context);
+
                   // Открываем форму регистрации нового сотрудника
-                  final result = await Navigator.push(
-                    context,
+                  final result = await navigator.push(
                     MaterialPageRoute(
                       builder: (context) => const EmployeeRegistrationPage(),
                     ),
                   );
-                  
+
+                  if (!mounted) return;
                   if (result == true) {
                     // Обновляем список сотрудников и статусы
                     setState(() {
@@ -936,11 +938,15 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
                           : null,
                       onTap: employee.phone != null && employee.phone!.isNotEmpty
                           ? () async {
+                              // Сохраняем navigator перед async операцией
+                              final navigator = Navigator.of(context);
+
                               // Загружаем существующую регистрацию, если есть
                               final existingRegistration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-                              
-                              final result = await Navigator.push(
-                                context,
+
+                              if (!mounted) return;
+
+                              final result = await navigator.push(
                                 MaterialPageRoute(
                                   builder: (context) => EmployeeRegistrationPage(
                                     employeePhone: employee.phone!,
@@ -948,7 +954,8 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
                                   ),
                                 ),
                               );
-                              
+
+                              if (!mounted) return;
                               if (result == true) {
                                 // Обновляем статусы верификации
                                 await _loadVerificationStatuses();

@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
-import '../../../core/services/photo_upload_service.dart';
 
 /// Страница просмотра отчета сдачи смены
 class ShiftHandoverReportViewPage extends StatefulWidget {

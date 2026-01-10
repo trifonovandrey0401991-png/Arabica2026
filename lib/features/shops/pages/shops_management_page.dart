@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../../../core/utils/logger.dart';
 import '../models/shop_model.dart';
 import '../models/shop_settings_model.dart';
 import '../services/shop_service.dart';
@@ -49,7 +48,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка загрузки магазинов: $e');
+      Logger.error('Ошибка загрузки магазинов', e);
       setState(() {
         _isLoading = false;
       });
@@ -66,76 +65,25 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
 
   Future<ShopSettings?> _loadShopSettings(String shopAddress) async {
     try {
-      final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shopAddress)}';
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-      );
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true && result['settings'] != null) {
-          return ShopSettings.fromJson(result['settings']);
-        }
-      }
-      return null;
+      return await ShopService.getShopSettings(shopAddress);
     } catch (e) {
-      print('Ошибка загрузки настроек магазина: $e');
+      Logger.error('Ошибка загрузки настроек магазина', e);
       return null;
     }
   }
 
   Future<bool> _saveShopSettings(ShopSettings settings) async {
     try {
-      final url = 'https://arabica26.ru/api/shop-settings';
-      print('💾 Сохранение настроек магазина: ${settings.shopAddress}');
-      print('   URL: $url');
-      print('   Данные: ${jsonEncode(settings.toJson())}');
-      
-      final uri = Uri.parse(url);
-      print('   Parsed URI: $uri');
-      print('   Host: ${uri.host}, Path: ${uri.path}');
-      
-      final requestBody = jsonEncode(settings.toJson());
-      print('   Request body length: ${requestBody.length}');
-      
-      final response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: requestBody,
-      ).timeout(
-        const Duration(seconds: 10),
-      );
-
-      print('   Статус ответа: ${response.statusCode}');
-      print('   Headers: ${response.headers}');
-      print('   Тело ответа (первые 500 символов): ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
-
-      if (response.statusCode == 200) {
-        try {
-          final result = jsonDecode(response.body);
-          final success = result['success'] == true;
-          if (success) {
-            print('   ✅ Настройки успешно сохранены');
-          } else {
-            print('   ❌ Ошибка: ${result['error'] ?? 'Неизвестная ошибка'}');
-          }
-          return success;
-        } catch (e) {
-          print('   ❌ Ошибка парсинга JSON: $e');
-          print('   Тело ответа: ${response.body}');
-          return false;
-        }
+      Logger.debug('Сохранение настроек магазина: ${settings.shopAddress}');
+      final success = await ShopService.saveShopSettings(settings);
+      if (success) {
+        Logger.success('Настройки магазина успешно сохранены');
       } else {
-        print('   ❌ HTTP ошибка: ${response.statusCode}');
-        print('   Тело ответа: ${response.body}');
-        return false;
+        Logger.error('Ошибка сохранения настроек магазина', null);
       }
+      return success;
     } catch (e, stackTrace) {
-      print('❌ Ошибка сохранения настроек магазина: $e');
-      print('   Stack trace: $stackTrace');
+      Logger.error('Ошибка сохранения настроек магазина: $stackTrace', e);
       return false;
     }
   }
@@ -363,8 +311,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
           }
         }
       } catch (e, stackTrace) {
-        print('❌ Критическая ошибка при сохранении настроек: $e');
-        print('   Stack trace: $stackTrace');
+        Logger.error('Критическая ошибка при сохранении настроек: $stackTrace', e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -416,6 +363,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
       }
 
       // Показываем диалог подтверждения с координатами
+      if (!dialogContext.mounted) return;
       final confirm = await showDialog<bool>(
         context: dialogContext,
         builder: (ctx) => AlertDialog(

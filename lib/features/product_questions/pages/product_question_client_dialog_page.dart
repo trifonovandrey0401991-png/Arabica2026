@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../models/product_question_model.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 import '../services/loyalty_storage.dart';
 import 'loyalty_promo_management_page.dart';
@@ -37,7 +38,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         });
       }
     } catch (e) {
-      print('Ошибка проверки роли: $e');
+      Logger.error('Ошибка проверки роли', e);
     }
   }
 

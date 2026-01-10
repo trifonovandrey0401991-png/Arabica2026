@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
+// http и dart:convert оставлены для multipart загрузки файлов и binary скачивания
+
+/// Сервис для работы с РКО документами
 class RKOReportsService {
   static const String baseEndpoint = '/api/rko';
 
@@ -21,18 +24,8 @@ class RKOReportsService {
     try {
       // Нормализуем дату (убираем время, оставляем только дату)
       final normalizedDate = DateTime(date.year, date.month, date.day);
-      
-      Logger.debug('═══════════════════════════════════════════════════════');
-      Logger.debug('📤 ЗАГРУЗКА РКО НА СЕРВЕР');
-      Logger.debug('   fileName: $fileName');
-      Logger.debug('   employeeName: "$employeeName"');
-      Logger.debug('   shopAddress: "$shopAddress"');
-      Logger.debug('   date (оригинал): ${date.toIso8601String()}');
-      Logger.debug('   date (нормализован): ${normalizedDate.toIso8601String()}');
-      Logger.debug('   date (для отображения): ${normalizedDate.year}-${normalizedDate.month.toString().padLeft(2, '0')}-${normalizedDate.day.toString().padLeft(2, '0')}');
-      Logger.debug('   amount: $amount');
-      Logger.debug('   rkoType: $rkoType');
-      Logger.debug('═══════════════════════════════════════════════════════');
+
+      Logger.debug('Загрузка РКО на сервер: $fileName');
 
       final request = http.MultipartRequest(
         'POST',
@@ -57,7 +50,7 @@ class RKOReportsService {
           await http.MultipartFile.fromPath('docx', pdfFile.path),
         );
       }
-      
+
       // Добавляем метаданные (используем нормализованную дату)
       request.fields['fileName'] = fileName;
       request.fields['employeeName'] = employeeName;
@@ -65,20 +58,17 @@ class RKOReportsService {
       request.fields['date'] = normalizedDate.toIso8601String();
       request.fields['amount'] = amount.toString();
       request.fields['rkoType'] = rkoType;
-      
+
       final response = await request.send().timeout(ApiConstants.longTimeout);
-      
+
       final responseBody = await response.stream.bytesToString();
       final result = jsonDecode(responseBody);
-      
-      Logger.debug('📤 Ответ сервера: statusCode=${response.statusCode}');
-      Logger.debug('📤 Результат: success=${result['success']}, error=${result['error'] ?? 'нет'}');
-      
+
       if (response.statusCode == 200 && result['success'] == true) {
-        Logger.debug('✅ РКО успешно загружен на сервер');
+        Logger.debug('РКО успешно загружен на сервер');
         return true;
       } else {
-        Logger.debug('❌ Ошибка загрузки РКО: ${result['error'] ?? 'Неизвестная ошибка'}');
+        Logger.error('Ошибка загрузки РКО: ${result['error'] ?? 'Неизвестная ошибка'}');
         return false;
       }
     } catch (e) {
@@ -109,26 +99,16 @@ class RKOReportsService {
   /// Получить список РКО магазина
   static Future<Map<String, dynamic>?> getShopRKOs(String shopAddress) async {
     try {
-      // Используем правильный endpoint с параметром в URL
       final encodedAddress = Uri.encodeComponent(shopAddress);
       final url = '${ApiConstants.serverUrl}$baseEndpoint/list/shop/$encodedAddress';
-      Logger.debug('📋 Запрос РКО для магазина: "$shopAddress"');
-      Logger.debug('📋 URL: $url');
+      Logger.debug('Запрос РКО для магазина: "$shopAddress"');
       final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
-      Logger.debug('📋 Ответ API: statusCode=${response.statusCode}');
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        final currentMonth = (result['currentMonth'] as List?)?.length ?? 0;
-        final totalMonths = (result['months'] as List?)?.length ?? 0;
-        Logger.debug('📋 Результат: success=${result['success']}, currentMonth=$currentMonth, totalMonths=$totalMonths');
         if (result['success'] == true) {
           return result;
-        } else {
-          Logger.debug('⚠️ API вернул success=false: ${result['error'] ?? 'неизвестная ошибка'}');
         }
-      } else {
-        Logger.debug('⚠️ HTTP статус не 200: ${response.statusCode}, body: ${response.body}');
       }
       return null;
     } catch (e) {
@@ -139,7 +119,6 @@ class RKOReportsService {
 
   /// Получить URL для просмотра PDF/DOCX
   static String getPDFUrl(String fileName) {
-    // Используем правильный endpoint с параметром в URL
     final encodedFileName = Uri.encodeComponent(fileName);
     return '${ApiConstants.serverUrl}$baseEndpoint/file/$encodedFileName';
   }
@@ -147,9 +126,6 @@ class RKOReportsService {
   /// Получить список всех сотрудников, у которых есть РКО
   static Future<List<String>> getEmployeesWithRKO() async {
     try {
-      // Получаем всех сотрудников из метаданных
-      // Для этого нужно добавить endpoint на сервере или использовать существующий
-      // Пока возвращаем пустой список, будет реализовано через endpoint
       return [];
     } catch (e) {
       Logger.error('Ошибка получения списка сотрудников с РКО', e);
@@ -157,6 +133,3 @@ class RKOReportsService {
     }
   }
 }
-
-
-

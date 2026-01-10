@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
-import '../../features/employees/services/employee_service.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
 
@@ -345,7 +344,8 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
     if (date != null) {
       final weekStart = _getWeekStart(date);
       final success = await WorkScheduleService.applyTemplate(template, weekStart);
-      if (success && context.mounted) {
+      if (!mounted) return;
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Шаблон применен')),
         );

@@ -5,6 +5,7 @@ import '../../../core/services/notification_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../menu/pages/menu_page.dart';
 import 'orders_page.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница корзины
 class CartPage extends StatelessWidget {
@@ -202,47 +203,8 @@ class CartPage extends StatelessWidget {
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () async {
-                                try {
-                                  // Создаем заказ без комментария
-                                  final orderProvider = OrderProvider.of(context);
-                                  await orderProvider.createOrder(
-                                    cart.items,
-                                    cart.totalPrice,
-                                    shopAddress: cart.selectedShopAddress,
-                                  );
-                                  
-                                  // Очищаем корзину
-                                  cart.clear();
-                                  
-                                  // Переходим в меню заказов
-                                  if (context.mounted) {
-                                    Navigator.of(context).pop(); // Закрываем корзину
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => const OrdersPage(),
-                                      ),
-                                    );
-                                    
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Заказ успешно создан!'),
-                                        backgroundColor: Color(0xFF004D40),
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Ошибка создания заказа: $e'),
-                                        backgroundColor: Colors.red,
-                                        duration: const Duration(seconds: 3),
-                                      ),
-                                    );
-                                  }
-                                }
+                              onPressed: () {
+                                _showPickupTimeDialog(context, cart, null);
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF004D40),
@@ -384,25 +346,30 @@ class CartPage extends StatelessWidget {
                       final newOrder = orderProvider.orders.first;
                       
                       // Отправляем уведомления сотрудникам
-                      try {
-                        // Загружаем список сотрудников
-                        final employees = await EmployeesPage.loadEmployeesForNotifications();
-                        await NotificationService.notifyNewOrder(
-                          context,
-                          newOrder,
-                          employees,
-                        );
-                      } catch (e) {
-                        // ignore: avoid_print
-                        print("Ошибка отправки уведомлений: $e");
-                        // Все равно отправляем базовое уведомление
-                        await NotificationService.notifyNewOrder(
-                          context,
-                          newOrder,
-                          [],
-                        );
+                      if (builderContext.mounted) {
+                        try {
+                          // Загружаем список сотрудников
+                          final employees = await EmployeesPage.loadEmployeesForNotifications();
+                          if (builderContext.mounted) {
+                            await NotificationService.notifyNewOrder(
+                              context,
+                              newOrder,
+                              employees,
+                            );
+                          }
+                        } catch (e) {
+                          Logger.warning('Ошибка отправки уведомлений: $e');
+                          // Все равно отправляем базовое уведомление
+                          if (builderContext.mounted) {
+                            await NotificationService.notifyNewOrder(
+                              context,
+                              newOrder,
+                              [],
+                            );
+                          }
+                        }
                       }
-                      
+
                       cart.clear();
                       if (builderContext.mounted) {
                         Navigator.of(dialogContext).pop();
@@ -450,10 +417,129 @@ class CartPage extends StatelessWidget {
     );
   }
 
+  /// Диалог выбора времени получения заказа
+  void _showPickupTimeDialog(BuildContext context, CartProvider cart, String? comment) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        title: const Text(
+          'Через сколько заберёте заказ?',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildTimeOption(context, dialogContext, cart, comment, 5),
+            const SizedBox(height: 8),
+            _buildTimeOption(context, dialogContext, cart, comment, 10),
+            const SizedBox(height: 8),
+            _buildTimeOption(context, dialogContext, cart, comment, 15),
+            const SizedBox(height: 8),
+            _buildTimeOption(context, dialogContext, cart, comment, 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка выбора времени
+  Widget _buildTimeOption(
+    BuildContext context,
+    BuildContext dialogContext,
+    CartProvider cart,
+    String? comment,
+    int minutes,
+  ) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () async {
+          Navigator.of(dialogContext).pop();
+          await _createOrderWithPickupTime(context, cart, comment, minutes);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF004D40),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Text(
+          '$minutes мин',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Создать заказ с указанным временем получения
+  Future<void> _createOrderWithPickupTime(
+    BuildContext context,
+    CartProvider cart,
+    String? comment,
+    int pickupMinutes,
+  ) async {
+    try {
+      final orderProvider = OrderProvider.of(context);
+
+      // Добавляем время получения в комментарий
+      final pickupComment = 'Заберу через $pickupMinutes мин';
+      final fullComment = comment != null && comment.isNotEmpty
+          ? '$comment\n$pickupComment'
+          : pickupComment;
+
+      await orderProvider.createOrder(
+        cart.items,
+        cart.totalPrice,
+        comment: fullComment,
+        shopAddress: cart.selectedShopAddress,
+      );
+
+      if (!context.mounted) return;
+
+      // Очищаем корзину
+      cart.clear();
+
+      // Переходим в меню заказов
+      Navigator.of(context).pop(); // Закрываем корзину
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const OrdersPage(),
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Заказ успешно создан!'),
+          backgroundColor: Color(0xFF004D40),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка создания заказа: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   /// Диалог для ввода комментария с возможностью заказать
   void _showCommentDialogWithOrder(BuildContext context, CartProvider cart) {
     final TextEditingController controller = TextEditingController();
-    final orderProvider = OrderProvider.of(context);
 
     showDialog(
       context: context,
@@ -489,54 +575,12 @@ class CartPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () async {
-                        try {
-                          // Создаем заказ с комментарием
-                          final comment = controller.text.trim().isEmpty 
-                              ? null 
-                              : controller.text.trim();
-                          
-                          await orderProvider.createOrder(
-                            cart.items,
-                            cart.totalPrice,
-                            comment: comment,
-                            shopAddress: cart.selectedShopAddress,
-                          );
-                          
-                          // Очищаем корзину
-                          cart.clear();
-                          
-                          // Закрываем диалог и корзину
-                          if (context.mounted) {
-                            Navigator.of(dialogContext).pop();
-                            Navigator.of(context).pop(); // Закрываем корзину
-                            
-                            // Переходим в меню заказов
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const OrdersPage(),
-                              ),
-                            );
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Заказ успешно создан!'),
-                                backgroundColor: Color(0xFF004D40),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Ошибка создания заказа: $e'),
-                                backgroundColor: Colors.red,
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          }
-                        }
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        final comment = controller.text.trim().isEmpty
+                            ? null
+                            : controller.text.trim();
+                        _showPickupTimeDialog(context, cart, comment);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF004D40),

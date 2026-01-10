@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 
+// http и dart:convert оставлены для multipart загрузки медиа-файлов
+
 /// Тип медиа-контента
 enum MediaType { image, video }
 

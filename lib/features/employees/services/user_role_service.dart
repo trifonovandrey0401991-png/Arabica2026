@@ -1,7 +1,6 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_role_model.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
@@ -16,26 +15,17 @@ class UserRoleService {
       Logger.debug('🔍 Проверка сотрудника через API с номером: $normalizedPhone');
 
       // Загружаем список сотрудников с сервера
-      final uri = Uri.parse('${ApiConstants.serverUrl}/api/employees');
-      final response = await http.get(uri).timeout(
-        ApiConstants.shortTimeout,
-        onTimeout: () {
-          throw Exception('Таймаут при получении списка сотрудников');
-        },
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/employees',
+        timeout: ApiConstants.shortTimeout,
       );
 
-      if (response.statusCode != 200) {
-        Logger.debug('⚠️ Ошибка получения списка сотрудников: ${response.statusCode}');
-        return null;
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true || data['employees'] == null) {
+      if (result == null || result['success'] != true || result['employees'] == null) {
         Logger.debug('⚠️ Неверный формат ответа от API сотрудников');
         return null;
       }
 
-      final employees = data['employees'] as List;
+      final employees = result['employees'] as List;
       Logger.debug('📋 Загружено сотрудников: ${employees.length}');
 
       // Ищем сотрудника по телефону
@@ -59,7 +49,7 @@ class UserRoleService {
               await prefs.setString('currentEmployeeName', employeeName);
               Logger.debug('💾 Сохранен employeeId: ${emp['id']}');
             }
-            
+
             return UserRoleData(
               role: isAdmin ? UserRole.admin : UserRole.employee,
               displayName: employeeName,
@@ -95,47 +85,28 @@ class UserRoleService {
 
       // ЕСЛИ не найден через API, проверяем через сервер
       Logger.debug('📊 Проверка роли через сервер...');
-      final uri = Uri.parse(
-        '${ApiConstants.serverUrl}?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+
+      final result = await BaseHttpService.getRaw(
+        endpoint: '?action=getUserRole&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+        timeout: ApiConstants.shortTimeout,
       );
 
-      Logger.debug('🔗 URL запроса: $uri');
-
-      final response = await http.get(uri).timeout(
-        ApiConstants.shortTimeout,
-        onTimeout: () {
-          throw Exception('Таймаут при получении роли пользователя');
-        },
-      );
-
-      if (response.statusCode != 200) {
-        Logger.debug('❌ Ошибка получения роли: ${response.statusCode}');
-        // По умолчанию возвращаем роль клиента
-        return UserRoleData(
-          role: UserRole.client,
-          displayName: '',
-          phone: normalizedPhone,
-        );
-      }
-
-      final data = jsonDecode(response.body);
-
-      if (data['success'] != true) {
+      if (result == null || result['success'] != true) {
         Logger.debug('⚠️ Сервер вернул success: false, используем роль клиента по умолчанию');
         return UserRoleData(
           role: UserRole.client,
-          displayName: data['clientName'] ?? '',
+          displayName: result?['clientName'] ?? '',
           phone: normalizedPhone,
         );
       }
 
       // Определяем роль на основе данных
       UserRole role = UserRole.client;
-      String displayName = data['clientName'] ?? ''; // Имя из столбца A
-      String? employeeName = data['employeeName']; // Имя из столбца G
+      String displayName = result['clientName'] ?? ''; // Имя из столбца A
+      String? employeeName = result['employeeName']; // Имя из столбца G
 
       // Проверяем столбец H (админ)
-      final adminValue = data['isAdmin'];
+      final adminValue = result['isAdmin'];
       if (adminValue == 1 || adminValue == '1') {
         role = UserRole.admin;
         // Если есть имя в столбце G, используем его

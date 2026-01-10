@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'cart_provider.dart';
 import '../../features/orders/services/order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/utils/logger.dart';
 
 /// Модель заказа
 class Order {
@@ -106,7 +107,7 @@ class OrderProvider with ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print('Ошибка загрузки заказов: $e');
+      Logger.error('Ошибка загрузки заказов', e);
     }
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/rko_service.dart';
 import '../../shops/models/shop_model.dart';
-import '../../shops/models/shop_settings_model.dart';
 import '../services/rko_pdf_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/pages/employees_page.dart';
@@ -92,7 +91,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка инициализации: $e');
+      Logger.error('Ошибка инициализации', e);
       setState(() {
         _isLoading = false;
       });
@@ -257,7 +256,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
         Navigator.pop(context);
       }
     } catch (e) {
-      print('Ошибка создания РКО: $e');
+      Logger.error('Ошибка создания РКО', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

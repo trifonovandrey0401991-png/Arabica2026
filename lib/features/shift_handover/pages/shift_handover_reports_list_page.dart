@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/shift_handover_report_model.dart';
 import '../models/pending_shift_handover_model.dart';
 import '../services/shift_handover_report_service.dart';
+import '../../../core/utils/logger.dart';
 import 'shift_handover_report_view_page.dart';
 import '../../envelope/models/envelope_report_model.dart';
 import '../../envelope/services/envelope_report_service.dart';
@@ -68,7 +69,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       final addressList = addresses.toList()..sort();
       return addressList;
     } catch (e) {
-      print('❌ Ошибка загрузки адресов магазинов: $e');
+      Logger.error('Ошибка загрузки адресов магазинов', e);
       return await ShiftHandoverReport.getUniqueShopAddresses();
     }
   }
@@ -136,7 +137,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       return a.shiftType == 'morning' ? -1 : 1;
     });
 
-    print('📋 Непройденных сдач смен сегодня: ${_pendingHandovers.length}');
+    Logger.info('Непройденных сдач смен сегодня: ${_pendingHandovers.length}');
   }
 
   Future<void> _loadData() async {
@@ -146,16 +147,16 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       });
     }
 
-    print('📥 Загрузка отчетов сдачи смены...');
+    Logger.info('Загрузка отчетов сдачи смены...');
 
     // Загружаем отчеты конвертов
     try {
       final envelopeReports = await EnvelopeReportService.getReports();
       _envelopeReports = envelopeReports;
       _envelopeReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      print('✅ Загружено отчетов конвертов: ${envelopeReports.length}');
+      Logger.success('Загружено отчетов конвертов: ${envelopeReports.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки отчетов конвертов: $e');
+      Logger.error('Ошибка загрузки отчетов конвертов', e);
     }
 
     _shopsFuture = _loadShopAddresses();
@@ -164,27 +165,27 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     try {
       final shops = await Shop.loadShopsFromServer();
       _allShops = shops;
-      print('✅ Загружено магазинов: ${shops.length}');
+      Logger.success('Загружено магазинов: ${shops.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки магазинов: $e');
+      Logger.error('Ошибка загрузки магазинов', e);
     }
 
     // Загружаем просроченные отчёты
     try {
       final expiredReports = await ShiftHandoverReportService.getExpiredReports();
       _expiredReports = expiredReports;
-      print('✅ Загружено просроченных отчётов: ${expiredReports.length}');
+      Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки просроченных отчётов: $e');
+      Logger.error('Ошибка загрузки просроченных отчётов', e);
     }
 
     // Загружаем отчеты с сервера
     try {
       final serverReports = await ShiftHandoverReportService.getReports();
-      print('✅ Загружено отчетов с сервера: ${serverReports.length}');
+      Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
       final localReports = await ShiftHandoverReport.loadAllLocal();
-      print('✅ Загружено локальных отчетов: ${localReports.length}');
+      Logger.success('Загружено локальных отчетов: ${localReports.length}');
 
       final Map<String, ShiftHandoverReport> reportsMap = {};
 
@@ -202,9 +203,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       // Вычисляем непройденные сдачи смен за сегодня (магазин + смена)
       _calculatePendingHandovers();
 
-      print('✅ Всего отчетов после объединения: ${_allReports.length}');
+      Logger.success('Всего отчетов после объединения: ${_allReports.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки отчетов: $e');
+      Logger.error('Ошибка загрузки отчетов', e);
       _allReports = await ShiftHandoverReport.loadAllLocal();
       _calculatePendingHandovers();
     }
@@ -1022,23 +1023,25 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             ),
             onTap: () async {
               final allReports = await ShiftHandoverReport.loadAllLocal();
+
+              if (!mounted) return;
+
               final updatedReport = allReports.firstWhere(
                 (r) => r.id == report.id,
                 orElse: () => report,
               );
 
-              if (mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ShiftHandoverReportViewPage(
-                      report: updatedReport,
-                    ),
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShiftHandoverReportViewPage(
+                    report: updatedReport,
                   ),
-                ).then((_) {
-                  _loadData();
-                });
-              }
+                ),
+              ).then((_) {
+                _loadData();
+              });
             },
           ),
         );

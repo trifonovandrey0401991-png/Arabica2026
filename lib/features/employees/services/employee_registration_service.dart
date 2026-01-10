@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/employee_registration_model.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+
+// http и dart:convert оставлены для multipart загрузки фото
 
 class EmployeeRegistrationService {
 
@@ -34,9 +37,7 @@ class EmployeeRegistrationService {
       if (year < 1900 || year > DateTime.now().year) return false;
 
       final dateTime = DateTime(year, month, day);
-      // Проверяем, что дата не в будущем
       if (dateTime.isAfter(DateTime.now())) return false;
-      // Проверяем, что дата не слишком старая (например, не раньше 1950 года)
       if (dateTime.isBefore(DateTime(1950))) return false;
 
       return true;
@@ -45,17 +46,16 @@ class EmployeeRegistrationService {
     }
   }
 
-  /// Загрузить фото на сервер
+  /// Загрузить фото на сервер (multipart upload)
   static Future<String?> uploadPhoto(
     String photoPath,
     String phone,
-    String photoType, // 'front', 'registration', 'additional'
+    String photoType,
   ) async {
     try {
       List<int> bytes;
-      
+
       if (kIsWeb) {
-        // Для веб - base64
         if (photoPath.startsWith('data:image/')) {
           final base64Index = photoPath.indexOf(',');
           if (base64Index != -1) {
@@ -68,7 +68,6 @@ class EmployeeRegistrationService {
           return null;
         }
       } else {
-        // Для мобильных - файл
         final file = File(photoPath);
         if (!await file.exists()) {
           Logger.warning('⚠️ Файл не найден: $photoPath');
@@ -77,7 +76,6 @@ class EmployeeRegistrationService {
         bytes = await file.readAsBytes();
       }
 
-      // Нормализуем телефон
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
       final uri = Uri.parse('${ApiConstants.serverUrl}/upload-employee-photo');
@@ -85,8 +83,7 @@ class EmployeeRegistrationService {
 
       final fileName = '${normalizedPhone}_$photoType.jpg';
       Logger.debug('📤 Загрузка фото: $fileName');
-      Logger.debug('   Размер: ${bytes.length} байт');
-      
+
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
@@ -98,12 +95,7 @@ class EmployeeRegistrationService {
       request.fields['photoType'] = photoType;
 
       final streamedResponse = await request.send().timeout(ApiConstants.uploadTimeout);
-
       final response = await http.Response.fromStream(streamedResponse);
-
-      Logger.debug('   Статус ответа: ${response.statusCode}');
-      final responseBody = response.body;
-      Logger.debug('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -125,82 +117,29 @@ class EmployeeRegistrationService {
 
   /// Сохранить регистрацию сотрудника
   static Future<bool> saveRegistration(EmployeeRegistration registration) async {
-    try {
-      // Нормализуем телефон перед сохранением
-      final normalizedPhone = registration.phone.replaceAll(RegExp(r'[\s\+]'), '');
-      final registrationToSave = registration.copyWith(phone: normalizedPhone);
+    final normalizedPhone = registration.phone.replaceAll(RegExp(r'[\s\+]'), '');
+    final registrationToSave = registration.copyWith(phone: normalizedPhone);
 
-      final url = '${ApiConstants.serverUrl}/api/employee-registration';
-      final jsonData = jsonEncode(registrationToSave.toJson());
-      Logger.debug('💾 Сохранение регистрации для телефона: $normalizedPhone');
-      Logger.debug('   URL: $url');
-      Logger.debug('   Данные: ${jsonData.length > 200 ? jsonData.substring(0, 200) + "..." : jsonData}');
+    Logger.debug('💾 Сохранение регистрации для телефона: $normalizedPhone');
 
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(registrationToSave.toJson()),
-      ).timeout(ApiConstants.longTimeout);
-
-      Logger.debug('   Статус ответа: ${response.statusCode}');
-      final responseBody = response.body;
-      Logger.debug('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        final success = result['success'] == true;
-        if (success) {
-          Logger.debug('   ✅ Регистрация успешно сохранена');
-        } else {
-          Logger.error('   ❌ Ошибка сохранения: ${result['error']}');
-        }
-        return success;
-      }
-
-      Logger.error('   ❌ HTTP ошибка: ${response.statusCode}');
-      return false;
-    } catch (e) {
-      Logger.error('❌ Ошибка сохранения регистрации', e);
-      return false;
-    }
+    return await BaseHttpService.simplePost(
+      endpoint: '/api/employee-registration',
+      body: registrationToSave.toJson(),
+      timeout: ApiConstants.longTimeout,
+    );
   }
 
   /// Получить регистрацию по телефону
   static Future<EmployeeRegistration?> getRegistration(String phone) async {
-    try {
-      // Нормализуем телефон (убираем пробелы и +)
-      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      final url = '${ApiConstants.serverUrl}/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}';
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    Logger.debug('🔍 Запрос регистрации для телефона: $normalizedPhone');
 
-      Logger.debug('🔍 Запрос регистрации для телефона: $normalizedPhone');
-      Logger.debug('   URL: $url');
-
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
-
-      Logger.debug('   Статус ответа: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        final resultJson = jsonEncode(result);
-        Logger.debug('   Ответ сервера: ${resultJson.length > 200 ? resultJson.substring(0, 200) + "..." : resultJson}');
-
-        if (result['success'] == true && result['registration'] != null) {
-          final registration = EmployeeRegistration.fromJson(result['registration']);
-          Logger.debug('   ✅ Регистрация найдена, isVerified: ${registration.isVerified}');
-          return registration;
-        } else {
-          Logger.warning('   ⚠️ Регистрация не найдена или success=false');
-        }
-      } else {
-        Logger.error('   ❌ HTTP ${response.statusCode}');
-        Logger.error('   Тело ответа: ${response.body.substring(0, 200)}');
-      }
-
-      return null;
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки регистрации', e);
-      return null;
-    }
+    return await BaseHttpService.get<EmployeeRegistration>(
+      endpoint: '/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}',
+      fromJson: (json) => EmployeeRegistration.fromJson(json),
+      itemKey: 'registration',
+      timeout: ApiConstants.shortTimeout,
+    );
   }
 
   /// Верифицировать/снять верификацию сотрудника
@@ -209,70 +148,27 @@ class EmployeeRegistrationService {
     bool isVerified,
     String adminName,
   ) async {
-    try {
-      // Нормализуем телефон
-      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-      final url = '${ApiConstants.serverUrl}/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}/verify';
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+    Logger.debug('🔐 Верификация сотрудника: $normalizedPhone, статус: $isVerified');
 
-      Logger.debug('🔐 Верификация сотрудника:');
-      Logger.debug('   Телефон: $normalizedPhone');
-      Logger.debug('   Статус: $isVerified');
-      Logger.debug('   Админ: $adminName');
-      Logger.debug('   URL: $url');
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({
-          'isVerified': isVerified,
-          'verifiedBy': adminName,
-        }),
-      ).timeout(ApiConstants.shortTimeout);
-
-      Logger.debug('   Статус ответа: ${response.statusCode}');
-      final responseBody = response.body;
-      Logger.debug('   Тело ответа: ${responseBody.length > 200 ? responseBody.substring(0, 200) + "..." : responseBody}');
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        final success = result['success'] == true;
-        if (success) {
-          Logger.debug('   ✅ Статус верификации успешно обновлен');
-        } else {
-          Logger.error('   ❌ Ошибка обновления статуса: ${result['error']}');
-        }
-        return success;
-      }
-
-      Logger.error('   ❌ HTTP ошибка: ${response.statusCode}');
-      return false;
-    } catch (e) {
-      Logger.error('❌ Ошибка верификации сотрудника', e);
-      return false;
-    }
+    return await BaseHttpService.simplePost(
+      endpoint: '/api/employee-registration/${Uri.encodeComponent(normalizedPhone)}/verify',
+      body: {
+        'isVerified': isVerified,
+        'verifiedBy': adminName,
+      },
+      timeout: ApiConstants.shortTimeout,
+    );
   }
 
   /// Получить список всех регистраций (для админа)
   static Future<List<EmployeeRegistration>> getAllRegistrations() async {
-    try {
-      final url = '${ApiConstants.serverUrl}/api/employee-registrations';
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.longTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final registrationsJson = result['registrations'] as List<dynamic>;
-          return registrationsJson
-              .map((json) => EmployeeRegistration.fromJson(json))
-              .toList();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки регистраций', e);
-      return [];
-    }
+    return await BaseHttpService.getList<EmployeeRegistration>(
+      endpoint: '/api/employee-registrations',
+      fromJson: (json) => EmployeeRegistration.fromJson(json),
+      listKey: 'registrations',
+      timeout: ApiConstants.longTimeout,
+    );
   }
 }
 

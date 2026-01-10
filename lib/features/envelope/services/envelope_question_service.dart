@@ -3,119 +3,54 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/envelope_question_model.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
+// http и dart:convert оставлены для multipart загрузки эталонных фото
+
 /// Сервис для работы с вопросами формирования конверта
 class EnvelopeQuestionService {
-  static const String _baseUrl = '${ApiConstants.serverUrl}/api/envelope-questions';
+  static const String _baseEndpoint = ApiConstants.envelopeQuestionsEndpoint;
 
   /// Получить все вопросы
   static Future<List<EnvelopeQuestion>> getQuestions() async {
-    try {
-      Logger.debug('📥 Загрузка вопросов конверта...');
-
-      final response = await http.get(
-        Uri.parse(_baseUrl),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['questions'] != null) {
-          final questions = (data['questions'] as List)
-              .map((q) => EnvelopeQuestion.fromJson(q))
-              .toList();
-          questions.sort((a, b) => a.order.compareTo(b.order));
-          Logger.debug('✅ Загружено вопросов конверта: ${questions.length}');
-          return questions;
-        }
-      }
-
-      Logger.debug('⚠️ Ошибка загрузки вопросов: ${response.statusCode}');
-      return [];
-    } catch (e) {
-      Logger.error('Ошибка загрузки вопросов конверта', e);
-      return [];
-    }
+    Logger.debug('📥 Загрузка вопросов конверта...');
+    final questions = await BaseHttpService.getList<EnvelopeQuestion>(
+      endpoint: _baseEndpoint,
+      fromJson: (json) => EnvelopeQuestion.fromJson(json),
+      listKey: 'questions',
+    );
+    questions.sort((a, b) => a.order.compareTo(b.order));
+    return questions;
   }
 
   /// Создать вопрос
   static Future<EnvelopeQuestion?> createQuestion(EnvelopeQuestion question) async {
-    try {
-      Logger.debug('📤 Создание вопроса конверта: ${question.title}');
-
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(question.toJson()),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['question'] != null) {
-          Logger.debug('✅ Вопрос создан');
-          return EnvelopeQuestion.fromJson(data['question']);
-        }
-      }
-
-      Logger.debug('⚠️ Ошибка создания вопроса: ${response.statusCode}');
-      return null;
-    } catch (e) {
-      Logger.error('Ошибка создания вопроса конверта', e);
-      return null;
-    }
+    Logger.debug('📤 Создание вопроса конверта: ${question.title}');
+    return await BaseHttpService.post<EnvelopeQuestion>(
+      endpoint: _baseEndpoint,
+      body: question.toJson(),
+      fromJson: (json) => EnvelopeQuestion.fromJson(json),
+      itemKey: 'question',
+    );
   }
 
   /// Обновить вопрос
   static Future<EnvelopeQuestion?> updateQuestion(EnvelopeQuestion question) async {
-    try {
-      Logger.debug('📤 Обновление вопроса конверта: ${question.id}');
-
-      final response = await http.put(
-        Uri.parse('$_baseUrl/${question.id}'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(question.toJson()),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['question'] != null) {
-          Logger.debug('✅ Вопрос обновлен');
-          return EnvelopeQuestion.fromJson(data['question']);
-        }
-      }
-
-      Logger.debug('⚠️ Ошибка обновления вопроса: ${response.statusCode}');
-      return null;
-    } catch (e) {
-      Logger.error('Ошибка обновления вопроса конверта', e);
-      return null;
-    }
+    Logger.debug('📤 Обновление вопроса конверта: ${question.id}');
+    return await BaseHttpService.put<EnvelopeQuestion>(
+      endpoint: '$_baseEndpoint/${question.id}',
+      body: question.toJson(),
+      fromJson: (json) => EnvelopeQuestion.fromJson(json),
+      itemKey: 'question',
+    );
   }
 
   /// Удалить вопрос
   static Future<bool> deleteQuestion(String id) async {
-    try {
-      Logger.debug('🗑️ Удаление вопроса конверта: $id');
-
-      final response = await http.delete(
-        Uri.parse('$_baseUrl/$id'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          Logger.debug('✅ Вопрос удален');
-          return true;
-        }
-      }
-
-      Logger.debug('⚠️ Ошибка удаления вопроса: ${response.statusCode}');
-      return false;
-    } catch (e) {
-      Logger.error('Ошибка удаления вопроса конверта', e);
-      return false;
-    }
+    Logger.debug('🗑️ Удаление вопроса конверта: $id');
+    return await BaseHttpService.delete(endpoint: '$_baseEndpoint/$id');
   }
 
   /// Инициализировать дефолтные вопросы (если их нет)
@@ -134,7 +69,7 @@ class EnvelopeQuestionService {
     }
   }
 
-  /// Загрузить эталонное фото для вопроса
+  /// Загрузить эталонное фото для вопроса (multipart upload)
   static Future<String?> uploadReferencePhoto({
     required String questionId,
     required File photoFile,

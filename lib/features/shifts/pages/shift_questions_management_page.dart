@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/shift_question_model.dart';
 import '../services/shift_question_service.dart';
 import '../../shops/models/shop_model.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница управления вопросами пересменки
 class ShiftQuestionsManagementPage extends StatefulWidget {
@@ -387,9 +388,9 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         });
 
         // КРИТИЧЕСКИ ВАЖНО: Обновляем вопрос с новым URL эталонного фото
-        print('📝 Обновление вопроса с новым эталонным фото: $questionId');
-        print('   Магазин: $shopAddress');
-        print('   URL фото: $photoUrl');
+        Logger.info('Обновление вопроса с новым эталонным фото: $questionId');
+        Logger.debug('   Магазин: $shopAddress');
+        Logger.debug('   URL фото: $photoUrl');
 
         final updatedQuestion = await ShiftQuestionService.updateQuestion(
           id: questionId,
@@ -397,7 +398,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         );
 
         if (updatedQuestion != null) {
-          print('✅ Вопрос успешно обновлен с эталонным фото');
+          Logger.success('Вопрос успешно обновлен с эталонным фото');
           setState(() => _isUploadingPhotos = false);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -409,7 +410,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
             );
           }
         } else {
-          print('❌ Не удалось обновить вопрос с эталонным фото');
+          Logger.error('Не удалось обновить вопрос с эталонным фото');
           setState(() => _isUploadingPhotos = false);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -432,7 +433,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
         }
       }
     } catch (e) {
-      print('❌ Исключение при загрузке эталонного фото: $e');
+      Logger.error('Исключение при загрузке эталонного фото', e);
       setState(() => _isUploadingPhotos = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

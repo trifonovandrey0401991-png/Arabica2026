@@ -83,7 +83,7 @@ class ShiftHandoverQuestion {
     try {
       return await ShiftHandoverQuestionService.getQuestions(shopAddress: shopAddress);
     } catch (e) {
-      print('❌ Ошибка загрузки вопросов сдачи смены: $e');
+      Logger.error('Ошибка загрузки вопросов сдачи смены', e);
       return [];
     }
   }

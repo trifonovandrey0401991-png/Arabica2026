@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shops/models/shop_model.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница отчетов по магазинам
 class RKOShopReportsPage extends StatefulWidget {
@@ -37,7 +38,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка загрузки магазинов: $e');
+      Logger.error('Ошибка загрузки магазинов', e);
       setState(() {
         _isLoading = false;
       });
@@ -63,7 +64,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
         });
       }
     } catch (e) {
-      print('Ошибка загрузки РКО магазина: $e');
+      Logger.error('Ошибка загрузки РКО магазина', e);
       setState(() {
         _isLoading = false;
       });

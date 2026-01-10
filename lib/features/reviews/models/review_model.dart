@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Модель сообщения в диалоге
 class ReviewMessage {
   final String id;

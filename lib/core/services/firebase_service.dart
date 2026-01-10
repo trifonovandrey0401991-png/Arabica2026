@@ -12,6 +12,8 @@ import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/models/review_model.dart';
 import '../../features/product_questions/pages/product_question_dialog_page.dart';
 import '../../features/product_questions/pages/product_question_answer_page.dart';
+import '../../features/orders/pages/employee_orders_page.dart';
+import '../../features/orders/pages/orders_page.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -323,6 +325,28 @@ class FirebaseService {
     _globalContext = context;
   }
 
+  /// Публичный метод для повторного сохранения токена после входа пользователя
+  /// Вызывается когда user_phone становится доступным в SharedPreferences
+  static Future<void> resaveToken() async {
+    try {
+      Logger.debug('Повторное сохранение FCM токена после входа...');
+
+      if (_messaging == null) {
+        Logger.debug('FirebaseMessaging не инициализирован, пропускаем');
+        return;
+      }
+
+      final token = await _messaging!.getToken();
+      if (token != null) {
+        await _saveTokenToServer(token);
+      } else {
+        Logger.debug('Токен не получен');
+      }
+    } catch (e) {
+      Logger.error('Ошибка повторного сохранения токена', e);
+    }
+  }
+
   /// Сохранить FCM токен на сервере
   static Future<void> _saveTokenToServer(String token) async {
     try {
@@ -366,14 +390,29 @@ class FirebaseService {
 
   /// Показать локальное уведомление
   static Future<void> _showLocalNotification(RemoteMessage message) async {
-    const androidDetails = AndroidNotificationDetails(
-      'reviews_channel',
-      'Отзывы',
-      channelDescription: 'Уведомления о новых ответах на отзывы',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-    );
+    // Определяем канал в зависимости от типа уведомления
+    final type = message.data['type'] as String?;
+
+    AndroidNotificationDetails androidDetails;
+    if (type == 'new_order' || type == 'order_status') {
+      androidDetails = const AndroidNotificationDetails(
+        'orders_channel',
+        'Заказы',
+        channelDescription: 'Уведомления о заказах клиентов',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
+    } else {
+      androidDetails = const AndroidNotificationDetails(
+        'reviews_channel',
+        'Отзывы',
+        channelDescription: 'Уведомления о новых ответах на отзывы',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
+    }
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -381,7 +420,7 @@ class FirebaseService {
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -419,7 +458,27 @@ class FirebaseService {
     if (_globalContext == null) return;
 
     final type = data['type'] as String?;
-    
+
+    // Обработка уведомлений о новом заказе (для сотрудников)
+    if (type == 'new_order') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const EmployeeOrdersPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомлений о статусе заказа (для клиентов)
+    if (type == 'order_status') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const OrdersPage(),
+        ),
+      );
+      return;
+    }
+
     // Обработка уведомлений о вопросах о товаре
     if (type == 'product_question') {
       final questionId = data['questionId'] as String?;

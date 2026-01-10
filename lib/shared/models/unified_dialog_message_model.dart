@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Унифицированная модель сообщения в диалоге
 class UnifiedDialogMessage {
   final String id;

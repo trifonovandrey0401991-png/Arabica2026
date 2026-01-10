@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 import '../../shops/models/shop_model.dart';
 import 'recount_questions_page.dart';
 
@@ -30,7 +31,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
       // Проверяем оба ключа для телефона (userPhone для сотрудников, user_phone для клиентов)
       final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
 
-      print('📱 Загружены данные: name=$employeeName, phone=$employeePhone');
+      Logger.debug('Загружены данные: name=$employeeName, phone=$employeePhone');
 
       setState(() {
         _employeeName = employeeName;
@@ -38,7 +39,7 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка загрузки данных сотрудника: $e');
+      Logger.error('Ошибка загрузки данных сотрудника', e);
       setState(() {
         _isLoading = false;
       });

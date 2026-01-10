@@ -3,6 +3,7 @@ import 'employees_page.dart';
 import '../services/employee_service.dart';
 import 'employee_registration_page.dart';
 import '../services/employee_registration_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница выбора сотрудника для регистрации (только для админа)
 class EmployeeRegistrationSelectEmployeePage extends StatefulWidget {
@@ -32,10 +33,10 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
       
       // Сортируем по имени
       employees.sort((a, b) => a.name.compareTo(b.name));
-      
+
       return employees;
     } catch (e) {
-      print('Ошибка загрузки сотрудников: $e');
+      Logger.error('Ошибка загрузки сотрудников', e);
       rethrow;
     }
   }
@@ -56,7 +57,7 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
         setState(() {});
       }
     } catch (e) {
-      print('Ошибка загрузки статусов верификации: $e');
+      Logger.error('Ошибка загрузки статусов верификации', e);
     }
   }
 
@@ -211,7 +212,10 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                             ? () async {
                                 // Загружаем существующую регистрацию, если есть
                                 final existingRegistration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-                                
+
+                                if (!mounted) return;
+
+                                if (!context.mounted) return;
                                 final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -221,7 +225,8 @@ class _EmployeeRegistrationSelectEmployeePageState extends State<EmployeeRegistr
                                     ),
                                   ),
                                 );
-                                
+
+                                if (!mounted) return;
                                 if (result == true) {
                                   // Обновляем статусы верификации
                                   await _loadVerificationStatuses();

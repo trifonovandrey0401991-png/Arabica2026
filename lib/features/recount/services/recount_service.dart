@@ -5,14 +5,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/recount_report_model.dart';
 import '../models/recount_answer_model.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import '../../../core/services/html_stub.dart' as html if (dart.library.html) 'dart:html';
 
+// http и dart:convert оставлены для веб-специфичных запросов (dart:html HttpRequest)
+
 /// Сервис для работы с пересчетом товаров
 class RecountService {
-  static const String baseEndpoint = '/api/recount-reports';
+  static const String baseEndpoint = ApiConstants.recountReportsEndpoint;
 
   /// Создать отчет пересчета
   static Future<bool> createReport(RecountReport report) async {
@@ -172,33 +175,15 @@ class RecountService {
       if (employeeName != null) queryParams['employee'] = employeeName;
       if (date != null) queryParams['date'] = date.toIso8601String();
 
-      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
       Logger.debug('📥 Загрузка отчетов пересчета...');
-      Logger.debug('   URL: $uri');
 
-      final response = await http.get(uri).timeout(
-        ApiConstants.longTimeout,
-        onTimeout: () {
-          throw Exception('Таймаут при загрузке отчетов');
-        },
+      return await BaseHttpService.getList<RecountReport>(
+        endpoint: baseEndpoint,
+        fromJson: (json) => RecountReport.fromJson(json),
+        listKey: 'reports',
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+        timeout: ApiConstants.longTimeout,
       );
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final reportsJson = result['reports'] as List<dynamic>;
-          final reports = reportsJson
-              .map((json) => RecountReport.fromJson(json))
-              .toList();
-          Logger.debug('✅ Загружено отчетов: ${reports.length}');
-          return reports;
-        }
-      }
-
-      Logger.error('❌ Ошибка загрузки отчетов: ${response.statusCode}');
-      return [];
     } catch (e) {
       Logger.error('❌ Ошибка загрузки отчетов', e);
       return [];
@@ -210,38 +195,19 @@ class RecountService {
     try {
       // URL-кодируем reportId для безопасной передачи в URL
       final encodedReportId = Uri.encodeComponent(reportId);
-      final url = '${ApiConstants.serverUrl}$baseEndpoint/$encodedReportId/rating';
-      final body = {
-        'rating': rating,
-        'adminName': adminName,
-      };
 
       Logger.debug('📤 Постановка оценки отчету...');
-      Logger.debug('   URL: $url');
       Logger.debug('   Оценка: $rating');
       Logger.debug('   Админ: $adminName');
 
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(body),
-      ).timeout(
-        ApiConstants.longTimeout,
-        onTimeout: () {
-          throw Exception('Таймаут при постановке оценки');
+      return await BaseHttpService.simplePost(
+        endpoint: '$baseEndpoint/$encodedReportId/rating',
+        body: {
+          'rating': rating,
+          'adminName': adminName,
         },
+        timeout: ApiConstants.longTimeout,
       );
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Оценка успешно поставлена');
-          return true;
-        }
-      }
-
-      Logger.error('❌ Ошибка постановки оценки: ${response.statusCode}');
-      return false;
     } catch (e) {
       Logger.error('❌ Ошибка постановки оценки', e);
       return false;
@@ -252,11 +218,11 @@ class RecountService {
   static Future<void> _sendPushNotification(RecountReport report) async {
     try {
       // Отправляем через сервер (сервер сам отправит всем админам)
-      final url = '${ApiConstants.serverUrl}$baseEndpoint/${report.id}/notify';
-      await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.jsonHeaders,
-      ).timeout(ApiConstants.shortTimeout);
+      await BaseHttpService.simplePost(
+        endpoint: '$baseEndpoint/${report.id}/notify',
+        body: {},
+        timeout: ApiConstants.shortTimeout,
+      );
     } catch (e) {
       Logger.error('⚠️ Ошибка отправки уведомления', e);
       // Не критично, продолжаем
@@ -268,27 +234,11 @@ class RecountService {
     try {
       Logger.debug('📥 Загрузка просроченных отчётов пересчёта...');
 
-      final response = await http.get(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/expired'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final reportsJson = result['reports'] as List<dynamic>;
-          final reports = reportsJson
-              .map((json) => RecountReport.fromJson(json as Map<String, dynamic>))
-              .toList();
-          Logger.debug('✅ Загружено просроченных пересчётов: ${reports.length}');
-          return reports;
-        } else {
-          Logger.error('❌ Ошибка загрузки просроченных: ${result['error']}');
-          return [];
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-        return [];
-      }
+      return await BaseHttpService.getList<RecountReport>(
+        endpoint: '$baseEndpoint/expired',
+        fromJson: (json) => RecountReport.fromJson(json),
+        listKey: 'reports',
+      );
     } catch (e) {
       Logger.error('❌ Ошибка загрузки просроченных пересчётов', e);
       return [];

@@ -10,6 +10,7 @@ import '../services/employee_service.dart';
 import 'employee_preferences_dialog.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
+import '../../../core/utils/logger.dart';
 
 class EmployeeRegistrationViewPage extends StatefulWidget {
   final String employeePhone;
@@ -43,8 +44,8 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
       final prefs = await SharedPreferences.getInstance();
       // Пробуем оба варианта ключа
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
-      print('🔍 Проверка роли админа для телефона: ${phone.isNotEmpty ? phone : "не найден"}');
-      
+      Logger.debug('Проверка роли админа для телефона: ${phone.isNotEmpty ? phone : "не найден"}');
+
       if (phone.isEmpty) {
         if (mounted) {
           setState(() {
@@ -55,14 +56,14 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
       }
       final roleData = await UserRoleService.getUserRole(phone);
       final isAdmin = roleData.role == UserRole.admin;
-      print('👤 Роль пользователя: ${roleData.role}, isAdmin: $isAdmin');
+      Logger.debug('Роль пользователя: ${roleData.role}, isAdmin: $isAdmin');
       if (mounted) {
         setState(() {
           _isAdmin = isAdmin;
         });
       }
     } catch (e) {
-      print('❌ Ошибка проверки роли: $e');
+      Logger.error('Ошибка проверки роли', e);
       if (mounted) {
         setState(() {
           _isAdmin = false;
@@ -73,84 +74,81 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Future<void> _loadRegistration() async {
     try {
-      print('📥 Загрузка регистрации для телефона: ${widget.employeePhone}');
+      Logger.debug('Загрузка регистрации для телефона: ${widget.employeePhone}');
       final registration = await EmployeeRegistrationService.getRegistration(widget.employeePhone);
-      
+
       if (registration != null) {
-        print('✅ Регистрация найдена:');
-        print('   ФИО: ${registration.fullName}');
-        print('   Верифицирован: ${registration.isVerified}');
-        print('   Фото лицевой: ${registration.passportFrontPhotoUrl ?? "нет"}');
-        print('   Фото прописки: ${registration.passportRegistrationPhotoUrl ?? "нет"}');
-        print('   Доп фото: ${registration.additionalPhotoUrl ?? "нет"}');
+        Logger.success('Регистрация найдена: ФИО: ${registration.fullName}, Верифицирован: ${registration.isVerified}');
+        Logger.debug('Фото лицевой: ${registration.passportFrontPhotoUrl ?? "нет"}');
+        Logger.debug('Фото прописки: ${registration.passportRegistrationPhotoUrl ?? "нет"}');
+        Logger.debug('Доп фото: ${registration.additionalPhotoUrl ?? "нет"}');
       } else {
-        print('⚠️ Регистрация не найдена для телефона: ${widget.employeePhone}');
+        Logger.warning('Регистрация не найдена для телефона: ${widget.employeePhone}');
       }
-      
+
       // Загружаем данные сотрудника для получения предпочтений
       await _loadEmployee();
-      
-      if (mounted) {
-        setState(() {
-          _registration = registration;
-          _isLoading = false;
-        });
-      }
+
+      if (!mounted) return;
+      setState(() {
+        _registration = registration;
+        _isLoading = false;
+      });
     } catch (e) {
-      print('❌ Ошибка загрузки регистрации: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки данных: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      Logger.error('Ошибка загрузки регистрации', e);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка загрузки данных: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   Future<void> _loadEmployee() async {
     try {
-      print('🔍 Поиск сотрудника для телефона: ${widget.employeePhone}, имени: ${widget.employeeName}');
+      Logger.debug('Поиск сотрудника для телефона: ${widget.employeePhone}, имени: ${widget.employeeName}');
       // Загружаем всех сотрудников и ищем по телефону
       final employees = await EmployeeService.getEmployees();
-      print('📋 Загружено сотрудников: ${employees.length}');
+      Logger.debug('Загружено сотрудников: ${employees.length}');
       final normalizedPhone = widget.employeePhone.replaceAll(RegExp(r'[\s\+]'), '');
-      
+
       try {
         _employee = employees.firstWhere(
           (emp) => emp.phone != null && emp.phone!.replaceAll(RegExp(r'[\s\+]'), '') == normalizedPhone,
         );
-        print('✅ Сотрудник найден по телефону: ${_employee!.name}');
-        print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}, смены=${_employee!.shiftPreferences.length}');
+        Logger.success('Сотрудник найден по телефону: ${_employee!.name}');
+        Logger.debug('Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}, смены=${_employee!.shiftPreferences.length}');
       } catch (e) {
-        print('⚠️ Не найден по телефону, пробуем по имени...');
+        Logger.warning('Не найден по телефону, пробуем по имени...');
         // Если не нашли по телефону, пробуем по имени
         try {
           _employee = employees.firstWhere(
             (emp) => emp.name == widget.employeeName,
           );
-          print('✅ Сотрудник найден по имени: ${_employee!.name}');
-          print('   Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}, смены=${_employee!.shiftPreferences.length}');
+          Logger.success('Сотрудник найден по имени: ${_employee!.name}');
+          Logger.debug('Предпочтения: дни=${_employee!.preferredWorkDays.length}, магазины=${_employee!.preferredShops.length}, смены=${_employee!.shiftPreferences.length}');
         } catch (e2) {
-          print('⚠️ Сотрудник не найден ни по телефону, ни по имени: $e2');
+          Logger.warning('Сотрудник не найден ни по телефону, ни по имени: $e2');
           _employee = null;
         }
       }
     } catch (e) {
-      print('❌ Ошибка загрузки сотрудника: $e');
+      Logger.error('Ошибка загрузки сотрудника', e);
       _employee = null;
     }
   }
 
   Future<void> _editPreferences() async {
-    print('🔧 Редактирование предпочтений для сотрудника: ${_employee?.name ?? "не найден"}');
+    Logger.debug('Редактирование предпочтений для сотрудника: ${_employee?.name ?? "не найден"}');
     if (_employee == null) {
-      print('❌ Сотрудник не найден, пытаемся загрузить...');
+      Logger.error('Сотрудник не найден, пытаемся загрузить...');
       await _loadEmployee();
+      if (!mounted) return;
       if (_employee == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -163,35 +161,37 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
       }
     }
 
-    print('✅ Открываем диалог редактирования предпочтений');
+    Logger.success('Открываем диалог редактирования предпочтений');
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => EmployeePreferencesDialog(employee: _employee!),
     );
 
+    if (!mounted) return;
     if (result == true) {
-      print('✅ Предпочтения сохранены, обновляем данные');
+      Logger.success('Предпочтения сохранены, обновляем данные');
       // Обновляем данные сотрудника
       await _loadEmployee();
+      if (!mounted) return;
       setState(() {});
     } else {
-      print('⚠️ Редактирование отменено');
+      Logger.warning('Редактирование отменено');
     }
   }
 
   Future<void> _toggleVerification() async {
     if (!_isAdmin || _registration == null) {
-      print('⚠️ Верификация невозможна: _isAdmin=$_isAdmin, _registration=${_registration != null}');
+      Logger.warning('Верификация невозможна: _isAdmin=$_isAdmin, _registration=${_registration != null}');
       return;
     }
 
     final newVerifiedStatus = !_registration!.isVerified;
-    print('🔄 Переключение статуса верификации: $newVerifiedStatus (текущий: ${_registration!.isVerified})');
-    
+    Logger.debug('Переключение статуса верификации: $newVerifiedStatus (текущий: ${_registration!.isVerified})');
+
     final prefs = await SharedPreferences.getInstance();
     // Пробуем оба варианта ключа
     final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
-    print('📞 Телефон администратора из SharedPreferences: ${phone.isNotEmpty ? phone : "не найден"}');
+    Logger.debug('Телефон администратора из SharedPreferences: ${phone.isNotEmpty ? phone : "не найден"}');
     
     if (phone.isEmpty) {
       if (mounted) {
@@ -206,7 +206,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     }
     final roleData = await UserRoleService.getUserRole(phone);
     final adminName = roleData.displayName.isNotEmpty ? roleData.displayName : 'Администратор';
-    print('👤 Имя администратора: $adminName');
+    Logger.debug('Имя администратора: $adminName');
 
     final success = await EmployeeRegistrationService.verifyEmployee(
       widget.employeePhone,
@@ -215,7 +215,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
     );
 
     if (success) {
-      print('✅ Верификация успешна, загружаем обновленную регистрацию...');
+      Logger.success('Верификация успешна, загружаем обновленную регистрацию...');
       await _loadRegistration();
       
       if (mounted) {
@@ -265,11 +265,11 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
 
   Widget _buildPhotoSection(String? photoUrl, String label) {
     if (photoUrl == null || photoUrl.isEmpty) {
-      print('⚠️ Фото не найдено для: $label');
+      Logger.debug('Фото не найдено для: $label');
       return const SizedBox.shrink();
     }
 
-    print('🖼️ Загрузка фото для $label: $photoUrl');
+    Logger.debug('Загрузка фото для $label: $photoUrl');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +296,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
               fit: BoxFit.cover,
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) {
-                  print('✅ Фото загружено: $photoUrl');
+                  Logger.success('Фото загружено: $photoUrl');
                   return child;
                 }
                 return const Center(
@@ -304,7 +304,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                 );
               },
               errorBuilder: (context, error, stackTrace) {
-                print('❌ Ошибка загрузки фото $photoUrl: $error');
+                Logger.error('Ошибка загрузки фото $photoUrl', error);
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -427,7 +427,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
                             ? Switch(
                                 value: _registration!.isVerified,
                                 onChanged: (value) {
-                                  print('🔄 Switch изменен на: $value');
+                                  Logger.debug('Switch изменен на: $value');
                                   _toggleVerification();
                                 },
                               )

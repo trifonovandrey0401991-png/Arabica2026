@@ -6,12 +6,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import '../../../core/utils/logger.dart';
 import '../models/recount_question_model.dart';
 import '../models/recount_answer_model.dart';
 import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
 import '../services/recount_points_service.dart';
-import '../models/recount_settings_model.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
@@ -70,10 +70,10 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
           if (points != null) {
             requiredPhotos = settings.calculateRequiredPhotos(points.points);
-            print('📊 Баллы сотрудника: ${points.points}, требуется фото: $requiredPhotos, вопросов: $questionsCount');
+            Logger.debug('Баллы сотрудника: ${points.points}, требуется фото: $requiredPhotos, вопросов: $questionsCount');
           }
         } catch (e) {
-          print('⚠️ Ошибка загрузки настроек, используем значения по умолчанию: $e');
+          Logger.warning('Ошибка загрузки настроек, используем значения по умолчанию: $e');
         }
       } else {
         // Если нет телефона, всё равно загружаем настройки для кол-ва вопросов
@@ -81,7 +81,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           final settings = await RecountPointsService.getSettings();
           questionsCount = settings.questionsCount;
         } catch (e) {
-          print('⚠️ Ошибка загрузки настроек: $e');
+          Logger.warning('Ошибка загрузки настроек: $e');
         }
       }
 
@@ -167,7 +167,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка при выборе фото: $e');
+      Logger.error('Ошибка при выборе фото', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -425,7 +425,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка отправки отчета: $e');
+      Logger.error('Ошибка отправки отчета', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

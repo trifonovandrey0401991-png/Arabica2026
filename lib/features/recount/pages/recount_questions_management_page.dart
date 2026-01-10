@@ -304,6 +304,8 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
         Navigator.pop(context);
       }
 
+      if (!mounted) return;
+
       // Показываем диалог подтверждения
       final confirmed = await showDialog<bool>(
         context: context,
@@ -329,6 +331,8 @@ class _RecountQuestionsManagementPageState extends State<RecountQuestionsManagem
           ],
         ),
       );
+
+      if (!mounted) return;
 
       if (confirmed != true) {
         return;

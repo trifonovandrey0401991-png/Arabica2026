@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Метаданные РКО
 class RKOMetadata {
   final String fileName;

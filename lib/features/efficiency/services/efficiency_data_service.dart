@@ -1,5 +1,3 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../models/efficiency_data_model.dart';
 import 'efficiency_calculation_service.dart';
 import '../../shifts/services/shift_report_service.dart';
@@ -8,11 +6,14 @@ import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../tasks/services/task_service.dart';
 import '../../tasks/models/task_model.dart';
-import '../../../core/utils/logger.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 
 /// Сервис загрузки и агрегации данных эффективности
 class EfficiencyDataService {
+  static const String _penaltiesEndpoint = ApiConstants.efficiencyPenaltiesEndpoint;
+
   /// Загрузить данные эффективности за период
   static Future<EfficiencyData> loadEfficiencyData({
     DateTime? startDate,
@@ -35,12 +36,6 @@ class EfficiencyDataService {
       _loadAttendanceRecords(start, end),
       _loadPenaltyRecords(start, end),
       _loadTaskRecords(start, end),
-      // TODO: Добавить загрузку остальных источников когда будут готовы
-      // _loadTestRecords(start, end),
-      // _loadReviewRecords(start, end),
-      // _loadProductSearchRecords(start, end),
-      // _loadRkoRecords(start, end),
-      // _loadOrderRecords(start, end),
     ]);
 
     // Объединяем все записи
@@ -313,30 +308,26 @@ class EfficiencyDataService {
       // Формируем месяц для запроса (YYYY-MM)
       final monthKey = '${start.year}-${start.month.toString().padLeft(2, '0')}';
 
-      final response = await http.get(
-        Uri.parse('${ApiConstants.serverUrl}/api/efficiency-penalties?month=$monthKey'),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_penaltiesEndpoint?month=$monthKey',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final penalties = (result['penalties'] as List<dynamic>)
-              .map((json) => EfficiencyPenalty.fromJson(json as Map<String, dynamic>))
-              .toList();
+      if (result != null) {
+        final penalties = (result['penalties'] as List<dynamic>)
+            .map((json) => EfficiencyPenalty.fromJson(json as Map<String, dynamic>))
+            .toList();
 
-          Logger.debug('Loaded ${penalties.length} penalties from server');
+        Logger.debug('Loaded ${penalties.length} penalties from server');
 
-          // Преобразуем штрафы в записи эффективности
-          final records = <EfficiencyRecord>[];
-          for (final penalty in penalties) {
-            records.add(penalty.toRecord());
-          }
-
-          return records;
+        // Преобразуем штрафы в записи эффективности
+        final records = <EfficiencyRecord>[];
+        for (final penalty in penalties) {
+          records.add(penalty.toRecord());
         }
+
+        return records;
       }
 
-      Logger.error('Failed to load penalties: HTTP ${response.statusCode}');
       return [];
     } catch (e) {
       Logger.error('Error loading penalty records', e);
@@ -356,18 +347,15 @@ class EfficiencyDataService {
       if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
       if (employeeName != null) queryParams['employeeName'] = employeeName;
 
-      final uri = Uri.parse('${ApiConstants.serverUrl}/api/efficiency-penalties')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final result = await BaseHttpService.getRaw(
+        endpoint: _penaltiesEndpoint,
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+      );
 
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return (result['penalties'] as List<dynamic>)
-              .map((json) => EfficiencyPenalty.fromJson(json as Map<String, dynamic>))
-              .toList();
-        }
+      if (result != null) {
+        return (result['penalties'] as List<dynamic>)
+            .map((json) => EfficiencyPenalty.fromJson(json as Map<String, dynamic>))
+            .toList();
       }
 
       return [];

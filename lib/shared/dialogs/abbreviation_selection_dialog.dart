@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/shops/models/shop_model.dart';
-import '../../features/shops/models/shop_settings_model.dart';
+import '../../features/shops/services/shop_service.dart';
+import '../../core/utils/logger.dart';
 
 class AbbreviationSelectionDialog extends StatefulWidget {
   final String employeeId;
@@ -33,10 +32,10 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
   @override
   void initState() {
     super.initState();
-    print('🔵 AbbreviationSelectionDialog инициализирован');
-    print('   Сотрудник: ${widget.employeeName}');
-    print('   Дата: ${widget.date.day}.${widget.date.month}.${widget.date.year}');
-    print('   Магазинов: ${widget.shops.length}');
+    Logger.debug('AbbreviationSelectionDialog инициализирован');
+    Logger.debug('   Сотрудник: ${widget.employeeName}');
+    Logger.debug('   Дата: ${widget.date.day}.${widget.date.month}.${widget.date.year}');
+    Logger.debug('   Магазинов: ${widget.shops.length}');
     _loadAbbreviations();
     if (widget.existingEntry != null) {
       // Пытаемся найти аббревиатуру для существующей записи
@@ -45,7 +44,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
   }
 
   Future<void> _loadAbbreviations() async {
-    print('📥 Начинаем загрузку аббревиатур...');
+    Logger.debug('Начинаем загрузку аббревиатур...');
     setState(() {
       _isLoading = true;
     });
@@ -53,76 +52,66 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
     try {
       final List<ShopAbbreviation> abbreviations = [];
       
-      // Загружаем настройки для каждого магазина
+      // Загружаем настройки для каждого магазина через ShopService
       for (var shop in widget.shops) {
         try {
-          final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shop.address)}';
-          print('   Загрузка настроек для: ${shop.name}');
-          final response = await http.get(Uri.parse(url)).timeout(
-            const Duration(seconds: 5),
-          );
+          Logger.debug('   Загрузка настроек для: ${shop.name}');
+          final settings = await ShopService.getShopSettings(shop.address);
 
-          if (response.statusCode == 200) {
-            final result = jsonDecode(response.body);
-            if (result['success'] == true && result['settings'] != null) {
-              final settings = ShopSettings.fromJson(result['settings']);
-              
-              // Добавляем аббревиатуры для каждой смены
-              if (settings.morningAbbreviation != null && settings.morningAbbreviation!.isNotEmpty) {
-                String? morningTimeRange;
-                if (settings.morningShiftStart != null && settings.morningShiftEnd != null) {
-                  morningTimeRange = '${_formatTime(settings.morningShiftStart!)}-${_formatTime(settings.morningShiftEnd!)}';
-                }
-                abbreviations.add(ShopAbbreviation(
-                  abbreviation: settings.morningAbbreviation!,
-                  shopAddress: shop.address,
-                  shopName: shop.name,
-                  shiftType: ShiftType.morning,
-                  timeRange: morningTimeRange,
-                ));
-                print('     ✅ Добавлена аббревиатура: ${settings.morningAbbreviation} (утро, ${morningTimeRange ?? 'дефолт'})');
+          if (settings != null) {
+            // Добавляем аббревиатуры для каждой смены
+            if (settings.morningAbbreviation != null && settings.morningAbbreviation!.isNotEmpty) {
+              String? morningTimeRange;
+              if (settings.morningShiftStart != null && settings.morningShiftEnd != null) {
+                morningTimeRange = '${_formatTime(settings.morningShiftStart!)}-${_formatTime(settings.morningShiftEnd!)}';
               }
-              if (settings.dayAbbreviation != null && settings.dayAbbreviation!.isNotEmpty) {
-                String? dayTimeRange;
-                if (settings.dayShiftStart != null && settings.dayShiftEnd != null) {
-                  dayTimeRange = '${_formatTime(settings.dayShiftStart!)}-${_formatTime(settings.dayShiftEnd!)}';
-                }
-                abbreviations.add(ShopAbbreviation(
-                  abbreviation: settings.dayAbbreviation!,
-                  shopAddress: shop.address,
-                  shopName: shop.name,
-                  shiftType: ShiftType.day,
-                  timeRange: dayTimeRange,
-                ));
-                print('     ✅ Добавлена аббревиатура: ${settings.dayAbbreviation} (день, ${dayTimeRange ?? 'дефолт'})');
-              }
-              if (settings.nightAbbreviation != null && settings.nightAbbreviation!.isNotEmpty) {
-                String? nightTimeRange;
-                if (settings.nightShiftStart != null && settings.nightShiftEnd != null) {
-                  nightTimeRange = '${_formatTime(settings.nightShiftStart!)}-${_formatTime(settings.nightShiftEnd!)}';
-                }
-                abbreviations.add(ShopAbbreviation(
-                  abbreviation: settings.nightAbbreviation!,
-                  shopAddress: shop.address,
-                  shopName: shop.name,
-                  shiftType: ShiftType.evening, // night = evening
-                  timeRange: nightTimeRange,
-                ));
-                print('     ✅ Добавлена аббревиатура: ${settings.nightAbbreviation} (ночь, ${nightTimeRange ?? 'дефолт'})');
-              }
+              abbreviations.add(ShopAbbreviation(
+                abbreviation: settings.morningAbbreviation!,
+                shopAddress: shop.address,
+                shopName: shop.name,
+                shiftType: ShiftType.morning,
+                timeRange: morningTimeRange,
+              ));
+              Logger.debug('     Добавлена аббревиатура: ${settings.morningAbbreviation} (утро, ${morningTimeRange ?? 'дефолт'})');
             }
-          } else {
-            print('     ⚠️ Статус ответа: ${response.statusCode}');
+            if (settings.dayAbbreviation != null && settings.dayAbbreviation!.isNotEmpty) {
+              String? dayTimeRange;
+              if (settings.dayShiftStart != null && settings.dayShiftEnd != null) {
+                dayTimeRange = '${_formatTime(settings.dayShiftStart!)}-${_formatTime(settings.dayShiftEnd!)}';
+              }
+              abbreviations.add(ShopAbbreviation(
+                abbreviation: settings.dayAbbreviation!,
+                shopAddress: shop.address,
+                shopName: shop.name,
+                shiftType: ShiftType.day,
+                timeRange: dayTimeRange,
+              ));
+              Logger.debug('     Добавлена аббревиатура: ${settings.dayAbbreviation} (день, ${dayTimeRange ?? 'дефолт'})');
+            }
+            if (settings.nightAbbreviation != null && settings.nightAbbreviation!.isNotEmpty) {
+              String? nightTimeRange;
+              if (settings.nightShiftStart != null && settings.nightShiftEnd != null) {
+                nightTimeRange = '${_formatTime(settings.nightShiftStart!)}-${_formatTime(settings.nightShiftEnd!)}';
+              }
+              abbreviations.add(ShopAbbreviation(
+                abbreviation: settings.nightAbbreviation!,
+                shopAddress: shop.address,
+                shopName: shop.name,
+                shiftType: ShiftType.evening, // night = evening
+                timeRange: nightTimeRange,
+              ));
+              Logger.debug('     Добавлена аббревиатура: ${settings.nightAbbreviation} (ночь, ${nightTimeRange ?? 'дефолт'})');
+            }
           }
         } catch (e) {
-          print('     ❌ Ошибка загрузки настроек для магазина ${shop.address}: $e');
+          Logger.error('Ошибка загрузки настроек для магазина ${shop.address}', e);
         }
       }
 
       // Сортируем по аббревиатуре
       abbreviations.sort((a, b) => a.abbreviation.compareTo(b.abbreviation));
 
-      print('✅ Загружено аббревиатур: ${abbreviations.length}');
+      Logger.success('Загружено аббревиатур: ${abbreviations.length}');
       if (mounted) {
         setState(() {
           _abbreviations = abbreviations;
@@ -130,7 +119,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
         });
       }
     } catch (e) {
-      print('❌ Ошибка загрузки аббревиатур: $e');
+      Logger.error('Ошибка загрузки аббревиатур', e);
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -236,13 +225,13 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
 
   void _save() {
     if (_selectedAbbreviation == null) {
-      print('❌ Аббревиатура не выбрана');
+      Logger.warning('Аббревиатура не выбрана');
       return;
     }
 
     // Валидация employeeId
     if (widget.employeeId.isEmpty) {
-      print('❌ Ошибка: employeeId пустой');
+      Logger.error('Ошибка: employeeId пустой');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Ошибка: не указан сотрудник'),
@@ -254,22 +243,22 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
 
     // Валидация employeeName
     if (widget.employeeName.isEmpty) {
-      print('❌ Ошибка: employeeName пустой');
+      Logger.warning('employeeName пустой');
     }
 
-    print('💾 Сохранение смены:');
-    print('   employeeId: ${widget.employeeId}');
-    print('   employeeName: ${widget.employeeName}');
-    print('   date: ${widget.date.day}.${widget.date.month}.${widget.date.year}');
-    print('   selectedAbbreviation: $_selectedAbbreviation');
+    Logger.debug('Сохранение смены:');
+    Logger.debug('   employeeId: ${widget.employeeId}');
+    Logger.debug('   employeeName: ${widget.employeeName}');
+    Logger.debug('   date: ${widget.date.day}.${widget.date.month}.${widget.date.year}');
+    Logger.debug('   selectedAbbreviation: $_selectedAbbreviation');
 
     // Находим выбранную аббревиатуру
     final selectedAbbrev = _abbreviations.firstWhere(
       (a) => a.abbreviation == _selectedAbbreviation,
     );
 
-    print('   shopAddress: ${selectedAbbrev.shopAddress}');
-    print('   shiftType: ${selectedAbbrev.shiftType.name}');
+    Logger.debug('   shopAddress: ${selectedAbbrev.shopAddress}');
+    Logger.debug('   shiftType: ${selectedAbbrev.shiftType.name}');
 
     // Создаем запись
     final entry = WorkScheduleEntry(
@@ -283,7 +272,7 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
 
     // Дополнительная валидация созданной записи
     if (entry.employeeId.isEmpty) {
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой в созданной записи!');
+      Logger.error('КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой в созданной записи!');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Ошибка: не удалось создать запись'),
@@ -293,13 +282,13 @@ class _AbbreviationSelectionDialogState extends State<AbbreviationSelectionDialo
       return;
     }
 
-    print('✅ Запись создана успешно:');
-    print('   ID: ${entry.id}');
-    print('   employeeId: ${entry.employeeId}');
-    print('   employeeName: ${entry.employeeName}');
-    print('   shopAddress: ${entry.shopAddress}');
-    print('   date: ${entry.date}');
-    print('   shiftType: ${entry.shiftType.name}');
+    Logger.success('Запись создана успешно:');
+    Logger.debug('   ID: ${entry.id}');
+    Logger.debug('   employeeId: ${entry.employeeId}');
+    Logger.debug('   employeeName: ${entry.employeeName}');
+    Logger.debug('   shopAddress: ${entry.shopAddress}');
+    Logger.debug('   date: ${entry.date}');
+    Logger.debug('   shiftType: ${entry.shiftType.name}');
 
     Navigator.of(context).pop({
       'action': 'save',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/envelope_report_model.dart';
 import '../services/envelope_report_service.dart';
 import 'envelope_report_view_page.dart';
@@ -35,7 +36,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка загрузки отчетов: $e');
+      Logger.error('Ошибка загрузки отчетов', e);
       setState(() => _isLoading = false);
     }
   }

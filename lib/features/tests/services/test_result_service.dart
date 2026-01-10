@@ -1,9 +1,10 @@
 import '../models/test_result_model.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class TestResultService {
-  static const String baseEndpoint = '/api/test-results';
+  static const String baseEndpoint = ApiConstants.testResultsEndpoint;
 
   /// Получить все результаты тестирования
   static Future<List<TestResult>> getResults() async {

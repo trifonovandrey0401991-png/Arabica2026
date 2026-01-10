@@ -1,4 +1,5 @@
 import '../models/shop_model.dart';
+import '../models/shop_settings_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
@@ -79,6 +80,35 @@ class ShopService {
     return await BaseHttpService.delete(
       endpoint: '${ApiConstants.shopsEndpoint}/$id',
     );
+  }
+
+  // ============================================
+  // Shop Settings API
+  // ============================================
+
+  /// Получить настройки магазина по адресу
+  static Future<ShopSettings?> getShopSettings(String shopAddress) async {
+    Logger.debug('📥 Загрузка настроек магазина: $shopAddress');
+
+    return await BaseHttpService.get<ShopSettings>(
+      endpoint: '/api/shop-settings/${Uri.encodeComponent(shopAddress)}',
+      fromJson: (json) => ShopSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+  }
+
+  /// Сохранить настройки магазина
+  static Future<bool> saveShopSettings(ShopSettings settings) async {
+    Logger.debug('📤 Сохранение настроек магазина: ${settings.shopAddress}');
+
+    final result = await BaseHttpService.post<ShopSettings>(
+      endpoint: '/api/shop-settings',
+      body: settings.toJson(),
+      fromJson: (json) => ShopSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+
+    return result != null;
   }
 }
 

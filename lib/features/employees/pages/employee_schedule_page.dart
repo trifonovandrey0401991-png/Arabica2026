@@ -4,12 +4,12 @@ import '../../work_schedule/models/work_schedule_model.dart';
 import '../../work_schedule/services/work_schedule_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
+import '../../shops/services/shop_service.dart';
 import 'employee_preferences_dialog.dart';
 import '../../work_schedule/work_schedule_validator.dart';
 import '../../../shared/dialogs/schedule_validation_dialog.dart';
 import '../services/employee_service.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../../../core/utils/logger.dart';
 
 /// Страница расписания сотрудника для проставления смен
 class EmployeeSchedulePage extends StatefulWidget {
@@ -71,32 +71,24 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
         _schedule = schedule;
       });
     } catch (e) {
-      print('Ошибка загрузки графика: $e');
+      Logger.error('Ошибка загрузки графика', e);
     }
   }
 
   Future<void> _loadAbbreviations() async {
     final List<ShopAbbreviation> abbreviations = [];
-    
+
     // Если кэш настроек пуст, загружаем настройки для каждого магазина
     if (_shopSettingsCache.isEmpty) {
-      print('📥 Загрузка настроек магазинов...');
+      Logger.debug('Загрузка настроек магазинов...');
       for (var shop in widget.shops) {
         try {
-          final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shop.address)}';
-          final response = await http.get(Uri.parse(url)).timeout(
-            const Duration(seconds: 5),
-          );
-          
-          if (response.statusCode == 200) {
-            final result = jsonDecode(response.body);
-            if (result['success'] == true && result['settings'] != null) {
-              final settings = ShopSettings.fromJson(result['settings']);
-              _shopSettingsCache[shop.address] = settings;
-            }
+          final settings = await ShopService.getShopSettings(shop.address);
+          if (settings != null) {
+            _shopSettingsCache[shop.address] = settings;
           }
         } catch (e) {
-          print('❌ Ошибка загрузки настроек для магазина ${shop.address}: $e');
+          Logger.error('Ошибка загрузки настроек для магазина ${shop.address}', e);
         }
       }
     }

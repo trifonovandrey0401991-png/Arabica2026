@@ -237,6 +237,8 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                   savedSupplier = await SupplierService.createSupplier(newSupplier);
                 }
 
+                if (!context.mounted) return;
+
                 if (savedSupplier != null) {
                   Navigator.pop(context, true);
                 } else {

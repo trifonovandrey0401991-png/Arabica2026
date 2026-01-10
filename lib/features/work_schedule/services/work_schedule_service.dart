@@ -1,42 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../models/work_schedule_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../rko/services/rko_service.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class WorkScheduleService {
-  static const String baseEndpoint = '/api/work-schedule';
+  static const String _baseEndpoint = ApiConstants.workScheduleEndpoint;
 
   /// Получить график на месяц
   static Future<WorkSchedule> getSchedule(DateTime month) async {
     try {
       final monthStr = '${month.year}-${month.month.toString().padLeft(2, '0')}';
-      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint').replace(
-        queryParameters: {'month': monthStr},
+      Logger.debug('Загрузка графика на месяц: $monthStr');
+
+      final result = await BaseHttpService.get<WorkSchedule>(
+        endpoint: _baseEndpoint,
+        fromJson: (json) => WorkSchedule.fromJson(json),
+        itemKey: 'schedule',
       );
 
-      Logger.debug('📅 Загрузка графика на месяц: $monthStr');
-
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          final schedule = WorkSchedule.fromJson(data['schedule']);
-          Logger.debug('✅ Загружен график: ${schedule.entries.length} записей');
-          return schedule;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка загрузки графика');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+      if (result != null) {
+        Logger.debug('Загружен график: ${result.entries.length} записей');
+        return result;
       }
+      return WorkSchedule(month: month, entries: []);
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки графика', e);
-      // Возвращаем пустой график при ошибке
+      Logger.error('Ошибка загрузки графика', e);
       return WorkSchedule(month: month, entries: []);
     }
   }
@@ -45,28 +36,21 @@ class WorkScheduleService {
   static Future<WorkSchedule> getEmployeeSchedule(String employeeId, DateTime month) async {
     try {
       final monthStr = '${month.year}-${month.month.toString().padLeft(2, '0')}';
-      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/employee/$employeeId').replace(
-        queryParameters: {'month': monthStr},
+      Logger.debug('Загрузка графика сотрудника: $employeeId, месяц: $monthStr');
+
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/employee/$employeeId',
+        queryParams: {'month': monthStr},
       );
 
-      Logger.debug('📅 Загрузка графика сотрудника: $employeeId, месяц: $monthStr');
-
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          final schedule = WorkSchedule.fromJson(data['schedule']);
-          Logger.debug('✅ Загружен график сотрудника: ${schedule.entries.length} записей');
-          return schedule;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка загрузки графика');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+      if (result != null && result['schedule'] != null) {
+        final schedule = WorkSchedule.fromJson(result['schedule']);
+        Logger.debug('Загружен график сотрудника: ${schedule.entries.length} записей');
+        return schedule;
       }
+      return WorkSchedule(month: month, entries: []);
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки графика сотрудника', e);
+      Logger.error('Ошибка загрузки графика сотрудника', e);
       return WorkSchedule(month: month, entries: []);
     }
   }
@@ -74,32 +58,19 @@ class WorkScheduleService {
   /// Сохранить смену (создать или обновить)
   static Future<bool> saveShift(WorkScheduleEntry entry) async {
     try {
-      Logger.debug('💾 Сохранение смены: ${entry.employeeName}, ${entry.date.toIso8601String().split('T')[0]}, ${entry.shiftType.label}');
+      Logger.debug('Сохранение смены: ${entry.employeeName}, ${entry.date.toIso8601String().split('T')[0]}, ${entry.shiftType.label}');
 
       // Добавляем месяц в формат YYYY-MM
       final monthStr = '${entry.date.year}-${entry.date.month.toString().padLeft(2, '0')}';
       final entryJson = entry.toJson();
       entryJson['month'] = monthStr;
 
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(entryJson),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          Logger.debug('✅ Смена сохранена');
-          return true;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка сохранения смены');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
+      return await BaseHttpService.simplePost(
+        endpoint: _baseEndpoint,
+        body: entryJson,
+      );
     } catch (e) {
-      Logger.error('❌ Ошибка сохранения смены', e);
+      Logger.error('Ошибка сохранения смены', e);
       return false;
     }
   }
@@ -107,25 +78,10 @@ class WorkScheduleService {
   /// Удалить смену
   static Future<bool> deleteShift(String entryId) async {
     try {
-      Logger.debug('🗑️ Удаление смены: $entryId');
-
-      final response = await http.delete(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/$entryId'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          Logger.debug('✅ Смена удалена');
-          return true;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка удаления смены');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
+      Logger.debug('Удаление смены: $entryId');
+      return await BaseHttpService.delete(endpoint: '$_baseEndpoint/$entryId');
     } catch (e) {
-      Logger.error('❌ Ошибка удаления смены', e);
+      Logger.error('Ошибка удаления смены', e);
       return false;
     }
   }
@@ -133,29 +89,17 @@ class WorkScheduleService {
   /// Массовое создание смен
   static Future<bool> bulkCreateShifts(List<WorkScheduleEntry> entries) async {
     try {
-      Logger.debug('📦 Массовое создание смен: ${entries.length} записей');
+      Logger.debug('Массовое создание смен: ${entries.length} записей');
 
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/bulk'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({
+      return await BaseHttpService.simplePost(
+        endpoint: '$_baseEndpoint/bulk',
+        body: {
           'entries': entries.map((e) => e.toJson()).toList(),
-        }),
-      ).timeout(ApiConstants.longTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          Logger.debug('✅ Массовое создание завершено');
-          return true;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка массового создания');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
+        },
+        timeout: ApiConstants.longTimeout,
+      );
     } catch (e) {
-      Logger.error('❌ Ошибка массового создания смен', e);
+      Logger.error('Ошибка массового создания смен', e);
       return false;
     }
   }
@@ -194,7 +138,7 @@ class WorkScheduleService {
       // Сохраняем массово
       return await bulkCreateShifts(targetEntries);
     } catch (e) {
-      Logger.error('❌ Ошибка копирования недели', e);
+      Logger.error('Ошибка копирования недели', e);
       return false;
     }
   }
@@ -202,30 +146,17 @@ class WorkScheduleService {
   /// Сохранить шаблон
   static Future<bool> saveTemplate(ScheduleTemplate template) async {
     try {
-      Logger.debug('💾 Сохранение шаблона: ${template.name}');
+      Logger.debug('Сохранение шаблона: ${template.name}');
 
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/template'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({
+      return await BaseHttpService.simplePost(
+        endpoint: '$_baseEndpoint/template',
+        body: {
           'action': 'save',
           'template': template.toJson(),
-        }),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          Logger.debug('✅ Шаблон сохранен');
-          return true;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка сохранения шаблона');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
+        },
+      );
     } catch (e) {
-      Logger.error('❌ Ошибка сохранения шаблона', e);
+      Logger.error('Ошибка сохранения шаблона', e);
       return false;
     }
   }
@@ -233,28 +164,15 @@ class WorkScheduleService {
   /// Получить список шаблонов
   static Future<List<ScheduleTemplate>> getTemplates() async {
     try {
-      Logger.debug('📋 Загрузка шаблонов');
+      Logger.debug('Загрузка шаблонов');
 
-      final response = await http.get(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/template'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          final templates = (data['templates'] as List<dynamic>)
-              .map((t) => ScheduleTemplate.fromJson(t as Map<String, dynamic>))
-              .toList();
-          Logger.debug('✅ Загружено шаблонов: ${templates.length}');
-          return templates;
-        } else {
-          throw Exception(data['error'] ?? 'Ошибка загрузки шаблонов');
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
+      return await BaseHttpService.getList<ScheduleTemplate>(
+        endpoint: '$_baseEndpoint/template',
+        fromJson: (json) => ScheduleTemplate.fromJson(json),
+        listKey: 'templates',
+      );
     } catch (e) {
-      Logger.error('❌ Ошибка загрузки шаблонов', e);
+      Logger.error('Ошибка загрузки шаблонов', e);
       return [];
     }
   }
@@ -262,7 +180,7 @@ class WorkScheduleService {
   /// Применить шаблон
   static Future<bool> applyTemplate(ScheduleTemplate template, DateTime targetWeekStart) async {
     try {
-      Logger.debug('📋 Применение шаблона: ${template.name}');
+      Logger.debug('Применение шаблона: ${template.name}');
 
       // Создаем записи на основе шаблона, начиная с targetWeekStart
       final targetEntries = <WorkScheduleEntry>[];
@@ -280,7 +198,7 @@ class WorkScheduleService {
 
       return await bulkCreateShifts(targetEntries);
     } catch (e) {
-      Logger.error('❌ Ошибка применения шаблона', e);
+      Logger.error('Ошибка применения шаблона', e);
       return false;
     }
   }

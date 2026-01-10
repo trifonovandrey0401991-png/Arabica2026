@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 import '../models/task_model.dart';
 import '../models/recurring_task_model.dart';
 import '../services/task_service.dart';
@@ -66,7 +67,7 @@ class _MyTasksPageState extends State<MyTasksPage> {
             ..sort((a, b) => a.deadline.compareTo(b.deadline));
         } catch (e) {
           // Игнорируем ошибки загрузки циклических задач
-          print('Ошибка загрузки циклических задач: $e');
+          Logger.warning('Ошибка загрузки циклических задач: $e');
         }
       }
 

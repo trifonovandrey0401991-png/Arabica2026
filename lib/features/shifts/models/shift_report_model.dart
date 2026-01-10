@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 
 /// Модель ответа на вопрос
 class ShiftAnswer {
@@ -187,7 +188,7 @@ class ShiftReport {
       try {
         return ShiftReport.fromJson(jsonDecode(jsonStr));
       } catch (e) {
-        print('⚠️ Ошибка парсинга отчета: $e');
+        Logger.warning('Ошибка парсинга отчета: $e');
         return null;
       }
     }).whereType<ShiftReport>().toList();

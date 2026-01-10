@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/work_schedule_model.dart';
 import '../models/shift_transfer_model.dart';
 import '../services/work_schedule_service.dart';
 import '../services/shift_transfer_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/models/shop_settings_model.dart';
+import '../../shops/services/shop_service.dart';
 import '../../../shared/dialogs/abbreviation_selection_dialog.dart';
 import '../../../shared/dialogs/schedule_bulk_operations_dialog.dart';
 import '../../employees/pages/employees_page.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../../shops/models/shop_settings_model.dart';
 import '../work_schedule_validator.dart';
 import '../../../shared/dialogs/schedule_validation_dialog.dart';
 import '../../employees/pages/employee_schedule_page.dart';
@@ -83,7 +83,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
       await _loadAdminUnreadCount();
     } catch (e) {
-      print('Ошибка загрузки уведомлений админа: $e');
+      Logger.error('Ошибка загрузки уведомлений админа', e);
       if (mounted) {
         setState(() {
           _isLoadingNotifications = false;
@@ -101,7 +101,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         });
       }
     } catch (e) {
-      print('Ошибка загрузки счётчика админа: $e');
+      Logger.error('Ошибка загрузки счётчика админа', e);
     }
   }
 
@@ -156,26 +156,26 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   Future<void> _editShift(Employee employee, DateTime date) async {
-    print('🔵 _editShift вызван: ${employee.name}, ${date.day}.${date.month}.${date.year}');
+    Logger.debug('_editShift вызван: ${employee.name}, ${date.day}.${date.month}.${date.year}');
     
     WorkScheduleEntry? entryToEdit;
     if (_schedule != null) {
       try {
         entryToEdit = _schedule!.entries.firstWhere(
-          (e) => e.employeeId == employee.id && 
+          (e) => e.employeeId == employee.id &&
                  e.date.year == date.year &&
                  e.date.month == date.month &&
                  e.date.day == date.day,
         );
-        print('✅ Найдена существующая запись: ${entryToEdit.id}');
+        Logger.debug('Найдена существующая запись: ${entryToEdit.id}');
       } catch (e) {
         entryToEdit = null;
-        print('ℹ️ Запись не найдена (это нормально для новой смены)');
+        Logger.info('Запись не найдена (это нормально для новой смены)');
       }
     }
 
-    print('📋 Открываем диалог выбора аббревиатуры...');
-    print('   Магазинов доступно: ${_shops.length}');
+    Logger.debug('Открываем диалог выбора аббревиатуры...');
+    Logger.debug('Магазинов доступно: ${_shops.length}');
     
     try {
       final result = await showDialog<Map<String, dynamic>>(
@@ -189,15 +189,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         ),
       );
       
-      print('📋 Результат диалога: ${result != null ? result['action'] : 'отменено'}');
+      Logger.debug('Результат диалога: ${result != null ? result['action'] : 'отменено'}');
 
       if (result != null) {
         if (result['action'] == 'save') {
           final entry = result['entry'] as WorkScheduleEntry;
-          
+
           // Валидация перед сохранением
           if (entry.employeeId.isEmpty) {
-            print('❌ КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой!');
+            Logger.error('КРИТИЧЕСКАЯ ОШИБКА: employeeId пустой!', null);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -209,29 +209,26 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             return;
           }
 
-          print('💾 Сохранение смены на сервер:');
-          print('   employeeId: ${entry.employeeId}');
-          print('   employeeName: ${entry.employeeName}');
-          print('   shopAddress: ${entry.shopAddress}');
-          print('   date: ${entry.date}');
-          print('   shiftType: ${entry.shiftType.name}');
+          Logger.debug('Сохранение смены на сервер:');
+          Logger.debug('employeeId: ${entry.employeeId}, employeeName: ${entry.employeeName}');
+          Logger.debug('shopAddress: ${entry.shopAddress}, date: ${entry.date}, shiftType: ${entry.shiftType.name}');
 
           // Проверяем валидацию перед сохранением
           final warnings = _validateShiftBeforeSave(entry);
-          
+
           // Если есть предупреждения, показываем диалог
           if (warnings.isNotEmpty) {
             final shouldSave = await _showValidationWarning(warnings);
             if (!shouldSave) {
               // Пользователь отменил сохранение
-              print('❌ Пользователь отменил сохранение из-за предупреждений');
+              Logger.info('Пользователь отменил сохранение из-за предупреждений');
               return;
             }
           }
 
           final success = await WorkScheduleService.saveShift(entry);
           if (success) {
-            print('✅ Смена успешно сохранена на сервер');
+            Logger.success('Смена успешно сохранена на сервер');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Смена сохранена')),
@@ -239,7 +236,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             }
             await _loadData();
           } else {
-            print('❌ Ошибка сохранения смены на сервер');
+            Logger.error('Ошибка сохранения смены на сервер', null);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -251,10 +248,10 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           }
         } else if (result['action'] == 'delete') {
           final entry = result['entry'] as WorkScheduleEntry;
-          print('🗑️ Удаление смены: ${entry.id}');
+          Logger.debug('Удаление смены: ${entry.id}');
           final success = await WorkScheduleService.deleteShift(entry.id);
           if (success) {
-            print('✅ Смена успешно удалена');
+            Logger.success('Смена успешно удалена');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Смена удалена')),
@@ -262,7 +259,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             }
             await _loadData();
           } else {
-            print('❌ Ошибка удаления смены');
+            Logger.error('Ошибка удаления смены', null);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -275,7 +272,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         }
       }
     } catch (e) {
-      print('❌ Ошибка при редактировании смены: $e');
+      Logger.error('Ошибка при редактировании смены', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -316,25 +313,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   
   Future<void> _loadShopSettings(List<Shop> shops) async {
     final Map<String, ShopSettings> settingsCache = {};
-    
+
     for (var shop in shops) {
       try {
-        final url = 'https://arabica26.ru/api/shop-settings/${Uri.encodeComponent(shop.address)}';
-        final response = await http.get(Uri.parse(url)).timeout(
-          const Duration(seconds: 5),
-        );
-
-        if (response.statusCode == 200) {
-          final result = jsonDecode(response.body);
-          if (result['success'] == true && result['settings'] != null) {
-            settingsCache[shop.address] = ShopSettings.fromJson(result['settings']);
-          }
+        final settings = await ShopService.getShopSettings(shop.address);
+        if (settings != null) {
+          settingsCache[shop.address] = settings;
         }
       } catch (e) {
-        print('Ошибка загрузки настроек для магазина ${shop.address}: $e');
+        Logger.error('Ошибка загрузки настроек для магазина ${shop.address}', e);
       }
     }
-    
+
     if (mounted) {
       setState(() {
         _shopSettingsCache = settingsCache;
@@ -728,7 +718,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
     return InkWell(
       onTap: () {
-        print('🔵 Клик по клетке: ${employee.name}, ${date.day}.${date.month}.${date.year}');
+        Logger.debug('Клик по клетке: ${employee.name}, ${date.day}.${date.month}.${date.year}');
         _editShift(employee, date);
       },
       child: Container(
@@ -921,8 +911,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           // Небольшая задержка между батчами
           await Future.delayed(const Duration(milliseconds: 100));
         }
-        
-        print('✅ Сохранено смен: $savedCount из ${newEntries.length}');
+
+        Logger.success('Сохранено смен: $savedCount из ${newEntries.length}');
       }
 
       // Закрываем индикатор загрузки
@@ -947,7 +937,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           });
         }
       } catch (e) {
-        print('Ошибка при обновлении графика: $e');
+        Logger.error('Ошибка при обновлении графика', e);
         if (mounted) {
           setState(() {
             _isLoading = false;

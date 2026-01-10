@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../../../shared/models/unified_dialog_message_model.dart';
 
 /// Модель диалога клиента с магазином

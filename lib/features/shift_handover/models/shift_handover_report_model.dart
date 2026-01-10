@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 
 /// Модель ответа на вопрос сдачи смены
 class ShiftHandoverAnswer {
@@ -192,7 +193,7 @@ class ShiftHandoverReport {
       final jsonList = reports.map((r) => r.toJson()).toList();
       await prefs.setString(_storageKey, jsonEncode(jsonList));
     } catch (e) {
-      print('❌ Ошибка сохранения отчета сдачи смены: $e');
+      Logger.error('Ошибка сохранения отчета сдачи смены', e);
     }
   }
 
@@ -207,7 +208,7 @@ class ShiftHandoverReport {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((json) => ShiftHandoverReport.fromJson(json)).toList();
     } catch (e) {
-      print('❌ Ошибка загрузки локальных отчетов сдачи смены: $e');
+      Logger.error('Ошибка загрузки локальных отчетов сдачи смены', e);
       return [];
     }
   }
@@ -223,7 +224,7 @@ class ShiftHandoverReport {
       final jsonList = reports.map((r) => r.toJson()).toList();
       await prefs.setString(_storageKey, jsonEncode(jsonList));
     } catch (e) {
-      print('❌ Ошибка удаления отчета сдачи смены: $e');
+      Logger.error('Ошибка удаления отчета сдачи смены', e);
     }
   }
 

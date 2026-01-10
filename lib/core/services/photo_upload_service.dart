@@ -9,6 +9,7 @@ import '../utils/logger.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import 'html_stub.dart' as html if (dart.library.html) 'dart:html';
 
+// http и dart:convert оставлены для multipart загрузки фото и веб-специфичных XMLHttpRequest
 
 /// Сервис для работы с фото пересменки (сохранение на сервере)
 class PhotoUploadService {

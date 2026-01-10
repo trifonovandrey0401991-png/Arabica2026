@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Модель регистрации сотрудника
 class EmployeeRegistration {
   final String phone; // Ключ для связи с "Лист11"

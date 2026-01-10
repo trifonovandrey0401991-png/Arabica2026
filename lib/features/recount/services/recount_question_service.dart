@@ -6,8 +6,10 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
+// http и dart:convert оставлены для multipart загрузки эталонных фото и bulk операций
+
 class RecountQuestionService {
-  static const String baseEndpoint = '/api/recount-questions';
+  static const String baseEndpoint = ApiConstants.recountQuestionsEndpoint;
 
   /// Получить все вопросы
   static Future<List<RecountQuestion>> getQuestions() async {

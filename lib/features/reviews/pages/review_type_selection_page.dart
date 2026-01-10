@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import 'review_shop_selection_page.dart';
 
 /// Страница выбора типа отзыва (положительный/отрицательный)
@@ -7,7 +8,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('🔵 ReviewTypeSelectionPage.build() вызван');
+    Logger.debug('ReviewTypeSelectionPage.build() вызван');
     try {
       return Scaffold(
       appBar: AppBar(
@@ -133,8 +134,7 @@ class ReviewTypeSelectionPage extends StatelessWidget {
       ),
     );
     } catch (e, stackTrace) {
-      print('❌ Ошибка в ReviewTypeSelectionPage.build(): $e');
-      print('❌ Stack trace: $stackTrace');
+      Logger.error('Ошибка в ReviewTypeSelectionPage.build()', e, stackTrace);
       return Scaffold(
         appBar: AppBar(
           title: const Text('Ошибка'),

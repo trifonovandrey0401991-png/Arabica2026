@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/recount_report_model.dart';
 import '../models/pending_recount_model.dart';
 import '../services/recount_service.dart';
@@ -41,30 +42,30 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   }
 
   Future<void> _loadData() async {
-    print('📥 Загрузка отчетов пересчёта...');
+    Logger.info('Загрузка отчетов пересчёта...');
 
     // Загружаем магазины из API
     try {
       final shops = await Shop.loadShopsFromGoogleSheets();
       _allShops = shops;
-      print('✅ Загружено магазинов: ${shops.length}');
+      Logger.success('Загружено магазинов: ${shops.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки магазинов: $e');
+      Logger.error('Ошибка загрузки магазинов', e);
     }
 
     // Загружаем просроченные отчёты
     try {
       final expiredReports = await RecountService.getExpiredReports();
       _expiredReports = expiredReports;
-      print('✅ Загружено просроченных отчётов: ${expiredReports.length}');
+      Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки просроченных отчётов: $e');
+      Logger.error('Ошибка загрузки просроченных отчётов', e);
     }
 
     // Загружаем отчеты с сервера
     try {
       final serverReports = await RecountService.getReports();
-      print('✅ Загружено отчетов с сервера: ${serverReports.length}');
+      Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
       _allReports = serverReports;
       _allReports.sort((a, b) => b.completedAt.compareTo(a.completedAt));
@@ -72,10 +73,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       // Вычисляем непройденные пересчёты за сегодня (магазин + смена)
       _calculatePendingRecounts();
 
-      print('✅ Всего отчетов: ${_allReports.length}');
+      Logger.success('Всего отчетов: ${_allReports.length}');
       setState(() {});
     } catch (e) {
-      print('❌ Ошибка загрузки отчетов: $e');
+      Logger.error('Ошибка загрузки отчетов', e);
       setState(() {});
     }
   }
@@ -143,7 +144,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       return a.shiftType == 'morning' ? -1 : 1;
     });
 
-    print('📋 Непройденных пересчётов сегодня: ${_pendingRecounts.length}');
+    Logger.info('Непройденных пересчётов сегодня: ${_pendingRecounts.length}');
   }
 
   List<RecountReport> _applyFilters(List<RecountReport> reports) {

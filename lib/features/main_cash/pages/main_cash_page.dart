@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../models/withdrawal_model.dart';
 import '../services/main_cash_service.dart';
@@ -43,10 +44,10 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
 
       // Логирование для отладки
       for (final b in balances) {
-        print('=== Баланс магазина: ${b.shopAddress}');
-        print('    ООО: ${b.oooBalance}');
-        print('    ИП: ${b.ipBalance}');
-        print('    Итого: ${b.totalBalance}');
+        Logger.debug('=== Баланс магазина: ${b.shopAddress}');
+        Logger.debug('    ООО: ${b.oooBalance}');
+        Logger.debug('    ИП: ${b.ipBalance}');
+        Logger.debug('    Итого: ${b.totalBalance}');
       }
 
       setState(() {
@@ -55,7 +56,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка загрузки данных: $e');
+      Logger.error('Ошибка загрузки данных', e);
       setState(() => _isLoading = false);
     }
   }
@@ -98,7 +99,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     } else {
       result = amount.toStringAsFixed(0);
     }
-    print('_formatAmount($amount) => "$result"');
+    Logger.debug('_formatAmount($amount) => "$result"');
     return result;
   }
 

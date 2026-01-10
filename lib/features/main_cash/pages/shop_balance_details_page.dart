@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/main_cash_service.dart';
 import '../widgets/turnover_calendar.dart';
@@ -45,7 +46,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка загрузки баланса: $e');
+      Logger.error('Ошибка загрузки баланса', e);
       setState(() => _isLoading = false);
     }
   }

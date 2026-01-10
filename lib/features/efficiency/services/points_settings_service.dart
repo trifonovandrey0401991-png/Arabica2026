@@ -1,9 +1,10 @@
 import '../models/points_settings_model.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class PointsSettingsService {
-  static const String baseEndpoint = '/api/points-settings';
+  static const String baseEndpoint = ApiConstants.pointsSettingsEndpoint;
 
   /// Get test points settings
   static Future<TestPointsSettings> getTestPointsSettings() async {

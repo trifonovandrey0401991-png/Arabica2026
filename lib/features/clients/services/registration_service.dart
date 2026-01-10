@@ -1,7 +1,6 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../../loyalty/services/loyalty_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/utils/logger.dart';
 
 /// Сервис регистрации клиентов.
@@ -13,13 +12,13 @@ class RegistrationService {
     required String qr,
   }) async {
     try {
-      Logger.debug('📝 Регистрация пользователя: $name ($phone)');
+      Logger.debug('Регистрация пользователя: $name ($phone)');
       final info = await LoyaltyService.registerClient(
         name: name,
         phone: phone,
         qr: qr,
       );
-      Logger.success('✅ Клиент зарегистрирован, QR: ${info.qr}');
+      Logger.success('Клиент зарегистрирован, QR: ${info.qr}');
 
       // Сохраняем данные о клиенте на сервере
       try {
@@ -28,15 +27,15 @@ class RegistrationService {
           name: name,
           clientName: name,
         );
-        Logger.debug('✅ Данные клиента сохранены на сервере');
+        Logger.debug('Данные клиента сохранены на сервере');
       } catch (e) {
-        Logger.error('⚠️ Не удалось сохранить данные клиента на сервере', e);
+        Logger.error('Не удалось сохранить данные клиента на сервере', e);
         // Не прерываем регистрацию, если не удалось сохранить на сервере
       }
 
       return info;
     } catch (e) {
-      Logger.error('❌ Ошибка регистрации', e);
+      Logger.error('Ошибка регистрации', e);
       return null;
     }
   }
@@ -77,19 +76,13 @@ class RegistrationService {
         body['referredBy'] = referredBy;
       }
 
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}${ApiConstants.clientsEndpoint}'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(body),
-      ).timeout(ApiConstants.shortTimeout);
+      final success = await BaseHttpService.simplePost(
+        endpoint: ApiConstants.clientsEndpoint,
+        body: body,
+      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сохранения: ${response.statusCode}');
-      }
-
-      final result = jsonDecode(response.body);
-      if (result['success'] != true) {
-        throw Exception(result['error'] ?? 'Ошибка сохранения клиента');
+      if (!success) {
+        throw Exception('Ошибка сохранения клиента');
       }
     } catch (e) {
       Logger.error('Ошибка сохранения клиента на сервере', e);

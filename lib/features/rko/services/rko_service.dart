@@ -1,5 +1,3 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../employees/services/employee_registration_service.dart';
@@ -7,29 +5,30 @@ import '../../employees/models/employee_registration_model.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../shops/models/shop_model.dart';
 import '../../employees/pages/employees_page.dart';
-import '../../../core/constants/api_constants.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 
 class RKOService {
+  static const String _shopSettingsEndpoint = '/api/shop-settings';
 
   /// Получить последнюю пересменку сотрудника
   static Future<ShiftReport?> getLastShift(String employeeName) async {
     try {
       final reports = await ShiftReport.loadAllReports();
-      
+
       // Фильтруем отчеты по имени сотрудника и сортируем по дате (новые первыми)
       final employeeReports = reports
           .where((r) => r.employeeName.toLowerCase() == employeeName.toLowerCase())
           .toList();
-      
+
       employeeReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      
+
       if (employeeReports.isNotEmpty) {
         return employeeReports.first;
       }
-      
+
       return null;
     } catch (e) {
       Logger.error('Ошибка получения последней пересменки', e);
@@ -46,21 +45,19 @@ class RKOService {
       Logger.debug('Настройки магазина загружены из кэша');
       return cached;
     }
-    
-    try {
-      final url = '${ApiConstants.serverUrl}/api/shop-settings/${Uri.encodeComponent(shopAddress)}';
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true && result['settings'] != null) {
-          final settings = ShopSettings.fromJson(result['settings']);
-          // Сохраняем в кэш
-          CacheManager.set(cacheKey, settings, duration: AppConstants.cacheDuration);
-          return settings;
-        }
+    try {
+      final result = await BaseHttpService.get<ShopSettings>(
+        endpoint: '$_shopSettingsEndpoint/${Uri.encodeComponent(shopAddress)}',
+        fromJson: (json) => ShopSettings.fromJson(json),
+        itemKey: 'settings',
+      );
+
+      if (result != null) {
+        // Сохраняем в кэш
+        CacheManager.set(cacheKey, result, duration: AppConstants.cacheDuration);
       }
-      return null;
+      return result;
     } catch (e) {
       Logger.error('Ошибка получения настроек магазина', e);
       return null;
@@ -70,14 +67,12 @@ class RKOService {
   /// Получить следующий номер документа для магазина
   static Future<int> getNextDocumentNumber(String shopAddress) async {
     try {
-      final url = '${ApiConstants.serverUrl}/api/shop-settings/${Uri.encodeComponent(shopAddress)}/document-number';
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_shopSettingsEndpoint/${Uri.encodeComponent(shopAddress)}/document-number',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return result['documentNumber'] ?? 1;
-        }
+      if (result != null) {
+        return result['documentNumber'] as int? ?? 1;
       }
       return 1;
     } catch (e) {
@@ -89,18 +84,10 @@ class RKOService {
   /// Обновить номер документа для магазина
   static Future<bool> updateDocumentNumber(String shopAddress, int documentNumber) async {
     try {
-      final url = '${ApiConstants.serverUrl}/api/shop-settings/${Uri.encodeComponent(shopAddress)}/document-number';
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({'documentNumber': documentNumber}),
-      ).timeout(ApiConstants.shortTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result['success'] == true;
-      }
-      return false;
+      return await BaseHttpService.simplePost(
+        endpoint: '$_shopSettingsEndpoint/${Uri.encodeComponent(shopAddress)}/document-number',
+        body: {'documentNumber': documentNumber},
+      );
     } catch (e) {
       Logger.error('Ошибка обновления номера документа', e);
       return false;
@@ -112,7 +99,7 @@ class RKOService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
-      
+
       if (phone == null || phone.isEmpty) {
         return null;
       }
@@ -158,4 +145,3 @@ class RKOService {
     }
   }
 }
-

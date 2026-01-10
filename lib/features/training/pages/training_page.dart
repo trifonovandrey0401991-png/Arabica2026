@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/utils/logger.dart';
 import '../models/training_model.dart';
 
 /// Страница обучения
@@ -108,7 +109,7 @@ class _TrainingPageState extends State<TrainingPage> {
                             mode: LaunchMode.externalApplication,
                           );
                         } catch (e) {
-                          print('❌ Ошибка открытия ссылки: $e');
+                          Logger.error('Ошибка открытия ссылки', e);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

@@ -15,13 +15,14 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
   List<Map<String, dynamic>> _pendingOrders = [];
   List<Map<String, dynamic>> _acceptedOrders = [];
   List<Map<String, dynamic>> _rejectedOrders = [];
+  List<Map<String, dynamic>> _unconfirmedOrders = [];
 
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadOrders();
   }
 
@@ -40,11 +41,13 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
     final pending = await OrderService.getAllOrders(status: 'pending');
     final accepted = await OrderService.getAllOrders(status: 'accepted');
     final rejected = await OrderService.getAllOrders(status: 'rejected');
+    final unconfirmed = await OrderService.getAllOrders(status: 'unconfirmed');
 
     setState(() {
       _pendingOrders = pending;
       _acceptedOrders = accepted;
       _rejectedOrders = rejected;
+      _unconfirmedOrders = unconfirmed;
       _isLoading = false;
     });
   }
@@ -82,6 +85,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
     final status = order['status'] as String?;
     final acceptedBy = order['acceptedBy'] as String?;
     final rejectedBy = order['rejectedBy'] as String?;
+    final expiredAt = order['expiredAt'] as String?;
 
     // Получаем фото первого товара
     final firstItemPhotoId = items.isNotEmpty
@@ -116,7 +120,9 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
                     ? Colors.green[100]
                     : status == 'rejected'
                         ? Colors.red[100]
-                        : Colors.grey[200],
+                        : status == 'unconfirmed'
+                            ? Colors.orange[100]
+                            : Colors.grey[200],
                 backgroundImage: !showStatusIcon && firstItemPhotoId != null && firstItemPhotoId.isNotEmpty
                     ? AssetImage('assets/images/$firstItemPhotoId.jpg')
                     : null,
@@ -126,12 +132,16 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
                             ? Icons.check_circle
                             : status == 'rejected'
                                 ? Icons.cancel
-                                : Icons.receipt,
+                                : status == 'unconfirmed'
+                                    ? Icons.warning_amber
+                                    : Icons.receipt,
                         color: status == 'accepted'
                             ? Colors.green
                             : status == 'rejected'
                                 ? Colors.red
-                                : Colors.grey,
+                                : status == 'unconfirmed'
+                                    ? Colors.orange
+                                    : Colors.grey,
                         size: 32,
                       )
                     : null,
@@ -163,7 +173,9 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
                                 ? Colors.green
                                 : status == 'rejected'
                                     ? Colors.red
-                                    : Colors.green,
+                                    : status == 'unconfirmed'
+                                        ? Colors.orange
+                                        : Colors.green,
                           ),
                         ),
                       ],
@@ -229,6 +241,33 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
                         ],
                       ),
                     ],
+                    // Показываем информацию о просрочке для unconfirmed
+                    if (status == 'unconfirmed' && expiredAt != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.orange[200]!),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.timer_off, size: 14, color: Colors.orange),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Не подтверждён вовремя',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       _getItemsPreview(items),
@@ -288,6 +327,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
         ],
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: [
             Tab(
               icon: const Icon(Icons.hourglass_empty),
@@ -295,11 +335,15 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
             ),
             Tab(
               icon: const Icon(Icons.check_circle),
-              text: 'Выполненные (${_acceptedOrders.length})',
+              text: 'Выполнено (${_acceptedOrders.length})',
             ),
             Tab(
               icon: const Icon(Icons.cancel),
               text: 'Отказано (${_rejectedOrders.length})',
+            ),
+            Tab(
+              icon: const Icon(Icons.warning_amber),
+              text: 'Не подтв. (${_unconfirmedOrders.length})',
             ),
           ],
         ),
@@ -310,6 +354,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> with SingleTick
           _buildOrdersList(_pendingOrders, 'Нет ожидающих заказов'),
           _buildOrdersList(_acceptedOrders, 'Нет выполненных заказов', showStatusIcon: true),
           _buildOrdersList(_rejectedOrders, 'Нет отказанных заказов', showStatusIcon: true),
+          _buildOrdersList(_unconfirmedOrders, 'Нет не подтверждённых заказов', showStatusIcon: true),
         ],
       ),
     );

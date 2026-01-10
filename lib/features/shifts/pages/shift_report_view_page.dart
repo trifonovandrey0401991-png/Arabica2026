@@ -6,6 +6,7 @@ import '../models/shift_report_model.dart';
 import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import 'shift_photo_gallery_page.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница просмотра отчета пересменки
 class ShiftReportViewPage extends StatefulWidget {
@@ -256,13 +257,13 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                         // Если есть эталонное фото, показываем две фото рядом
                         Builder(
                           builder: (context) {
-                            print('🖼️ Отчет: Проверка эталонного фото для вопроса "${answer.question}"');
-                            print('   referencePhotoUrl: ${answer.referencePhotoUrl}');
-                            print('   photoPath: ${answer.photoPath}');
-                            print('   photoDriveId: ${answer.photoDriveId}');
-                            
+                            Logger.debug('Отчет: Проверка эталонного фото для вопроса "${answer.question}"');
+                            Logger.debug('   referencePhotoUrl: ${answer.referencePhotoUrl}');
+                            Logger.debug('   photoPath: ${answer.photoPath}');
+                            Logger.debug('   photoDriveId: ${answer.photoDriveId}');
+
                             if (answer.referencePhotoUrl != null) {
-                              print('   ✅ Есть эталонное фото: ${answer.referencePhotoUrl}');
+                              Logger.success('   Есть эталонное фото: ${answer.referencePhotoUrl}');
                               return Row(
                                 children: [
                                   Expanded(
@@ -296,8 +297,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                 );
                                               },
                                               errorBuilder: (context, error, stackTrace) {
-                                                print('❌ Ошибка загрузки эталонного фото: $error');
-                                                print('   URL: ${answer.referencePhotoUrl}');
+                                                Logger.error('Ошибка загрузки эталонного фото: URL: ${answer.referencePhotoUrl}', error);
                                                 return const Center(
                                                   child: Column(
                                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -370,7 +370,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                     builder: (context, snapshot) {
                                                       if (snapshot.hasData) {
                                                         final photoUrl = snapshot.data!;
-                                                        print('🖼️ Загрузка фото сотрудника из: $photoUrl');
+                                                        Logger.debug('Загрузка фото сотрудника из: $photoUrl');
                                                         return Image.network(
                                                           photoUrl,
                                                           fit: BoxFit.cover,
@@ -381,8 +381,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                             );
                                                           },
                                                           errorBuilder: (context, error, stackTrace) {
-                                                            print('❌ Ошибка загрузки фото сотрудника: $error');
-                                                            print('   URL: $photoUrl');
+                                                            Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
                                                             return const Center(
                                                               child: Column(
                                                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -412,7 +411,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                             ],
                           );
                             } else {
-                              print('   ❌ Нет эталонного фото в ответе');
+                              Logger.debug('   Нет эталонного фото в ответе');
                               return const SizedBox.shrink();
                             }
                           },
@@ -458,7 +457,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                           builder: (context, snapshot) {
                                             if (snapshot.hasData) {
                                               final photoUrl = snapshot.data!;
-                                              print('🖼️ Загрузка фото сотрудника из: $photoUrl');
+                                              Logger.debug('Загрузка фото сотрудника из: $photoUrl');
                                               return Image.network(
                                                 photoUrl,
                                                 fit: BoxFit.cover,
@@ -469,8 +468,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
                                                   );
                                                 },
                                                 errorBuilder: (context, error, stackTrace) {
-                                                  print('❌ Ошибка загрузки фото сотрудника: $error');
-                                                  print('   URL: $photoUrl');
+                                                  Logger.error('Ошибка загрузки фото сотрудника: URL: $photoUrl', error);
                                                   return const Center(
                                                     child: Column(
                                                       mainAxisAlignment: MainAxisAlignment.center,

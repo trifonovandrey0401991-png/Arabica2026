@@ -132,6 +132,7 @@ class ReviewsShopDetailPage extends StatelessWidget {
                             ),
                           ),
                         );
+                        if (!context.mounted) return;
                         if (result == true) {
                           // Возвращаем true, чтобы обновить список на предыдущей странице
                           Navigator.of(context).pop(true);

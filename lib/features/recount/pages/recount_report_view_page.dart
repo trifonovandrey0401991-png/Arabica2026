@@ -2,11 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 import '../models/recount_report_model.dart';
-import '../models/recount_settings_model.dart';
 import '../services/recount_service.dart';
 import '../services/recount_points_service.dart';
-import '../../../core/services/photo_upload_service.dart';
 
 /// Страница просмотра отчета пересчета с возможностью оценки
 class RecountReportViewPage extends StatefulWidget {
@@ -119,7 +118,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка верификации фото: $e');
+      Logger.error('Ошибка верификации фото', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -277,7 +276,7 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка постановки оценки: $e');
+      Logger.error('Ошибка постановки оценки', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

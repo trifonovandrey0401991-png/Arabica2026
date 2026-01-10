@@ -6,6 +6,9 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import '../services/rko_reports_service.dart';
+import '../../../core/utils/logger.dart';
+
+// http оставлен для скачивания binary файлов (DOCX/PDF) с сервера
 
 /// Страница просмотра РКО (PDF или DOCX)
 class RKOPDFViewerPage extends StatefulWidget {
@@ -46,8 +49,8 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
 
     try {
       final fileUrl = RKOReportsService.getPDFUrl(widget.fileName);
-      print('📥 Скачиваем файл: $fileUrl');
-      
+      Logger.info('Скачиваем файл: $fileUrl');
+
       // Скачиваем файл
       final response = await http.get(Uri.parse(fileUrl));
       if (response.statusCode != 200) {
@@ -59,17 +62,17 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
       final filePath = path.join(directory.path, widget.fileName);
       final file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
-      
-      print('✅ Файл сохранен: $filePath');
-      
+
+      Logger.success('Файл сохранен: $filePath');
+
       // Открываем файл через системное приложение
       final result = await OpenFile.open(filePath);
       if (result.type != ResultType.done) {
         throw Exception('Не удалось открыть файл: ${result.message}. Установите приложение для просмотра Word документов.');
       }
-      print('✅ Файл открыт в системном приложении');
+      Logger.success('Файл открыт в системном приложении');
     } catch (e) {
-      print('❌ Ошибка открытия файла: $e');
+      Logger.error('Ошибка открытия файла', e);
       setState(() {
         _errorMessage = 'Ошибка открытия файла: $e';
       });
@@ -208,8 +211,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
           : SfPdfViewer.network(
               fileUrl,
               onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-                print('Ошибка загрузки PDF: ${details.error}');
-                print('Описание: ${details.description}');
+                Logger.error('Ошибка загрузки PDF: ${details.error}', details.description);
                 if (mounted) {
                   setState(() {
                     _errorMessage = details.description ?? 'Не удалось загрузить документ';

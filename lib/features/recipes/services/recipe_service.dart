@@ -6,6 +6,8 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
+// http и dart:convert оставлены для multipart загрузки фото
+
 class RecipeService {
   /// Получить все рецепты
   static Future<List<Recipe>> getRecipes() async {

@@ -7,7 +7,6 @@ import '../../recount/services/recount_service.dart';
 import '../../recount/models/recount_report_model.dart';
 import '../../shifts/services/shift_report_service.dart';
 import '../../shifts/models/shift_report_model.dart';
-import '../../rko/services/rko_reports_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/utils/logger.dart';
 
@@ -458,13 +457,13 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                             // Если есть эталонное фото, показываем две фото рядом
                             Builder(
                               builder: (context) {
-                                print('🖼️ KPI: Проверка эталонного фото для вопроса "${answer.question}"');
-                                print('   referencePhotoUrl: ${answer.referencePhotoUrl}');
-                                print('   photoPath: ${answer.photoPath}');
-                                print('   photoDriveId: ${answer.photoDriveId}');
-                                
+                                Logger.debug('KPI: Проверка эталонного фото для вопроса "${answer.question}"');
+                                Logger.debug('   referencePhotoUrl: ${answer.referencePhotoUrl}');
+                                Logger.debug('   photoPath: ${answer.photoPath}');
+                                Logger.debug('   photoDriveId: ${answer.photoDriveId}');
+
                                 if (answer.referencePhotoUrl != null) {
-                                  print('   ✅ Есть эталонное фото: ${answer.referencePhotoUrl}');
+                                  Logger.debug('Есть эталонное фото: ${answer.referencePhotoUrl}');
                                   return Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -509,8 +508,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         );
                                                       },
                                                       errorBuilder: (context, error, stackTrace) {
-                                                        print('❌ Ошибка загрузки эталонного фото: $error');
-                                                        print('   URL: ${answer.referencePhotoUrl}');
+                                                        Logger.error('Ошибка загрузки эталонного фото, URL: ${answer.referencePhotoUrl}', error);
                                                         return const Center(
                                                           child: Icon(Icons.error, size: 24),
                                                         );
@@ -548,7 +546,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         answer.photoPath!,
                                                         fit: BoxFit.cover,
                                                         errorBuilder: (context, error, stackTrace) {
-                                                          print('❌ Ошибка загрузки фото сотрудника: $error');
+                                                          Logger.error('Ошибка загрузки фото сотрудника', error);
                                                           return const Center(
                                                             child: Icon(Icons.error, size: 24),
                                                           );
@@ -558,7 +556,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         File(answer.photoPath!),
                                                         fit: BoxFit.cover,
                                                         errorBuilder: (context, error, stackTrace) {
-                                                          print('❌ Ошибка загрузки локального фото: $error');
+                                                          Logger.error('Ошибка загрузки локального фото', error);
                                                           return const Center(
                                                             child: Icon(Icons.error, size: 24),
                                                           );
@@ -570,7 +568,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                         builder: (context, snapshot) {
                                                           if (snapshot.hasData) {
                                                             final photoUrl = snapshot.data!;
-                                                            print('🖼️ KPI: Загрузка фото сотрудника из: $photoUrl');
+                                                            Logger.debug('KPI: Загрузка фото сотрудника из: $photoUrl');
                                                             return Image.network(
                                                               photoUrl,
                                                               fit: BoxFit.cover,
@@ -581,9 +579,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                                 );
                                                               },
                                                               errorBuilder: (context, error, stackTrace) {
-                                                                print('❌ Ошибка загрузки фото из Google Drive: $error');
-                                                                print('   URL: $photoUrl');
-                                                                print('   photoDriveId: ${answer.photoDriveId}');
+                                                                Logger.error('Ошибка загрузки фото из Google Drive, URL: $photoUrl, photoDriveId: ${answer.photoDriveId}', error);
                                                                 return const Center(
                                                                   child: Icon(Icons.error, size: 24),
                                                                 );
@@ -608,7 +604,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                     ],
                                   );
                                 } else {
-                                  print('   ❌ Нет эталонного фото в ответе');
+                                  Logger.debug('Нет эталонного фото в ответе');
                                   return const SizedBox.shrink();
                                 }
                               },
@@ -629,7 +625,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                               answer.photoPath!,
                                               fit: BoxFit.cover,
                                               errorBuilder: (context, error, stackTrace) {
-                                                print('❌ Ошибка загрузки фото сотрудника: $error');
+                                                Logger.error('Ошибка загрузки фото сотрудника', error);
                                                 return const Center(
                                                   child: Icon(Icons.error, size: 64),
                                                 );
@@ -639,7 +635,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                               File(answer.photoPath!),
                                               fit: BoxFit.cover,
                                               errorBuilder: (context, error, stackTrace) {
-                                                print('❌ Ошибка загрузки локального фото: $error');
+                                                Logger.error('Ошибка загрузки локального фото', error);
                                                 return const Center(
                                                   child: Icon(Icons.error, size: 64),
                                                 );
@@ -654,7 +650,7 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                                                     snapshot.data!,
                                                     fit: BoxFit.cover,
                                                     errorBuilder: (context, error, stackTrace) {
-                                                      print('❌ Ошибка загрузки фото из Google Drive: $error, URL: ${snapshot.data}');
+                                                      Logger.error('Ошибка загрузки фото из Google Drive, URL: ${snapshot.data}', error);
                                                       return const Center(
                                                         child: Icon(Icons.error, size: 64),
                                                       );

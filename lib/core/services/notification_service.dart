@@ -102,11 +102,15 @@ class NotificationService {
     if (employeesList.isEmpty) {
       // Для простоты используем локальное уведомление
       // В реальном приложении можно использовать Firebase Cloud Messaging
-      await _showLocalNotification(context, order);
+      if (context.mounted) {
+        await _showLocalNotification(context, order);
+      }
     } else {
       // Отправляем уведомление каждому сотруднику
       for (var employee in employeesList) {
-        await _showNotificationToEmployee(context, order, employee.name);
+        if (context.mounted) {
+          await _showNotificationToEmployee(context, order, employee.name);
+        }
       }
     }
   }

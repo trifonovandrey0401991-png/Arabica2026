@@ -1,7 +1,4 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../services/recipe_service.dart';
-import '../../../core/utils/logger.dart';
 
 class Recipe {
   final String id;
@@ -92,95 +89,6 @@ class Recipe {
   /// Загрузить рецепты с сервера
   static Future<List<Recipe>> loadRecipesFromServer() async {
     return await RecipeService.getRecipes();
-  }
-
-  /// Загрузить рецепты из сервер (старый метод, для обратной совместимости)
-  static Future<List<Recipe>> loadRecipesFromGoogleSheets() async {
-    try {
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
-      
-      Logger.debug('📥 Загружаем рецепты из сервер...');
-      
-      final response = await http.get(Uri.parse(sheetUrl));
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки данных: ${response.statusCode}');
-      }
-
-      final lines = const LineSplitter().convert(response.body);
-      Logger.debug('📊 Получено строк из CSV: ${lines.length}');
-      
-      final Map<String, Recipe> uniqueRecipes = {}; // Для удаления дубликатов по названию
-      
-      // Парсим CSV, пропускаем заголовок (строка 0)
-      for (var i = 1; i < lines.length; i++) {
-        try {
-          final row = _parseCsvLine(lines[i]);
-          
-          // Проверяем, что есть рецепт (столбец G не пустой)
-          if (row.length > 6 && row[6].trim().isNotEmpty) {
-            final recipe = Recipe.fromCsvRow(row);
-            
-            // Пропускаем, если название пустое
-            if (recipe.name.isEmpty) continue;
-            
-            // Удаляем дубликаты по названию (столбец A)
-            final normalizedName = recipe.name.toLowerCase().trim();
-            if (!uniqueRecipes.containsKey(normalizedName)) {
-              uniqueRecipes[normalizedName] = recipe;
-            }
-          }
-        } catch (e) {
-          Logger.debug('⚠️ Ошибка парсинга строки $i: $e');
-        }
-      }
-      
-      final recipes = uniqueRecipes.values.toList();
-      Logger.debug('✅ Загружено рецептов: ${recipes.length}');
-      
-      return recipes;
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки рецептов', e);
-      return [];
-    }
-  }
-
-  /// Создать из CSV строки (для обратной совместимости)
-  factory Recipe.fromCsvRow(List<String> row) {
-    return Recipe(
-      id: 'csv_${row.length > 0 ? row[0].trim().hashCode : DateTime.now().millisecondsSinceEpoch}',
-      name: row.length > 0 ? row[0].trim() : '',
-      category: row.length > 2 ? row[2].trim() : '',
-      photoId: row.length > 5 && row[5].trim().isNotEmpty 
-          ? row[5].trim() 
-          : null,
-      ingredients: '', // В CSV нет отдельного поля для ингредиентов
-      steps: row.length > 6 ? row[6].trim() : '',
-      recipe: row.length > 6 ? row[6].trim() : '', // Для обратной совместимости
-    );
-  }
-
-  /// Парсинг CSV строки с учетом кавычек
-  static List<String> _parseCsvLine(String line) {
-    final List<String> result = [];
-    bool inQuotes = false;
-    String currentField = '';
-
-    for (int i = 0; i < line.length; i++) {
-      final char = line[i];
-      
-      if (char == '"') {
-        inQuotes = !inQuotes;
-      } else if (char == ',' && !inQuotes) {
-        result.add(currentField);
-        currentField = '';
-      } else {
-        currentField += char;
-      }
-    }
-    result.add(currentField);
-    
-    return result;
   }
 
   /// Получить уникальные категории

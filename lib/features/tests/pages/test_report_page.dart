@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/test_result_model.dart';
 import '../services/test_result_service.dart';
 
@@ -41,7 +42,7 @@ class _TestReportPageState extends State<TestReportPage>
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка загрузки результатов: $e');
+      Logger.error('Ошибка загрузки результатов', e);
       setState(() {
         _isLoading = false;
       });

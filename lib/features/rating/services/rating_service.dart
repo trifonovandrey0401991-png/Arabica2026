@@ -1,34 +1,38 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import '../models/employee_rating_model.dart';
 
-/// Сервис для работы с рейтингом сотрудников
+/// Сервис для работы с рейтингом сотрудников.
+///
+/// Рейтинг = (Баллы эффективности / Количество смен) + Баллы за приглашения.
+/// Хранится история за 3 месяца (текущий + 2 предыдущих).
+///
+/// Основные операции:
+/// - [getRatings] - рейтинг всех сотрудников за месяц
+/// - [getEmployeeRatingHistory] - история рейтинга сотрудника
+/// - [calculateRatings] - пересчитать рейтинг (админ)
+///
+/// Топ-3 получают прокрутки колеса удачи:
+/// - 1 место: 2 прокрутки
+/// - 2-3 место: 1 прокрутка
 class RatingService {
-  static const String _baseUrl = '${ApiConstants.serverUrl}/api/ratings';
+  static const String _baseEndpoint = ApiConstants.ratingsEndpoint;
 
   /// Получить рейтинг всех сотрудников за месяц
   static Future<List<EmployeeRating>> getRatings({String? month}) async {
     try {
-      final url = month != null
-          ? '$_baseUrl?month=$month'
-          : _baseUrl;
+      final queryParams = <String, String>{};
+      if (month != null) queryParams['month'] = month;
 
-      final response = await http.get(
-        Uri.parse(url),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return (result['ratings'] as List?)
-              ?.map((e) => EmployeeRating.fromJson(e))
-              .toList() ?? [];
-        }
-      }
-      return [];
+      return await BaseHttpService.getList<EmployeeRating>(
+        endpoint: _baseEndpoint,
+        fromJson: (json) => EmployeeRating.fromJson(json),
+        listKey: 'ratings',
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+      );
     } catch (e) {
-      print('❌ Ошибка получения рейтинга: $e');
+      Logger.error('Ошибка получения рейтинга', e);
       return [];
     }
   }
@@ -39,21 +43,14 @@ class RatingService {
     int months = 3,
   }) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/$employeeId?months=$months'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return (result['history'] as List?)
-              ?.map((e) => MonthlyRating.fromJson(e))
-              .toList() ?? [];
-        }
-      }
-      return [];
+      return await BaseHttpService.getList<MonthlyRating>(
+        endpoint: '$_baseEndpoint/$employeeId',
+        fromJson: (json) => MonthlyRating.fromJson(json),
+        listKey: 'history',
+        queryParams: {'months': months.toString()},
+      );
     } catch (e) {
-      print('❌ Ошибка получения истории рейтинга: $e');
+      Logger.error('Ошибка получения истории рейтинга', e);
       return [];
     }
   }
@@ -76,7 +73,7 @@ class RatingService {
         ),
       );
     } catch (e) {
-      print('❌ Ошибка получения рейтинга сотрудника: $e');
+      Logger.error('Ошибка получения рейтинга сотрудника', e);
       return null;
     }
   }
@@ -84,22 +81,17 @@ class RatingService {
   /// Пересчитать рейтинг (для админа)
   static Future<bool> calculateRatings({String? month}) async {
     try {
-      final url = month != null
-          ? '$_baseUrl/calculate?month=$month'
-          : '$_baseUrl/calculate';
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: ApiConstants.jsonHeaders,
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result['success'] == true;
+      String endpoint = '$_baseEndpoint/calculate';
+      if (month != null) {
+        endpoint = '$endpoint?month=$month';
       }
-      return false;
+
+      return await BaseHttpService.simplePost(
+        endpoint: endpoint,
+        body: {},
+      );
     } catch (e) {
-      print('❌ Ошибка пересчёта рейтинга: $e');
+      Logger.error('Ошибка пересчёта рейтинга', e);
       return false;
     }
   }

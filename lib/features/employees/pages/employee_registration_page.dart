@@ -6,6 +6,7 @@ import '../services/employee_registration_service.dart';
 import '../services/employee_service.dart';
 import 'employees_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 
 class EmployeeRegistrationPage extends StatefulWidget {
   final String? employeePhone; // Если указан - редактирование существующей регистрации
@@ -98,13 +99,13 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                 _selectedRole = isAdmin ? 'admin' : 'employee';
               });
             }
-            print('✅ Загружена роль сотрудника: ${isAdmin ? "Админ" : "Сотрудник"}');
+            Logger.success('Загружена роль сотрудника: ${isAdmin ? "Админ" : "Сотрудник"}');
             return;
           }
         }
       }
     } catch (e) {
-      print('⚠️ Ошибка загрузки роли сотрудника: $e');
+      Logger.warning('Ошибка загрузки роли сотрудника: $e');
     }
   }
 
@@ -195,7 +196,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           phone: normalizedPhone,
           isAdmin: isAdmin,
         );
-        print('✅ Сотрудник обновлен: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
+        Logger.success('Сотрудник обновлен: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
       } else {
         // Создаем нового сотрудника
         await EmployeeService.createEmployee(
@@ -203,10 +204,10 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           phone: normalizedPhone,
           isAdmin: isAdmin,
         );
-        print('✅ Сотрудник создан: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
+        Logger.success('Сотрудник создан: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
       }
     } catch (e) {
-      print('⚠️ Ошибка создания/обновления сотрудника: $e');
+      Logger.warning('Ошибка создания/обновления сотрудника: $e');
       // Не прерываем процесс, так как регистрация уже сохранена
     }
   }
@@ -309,26 +310,26 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
       final success = await EmployeeRegistrationService.saveRegistration(registration);
 
-      if (mounted) {
-        if (success) {
-          // Создаем или обновляем запись сотрудника с указанной ролью
-          await _createOrUpdateEmployee(phone, _fullNameController.text.trim(), _isAdmin);
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Регистрация успешно сохранена'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context, true); // Возвращаем true для обновления списка
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка сохранения регистрации'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (!mounted) return;
+      if (success) {
+        // Создаем или обновляем запись сотрудника с указанной ролью
+        await _createOrUpdateEmployee(phone, _fullNameController.text.trim(), _isAdmin);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Регистрация успешно сохранена'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Возвращаем true для обновления списка
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка сохранения регистрации'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

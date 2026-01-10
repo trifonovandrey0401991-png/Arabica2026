@@ -1,7 +1,4 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
@@ -127,17 +124,13 @@ class LoyaltyService {
     }
 
     try {
-      final uri = Uri.parse('${ApiConstants.serverUrl}/api/loyalty-promo');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(endpoint: '/api/loyalty-promo');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          _cachedSettings = LoyaltyPromoSettings.fromJson(data);
-          _cacheTime = DateTime.now();
-          Logger.debug('✅ Настройки акции загружены: ${_cachedSettings!.pointsRequired}+${_cachedSettings!.drinksToGive}');
-          return _cachedSettings!;
-        }
+      if (result != null && result['success'] == true) {
+        _cachedSettings = LoyaltyPromoSettings.fromJson(result);
+        _cacheTime = DateTime.now();
+        Logger.debug('✅ Настройки акции загружены: ${_cachedSettings!.pointsRequired}+${_cachedSettings!.drinksToGive}');
+        return _cachedSettings!;
       }
       return LoyaltyPromoSettings.empty;
     } catch (e) {
@@ -152,6 +145,34 @@ class LoyaltyService {
     return settings.promoText;
   }
 
+  /// Сохранить настройки акции на сервер
+  static Future<bool> savePromoSettings({
+    required String promoText,
+    required int pointsRequired,
+    required int drinksToGive,
+  }) async {
+    try {
+      final success = await BaseHttpService.simplePost(
+        endpoint: '/api/loyalty-promo',
+        body: {
+          'promoText': promoText,
+          'pointsRequired': pointsRequired,
+          'drinksToGive': drinksToGive,
+        },
+      );
+
+      if (success) {
+        // Очищаем кэш чтобы изменения применились сразу
+        clearSettingsCache();
+        Logger.debug('✅ Настройки акции сохранены: $pointsRequired+$drinksToGive');
+      }
+      return success;
+    } catch (e) {
+      Logger.error('Ошибка сохранения настроек акции', e);
+      return false;
+    }
+  }
+
   static Future<LoyaltyInfo> registerClient({
     required String name,
     required String phone,
@@ -159,80 +180,63 @@ class LoyaltyService {
   }) async {
     // Нормализуем номер телефона: убираем + и пробелы
     final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-    final response = await _post({
-      'action': 'register',
-      'name': name,
-      'phone': normalizedPhone,
-      'qr': qr,
-      'points': 0,
-      'freeDrinks': 0,
-    });
-    
+
+    final result = await BaseHttpService.postRaw(
+      endpoint: '',
+      body: {
+        'action': 'register',
+        'name': name,
+        'phone': normalizedPhone,
+        'qr': qr,
+        'points': 0,
+        'freeDrinks': 0,
+      },
+      timeout: ApiConstants.longTimeout,
+    );
+
+    if (result == null || result['success'] != true) {
+      throw Exception(result?['error'] ?? 'Ошибка регистрации клиента');
+    }
+
     // Если есть сообщение о том, что пользователь уже существует, это нормально
-    if (response['message'] != null) {
-      Logger.info(response['message']);
+    if (result['message'] != null) {
+      Logger.info(result['message']);
     }
 
     // Загружаем настройки акции
     final settings = await fetchPromoSettings();
-    return LoyaltyInfo.fromJson(response['client'], settings: settings);
+    return LoyaltyInfo.fromJson(result['client'], settings: settings);
   }
 
   static Future<LoyaltyInfo> fetchByPhone(String phone) async {
     try {
-    // Нормализуем номер телефона: убираем + и пробелы
-    final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-    final uri = Uri.parse(
-      '${ApiConstants.serverUrl}?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
-    );
+      // Нормализуем номер телефона: убираем + и пробелы
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
-    Logger.debug('📞 Поиск пользователя с номером: $normalizedPhone');
+      Logger.debug('📞 Поиск пользователя с номером: $normalizedPhone');
 
-    http.Response response;
-    try {
-      final stopwatch = Stopwatch()..start();
-      response = await http.get(uri).timeout(
-        ApiConstants.defaultTimeout,
-        onTimeout: () {
-          stopwatch.stop();
-          Logger.error('ТАЙМАУТ: Запрос не завершился за 15 секунд', Exception('Таймаут'));
-          throw Exception('Таймаут при получении данных клиента');
-        },
+      final result = await BaseHttpService.getRaw(
+        endpoint: '?action=getClient&phone=${Uri.encodeQueryComponent(normalizedPhone)}',
+        timeout: ApiConstants.defaultTimeout,
       );
-      stopwatch.stop();
-      Logger.debug('⏱️ Время подключения: ${stopwatch.elapsedMilliseconds}ms');
-    } on http.ClientException catch (e) {
-      Logger.error('Сетевая ошибка (ClientException)', e);
-      rethrow;
-    } on Exception catch (e) {
-      Logger.error('Ошибка запроса', e);
-      rethrow;
-    }
-      
-      if (response.statusCode != 200) {
-        Logger.error('Неожиданный статус ответа: ${response.statusCode}');
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+
+      if (result == null || result['success'] != true) {
+        Logger.error('Сервер вернул success: false. Ошибка: ${result?['error']}');
+        throw Exception(result?['error'] ?? 'Не удалось получить данные клиента');
       }
 
-    final data = _decode(response.body);
-    
-    if (data['success'] != true) {
-      Logger.error('Сервер вернул success: false. Ошибка: ${data['error']}');
-      throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
-    }
-
-      if (data['client'] == null) {
+      if (result['client'] == null) {
         Logger.error('Клиент не найден в ответе сервера');
         throw Exception('Клиент не найден в базе данных');
       }
 
-    Logger.debug('Пользователь найден: ${data['client']['name']}');
+      Logger.debug('Пользователь найден: ${result['client']['name']}');
 
-    // Загружаем настройки акции с нашего сервера
-    final settings = await fetchPromoSettings();
-    final info = LoyaltyInfo.fromJson(data['client'], settings: settings);
+      // Загружаем настройки акции с нашего сервера
+      final settings = await fetchPromoSettings();
+      final info = LoyaltyInfo.fromJson(result['client'], settings: settings);
 
-    return info;
+      return info;
     } catch (e, stackTrace) {
       Logger.error('КРИТИЧЕСКАЯ ОШИБКА в fetchByPhone', e, stackTrace);
       if (e is Exception) {
@@ -244,30 +248,24 @@ class LoyaltyService {
 
   static Future<LoyaltyInfo> fetchByQr(String qr) async {
     try {
-    final uri = Uri.parse(
-      '${ApiConstants.serverUrl}?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
-    );
+      final result = await BaseHttpService.getRaw(
+        endpoint: '?action=getClient&qr=${Uri.encodeQueryComponent(qr)}',
+        timeout: ApiConstants.longTimeout,
+      );
 
-    final response = await http.get(uri).timeout(ApiConstants.longTimeout);
-      
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+      if (result == null || result['success'] != true) {
+        throw Exception(result?['error'] ?? 'Не удалось получить данные клиента');
       }
 
-    final data = _decode(response.body);
-    if (data['success'] != true) {
-      throw Exception(data['error'] ?? 'Не удалось получить данные клиента');
-    }
-
-      if (data['client'] == null) {
+      if (result['client'] == null) {
         throw Exception('Клиент не найден в базе данных');
       }
 
-    // Загружаем настройки акции с нашего сервера
-    final settings = await fetchPromoSettings();
-    final info = LoyaltyInfo.fromJson(data['client'], settings: settings);
+      // Загружаем настройки акции с нашего сервера
+      final settings = await fetchPromoSettings();
+      final info = LoyaltyInfo.fromJson(result['client'], settings: settings);
 
-    return info;
+      return info;
     } catch (e) {
       if (e is Exception) {
         rethrow;
@@ -277,78 +275,41 @@ class LoyaltyService {
   }
 
   static Future<LoyaltyInfo> addPoint(String qr) async {
-    final response = await _post({
-      'action': 'addPoint',
-      'qr': qr,
-    });
+    final result = await BaseHttpService.postRaw(
+      endpoint: '',
+      body: {
+        'action': 'addPoint',
+        'qr': qr,
+      },
+      timeout: ApiConstants.longTimeout,
+    );
+
+    if (result == null || result['success'] != true) {
+      throw Exception(result?['error'] ?? 'Произошла ошибка сервера');
+    }
 
     // Загружаем настройки акции для корректного определения readyForRedeem
     final settings = await fetchPromoSettings();
-    return LoyaltyInfo.fromJson(response['client'], settings: settings);
+    return LoyaltyInfo.fromJson(result['client'], settings: settings);
   }
 
   static Future<LoyaltyInfo> redeem(String qr) async {
-    final response = await _post({
-      'action': 'redeem',
-      'qr': qr,
-    });
+    final result = await BaseHttpService.postRaw(
+      endpoint: '',
+      body: {
+        'action': 'redeem',
+        'qr': qr,
+      },
+      timeout: ApiConstants.longTimeout,
+    );
+
+    if (result == null || result['success'] != true) {
+      throw Exception(result?['error'] ?? 'Произошла ошибка сервера');
+    }
 
     // Загружаем настройки акции
     final settings = await fetchPromoSettings();
-    return LoyaltyInfo.fromJson(response['client'], settings: settings);
-  }
-
-  static Future<Map<String, dynamic>> _post(Map<String, dynamic> body) async {
-    try {
-      final uri = Uri.parse(ApiConstants.serverUrl);
-      if (!uri.hasScheme || !uri.hasAuthority) {
-        throw Exception('Invalid URL: ${ApiConstants.serverUrl}');
-      }
-
-      final response = await http
-          .post(
-            uri,
-            headers: ApiConstants.jsonHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(ApiConstants.longTimeout);
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = _decode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Произошла ошибка сервера');
-      }
-      return data;
-    } catch (e) {
-      if (e is Exception && e.toString().contains('Invalid URL')) {
-        rethrow;
-      }
-      if (e is Exception) {
-        rethrow;
-      }
-      throw Exception('Ошибка при отправке запроса: $e');
-    }
-  }
-
-  static Map<String, dynamic> _decode(String raw) {
-    try {
-      if (raw.isEmpty) {
-        throw Exception('Пустой ответ от сервера');
-      }
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<String, dynamic>) {
-        throw Exception('Некорректный формат ответа сервера');
-      }
-      return decoded;
-    } catch (e) {
-      if (e is Exception) {
-        rethrow;
-      }
-      throw Exception('Некорректный ответ сервера: $e');
-    }
+    return LoyaltyInfo.fromJson(result['client'], settings: settings);
   }
 }
 

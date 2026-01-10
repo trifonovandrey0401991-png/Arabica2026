@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/employee_service.dart';
 import '../services/bonus_penalty_service.dart';
-import '../models/bonus_penalty_model.dart';
 
 class BonusPenaltyManagementPage extends StatefulWidget {
   const BonusPenaltyManagementPage({super.key});
@@ -238,6 +237,7 @@ class _BonusPenaltyManagementPageState extends State<BonusPenaltyManagementPage>
       adminName: _adminName,
     );
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result != null) {

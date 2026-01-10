@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/utils/logger.dart';
 import '../models/shop_model.dart';
 import '../services/shop_service.dart';
 
@@ -84,7 +85,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> {
         _isLoadingLocation = false;
       });
     } catch (e) {
-      print('Ошибка получения геолокации: $e');
+      Logger.error('Ошибка получения геолокации', e);
       setState(() => _isLoadingLocation = false);
     }
   }

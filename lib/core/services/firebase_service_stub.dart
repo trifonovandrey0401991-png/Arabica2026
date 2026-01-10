@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../../app/pages/my_dialogs_page.dart';
-import '../../features/reviews/pages/review_detail_page.dart';
-import '../../features/reviews/services/review_service.dart';
-import '../../features/reviews/models/review_model.dart';
+import '../utils/logger.dart';
 
 /// Заглушки для типов Firebase на веб-платформе
 class FirebaseMessaging {
@@ -64,8 +58,8 @@ class FirebaseService {
   /// Инициализация Firebase Messaging (заглушка для веб)
   static Future<void> initialize() async {
     if (_initialized) return;
-    print('⚠️ Firebase Messaging недоступен на веб-платформе');
-    print('   Push-уведомления будут работать только на мобильных устройствах');
+    Logger.warning('Firebase Messaging недоступен на веб-платформе');
+    Logger.info('Push-уведомления будут работать только на мобильных устройствах');
     _initialized = true;
   }
 

@@ -1,14 +1,13 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import '../models/attendance_model.dart';
 import '../../shops/models/shop_model.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class AttendanceService {
-  static const String baseEndpoint = '/api/attendance';
+  static const String _baseEndpoint = ApiConstants.attendanceEndpoint;
   static const double checkRadius = AppConstants.checkInRadius;
 
   /// Получить текущую геолокацию
@@ -103,41 +102,26 @@ class AttendanceService {
         longitude: longitude,
         distance: distance,
       );
-      
-      Logger.debug('📝 Создание отметки прихода: $employeeName, время: ${finalTimestamp.toIso8601String()}');
 
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(record.toJson()),
-      ).timeout(
-        ApiConstants.defaultTimeout,
-        onTimeout: () {
-          throw Exception('Таймаут при отправке отметки');
-        },
+      Logger.debug('Создание отметки прихода: $employeeName, время: ${finalTimestamp.toIso8601String()}');
+
+      final result = await BaseHttpService.postRaw(
+        endpoint: _baseEndpoint,
+        body: record.toJson(),
       );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return AttendanceResult(
-            success: true,
-            isOnTime: result['isOnTime'] as bool?,
-            shiftType: result['shiftType'] as String?,
-            lateMinutes: result['lateMinutes'] != null ? (result['lateMinutes'] as num).toInt() : null,
-            message: result['message'] as String?,
-          );
-        } else {
-          return AttendanceResult(
-            success: false,
-            error: result['error'] as String? ?? 'Неизвестная ошибка',
-          );
-        }
+      if (result != null) {
+        return AttendanceResult(
+          success: true,
+          isOnTime: result['isOnTime'] as bool?,
+          shiftType: result['shiftType'] as String?,
+          lateMinutes: result['lateMinutes'] != null ? (result['lateMinutes'] as num).toInt() : null,
+          message: result['message'] as String?,
+        );
       } else {
-        final errorBody = jsonDecode(response.body);
         return AttendanceResult(
           success: false,
-          error: errorBody['error'] as String? ?? 'Ошибка сервера: ${response.statusCode}',
+          error: 'Не удалось отправить отметку',
         );
       }
     } catch (e) {
@@ -152,16 +136,12 @@ class AttendanceService {
   /// Проверить, была ли уже отметка сегодня
   static Future<bool> hasAttendanceToday(String employeeName) async {
     try {
-      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/check')
-          .replace(queryParameters: {'employeeName': employeeName});
-      final response = await http.get(uri).timeout(ApiConstants.shortTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result['hasAttendance'] == true;
-      }
-
-      return false;
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/check',
+        queryParams: {'employeeName': employeeName},
+        timeout: ApiConstants.shortTimeout,
+      );
+      return result?['hasAttendance'] == true;
     } catch (e) {
       Logger.error('Ошибка проверки отметки', e);
       return false;
@@ -180,41 +160,20 @@ class AttendanceService {
       if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
       if (date != null) queryParams['date'] = date.toIso8601String();
 
-      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      Logger.debug('Запрос отметок прихода');
 
-      Logger.debug('📥 Запрос отметок прихода: $uri');
+      final records = await BaseHttpService.getList<AttendanceRecord>(
+        endpoint: _baseEndpoint,
+        fromJson: (json) {
+          Logger.debug('Парсинг отметки: employeeName=${json['employeeName']}, timestamp=${json['timestamp']}');
+          return AttendanceRecord.fromJson(json);
+        },
+        listKey: 'records',
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+      );
 
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        Logger.debug('📥 Ответ API: success=${result['success']}, records count=${(result['records'] as List<dynamic>?)?.length ?? 0}');
-        if (result['success'] == true) {
-          final recordsJson = result['records'] as List<dynamic>;
-          final records = recordsJson
-              .map((json) {
-                Logger.debug('📥 Парсинг отметки: employeeName=${json['employeeName']}, timestamp=${json['timestamp']}, timestamp_type=${json['timestamp'].runtimeType}');
-                try {
-                  final record = AttendanceRecord.fromJson(json);
-                  Logger.debug('📥 Загружена отметка: ${record.employeeName}, время: ${record.timestamp.toIso8601String()} (${record.timestamp.hour}:${record.timestamp.minute.toString().padLeft(2, '0')}), UTC: ${record.timestamp.isUtc}');
-                  Logger.debug('   timestamp.hour=${record.timestamp.hour}, timestamp.minute=${record.timestamp.minute}');
-                  return record;
-                } catch (e) {
-                  Logger.error('Ошибка парсинга отметки', e);
-                  Logger.error('   JSON: $json');
-                  rethrow;
-                }
-              })
-              .toList();
-          Logger.debug('📥 Всего загружено отметок: ${records.length}');
-          return records;
-        }
-      } else {
-        Logger.warning('📥 Ошибка API: statusCode=${response.statusCode}, body=${response.body}');
-      }
-
-      return [];
+      Logger.debug('Всего загружено отметок: ${records.length}');
+      return records;
     } catch (e) {
       Logger.error('Ошибка загрузки отметок', e);
       return [];
@@ -240,9 +199,3 @@ class AttendanceResult {
     this.error,
   });
 }
-
-
-
-
-
-

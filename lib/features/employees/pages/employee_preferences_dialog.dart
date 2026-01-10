@@ -3,6 +3,7 @@ import 'employees_page.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/services/shop_service.dart';
 import '../services/employee_service.dart';
+import '../../../core/utils/logger.dart';
 
 class EmployeePreferencesDialog extends StatefulWidget {
   final Employee employee;
@@ -80,7 +81,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка загрузки магазинов: $e');
+      Logger.error('Ошибка загрузки магазинов', e);
       setState(() {
         _isLoading = false;
       });
@@ -129,7 +130,7 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка сохранения предпочтений: $e');
+      Logger.error('Ошибка сохранения предпочтений', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

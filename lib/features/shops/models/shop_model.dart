@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 import '../services/shop_service.dart';
@@ -88,55 +86,10 @@ class Shop {
     }
   }
 
-  /// Загрузить список магазинов из сервер (устаревший метод, оставлен для обратной совместимости)
-  @Deprecated('Используйте loadShopsFromServer()')
+  /// Загрузить список магазинов (алиас для loadShopsFromServer)
+  /// Оставлен для обратной совместимости
   static Future<List<Shop>> loadShopsFromGoogleSheets() async {
     return loadShopsFromServer();
-  }
-
-  /// Парсинг CSV строки с учетом кавычек и запятых внутри кавычек
-  static List<String> _parseCsvLine(String line) {
-    final List<String> result = [];
-    StringBuffer current = StringBuffer();
-    bool inQuotes = false;
-
-    for (int i = 0; i < line.length; i++) {
-      final char = line[i];
-      
-      if (char == '"') {
-        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-          // Двойная кавычка внутри кавычек - экранированная кавычка
-          current.write('"');
-          i++; // Пропускаем следующую кавычку
-        } else {
-          // Обычная кавычка - переключаем режим
-          inQuotes = !inQuotes;
-        }
-      } else if (char == ',' && !inQuotes) {
-        // Запятая вне кавычек - разделитель полей
-        result.add(current.toString());
-        current.clear();
-      } else {
-        current.write(char);
-      }
-    }
-    // Добавляем последнее поле
-    result.add(current.toString());
-    return result;
-  }
-
-  /// Извлечь название магазина из адреса
-  static String _extractShopName(String address) {
-    // Пытаемся извлечь название города или использовать первые слова адреса
-    if (address.contains('г.')) {
-      final parts = address.split(',');
-      if (parts.isNotEmpty) {
-        return 'Арабика ${parts[0].replaceAll('г.', '').trim()}';
-      }
-    }
-    // Если не нашли город, используем первые слова адреса
-    final words = address.split(' ').take(3).join(' ');
-    return 'Арабика $words';
   }
 
   /// Получить координаты магазинов по адресу

@@ -19,6 +19,7 @@ import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
+import '../../core/utils/logger.dart';
 
 /// Страница отчетов (только для администраторов и верифицированных сотрудников)
 class ReportsPage extends StatefulWidget {
@@ -70,7 +71,7 @@ class _ReportsPageState extends State<ReportsPage> {
         }
       }
     } catch (e) {
-      print('Ошибка загрузки роли: $e');
+      Logger.error('Ошибка загрузки роли', e);
     } finally {
       setState(() {
         _isLoading = false;

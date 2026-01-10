@@ -15,6 +15,7 @@ import '../models/user_role_model.dart';
 import '../../rko/pages/rko_type_selection_page.dart';
 import '../services/employee_registration_service.dart';
 import '../../orders/pages/employee_orders_page.dart';
+import '../../orders/services/order_service.dart';
 import '../../employee_chat/pages/employee_chats_list_page.dart';
 import '../../work_schedule/services/work_schedule_service.dart';
 import '../../work_schedule/models/work_schedule_model.dart';
@@ -25,6 +26,7 @@ import '../../efficiency/pages/my_efficiency_page.dart';
 import '../../tasks/pages/my_tasks_page.dart';
 import '../../fortune_wheel/pages/fortune_wheel_page.dart';
 import '../../fortune_wheel/services/fortune_wheel_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница панели работника
 class EmployeePanelPage extends StatefulWidget {
@@ -39,12 +41,14 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   UserRoleData? _userRole;
   int? _referralCode;
   int _availableSpins = 0;
+  int _pendingOrdersCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _loadAvailableSpins();
+    _loadPendingOrdersCount();
   }
 
   Future<void> _loadUserData() async {
@@ -58,7 +62,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       // Загружаем referralCode текущего сотрудника
       await _loadReferralCode();
     } catch (e) {
-      print('Ошибка загрузки данных пользователя: $e');
+      Logger.error('Ошибка загрузки данных пользователя', e);
     }
   }
 
@@ -78,7 +82,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         }
       }
     } catch (e) {
-      print('Ошибка загрузки referralCode: $e');
+      Logger.error('Ошибка загрузки referralCode', e);
     }
   }
 
@@ -94,7 +98,20 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         }
       }
     } catch (e) {
-      print('Ошибка загрузки прокруток: $e');
+      Logger.error('Ошибка загрузки прокруток', e);
+    }
+  }
+
+  Future<void> _loadPendingOrdersCount() async {
+    try {
+      final orders = await OrderService.getAllOrders(status: 'pending');
+      if (mounted) {
+        setState(() {
+          _pendingOrdersCount = orders.length;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика заказов', e);
     }
   }
 
@@ -128,7 +145,8 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
               try {
                 final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
 
-                if (hasAttendance && mounted) {
+                if (!context.mounted) return;
+                if (hasAttendance) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Вы уже отметились сегодня'),
@@ -139,11 +157,11 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
                   return;
                 }
               } catch (e) {
-                print('⚠️ Ошибка проверки отметки: $e');
+                Logger.warning('Ошибка проверки отметки: $e');
               }
 
-              if (!mounted) return;
               // Автоматическое определение магазина по геолокации
+              if (!context.mounted) return;
               await _markAttendanceAutomatically(context, employeeName);
             },
           ),
@@ -258,7 +276,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
                   MaterialPageRoute(builder: (context) => const RKOTypeSelectionPage()),
                 );
               } catch (e) {
-                print('Ошибка проверки верификации: $e');
+                Logger.error('Ошибка проверки верификации', e);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -271,19 +289,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Заказы (Клиенты)',
-            icon: Icons.shopping_cart,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EmployeeOrdersPage(),
-                ),
-              );
-            },
-          ),
+          _buildOrdersButton(context),
           const SizedBox(height: 8),
           _buildSection(
             context,
@@ -452,6 +458,73 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     );
   }
 
+  Widget _buildOrdersButton(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: ListTile(
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.shopping_cart, color: Color(0xFF004D40)),
+            if (_pendingOrdersCount > 0)
+              Positioned(
+                right: -8,
+                top: -8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    '$_pendingOrdersCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: const Text('Заказы (Клиенты)'),
+        trailing: _pendingOrdersCount > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$_pendingOrdersCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const EmployeeOrdersPage(),
+            ),
+          );
+          // Обновляем счётчик после возврата
+          _loadPendingOrdersCount();
+        },
+      ),
+    );
+  }
+
   Widget _buildFortuneWheelButton(BuildContext context) {
     return Card(
       elevation: 2,
@@ -609,6 +682,8 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       // 2. Загрузить список магазинов
       final shops = await Shop.loadShopsFromServer();
 
+      if (!context.mounted) return;
+
       // 3. Найти ближайший магазин
       final nearestShop = AttendanceService.findNearestShop(
         position.latitude,
@@ -616,7 +691,6 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         shops,
       );
 
-      if (!mounted) return;
       Navigator.pop(context); // Закрыть диалог загрузки
 
       if (nearestShop == null || nearestShop.latitude == null || nearestShop.longitude == null) {
@@ -651,6 +725,8 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
 
       // 5. Проверить наличие смены в графике
       final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (!context.mounted) return;
+
       bool hasScheduledShift = false;
       String? scheduledShopAddress;
       String? scheduledShiftType;
@@ -659,6 +735,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         try {
           final today = DateTime.now();
           final schedule = await WorkScheduleService.getEmployeeSchedule(employeeId, today);
+          if (!context.mounted) return;
 
           // Ищем смену на сегодня
           for (var entry in schedule.entries) {
@@ -672,13 +749,15 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             }
           }
         } catch (e) {
-          print('⚠️ Ошибка проверки графика: $e');
+          Logger.warning('Ошибка проверки графика: $e');
         }
       }
 
       // Если смены нет - показать предупреждение
-      if (!hasScheduledShift && mounted) {
+      if (!hasScheduledShift) {
+        if (!context.mounted) return;
         final shouldContinue = await _showNoScheduleWarning(context, nearestShop.name);
+        if (!context.mounted) return;
         if (!shouldContinue) {
           return;
         }
@@ -687,20 +766,22 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       // Если смена есть, но магазин другой - показать предупреждение
       if (hasScheduledShift &&
           scheduledShopAddress != null &&
-          scheduledShopAddress != nearestShop.address &&
-          mounted) {
+          scheduledShopAddress != nearestShop.address) {
+        if (!context.mounted) return;
         final shouldContinue = await _showWrongShopWarning(
           context,
           nearestShop.name,
           scheduledShopAddress,
           scheduledShiftType ?? '',
         );
+        if (!context.mounted) return;
         if (!shouldContinue) {
           return;
         }
       }
 
       // 6. Отметить приход
+      if (!context.mounted) return;
       final distance = AttendanceService.calculateDistance(
         position.latitude,
         position.longitude,
@@ -716,12 +797,12 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
         distance: distance,
       );
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // 7. Показать результат
       _showAttendanceResultDialog(context, result, nearestShop.name);
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         Navigator.pop(context); // Закрыть диалог загрузки если открыт
         _showErrorDialog(context, 'Ошибка: $e');
       }

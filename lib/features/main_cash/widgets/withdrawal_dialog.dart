@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/utils/logger.dart';
 import '../models/withdrawal_model.dart';
 import '../services/withdrawal_service.dart';
 
@@ -95,7 +96,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
         }
       }
     } catch (e) {
-      print('Ошибка сохранения выемки: $e');
+      Logger.error('Ошибка сохранения выемки', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

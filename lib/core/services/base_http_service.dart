@@ -3,8 +3,41 @@ import 'dart:convert';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 
+/// Базовый HTTP-сервис для работы с API.
+///
+/// Предоставляет унифицированные методы для HTTP-запросов с:
+/// - Автоматической сериализацией/десериализацией JSON
+/// - Обработкой ошибок и логированием
+/// - Настраиваемыми таймаутами
+/// - Поддержкой query-параметров
+///
+/// Все feature-сервисы должны использовать этот класс для API-запросов.
+///
+/// Пример использования:
+/// ```dart
+/// // Получить список
+/// final items = await BaseHttpService.getList<Task>(
+///   endpoint: '/api/tasks',
+///   fromJson: Task.fromJson,
+///   listKey: 'tasks',
+/// );
+///
+/// // Создать элемент
+/// final task = await BaseHttpService.post<Task>(
+///   endpoint: '/api/tasks',
+///   body: {'title': 'New Task'},
+///   fromJson: Task.fromJson,
+///   itemKey: 'task',
+/// );
+/// ```
 class BaseHttpService {
-  /// Generic GET list request
+  /// Получить список элементов с сервера.
+  ///
+  /// [endpoint] - путь API (например, '/api/tasks')
+  /// [fromJson] - функция десериализации элемента
+  /// [listKey] - ключ массива в ответе (например, 'tasks')
+  /// [queryParams] - опциональные query-параметры
+  /// [timeout] - таймаут запроса (по умолчанию 15 сек)
   static Future<List<T>> getList<T>({
     required String endpoint,
     required T Function(Map<String, dynamic>) fromJson,
@@ -44,7 +77,12 @@ class BaseHttpService {
     }
   }
 
-  /// Generic GET single item request
+  /// Получить один элемент с сервера.
+  ///
+  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
+  /// [fromJson] - функция десериализации элемента
+  /// [itemKey] - ключ объекта в ответе (например, 'task')
+  /// [timeout] - таймаут запроса
   static Future<T?> get<T>({
     required String endpoint,
     required T Function(Map<String, dynamic>) fromJson,
@@ -76,7 +114,12 @@ class BaseHttpService {
     }
   }
 
-  /// Generic POST request
+  /// Создать элемент на сервере (POST).
+  ///
+  /// [endpoint] - путь API
+  /// [body] - данные для отправки
+  /// [fromJson] - функция десериализации созданного элемента
+  /// [itemKey] - ключ объекта в ответе
   static Future<T?> post<T>({
     required String endpoint,
     required Map<String, dynamic> body,
@@ -113,7 +156,12 @@ class BaseHttpService {
     }
   }
 
-  /// Generic PUT request
+  /// Обновить элемент на сервере (PUT).
+  ///
+  /// [endpoint] - путь API с ID
+  /// [body] - обновленные данные
+  /// [fromJson] - функция десериализации
+  /// [itemKey] - ключ объекта в ответе
   static Future<T?> put<T>({
     required String endpoint,
     required Map<String, dynamic> body,
@@ -150,7 +198,10 @@ class BaseHttpService {
     }
   }
 
-  /// Generic DELETE request
+  /// Удалить элемент на сервере.
+  ///
+  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
+  /// Возвращает true при успешном удалении.
   static Future<bool> delete({
     required String endpoint,
     Duration? timeout,
@@ -180,7 +231,10 @@ class BaseHttpService {
     }
   }
 
-  /// Simple POST request that returns success boolean
+  /// Простой POST-запрос без десериализации ответа.
+  ///
+  /// Используется когда не нужен возвращаемый объект.
+  /// Возвращает true при success: true в ответе.
   static Future<bool> simplePost({
     required String endpoint,
     required Map<String, dynamic> body,
@@ -208,7 +262,9 @@ class BaseHttpService {
     }
   }
 
-  /// Simple GET request that returns success boolean
+  /// Простой GET-запрос для проверки статуса.
+  ///
+  /// Возвращает true при success: true в ответе.
   static Future<bool> simpleGet({
     required String endpoint,
     Duration? timeout,
@@ -218,6 +274,170 @@ class BaseHttpService {
 
       final response = await http
           .get(Uri.parse('${ApiConstants.serverUrl}$endpoint'))
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return false;
+    }
+  }
+
+  /// GET-запрос с возвратом сырого Map.
+  ///
+  /// Используется когда нужен доступ к нескольким полям ответа.
+  /// Возвращает весь JSON-ответ при success: true.
+  static Future<Map<String, dynamic>?> getRaw({
+    required String endpoint,
+    Map<String, String>? queryParams,
+    Duration? timeout,
+  }) async {
+    try {
+      var uri = Uri.parse('${ApiConstants.serverUrl}$endpoint');
+      if (queryParams != null && queryParams.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParams);
+      }
+
+      Logger.debug('📥 GET $endpoint');
+
+      final response = await http
+          .get(uri)
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    }
+  }
+
+  /// POST-запрос с возвратом сырого Map.
+  ///
+  /// Используется когда нужен доступ к нескольким полям ответа.
+  static Future<Map<String, dynamic>?> postRaw({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 POST $endpoint');
+
+      final response = await http
+          .post(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.jsonHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    }
+  }
+
+  /// Частичное обновление элемента (PATCH).
+  ///
+  /// [endpoint] - путь API с ID
+  /// [body] - частичные данные для обновления
+  /// [fromJson] - функция десериализации
+  /// [itemKey] - ключ объекта в ответе
+  static Future<T?> patch<T>({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    required T Function(Map<String, dynamic>) fromJson,
+    required String itemKey,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 PATCH $endpoint');
+
+      final response = await http
+          .patch(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.jsonHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Patched item at $endpoint');
+          return fromJson(result[itemKey] as Map<String, dynamic>);
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    }
+  }
+
+  /// Простой PATCH-запрос без десериализации.
+  ///
+  /// Возвращает true при success: true в ответе.
+  static Future<bool> simplePatch({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 PATCH $endpoint');
+
+      final response = await http
+          .patch(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.jsonHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return false;
+    }
+  }
+
+  /// Простой PUT-запрос без десериализации.
+  ///
+  /// Возвращает true при success: true в ответе.
+  static Future<bool> simplePut({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 PUT $endpoint');
+
+      final response = await http
+          .put(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.jsonHeaders,
+            body: jsonEncode(body),
+          )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {

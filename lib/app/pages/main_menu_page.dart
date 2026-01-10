@@ -1,45 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/services.dart' show rootBundle;
 import '../../features/menu/pages/menu_groups_page.dart';
 import '../../features/orders/pages/cart_page.dart';
 import '../../features/orders/pages/orders_page.dart';
 import '../../features/employees/pages/employees_page.dart';
-import '../../features/tests/pages/test_notifications_page.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:async';
-import 'package:flutter/services.dart' show rootBundle;
 import '../../features/loyalty/pages/loyalty_page.dart';
 import '../../features/shops/models/shop_model.dart';
-import '../../features/training/pages/training_page.dart';
-import '../../features/tests/pages/test_page.dart';
-import '../../features/shifts/pages/shift_shop_selection_page.dart';
-import '../../features/shifts/pages/shift_reports_list_page.dart';
 import '../../features/shifts/services/shift_sync_service.dart';
-import '../../features/rko/services/rko_service.dart';
-import '../../features/recipes/pages/recipes_list_page.dart';
-import '../../features/recipes/pages/recipe_edit_page.dart';
 import '../../features/recipes/models/recipe_model.dart';
 import '../../features/reviews/pages/review_type_selection_page.dart';
-import '../../features/reviews/pages/reviews_list_page.dart';
-import 'my_dialogs_page.dart';
-import '../../features/recount/pages/recount_shop_selection_page.dart';
-import '../../features/recount/pages/recount_reports_list_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../../features/employees/models/user_role_model.dart';
-import 'role_test_page.dart';
-import '../../features/attendance/pages/attendance_shop_selection_page.dart';
-import '../../features/attendance/pages/attendance_reports_page.dart';
-import '../../features/attendance/services/attendance_service.dart';
-import '../../features/employees/pages/employee_registration_page.dart';
-import '../../features/employees/pages/employee_registration_select_employee_page.dart';
-import '../../features/rko/pages/rko_type_selection_page.dart';
-import '../../features/employees/services/employee_registration_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../features/rko/pages/rko_reports_page.dart';
-import '../../features/kpi/pages/kpi_type_selection_page.dart';
-import 'data_management_page.dart';
-import 'reports_page.dart';
 import '../../features/clients/pages/registration_page.dart';
 import '../../features/loyalty/services/loyalty_storage.dart';
 import '../../features/product_questions/pages/product_search_shop_selection_page.dart';
@@ -48,6 +22,10 @@ import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
 import '../../features/rating/widgets/rating_badge_widget.dart';
+import '../../core/utils/logger.dart';
+import 'my_dialogs_page.dart';
+import 'data_management_page.dart';
+import 'reports_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -84,7 +62,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         });
       }
     } catch (e) {
-      print('Ошибка загрузки employeeId: $e');
+      Logger.error('Ошибка загрузки employeeId', e);
     }
   }
 
@@ -114,10 +92,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _userName = cachedRole?.displayName ?? name;
           _userRole = cachedRole;
         });
-        print('📦 Кэшированная роль загружена: ${cachedRole?.role.name ?? "нет"}');
+        Logger.debug('Кэшированная роль загружена: ${cachedRole?.role.name ?? "нет"}');
       }
     } catch (e) {
-      print('⚠️ Ошибка загрузки кэшированной роли: $e');
+      Logger.warning('Ошибка загрузки кэшированной роли: $e');
     }
   }
 
@@ -125,14 +103,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
     try {
       await ShiftSyncService.syncAllReports();
     } catch (e) {
-      print('⚠️ Ошибка синхронизации: $e');
+      Logger.warning('Ошибка синхронизации: $e');
     }
   }
 
   Future<void> _loadUserData() async {
     // Предотвращаем параллельные запросы
     if (_isLoadingRole) {
-      print('⚠️ Загрузка роли уже выполняется, пропускаем...');
+      Logger.debug('Загрузка роли уже выполняется, пропускаем...');
       return;
     }
     
@@ -153,25 +131,25 @@ class _MainMenuPageState extends State<MainMenuPage> {
       // Всегда проверяем роль через API (если есть телефон)
       if (phone != null && phone.isNotEmpty) {
         try {
-          print('🔄 Обновление роли через API...');
+          Logger.debug('Обновление роли через API...');
           roleData = await UserRoleService.getUserRole(phone);
           await UserRoleService.saveUserRole(roleData);
-          print('✅ Роль обновлена: ${roleData.role.name}');
+          Logger.success('Роль обновлена: ${roleData.role.name}');
           // Обновляем имя, если нужно
           if (roleData.displayName.isNotEmpty) {
             await prefs.setString('user_name', roleData.displayName);
           }
         } catch (e) {
-          print('⚠️ Ошибка загрузки роли через API: $e');
+          Logger.warning('Ошибка загрузки роли через API: $e');
           // При таймауте или другой ошибке используем кэшированную роль
           // НЕ перезаписываем роль на client, если она уже была admin
           if (cachedRole != null) {
-            print('📦 Используем кэшированную роль (при ошибке API): ${cachedRole.role.name}');
+            Logger.debug('Используем кэшированную роль (при ошибке API): ${cachedRole.role.name}');
             roleData = cachedRole;
             // НЕ сохраняем роль заново, чтобы не перезаписать admin на client
           } else {
             // Если кэша нет, только тогда используем client по умолчанию
-            print('⚠️ Кэшированной роли нет, используем client по умолчанию');
+            Logger.warning('Кэшированной роли нет, используем client по умолчанию');
             roleData = UserRoleData(
               role: UserRole.client,
               displayName: name ?? '',
@@ -189,7 +167,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
           _userName = displayName;
           _userRole = roleData;
         });
-        print('✅ Состояние обновлено: роль=${roleData?.role.name}, имя=$displayName');
+        Logger.debug('Состояние обновлено: роль=${roleData?.role.name}, имя=$displayName');
       }
     } finally {
       _isLoadingRole = false;
@@ -249,7 +227,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         );
       }
     } catch (e) {
-      print('❌ Ошибка при выходе: $e');
+      Logger.error('Ошибка при выходе', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -351,7 +329,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Builder(
                 builder: (context) {
                   final menuItems = _getMenuItems();
-                  print('🔵 GridView.build: получено ${menuItems.length} кнопок');
+                  Logger.debug('GridView.build: получено ${menuItems.length} кнопок');
                   return GridView.count(
                     crossAxisCount: 2,           // 2 кнопки в строке
                     crossAxisSpacing: 16,
@@ -373,23 +351,25 @@ class _MainMenuPageState extends State<MainMenuPage> {
   List<Widget> _getMenuItems() {
     final role = _userRole?.role ?? UserRole.client;
     final items = <Widget>[];
-    print('🔵 _getMenuItems() вызван, роль: ${role.name}');
+    Logger.debug('_getMenuItems() вызван, роль: ${role.name}');
 
     // Меню - видно всем
     items.add(_tile(context, Icons.local_cafe, 'Меню', () async {
       final shop = await _showShopSelectionDialog(context);
-      if (!context.mounted || shop == null) return;
+      if (!mounted || shop == null) return;
       final categories = await _loadCategoriesForShop(context, shop.address);
-      if (!context.mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MenuGroupsPage(
-            groups: categories,
-            selectedShop: shop.address,
+      if (!mounted) return;
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MenuGroupsPage(
+              groups: categories,
+              selectedShop: shop.address,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }));
 
     // Корзина - видно всем
@@ -448,19 +428,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Отзывы - видно всем
     items.add(_tile(context, Icons.rate_review, 'Отзывы', () {
-      print('🔵 ========== НАЖАТА КНОПКА "ОТЗЫВЫ" ==========');
+      Logger.debug('Нажата кнопка "Отзывы"');
       if (!context.mounted) {
-        print('❌ Context не mounted');
+        Logger.warning('Context не mounted');
         return;
       }
-      print('🔵 Context mounted, открываем ReviewTypeSelectionPage');
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) {
-            print('🔵 Builder вызван, создаем ReviewTypeSelectionPage');
-            return const ReviewTypeSelectionPage();
-          },
+          builder: (context) => const ReviewTypeSelectionPage(),
         ),
       );
     }));
@@ -514,7 +490,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    print('🔵 Всего кнопок в меню: ${items.length}');
+    Logger.debug('Всего кнопок в меню: ${items.length}');
 
     return items;
   }
@@ -647,7 +623,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         ),
       );
     } catch (e) {
-      print('Ошибка загрузки магазинов: $e');
+      Logger.error('Ошибка загрузки магазинов', e);
       return null;
     }
   }
@@ -668,58 +644,30 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
       return categories;
     } catch (e) {
-      print('Ошибка загрузки категорий: $e');
+      Logger.error('Ошибка загрузки категорий', e);
       return [];
     }
   }
 
   Future<List<String>> _loadCategories(BuildContext context) async {
     try {
-      // Пробуем загрузить из menu.json (более надежно)
       final jsonString = await rootBundle.loadString('assets/menu.json');
       final List<dynamic> jsonData = json.decode(jsonString);
       final Set<String> categories = {};
-      
+
       for (var item in jsonData) {
         final category = (item['category'] ?? '').toString().trim();
         if (category.isNotEmpty) {
           categories.add(category);
         }
       }
-      
+
       final categoriesList = categories.toList()..sort();
-      // ignore: avoid_print
-      print("📋 Загружено категорий из menu.json: ${categoriesList.length}");
-      // ignore: avoid_print
-      print("📋 Категории: $categoriesList");
+      Logger.debug('Загружено категорий из menu.json: ${categoriesList.length}');
       return categoriesList;
     } catch (e) {
-      // Если не получилось загрузить из JSON, пробуем из сервер
-      // ignore: avoid_print
-      print("⚠️ Ошибка загрузки из menu.json: $e, пробуем сервер...");
-      
-      const sheetUrl =
-          'https://docs.google.com/spreadsheets/d/1n7E3sph8x_FanomlEuEeG5a0OMWSz9UXNlIjXAr19MU/gviz/tq?tqx=out:csv&sheet=Меню';
-      final response = await http.get(Uri.parse(sheetUrl));
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка загрузки категорий');
-      }
-      final lines = const LineSplitter().convert(response.body);
-      final Set<String> categories = {};
-      for (var i = 1; i < lines.length; i++) {
-        final row = lines[i].split(',');
-        if (row.length >= 3) {
-          // Убираем кавычки и лишние пробелы
-          String category = row[2].trim().replaceAll('"', '').trim();
-          if (category.isNotEmpty) {
-            categories.add(category);
-          }
-        }
-      }
-      final categoriesList = categories.toList()..sort();
-      // ignore: avoid_print
-      print("📋 Загружено категорий из сервер: ${categoriesList.length}");
-      return categoriesList;
+      Logger.error('Ошибка загрузки категорий из menu.json', e);
+      return [];
     }
   }
 

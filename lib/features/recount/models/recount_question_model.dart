@@ -1,3 +1,4 @@
+import '../../../core/utils/logger.dart';
 import '../services/recount_question_service.dart';
 
 /// Модель товара для пересчета
@@ -54,16 +55,9 @@ class RecountQuestion {
     try {
       return await RecountQuestionService.getQuestions();
     } catch (e) {
-      print('❌ Ошибка загрузки вопросов пересчета: $e');
+      Logger.error('Ошибка загрузки вопросов пересчета', e);
       return [];
     }
-  }
-
-  /// Загрузить вопросы из сервер (устаревший метод)
-  @Deprecated('Используйте loadQuestions()')
-  static Future<List<RecountQuestion>> loadQuestionsFromGoogleSheets() async {
-    // Устаревший метод - теперь загружаем с сервера
-    return loadQuestions();
   }
 
   /// Выбрать вопросы по алгоритму: 50% грейд 1, 30% грейд 2, 20% грейд 3
@@ -99,11 +93,7 @@ class RecountQuestion {
       ...selectedGrade3,
     ]..shuffle();
 
-    print('📋 Выбрано вопросов (всего запрошено: $totalCount):');
-    print('   Грейд 1: ${selectedGrade1.length}');
-    print('   Грейд 2: ${selectedGrade2.length}');
-    print('   Грейд 3: ${selectedGrade3.length}');
-    print('   Всего: ${selected.length}');
+    Logger.info('Выбрано вопросов (всего запрошено: $totalCount): Грейд 1: ${selectedGrade1.length}, Грейд 2: ${selectedGrade2.length}, Грейд 3: ${selectedGrade3.length}, Всего: ${selected.length}');
 
     return selected;
   }

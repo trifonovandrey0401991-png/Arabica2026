@@ -1,10 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../features/shops/services/shop_service.dart';
-import '../../features/employees/services/employee_service.dart';
-import '../../features/shifts/services/shift_question_service.dart';
-import '../../features/recount/services/recount_question_service.dart';
-import '../../features/tests/services/test_question_service.dart';
-import '../../features/training/services/training_article_service.dart';
 import '../../features/shops/pages/shops_management_page.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shifts/pages/shift_questions_management_page.dart';

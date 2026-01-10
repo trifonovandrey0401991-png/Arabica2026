@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/providers/order_provider.dart';
-import '../services/order_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница "Мои заказы"
 class OrdersPage extends StatefulWidget {
@@ -34,7 +34,7 @@ class _OrdersPageState extends State<OrdersPage> {
         await orderProvider.loadClientOrders(clientPhone);
       }
     } catch (e) {
-      print('Ошибка загрузки заказов: $e');
+      Logger.error('Ошибка загрузки заказов', e);
     } finally {
       if (mounted) {
         setState(() {

@@ -9,6 +9,7 @@ import '../models/shift_question_model.dart';
 import '../models/shift_report_model.dart';
 import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница с вопросами пересменки
 class ShiftQuestionsPage extends StatefulWidget {
@@ -43,39 +44,39 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   /// Найти эталонное фото для магазина (с учетом нормализации адресов)
   String? _findReferencePhoto(ShiftQuestion question) {
-    print('🔍 _findReferencePhoto вызвана для вопроса: "${question.question}"');
-    print('   Магазин сотрудника: "${widget.shopAddress}"');
+    Logger.debug('_findReferencePhoto вызвана для вопроса: "${question.question}"');
+    Logger.debug('   Магазин сотрудника: "${widget.shopAddress}"');
     
     if (question.referencePhotos == null || question.referencePhotos!.isEmpty) {
-      print('   ❌ referencePhotos пуст или null');
+      Logger.debug('   referencePhotos пуст или null');
       return null;
     }
     
-    print('   referencePhotos содержит ${question.referencePhotos!.length} записей:');
+    Logger.debug('   referencePhotos содержит ${question.referencePhotos!.length} записей:');
     question.referencePhotos!.forEach((key, value) {
-      print('     - "$key" -> "$value"');
+      Logger.debug('     - "$key" -> "$value"');
     });
     
     final normalizedShopAddress = _normalizeShopAddress(widget.shopAddress);
-    print('   Нормализованный адрес магазина: "$normalizedShopAddress"');
+    Logger.debug('   Нормализованный адрес магазина: "$normalizedShopAddress"');
     
     // Сначала пробуем точное совпадение
     if (question.referencePhotos!.containsKey(widget.shopAddress)) {
-      print('   ✅ Найдено точное совпадение: "${question.referencePhotos![widget.shopAddress]}"');
+      Logger.success('   Найдено точное совпадение: "${question.referencePhotos![widget.shopAddress]}"');
       return question.referencePhotos![widget.shopAddress];
     }
     
     // Затем пробуем найти по нормализованному адресу
     for (var key in question.referencePhotos!.keys) {
       final normalizedKey = _normalizeShopAddress(key);
-      print('   Сравниваем: "$normalizedKey" == "$normalizedShopAddress" ? ${normalizedKey == normalizedShopAddress}');
+      Logger.debug('   Сравниваем: "$normalizedKey" == "$normalizedShopAddress" ? ${normalizedKey == normalizedShopAddress}');
       if (normalizedKey == normalizedShopAddress) {
-        print('   ✅ Найдено эталонное фото по нормализованному адресу: "$key" -> "${question.referencePhotos![key]}"');
+        Logger.success('   Найдено эталонное фото по нормализованному адресу: "$key" -> "${question.referencePhotos![key]}"');
         return question.referencePhotos![key];
       }
     }
-    
-    print('   ❌ Эталонное фото не найдено');
+
+    Logger.debug('   Эталонное фото не найдено');
     return null;
   }
 
@@ -89,36 +90,36 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     try {
       // Фильтруем вопросы по магазину сотрудника
       final questions = await ShiftQuestion.loadQuestions(shopAddress: widget.shopAddress);
-      print('📋 Загружено вопросов: ${questions.length}');
-      print('📋 Магазин сотрудника: "${widget.shopAddress}"');
-      print('📋 Длина адреса магазина: ${widget.shopAddress.length}');
+      Logger.info('Загружено вопросов: ${questions.length}');
+      Logger.debug('Магазин сотрудника: "${widget.shopAddress}"');
+      Logger.debug('Длина адреса магазина: ${widget.shopAddress.length}');
       for (var i = 0; i < questions.length; i++) {
         final q = questions[i];
         if (q.isPhotoOnly) {
-          print('📋 Вопрос ${i + 1} с фото: "${q.question}"');
-          print('   ID вопроса: ${q.id}');
+          Logger.debug('Вопрос ${i + 1} с фото: "${q.question}"');
+          Logger.debug('   ID вопроса: ${q.id}');
           if (q.referencePhotos != null && q.referencePhotos!.isNotEmpty) {
-            print('   ✅ Есть эталонные фото (${q.referencePhotos!.length}):');
+            Logger.success('   Есть эталонные фото (${q.referencePhotos!.length}):');
             q.referencePhotos!.forEach((key, value) {
-              print('     - "$key" -> "$value"');
+              Logger.debug('     - "$key" -> "$value"');
             });
             // Проверяем точное совпадение
             if (q.referencePhotos!.containsKey(widget.shopAddress)) {
-              print('   ✅ Есть эталонное фото для магазина "${widget.shopAddress}": ${q.referencePhotos![widget.shopAddress]}');
+              Logger.success('   Есть эталонное фото для магазина "${widget.shopAddress}": ${q.referencePhotos![widget.shopAddress]}');
             } else {
-              print('   ❌ Нет эталонного фото для магазина "${widget.shopAddress}"');
+              Logger.debug('   Нет эталонного фото для магазина "${widget.shopAddress}"');
               // Проверяем нормализованное совпадение
               final normalizedShopAddress = _normalizeShopAddress(widget.shopAddress);
               for (var key in q.referencePhotos!.keys) {
                 final normalizedKey = _normalizeShopAddress(key);
-                print('      Сравниваем нормализованные: "$normalizedKey" == "$normalizedShopAddress" ? ${normalizedKey == normalizedShopAddress}');
+                Logger.debug('      Сравниваем нормализованные: "$normalizedKey" == "$normalizedShopAddress" ? ${normalizedKey == normalizedShopAddress}');
                 if (normalizedKey == normalizedShopAddress) {
-                  print('      ✅ Найдено совпадение по нормализованному адресу!');
+                  Logger.success('      Найдено совпадение по нормализованному адресу!');
                 }
               }
             }
           } else {
-            print('   ❌ Нет эталонных фото в вопросе (referencePhotos: ${q.referencePhotos})');
+            Logger.debug('   Нет эталонных фото в вопросе (referencePhotos: ${q.referencePhotos})');
           }
         }
       }
@@ -127,7 +128,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка загрузки вопросов: $e');
+      Logger.error('Ошибка загрузки вопросов', e);
       setState(() {
         _isLoading = false;
       });
@@ -224,7 +225,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка при выборе фото: $e');
+      Logger.error('Ошибка при выборе фото', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -246,17 +247,17 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         _numberController.clear();
         _photoPath = null; // Сбрасываем фото при переходе к следующему вопросу
         _selectedYesNo = null;
-        print('➡️ Переход к следующему вопросу: индекс $_currentQuestionIndex');
+        Logger.debug('Переход к следующему вопросу: индекс $_currentQuestionIndex');
         if (_currentQuestionIndex < _questions!.length) {
           final nextQuestion = _questions![_currentQuestionIndex];
-          print('   Следующий вопрос: "${nextQuestion.question}"');
+          Logger.debug('   Следующий вопрос: "${nextQuestion.question}"');
           if (nextQuestion.isPhotoOnly) {
-            print('   Это вопрос с фото');
+            Logger.debug('   Это вопрос с фото');
             final refPhoto = _findReferencePhoto(nextQuestion);
             if (refPhoto != null) {
-              print('   ✅ У следующего вопроса есть эталонное фото: $refPhoto');
+              Logger.success('   У следующего вопроса есть эталонное фото: $refPhoto');
             } else {
-              print('   ❌ У следующего вопроса нет эталонного фото');
+              Logger.debug('   У следующего вопроса нет эталонного фото');
             }
           }
         }
@@ -335,25 +336,25 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       // НИ В КОЕМ СЛУЧАЕ не используем фото сотрудника как эталонное!
       // Эталонное фото должно быть из question.referencePhotos[shopAddress] (с нормализацией адресов)
       String? referencePhotoUrl;
-      print('💾 Сохранение ответа на вопрос с фото: "${question.question}"');
-      print('   Магазин: ${widget.shopAddress}');
-      print('   Фото сотрудника: $_photoPath');
-      print('   referencePhotos в вопросе: ${question.referencePhotos}');
+      Logger.debug('Сохранение ответа на вопрос с фото: "${question.question}"');
+      Logger.debug('   Магазин: ${widget.shopAddress}');
+      Logger.debug('   Фото сотрудника: $_photoPath');
+      Logger.debug('   referencePhotos в вопросе: ${question.referencePhotos}');
       
       // Используем функцию поиска с нормализацией адресов
       referencePhotoUrl = _findReferencePhoto(question);
       
       if (referencePhotoUrl != null) {
-        print('✅ Сохраняем эталонное фото ИЗ ВОПРОСА: $referencePhotoUrl');
-        print('   Фото сотрудника (НЕ эталонное!): $_photoPath');
+        Logger.success('Сохраняем эталонное фото ИЗ ВОПРОСА: $referencePhotoUrl');
+        Logger.debug('   Фото сотрудника (НЕ эталонное!): $_photoPath');
         // Дополнительная проверка: убеждаемся, что эталонное фото НЕ равно фото сотрудника
         if (referencePhotoUrl == _photoPath) {
-          print('❌❌❌ ОШИБКА: Эталонное фото совпадает с фото сотрудника! Это неправильно!');
+          Logger.error('ОШИБКА: Эталонное фото совпадает с фото сотрудника! Это неправильно!');
         }
       } else {
-        print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
+        Logger.warning('Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
         if (question.referencePhotos != null) {
-          print('   Доступные магазины: ${question.referencePhotos!.keys.toList()}');
+          Logger.debug('   Доступные магазины: ${question.referencePhotos!.keys.toList()}');
         }
       }
       answer = ShiftAnswer(
@@ -403,16 +404,16 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
       final List<ShiftAnswer> syncedAnswers = [];
       for (var i = 0; i < _answers.length; i++) {
         final answer = _answers[i];
-        print('📸 Обработка ответа ${i + 1}/${_answers.length}: "${answer.question}"');
-        print('   photoPath: ${answer.photoPath}');
-        print('   photoDriveId: ${answer.photoDriveId}');
-        print('   referencePhotoUrl: ${answer.referencePhotoUrl}');
+        Logger.debug('Обработка ответа ${i + 1}/${_answers.length}: "${answer.question}"');
+        Logger.debug('   photoPath: ${answer.photoPath}');
+        Logger.debug('   photoDriveId: ${answer.photoDriveId}');
+        Logger.debug('   referencePhotoUrl: ${answer.referencePhotoUrl}');
         
         if (answer.photoPath != null && answer.photoDriveId == null) {
           try {
             final fileName = '${reportId}_${i}.jpg';
-            print('📤 Загрузка фото сотрудника на сервер: $fileName');
-            print('   Путь к фото: ${answer.photoPath}');
+            Logger.info('Загрузка фото сотрудника на сервер: $fileName');
+            Logger.debug('   Путь к фото: ${answer.photoPath}');
             
             final driveId = await PhotoUploadService.uploadPhoto(
               answer.photoPath!,
@@ -420,7 +421,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
             );
             
             if (driveId != null) {
-              print('✅ Фото сотрудника успешно загружено: $driveId');
+              Logger.success('Фото сотрудника успешно загружено: $driveId');
               syncedAnswers.add(ShiftAnswer(
                 question: answer.question,
                 textAnswer: answer.textAnswer,
@@ -431,24 +432,23 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
               ));
             } else {
               // Если не удалось загрузить, сохраняем без photoDriveId
-              print('⚠️ Фото не загружено на сервер, сохраняем локально');
+              Logger.warning('Фото не загружено на сервер, сохраняем локально');
               syncedAnswers.add(answer);
             }
           } catch (e) {
-            print('❌ Исключение при загрузке фото: $e');
-            print('   Stack trace: ${StackTrace.current}');
+            Logger.error('Исключение при загрузке фото', e, StackTrace.current);
             syncedAnswers.add(answer);
           }
         } else {
-          print('✅ Ответ уже имеет photoDriveId или не содержит фото');
+          Logger.debug('Ответ уже имеет photoDriveId или не содержит фото');
           syncedAnswers.add(answer);
         }
       }
-      
-      print('📊 Итого обработано ответов: ${syncedAnswers.length}');
+
+      Logger.info('Итого обработано ответов: ${syncedAnswers.length}');
       for (var i = 0; i < syncedAnswers.length; i++) {
         final ans = syncedAnswers[i];
-        print('   Ответ ${i + 1}: photoPath=${ans.photoPath}, photoDriveId=${ans.photoDriveId}, referencePhotoUrl=${ans.referencePhotoUrl}');
+        Logger.debug('   Ответ ${i + 1}: photoPath=${ans.photoPath}, photoDriveId=${ans.photoDriveId}, referencePhotoUrl=${ans.referencePhotoUrl}');
       }
 
       final report = ShiftReport(
@@ -555,14 +555,14 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     
     // Логирование для отладки эталонного фото
     if (question.isPhotoOnly && _photoPath == null) {
-      print('📋 build: Текущий вопрос с фото: "${question.question}"');
-      print('   Индекс вопроса: $_currentQuestionIndex');
-      print('   Магазин: ${widget.shopAddress}');
+      Logger.debug('build: Текущий вопрос с фото: "${question.question}"');
+      Logger.debug('   Индекс вопроса: $_currentQuestionIndex');
+      Logger.debug('   Магазин: ${widget.shopAddress}');
       final referencePhotoUrl = _findReferencePhoto(question);
       if (referencePhotoUrl != null) {
-        print('   ✅ build: Найдено эталонное фото: $referencePhotoUrl');
+        Logger.success('build: Найдено эталонное фото: $referencePhotoUrl');
       } else {
-        print('   ❌ build: Эталонное фото не найдено');
+        Logger.debug('build: Эталонное фото не найдено');
       }
     }
 
@@ -626,8 +626,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                     builder: (context) {
                       final referencePhotoUrl = _findReferencePhoto(question);
                       if (referencePhotoUrl != null) {
-                        print('🖼️ Builder: Показываем эталонное фото для магазина: ${widget.shopAddress}');
-                        print('   URL эталонного фото: $referencePhotoUrl');
+                        Logger.debug('Builder: Показываем эталонное фото для магазина: ${widget.shopAddress}');
+                        Logger.debug('   URL эталонного фото: $referencePhotoUrl');
                         return Card(
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
@@ -670,7 +670,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                                     );
                                   },
                                   errorBuilder: (context, error, stackTrace) {
-                                    print('❌ Ошибка загрузки эталонного фото: $error');
+                                    Logger.error('Ошибка загрузки эталонного фото', error);
                                     return const Center(
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -700,9 +700,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                       ),
                         );
                       } else {
-                        print('⚠️ Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
+                        Logger.warning('Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
                         if (question.referencePhotos != null) {
-                          print('   Доступные магазины в referencePhotos: ${question.referencePhotos!.keys.toList()}');
+                          Logger.debug('   Доступные магазины в referencePhotos: ${question.referencePhotos!.keys.toList()}');
                         }
                         return const SizedBox.shrink();
                       }
@@ -737,18 +737,18 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
                   ),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    print('📷 Нажата кнопка фотографирования');
-                    print('   Текущий вопрос: "${question.question}"');
-                    print('   Есть эталонное фото: ${question.referencePhotos != null && question.referencePhotos!.containsKey(widget.shopAddress)}');
+                    Logger.debug('Нажата кнопка фотографирования');
+                    Logger.debug('   Текущий вопрос: "${question.question}"');
+                    Logger.debug('   Есть эталонное фото: ${question.referencePhotos != null && question.referencePhotos!.containsKey(widget.shopAddress)}');
                     await _takePhoto();
                     if (_photoPath != null) {
-                      print('✅ Фото сделано: $_photoPath');
+                      Logger.success('Фото сделано: $_photoPath');
                       // Если фото сделано, автоматически переходим к следующему вопросу
                       if (_canProceed()) {
                         _saveAndNext();
                       }
                     } else {
-                      print('⚠️ Фото не было сделано');
+                      Logger.warning('Фото не было сделано');
                     }
                   },
                   icon: const Icon(Icons.camera_alt),

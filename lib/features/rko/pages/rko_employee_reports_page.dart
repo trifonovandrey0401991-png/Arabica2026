@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../employees/pages/employees_page.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_pdf_viewer_page.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница отчетов по сотрудникам
 class RKOEmployeeReportsPage extends StatefulWidget {
@@ -36,7 +35,7 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка загрузки сотрудников: $e');
+      Logger.error('Ошибка загрузки сотрудников', e);
       setState(() {
         _isLoading = false;
       });
@@ -116,8 +115,7 @@ class _RKOEmployeeReportsPageState extends State<RKOEmployeeReportsPage> {
                               onTap: () {
                                 // Нормализуем имя сотрудника (приводим к нижнему регистру для совместимости)
                                 final normalizedName = employee.name.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
-                                print('🔍 Поиск РКО для сотрудника: "$normalizedName"');
-                                print('🔍 Оригинальное имя: "${employee.name}"');
+                                Logger.debug('Поиск РКО для сотрудника: "$normalizedName" (оригинальное имя: "${employee.name}")');
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -182,7 +180,7 @@ class _RKOEmployeeDetailPageState extends State<RKOEmployeeDetailPage> {
         });
       }
     } catch (e) {
-      print('Ошибка загрузки РКО: $e');
+      Logger.error('Ошибка загрузки РКО', e);
       setState(() {
         _isLoading = false;
       });

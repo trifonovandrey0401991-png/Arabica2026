@@ -13,6 +13,8 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import 'rko_reports_service.dart';
 
+// http и dart:convert оставлены для получения binary PDF ответа от сервера
+
 class RKOPDFService {
   /// Конвертировать число в пропись на русском языке
   static String numberToWords(double amount) {

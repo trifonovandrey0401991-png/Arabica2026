@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 /// Заглушка для Firebase App
 class FirebaseApp {
   final String name;

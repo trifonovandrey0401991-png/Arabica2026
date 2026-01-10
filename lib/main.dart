@@ -12,9 +12,6 @@ import 'core/services/firebase_wrapper.dart';
 import 'features/employees/services/user_role_service.dart';
 import 'core/utils/logger.dart';
 import 'features/clients/services/registration_service.dart';
-// Прямой импорт Firebase Core - доступен на мобильных платформах
-// На веб будет ошибка компиляции, но мы проверяем kIsWeb перед использованием
-import 'package:firebase_core/firebase_core.dart' as firebase_core;
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
@@ -176,7 +173,10 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
           await prefs.setString('user_name', loyaltyInfo.name);
           await prefs.setString('user_phone', loyaltyInfo.phone);
           await LoyaltyStorage.save(loyaltyInfo);
-          
+
+          // Сохраняем FCM токен (теперь когда phone известен)
+          await FirebaseService.resaveToken();
+
           // Проверяем роль пользователя
           await _checkUserRole(loyaltyInfo.phone);
           
@@ -259,6 +259,9 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
       await prefs.setString('user_name', loyaltyInfo.name);
       await prefs.setString('user_phone', loyaltyInfo.phone);
       await LoyaltyStorage.save(loyaltyInfo);
+
+      // Сохраняем FCM токен (теперь когда phone известен)
+      await FirebaseService.resaveToken();
     } catch (e) {
       // Игнорируем ошибки в фоновой проверке
       Logger.warning('Фоновая проверка регистрации не удалась: $e');

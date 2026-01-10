@@ -6,8 +6,10 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
+// http и dart:convert оставлены для multipart загрузки эталонных фото
+
 class ShiftQuestionService {
-  static const String baseEndpoint = '/api/shift-questions';
+  static const String baseEndpoint = ApiConstants.shiftQuestionsEndpoint;
 
   /// Получить все вопросы
   static Future<List<ShiftQuestion>> getQuestions({String? shopAddress}) async {

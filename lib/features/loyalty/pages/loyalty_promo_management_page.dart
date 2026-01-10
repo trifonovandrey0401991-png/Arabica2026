@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 
@@ -42,23 +40,15 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     });
 
     try {
-      const serverUrl = 'https://arabica26.ru';
-      final uri = Uri.parse('$serverUrl/api/loyalty-promo');
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          _promoTextController.text = data['promoText'] ?? '';
-          _pointsRequiredController.text = (data['pointsRequired'] ?? 10).toString();
-          _drinksToGiveController.text = (data['drinksToGive'] ?? 1).toString();
-          Logger.debug('✅ Настройки акции загружены: ${_pointsRequiredController.text}+${_drinksToGiveController.text}');
-        } else {
-          _error = data['error'] ?? 'Не удалось загрузить настройки акции';
-        }
-      } else {
-        _error = 'Ошибка сервера: ${response.statusCode}';
-      }
+      final settings = await LoyaltyService.fetchPromoSettings();
+      _promoTextController.text = settings.promoText;
+      _pointsRequiredController.text = settings.pointsRequired > 0
+          ? settings.pointsRequired.toString()
+          : '10';
+      _drinksToGiveController.text = settings.drinksToGive > 0
+          ? settings.drinksToGive.toString()
+          : '1';
+      Logger.debug('✅ Настройки акции загружены: ${_pointsRequiredController.text}+${_drinksToGiveController.text}');
     } catch (e) {
       Logger.error('Ошибка загрузки настроек акции', e);
       _error = 'Ошибка загрузки: ${e.toString()}';
@@ -101,37 +91,23 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     });
 
     try {
-      const serverUrl = 'https://arabica26.ru';
-      final uri = Uri.parse('$serverUrl/api/loyalty-promo');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'promoText': _promoTextController.text.trim(),
-          'pointsRequired': pointsRequired,
-          'drinksToGive': drinksToGive,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final success = await LoyaltyService.savePromoSettings(
+        promoText: _promoTextController.text.trim(),
+        pointsRequired: pointsRequired,
+        drinksToGive: drinksToGive,
+      );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          // Очищаем кэш чтобы изменения применились сразу
-          LoyaltyService.clearSettingsCache();
-          Logger.debug('✅ Настройки акции сохранены: $pointsRequired+$drinksToGive');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Настройки акции успешно сохранены'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } else {
-          _error = data['error'] ?? 'Не удалось сохранить настройки акции';
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Настройки акции успешно сохранены'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
       } else {
-        _error = 'Ошибка сервера: ${response.statusCode}';
+        _error = 'Не удалось сохранить настройки акции';
       }
     } catch (e) {
       Logger.error('Ошибка сохранения настроек акции', e);

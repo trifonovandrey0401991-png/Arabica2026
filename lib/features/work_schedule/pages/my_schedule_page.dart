@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/work_schedule_model.dart';
 import '../models/shift_transfer_model.dart';
 import '../services/work_schedule_service.dart';
@@ -76,13 +77,13 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     });
 
     try {
-      print('Начало загрузки данных сотрудника...');
+      Logger.debug('Начало загрузки данных сотрудника...');
 
       // Используем новый метод для получения employeeId (основной способ)
       final employeeId = await EmployeesPage.getCurrentEmployeeId();
 
       if (employeeId == null) {
-        print('Не удалось определить ID сотрудника');
+        Logger.warning('Не удалось определить ID сотрудника');
         setState(() {
           _error = 'Не удалось определить сотрудника. Убедитесь, что вы вошли в систему.';
           _isLoading = false;
@@ -90,7 +91,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         return;
       }
 
-      print('Получен employeeId: $employeeId');
+      Logger.debug('Получен employeeId: $employeeId');
 
       // Получаем имя сотрудника
       final employeeName = await EmployeesPage.getCurrentEmployeeName();
@@ -98,14 +99,14 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       // Если имя не получено, загружаем из списка сотрудников
       String? name = employeeName;
       if (name == null) {
-        print('Имя не получено, загружаем из списка сотрудников...');
+        Logger.debug('Имя не получено, загружаем из списка сотрудников...');
         final employees = await EmployeeService.getEmployees();
         try {
           final employee = employees.firstWhere((e) => e.id == employeeId);
           name = employee.name;
-          print('Имя получено из списка: $name');
+          Logger.debug('Имя получено из списка: $name');
         } catch (e) {
-          print('Сотрудник не найден в списке: $e');
+          Logger.warning('Сотрудник не найден в списке: $e');
         }
       }
 
@@ -114,14 +115,14 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
           _employeeId = employeeId;
           _employeeName = name ?? 'Неизвестно';
         });
-        print('Данные сотрудника загружены: ID=$employeeId, имя=$name');
+        Logger.info('Данные сотрудника загружены: ID=$employeeId, имя=$name');
       }
 
       await _loadSchedule();
       await _loadUnreadCount();
       await _loadOutgoingUpdatesCount();
     } catch (e) {
-      print('Ошибка загрузки данных сотрудника: $e');
+      Logger.error('Ошибка загрузки данных сотрудника', e);
       if (mounted) {
         setState(() {
           _error = 'Ошибка загрузки данных: $e';
@@ -133,12 +134,12 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
   Future<void> _loadSchedule() async {
     if (_employeeId == null) {
-      print('_loadSchedule: employeeId равен null');
+      Logger.warning('_loadSchedule: employeeId равен null');
       return;
     }
 
-    print('Загрузка графика для сотрудника: $_employeeId');
-    print('   Месяц: ${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}');
+    Logger.debug('Загрузка графика для сотрудника: $_employeeId');
+    Logger.debug('Месяц: ${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}');
 
     setState(() {
       _isLoading = true;
@@ -151,7 +152,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         _selectedMonth,
       );
 
-      print('График загружен: ${schedule.entries.length} записей');
+      Logger.info('График загружен: ${schedule.entries.length} записей');
 
       // Загружаем время смен из настроек магазинов
       final shiftTimes = await WorkScheduleService.getShiftTimesForEntries(schedule.entries);
@@ -164,7 +165,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         });
       }
     } catch (e) {
-      print('Ошибка загрузки графика: $e');
+      Logger.error('Ошибка загрузки графика', e);
       if (mounted) {
         setState(() {
           _error = 'Ошибка загрузки графика: ${e.toString()}';
@@ -191,7 +192,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       }
       await _loadUnreadCount();
     } catch (e) {
-      print('Ошибка загрузки уведомлений: $e');
+      Logger.error('Ошибка загрузки уведомлений', e);
       if (mounted) {
         setState(() {
           _isLoadingNotifications = false;
@@ -211,7 +212,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         });
       }
     } catch (e) {
-      print('Ошибка загрузки счётчика: $e');
+      Logger.error('Ошибка загрузки счётчика', e);
     }
   }
 
@@ -233,7 +234,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         });
       }
     } catch (e) {
-      print('Ошибка загрузки исходящих заявок: $e');
+      Logger.error('Ошибка загрузки исходящих заявок', e);
       if (mounted) {
         setState(() {
           _isLoadingOutgoing = false;
@@ -261,7 +262,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         });
       }
     } catch (e) {
-      print('Ошибка загрузки счётчика исходящих: $e');
+      Logger.error('Ошибка загрузки счётчика исходящих', e);
     }
   }
 
@@ -998,6 +999,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       _employeeName!,
     );
 
+    if (!mounted) return;
+
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1043,6 +1046,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     if (confirm != true) return;
 
     final success = await ShiftTransferService.rejectRequest(request.id);
+
+    if (!mounted) return;
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1094,8 +1099,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     final employees = await EmployeeService.getEmployees();
     final shops = await ShopService.getShops();
 
-    print('📋 Загружено сотрудников с API: ${employees.length}');
-    print('📋 Текущий сотрудник ID: $_employeeId');
+    Logger.debug('Загружено сотрудников с API: ${employees.length}');
+    Logger.debug('Текущий сотрудник ID: $_employeeId');
 
     // Находим название магазина
     String shopName = entry.shopAddress;
@@ -1108,7 +1113,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     // Исключаем себя из списка
     final otherEmployees = employees.where((e) => e.id != _employeeId).toList();
-    print('📋 Сотрудников после фильтрации (без себя): ${otherEmployees.length}');
+    Logger.debug('Сотрудников после фильтрации (без себя): ${otherEmployees.length}');
 
     if (!mounted) return;
 
@@ -1141,6 +1146,8 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     );
 
     final success = await ShiftTransferService.createRequest(request);
+
+    if (!mounted) return;
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(

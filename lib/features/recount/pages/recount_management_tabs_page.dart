@@ -262,6 +262,8 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
 
       if (mounted) Navigator.pop(context);
 
+      if (!mounted) return;
+
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -280,6 +282,8 @@ class _RecountManagementTabsPageState extends State<RecountManagementTabsPage>
           ],
         ),
       );
+
+      if (!mounted) return;
 
       if (confirmed != true) return;
 

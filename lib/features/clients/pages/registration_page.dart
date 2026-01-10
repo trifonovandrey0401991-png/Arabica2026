@@ -8,6 +8,7 @@ import '../../loyalty/services/loyalty_service.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/firebase_service.dart';
 
 /// Страница регистрации
 class RegistrationPage extends StatefulWidget {
@@ -25,7 +26,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
   bool _isLoading = false;
   String? _referralValidationMessage;
   bool _isReferralValid = false;
-  String? _referralEmployeeName;
 
   @override
   void dispose() {
@@ -40,7 +40,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
       setState(() {
         _referralValidationMessage = null;
         _isReferralValid = false;
-        _referralEmployeeName = null;
       });
       return;
     }
@@ -50,7 +49,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
       setState(() {
         _referralValidationMessage = 'Введите число';
         _isReferralValid = false;
-        _referralEmployeeName = null;
       });
       return;
     }
@@ -60,13 +58,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
       setState(() {
         _referralValidationMessage = 'Сотрудник: ${result['employee']?['name'] ?? 'Найден'}';
         _isReferralValid = true;
-        _referralEmployeeName = result['employee']?['name'];
       });
     } else {
       setState(() {
         _referralValidationMessage = result?['message'] ?? 'Код не найден';
         _isReferralValid = false;
-        _referralEmployeeName = null;
       });
     }
   }
@@ -83,14 +79,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
       final name = _nameController.text.trim();
 
       // Сначала проверяем, существует ли пользователь с таким номером
-      // ignore: avoid_print
-      print('🔍 Проверка существующего пользователя с номером: $phone');
+      Logger.debug('Проверка существующего пользователя с номером: $phone');
       try {
         final existingUser = await LoyaltyService.fetchByPhone(phone);
         
         // Пользователь уже существует в базе
-        // ignore: avoid_print
-        print('✅ Пользователь найден: ${existingUser.name} (${existingUser.phone})');
+        Logger.success('Пользователь найден: ${existingUser.name} (${existingUser.phone})');
         
         if (mounted) {
           // Сохраняем данные существующего пользователя
@@ -99,6 +93,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
           await prefs.setString('user_name', existingUser.name);
           await prefs.setString('user_phone', existingUser.phone);
           await LoyaltyStorage.save(existingUser);
+
+          // Сохраняем FCM токен (теперь когда phone известен)
+          await FirebaseService.resaveToken();
 
           // Проверяем роль пользователя
           try {
@@ -117,26 +114,26 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   clientName: existingUser.name,
                   referredBy: referralCode,
                 );
-                Logger.debug('✅ Данные существующего клиента сохранены на сервере');
+                Logger.success('Данные существующего клиента сохранены на сервере');
               } catch (e) {
-                Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e');
+                Logger.warning('Не удалось сохранить данные существующего клиента на сервере: $e');
               }
             } else {
-              print('✅ Пользователь является ${roleData.role.name}, не регистрируем как клиента');
+              Logger.info('Пользователь является ${roleData.role.name}, не регистрируем как клиента');
             }
           } catch (e) {
-            print('⚠️ Ошибка проверки роли: $e');
+            Logger.warning('Ошибка проверки роли: $e');
             // При ошибке проверки роли, пытаемся проверить через API сотрудников
             try {
               final apiRole = await UserRoleService.checkEmployeeViaAPI(existingUser.phone);
               if (apiRole != null) {
-                print('✅ Сотрудник найден через API после ошибки проверки роли');
+                Logger.success('Сотрудник найден через API после ошибки проверки роли');
                 await UserRoleService.saveUserRole(apiRole);
                 await prefs.setString('user_name', apiRole.displayName);
-                print('✅ Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
+                Logger.info('Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
               } else {
                 // Если не найден как сотрудник, регистрируем как клиента
-                print('ℹ️ Пользователь не найден как сотрудник, регистрируем как клиента');
+                Logger.info('Пользователь не найден как сотрудник, регистрируем как клиента');
                 try {
                   final referralCode = _isReferralValid ? int.tryParse(_referralCodeController.text) : null;
                   await RegistrationService.saveClientToServer(
@@ -145,13 +142,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     clientName: existingUser.name,
                     referredBy: referralCode,
                   );
-                  Logger.debug('✅ Данные существующего клиента сохранены на сервере (без роли)');
+                  Logger.success('Данные существующего клиента сохранены на сервере (без роли)');
                 } catch (e2) {
-                  Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e2');
+                  Logger.warning('Не удалось сохранить данные существующего клиента на сервере: $e2');
                 }
               }
             } catch (apiError) {
-              print('⚠️ Ошибка проверки через API сотрудников: $apiError');
+              Logger.warning('Ошибка проверки через API сотрудников: $apiError');
               // В случае ошибки API тоже регистрируем как клиента
               try {
                 final referralCode = _isReferralValid ? int.tryParse(_referralCodeController.text) : null;
@@ -161,30 +158,31 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   clientName: existingUser.name,
                   referredBy: referralCode,
                 );
-                Logger.debug('✅ Данные существующего клиента сохранены на сервере (ошибка API)');
+                Logger.success('Данные существующего клиента сохранены на сервере (ошибка API)');
               } catch (e2) {
-                Logger.warning('⚠️ Не удалось сохранить данные существующего клиента на сервере: $e2');
+                Logger.warning('Не удалось сохранить данные существующего клиента на сервере: $e2');
               }
             }
           }
 
           // Показываем сообщение и переходим в приложение
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Добро пожаловать обратно, ${existingUser.name}!'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Добро пожаловать обратно, ${existingUser.name}!'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
 
-          // Переходим в главное меню
-          Navigator.of(context).pushReplacementNamed('/home');
+            // Переходим в главное меню
+            Navigator.of(context).pushReplacementNamed('/home');
+          }
         }
         return;
       } catch (e) {
         // Пользователь не найден - продолжаем регистрацию
-        // ignore: avoid_print
-        print('⚠️ Пользователь не найден в базе, продолжаем регистрацию: $e');
+        Logger.info('Пользователь не найден в базе, продолжаем регистрацию: $e');
       }
 
       // Регистрируем нового пользователя
@@ -203,6 +201,9 @@ class _RegistrationPageState extends State<RegistrationPage> {
         await prefs.setString('user_phone', loyaltyInfo.phone);
         await LoyaltyStorage.save(loyaltyInfo);
 
+        // Сохраняем FCM токен (теперь когда phone известен)
+        await FirebaseService.resaveToken();
+
         // Проверяем роль пользователя после регистрации
         try {
           final roleData = await UserRoleService.getUserRole(loyaltyInfo.phone);
@@ -212,21 +213,21 @@ class _RegistrationPageState extends State<RegistrationPage> {
           
           // Если это сотрудник или админ, не сохраняем как клиента
           if (roleData.role.name != 'client') {
-            print('✅ Пользователь является ${roleData.role.name}, не регистрируем как клиента');
+            Logger.info('Пользователь является ${roleData.role.name}, не регистрируем как клиента');
           }
         } catch (e) {
-          print('⚠️ Ошибка проверки роли при регистрации: $e');
+          Logger.warning('Ошибка проверки роли при регистрации: $e');
           // При ошибке проверки роли, пытаемся проверить через API сотрудников
           try {
             final apiRole = await UserRoleService.checkEmployeeViaAPI(loyaltyInfo.phone);
             if (apiRole != null) {
-              print('✅ Сотрудник найден через API при регистрации');
+              Logger.success('Сотрудник найден через API при регистрации');
               await UserRoleService.saveUserRole(apiRole);
               await prefs.setString('user_name', apiRole.displayName);
-              print('✅ Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
+              Logger.info('Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
             }
           } catch (apiError) {
-            print('⚠️ Ошибка проверки через API сотрудников при регистрации: $apiError');
+            Logger.warning('Ошибка проверки через API сотрудников при регистрации: $apiError');
             // Продолжаем без роли (по умолчанию клиент)
           }
         }

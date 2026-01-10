@@ -1,70 +1,27 @@
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../models/shift_report_model.dart';
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class ShiftReportService {
-  static const String baseEndpoint = '/api/shift-reports';
+  static const String baseEndpoint = ApiConstants.shiftReportsEndpoint;
 
   /// Сохранить отчет пересменки на сервере
   static Future<bool> saveReport(ShiftReport report) async {
-    try {
-      Logger.debug('📤 Сохранение отчета пересменки на сервере: ${report.id}');
-
-      final response = await http.post(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(report.toJson()),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Отчет пересменки успешно сохранен на сервере');
-          return true;
-        } else {
-          Logger.error('❌ Ошибка сохранения отчета: ${result['error']}');
-          return false;
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-        return false;
-      }
-    } catch (e) {
-      Logger.error('❌ Ошибка сохранения отчета пересменки', e);
-      return false;
-    }
+    Logger.debug('📤 Сохранение отчета пересменки на сервере: ${report.id}');
+    return await BaseHttpService.simplePost(
+      endpoint: baseEndpoint,
+      body: report.toJson(),
+    );
   }
 
   /// Обновить отчет пересменки на сервере (например, подтвердить)
   static Future<bool> updateReport(ShiftReport report) async {
-    try {
-      Logger.debug('📤 Обновление отчета пересменки на сервере: ${report.id}');
-
-      final response = await http.put(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/${Uri.encodeComponent(report.id)}'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(report.toJson()),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          Logger.debug('✅ Отчет пересменки успешно обновлен на сервере');
-          return true;
-        } else {
-          Logger.error('❌ Ошибка обновления отчета: ${result['error']}');
-          return false;
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-        return false;
-      }
-    } catch (e) {
-      Logger.error('❌ Ошибка обновления отчета пересменки', e);
-      return false;
-    }
+    Logger.debug('📤 Обновление отчета пересменки на сервере: ${report.id}');
+    return await BaseHttpService.simplePut(
+      endpoint: '$baseEndpoint/${Uri.encodeComponent(report.id)}',
+      body: report.toJson(),
+    );
   }
 
   /// Получить отчеты пересменки с сервера
@@ -73,74 +30,31 @@ class ShiftReportService {
     String? shopAddress,
     DateTime? date,
   }) async {
-    try {
-      Logger.debug('📥 Загрузка отчетов пересменки с сервера...');
+    Logger.debug('📥 Загрузка отчетов пересменки с сервера...');
 
-      final queryParams = <String, String>{};
-      if (employeeName != null) queryParams['employeeName'] = employeeName;
-      if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
-      if (date != null) {
-        queryParams['date'] = date.toIso8601String().split('T')[0];
-      }
-
-      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final reportsJson = result['reports'] as List<dynamic>;
-          final reports = reportsJson
-              .map((json) => ShiftReport.fromJson(json as Map<String, dynamic>))
-              .toList();
-          Logger.debug('✅ Загружено отчетов пересменки: ${reports.length}');
-          return reports;
-        } else {
-          Logger.error('❌ Ошибка загрузки отчетов: ${result['error']}');
-          return [];
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки отчетов пересменки', e);
-      return [];
+    final queryParams = <String, String>{};
+    if (employeeName != null) queryParams['employeeName'] = employeeName;
+    if (shopAddress != null) queryParams['shopAddress'] = shopAddress;
+    if (date != null) {
+      queryParams['date'] = date.toIso8601String().split('T')[0];
     }
+
+    return await BaseHttpService.getList<ShiftReport>(
+      endpoint: baseEndpoint,
+      fromJson: (json) => ShiftReport.fromJson(json),
+      listKey: 'reports',
+      queryParams: queryParams.isNotEmpty ? queryParams : null,
+    );
   }
 
   /// Получить просроченные отчеты пересменки с сервера
   static Future<List<ShiftReport>> getExpiredReports() async {
-    try {
-      Logger.debug('📥 Загрузка просроченных отчетов пересменки...');
-
-      final response = await http.get(
-        Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/expired'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final reportsJson = result['reports'] as List<dynamic>;
-          final reports = reportsJson
-              .map((json) => ShiftReport.fromJson(json as Map<String, dynamic>))
-              .toList();
-          Logger.debug('✅ Загружено просроченных отчетов: ${reports.length}');
-          return reports;
-        } else {
-          Logger.error('❌ Ошибка загрузки просроченных: ${result['error']}');
-          return [];
-        }
-      } else {
-        Logger.error('❌ Ошибка API: statusCode=${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки просроченных отчетов', e);
-      return [];
-    }
+    Logger.debug('📥 Загрузка просроченных отчетов пересменки...');
+    return await BaseHttpService.getList<ShiftReport>(
+      endpoint: '$baseEndpoint/expired',
+      fromJson: (json) => ShiftReport.fromJson(json),
+      listKey: 'reports',
+    );
   }
 }
 

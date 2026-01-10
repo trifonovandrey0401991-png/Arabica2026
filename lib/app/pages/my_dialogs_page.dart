@@ -16,6 +16,7 @@ import '../../features/product_questions/pages/product_question_personal_dialog_
 import '../../features/reviews/models/review_model.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/pages/client_reviews_list_page.dart';
+import '../../core/utils/logger.dart';
 
 /// Страница "Мои диалоги" для клиента
 class MyDialogsPage extends StatefulWidget {
@@ -75,7 +76,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
         _reviewsUnreadCount = unreadCount;
       });
     } catch (e) {
-      print('Ошибка загрузки отзывов: $e');
+      Logger.error('Ошибка загрузки отзывов', e);
     }
 
     // Загружаем персональные диалоги "Поиск Товара"

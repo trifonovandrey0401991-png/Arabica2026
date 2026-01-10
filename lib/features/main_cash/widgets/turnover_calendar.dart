@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../services/turnover_service.dart';
 
@@ -52,7 +53,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Ошибка загрузки оборота: $e');
+      Logger.error('Ошибка загрузки оборота', e);
       setState(() => _isLoading = false);
     }
   }
@@ -74,7 +75,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         _isLoadingComparison = false;
       });
     } catch (e) {
-      print('Ошибка загрузки сравнения: $e');
+      Logger.error('Ошибка загрузки сравнения', e);
       setState(() => _isLoadingComparison = false);
     }
   }

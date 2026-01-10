@@ -9,7 +9,6 @@ import '../../employees/pages/employees_page.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../menu/pages/menu_page.dart';
 import '../../attendance/services/attendance_service.dart';
-import '../../attendance/models/attendance_model.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../shifts/services/shift_report_service.dart';
 import '../../shifts/models/shift_question_model.dart';
@@ -17,10 +16,7 @@ import '../../recount/services/recount_service.dart';
 import '../../recount/models/recount_report_model.dart';
 import '../../recount/models/recount_question_model.dart';
 import '../../recount/models/recount_answer_model.dart';
-import '../../employees/services/employee_registration_service.dart';
-import '../../employees/models/employee_registration_model.dart';
 import '../../shops/models/shop_model.dart';
-import '../../rko/pages/rko_type_selection_page.dart';
 import '../../rko/services/rko_reports_service.dart';
 import '../../../core/utils/logger.dart';
 
@@ -395,6 +391,8 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
       // Загружаем вопросы пересменки
       final questions = await ShiftQuestion.loadQuestions();
 
+      if (!mounted) return false;
+
       // Создаем ответы с дефолтными значениями
       final answers = questions.map((question) {
         if (question.isNumberOnly) {
@@ -513,6 +511,8 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
     try {
       // Загружаем вопросы пересчета
       final allQuestions = await RecountQuestion.loadQuestions();
+
+      if (!mounted) return false;
 
       // Выбираем 30 вопросов по алгоритму
       final selectedQuestions = RecountQuestion.selectQuestions(allQuestions);
@@ -667,6 +667,8 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
         ],
       ),
     );
+
+    if (!mounted) return;
 
     if (result != true) return;
 

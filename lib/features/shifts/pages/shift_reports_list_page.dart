@@ -4,6 +4,7 @@ import '../models/pending_shift_report_model.dart';
 import '../services/shift_report_service.dart';
 import '../services/pending_shift_service.dart';
 import 'shift_report_view_page.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница со списком отчетов по пересменкам с вкладками
 class ShiftReportsListPage extends StatefulWidget {
@@ -53,13 +54,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       final addressList = addresses.toList()..sort();
       return addressList;
     } catch (e) {
-      print('❌ Ошибка загрузки адресов магазинов: $e');
+      Logger.error('Ошибка загрузки адресов магазинов', e);
       return await ShiftReport.getUniqueShopAddresses();
     }
   }
 
   Future<void> _loadData() async {
-    print('📥 Загрузка отчетов пересменки...');
+    Logger.info('Загрузка отчетов пересменки...');
     setState(() {
       _shopsFuture = _loadShopAddresses();
     });
@@ -68,27 +69,27 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     try {
       final pendingShifts = await PendingShiftService.getPendingReports();
       _pendingShifts = pendingShifts;
-      print('✅ Загружено непройденных пересменок: ${pendingShifts.length}');
+      Logger.success('Загружено непройденных пересменок: ${pendingShifts.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки непройденных пересменок: $e');
+      Logger.error('Ошибка загрузки непройденных пересменок', e);
     }
 
     // Загружаем просроченные отчёты
     try {
       final expiredReports = await ShiftReportService.getExpiredReports();
       _expiredReports = expiredReports;
-      print('✅ Загружено просроченных отчётов: ${expiredReports.length}');
+      Logger.success('Загружено просроченных отчётов: ${expiredReports.length}');
     } catch (e) {
-      print('❌ Ошибка загрузки просроченных отчётов: $e');
+      Logger.error('Ошибка загрузки просроченных отчётов', e);
     }
 
     // Загружаем отчеты с сервера
     try {
       final serverReports = await ShiftReportService.getReports();
-      print('✅ Загружено отчетов с сервера: ${serverReports.length}');
+      Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
       final localReports = await ShiftReport.loadAllReports();
-      print('✅ Загружено локальных отчетов: ${localReports.length}');
+      Logger.success('Загружено локальных отчетов: ${localReports.length}');
 
       final Map<String, ShiftReport> reportsMap = {};
 
@@ -103,10 +104,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       _allReports = reportsMap.values.toList();
       _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      print('✅ Всего отчетов после объединения: ${_allReports.length}');
+      Logger.success('Всего отчетов после объединения: ${_allReports.length}');
       setState(() {});
     } catch (e) {
-      print('❌ Ошибка загрузки отчетов: $e');
+      Logger.error('Ошибка загрузки отчетов', e);
       _allReports = await ShiftReport.loadAllReports();
       setState(() {});
     }
@@ -730,23 +731,25 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
             ),
             onTap: () async {
               final allReports = await ShiftReport.loadAllReports();
+
+              if (!mounted) return;
+
               final updatedReport = allReports.firstWhere(
                 (r) => r.id == report.id,
                 orElse: () => report,
               );
 
-              if (mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ShiftReportViewPage(
-                      report: updatedReport,
-                    ),
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShiftReportViewPage(
+                    report: updatedReport,
                   ),
-                ).then((_) {
-                  _loadData();
-                });
-              }
+                ),
+              ).then((_) {
+                _loadData();
+              });
             },
           ),
         );

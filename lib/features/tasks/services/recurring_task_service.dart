@@ -1,7 +1,4 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../models/recurring_task_model.dart';
@@ -9,29 +6,18 @@ import '../models/task_model.dart' show TaskResponseType, TaskResponseTypeExtens
 
 /// Сервис для работы с циклическими задачами
 class RecurringTaskService {
-  static const String _baseUrl = '${ApiConstants.serverUrl}/api/recurring-tasks';
+  static const String _baseEndpoint = ApiConstants.recurringTasksEndpoint;
 
   // ==================== ШАБЛОНЫ ====================
 
   /// Получить все шаблоны циклических задач
   static Future<List<RecurringTask>> getAllTemplates() async {
     try {
-      final uri = Uri.parse(_baseUrl);
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось загрузить задачи');
-      }
-
-      final tasks = (data['tasks'] as List<dynamic>?)
-              ?.map((e) => RecurringTask.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
+      final tasks = await BaseHttpService.getList<RecurringTask>(
+        endpoint: _baseEndpoint,
+        fromJson: (json) => RecurringTask.fromJson(json),
+        listKey: 'tasks',
+      );
 
       Logger.debug('Загружено ${tasks.length} шаблонов циклических задач');
       return tasks;
@@ -44,23 +30,11 @@ class RecurringTaskService {
   /// Получить шаблон по ID
   static Future<RecurringTask?> getTemplateById(String id) async {
     try {
-      final uri = Uri.parse('$_baseUrl/$id');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 404) {
-        return null;
-      }
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось загрузить задачу');
-      }
-
-      return RecurringTask.fromJson(data['task'] as Map<String, dynamic>);
+      return await BaseHttpService.get<RecurringTask>(
+        endpoint: '$_baseEndpoint/$id',
+        fromJson: (json) => RecurringTask.fromJson(json),
+        itemKey: 'task',
+      );
     } catch (e) {
       Logger.error('Ошибка загрузки шаблона задачи', e);
       rethrow;
@@ -80,38 +54,29 @@ class RecurringTaskService {
     required String createdBy,
   }) async {
     try {
-      final uri = Uri.parse(_baseUrl);
-      final body = {
-        'title': title,
-        'description': description,
-        'responseType': responseType.code,
-        'daysOfWeek': daysOfWeek,
-        'startTime': startTime,
-        'endTime': endTime,
-        'reminderTimes': reminderTimes,
-        'assignees': assignees.map((e) => e.toJson()).toList(),
-        'createdBy': createdBy,
-      };
+      final result = await BaseHttpService.post<RecurringTask>(
+        endpoint: _baseEndpoint,
+        body: {
+          'title': title,
+          'description': description,
+          'responseType': responseType.code,
+          'daysOfWeek': daysOfWeek,
+          'startTime': startTime,
+          'endTime': endTime,
+          'reminderTimes': reminderTimes,
+          'assignees': assignees.map((e) => e.toJson()).toList(),
+          'createdBy': createdBy,
+        },
+        fromJson: (json) => RecurringTask.fromJson(json),
+        itemKey: 'task',
+      );
 
-      final response = await http
-          .post(
-            uri,
-            headers: ApiConstants.jsonHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось создать задачу');
+      if (result == null) {
+        throw Exception('Не удалось создать задачу');
       }
 
       Logger.info('Создан шаблон циклической задачи: $title');
-      return RecurringTask.fromJson(data['task'] as Map<String, dynamic>);
+      return result;
     } catch (e) {
       Logger.error('Ошибка создания шаблона задачи', e);
       rethrow;
@@ -131,7 +96,6 @@ class RecurringTaskService {
     List<TaskRecipient>? assignees,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/$id');
       final body = <String, dynamic>{};
 
       if (title != null) body['title'] = title;
@@ -145,25 +109,19 @@ class RecurringTaskService {
         body['assignees'] = assignees.map((e) => e.toJson()).toList();
       }
 
-      final response = await http
-          .put(
-            uri,
-            headers: ApiConstants.jsonHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.put<RecurringTask>(
+        endpoint: '$_baseEndpoint/$id',
+        body: body,
+        fromJson: (json) => RecurringTask.fromJson(json),
+        itemKey: 'task',
+      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось обновить задачу');
+      if (result == null) {
+        throw Exception('Не удалось обновить задачу');
       }
 
       Logger.info('Обновлен шаблон циклической задачи: $id');
-      return RecurringTask.fromJson(data['task'] as Map<String, dynamic>);
+      return result;
     } catch (e) {
       Logger.error('Ошибка обновления шаблона задачи', e);
       rethrow;
@@ -173,27 +131,20 @@ class RecurringTaskService {
   /// Переключить паузу шаблона
   static Future<RecurringTask> togglePause(String id) async {
     try {
-      final uri = Uri.parse('$_baseUrl/$id/toggle-pause');
-      final response = await http
-          .put(
-            uri,
-            headers: ApiConstants.jsonHeaders,
-          )
-          .timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.put<RecurringTask>(
+        endpoint: '$_baseEndpoint/$id/toggle-pause',
+        body: {},
+        fromJson: (json) => RecurringTask.fromJson(json),
+        itemKey: 'task',
+      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+      if (result == null) {
+        throw Exception('Не удалось изменить статус задачи');
       }
 
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось изменить статус задачи');
-      }
-
-      final task = RecurringTask.fromJson(data['task'] as Map<String, dynamic>);
       Logger.info(
-          'Шаблон ${task.isPaused ? "приостановлен" : "возобновлен"}: $id');
-      return task;
+          'Шаблон ${result.isPaused ? "приостановлен" : "возобновлен"}: $id');
+      return result;
     } catch (e) {
       Logger.error('Ошибка переключения паузы', e);
       rethrow;
@@ -203,17 +154,12 @@ class RecurringTaskService {
   /// Удалить шаблон
   static Future<void> deleteTemplate(String id) async {
     try {
-      final uri = Uri.parse('$_baseUrl/$id');
-      final response =
-          await http.delete(uri).timeout(ApiConstants.defaultTimeout);
+      final success = await BaseHttpService.delete(
+        endpoint: '$_baseEndpoint/$id',
+      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось удалить задачу');
+      if (!success) {
+        throw Exception('Не удалось удалить задачу');
       }
 
       Logger.info('Удален шаблон циклической задачи: $id');
@@ -240,24 +186,12 @@ class RecurringTaskService {
       if (status != null) params['status'] = status;
       if (yearMonth != null) params['yearMonth'] = yearMonth;
 
-      final uri =
-          Uri.parse('$_baseUrl/instances/list').replace(queryParameters: params);
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось загрузить задачи');
-      }
-
-      final instances = (data['instances'] as List<dynamic>?)
-              ?.map((e) =>
-                  RecurringTaskInstance.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
+      final instances = await BaseHttpService.getList<RecurringTaskInstance>(
+        endpoint: '$_baseEndpoint/instances/list',
+        fromJson: (json) => RecurringTaskInstance.fromJson(json),
+        listKey: 'instances',
+        queryParams: params,
+      );
 
       Logger.debug(
           'Загружено ${instances.length} экземпляров задач для $assigneePhone');
@@ -280,24 +214,12 @@ class RecurringTaskService {
       if (status != null) params['status'] = status;
       if (yearMonth != null) params['yearMonth'] = yearMonth;
 
-      final uri =
-          Uri.parse('$_baseUrl/instances/list').replace(queryParameters: params);
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось загрузить задачи');
-      }
-
-      final instances = (data['instances'] as List<dynamic>?)
-              ?.map((e) =>
-                  RecurringTaskInstance.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
+      final instances = await BaseHttpService.getList<RecurringTaskInstance>(
+        endpoint: '$_baseEndpoint/instances/list',
+        fromJson: (json) => RecurringTaskInstance.fromJson(json),
+        listKey: 'instances',
+        queryParams: params.isNotEmpty ? params : null,
+      );
 
       Logger.debug('Загружено ${instances.length} экземпляров задач');
       return instances;
@@ -314,32 +236,24 @@ class RecurringTaskService {
     List<String>? responsePhotos,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/instances/$instanceId/complete');
       final body = <String, dynamic>{};
 
       if (responseText != null) body['responseText'] = responseText;
       if (responsePhotos != null) body['responsePhotos'] = responsePhotos;
 
-      final response = await http
-          .post(
-            uri,
-            headers: ApiConstants.jsonHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.post<RecurringTaskInstance>(
+        endpoint: '$_baseEndpoint/instances/$instanceId/complete',
+        body: body,
+        fromJson: (json) => RecurringTaskInstance.fromJson(json),
+        itemKey: 'instance',
+      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось выполнить задачу');
+      if (result == null) {
+        throw Exception('Не удалось выполнить задачу');
       }
 
       Logger.info('Выполнена циклическая задача: $instanceId');
-      return RecurringTaskInstance.fromJson(
-          data['instance'] as Map<String, dynamic>);
+      return result;
     } catch (e) {
       Logger.error('Ошибка выполнения задачи', e);
       rethrow;
@@ -351,29 +265,20 @@ class RecurringTaskService {
   /// Ручная генерация задач на дату (для тестирования)
   static Future<int> generateDailyTasks({String? date}) async {
     try {
-      final uri = Uri.parse('$_baseUrl/generate-daily');
       final body = <String, dynamic>{};
       if (date != null) body['date'] = date;
 
-      final response = await http
-          .post(
-            uri,
-            headers: ApiConstants.jsonHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_baseEndpoint/generate-daily',
+        body: body,
+      );
 
-      if (response.statusCode != 200) {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+      if (result == null) {
+        throw Exception('Не удалось сгенерировать задачи');
       }
 
-      final data = jsonDecode(response.body);
-      if (data['success'] != true) {
-        throw Exception(data['error'] ?? 'Не удалось сгенерировать задачи');
-      }
-
-      final count = data['generatedCount'] as int? ?? 0;
-      Logger.info('Сгенерировано $count задач на ${data['date']}');
+      final count = result['generatedCount'] as int? ?? 0;
+      Logger.info('Сгенерировано $count задач на ${result['date']}');
       return count;
     } catch (e) {
       Logger.error('Ошибка генерации задач', e);

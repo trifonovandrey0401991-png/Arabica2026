@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../../../core/utils/logger.dart';
 import '../models/test_model.dart';
 import '../services/test_result_service.dart';
 
@@ -160,9 +161,9 @@ class _TestPageState extends State<TestPage> {
         timeSpent: timeSpent,
       );
 
-      print('✅ Результат теста сохранен: $employeeName - $score/${_questions.length}');
+      Logger.success('Результат теста сохранен: $employeeName - $score/${_questions.length}');
     } catch (e) {
-      print('❌ Ошибка сохранения результата теста: $e');
+      Logger.error('Ошибка сохранения результата теста', e);
     }
   }
 

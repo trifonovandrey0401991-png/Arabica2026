@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/logger.dart';
 import '../../../shared/providers/cart_provider.dart';
 import '../../orders/pages/cart_page.dart';
 import '../../recipes/models/recipe_model.dart';
@@ -101,7 +102,7 @@ class _MenuPageState extends State<MenuPage> {
         photoUrl: recipe.photoUrl,
       )).toList();
     } catch (e) {
-      print('⚠️ Ошибка загрузки рецептов: $e');
+      Logger.warning('Ошибка загрузки рецептов: $e');
       return [];
     }
   }
@@ -213,7 +214,7 @@ class _MenuPageState extends State<MenuPage> {
 
   @override
   Widget build(BuildContext context) {
-    print("📌 Категория: ${widget.selectedCategory}");
+    Logger.debug('Категория: ${widget.selectedCategory}');
 
     return Scaffold(
       appBar: AppBar(

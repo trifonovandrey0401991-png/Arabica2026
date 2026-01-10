@@ -1,9 +1,10 @@
 import '../models/test_model.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class TestQuestionService {
-  static const String baseEndpoint = '/api/test-questions';
+  static const String baseEndpoint = ApiConstants.testQuestionsEndpoint;
 
   /// Получить все вопросы
   static Future<List<TestQuestion>> getQuestions() async {

@@ -1,9 +1,10 @@
 import '../models/training_model.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class TrainingArticleService {
-  static const String baseEndpoint = '/api/training-articles';
+  static const String baseEndpoint = ApiConstants.trainingArticlesEndpoint;
 
   /// Получить все статьи
   static Future<List<TrainingArticle>> getArticles() async {

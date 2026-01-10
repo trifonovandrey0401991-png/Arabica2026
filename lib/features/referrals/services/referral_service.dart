@@ -1,29 +1,36 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import '../models/referral_stats_model.dart';
 
-/// Сервис для работы с реферальной системой
+/// Сервис для работы с реферальной системой.
+///
+/// Каждый сотрудник имеет уникальный код (1-1000).
+/// Клиент вводит код при регистрации - сотрудник получает баллы.
+///
+/// Основные операции:
+/// - [getNextReferralCode] - получить свободный код для сотрудника
+/// - [validateReferralCode] - проверить код при регистрации клиента
+/// - [registerReferral] - зарегистрировать приглашение
+/// - [getReferralStats] - статистика приглашений сотрудника
+/// - [getReferralReport] - отчёт для админа
+///
+/// Интеграция:
+/// - Баллы добавляются к рейтингу сотрудника
+/// - Отчёт "Приглашения" в админ-панели
 class ReferralService {
-  static const String _baseUrl = '${ApiConstants.serverUrl}/api/referrals';
-  static const String _pointsSettingsUrl = '${ApiConstants.serverUrl}/api/points-settings/referrals';
+  static const String _baseEndpoint = ApiConstants.referralsEndpoint;
+  static const String _pointsSettingsEndpoint = '${ApiConstants.pointsSettingsEndpoint}/referrals';
 
   /// Получить следующий свободный код приглашения
   static Future<int?> getNextReferralCode() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/next-code'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return result['nextCode'];
-        }
-      }
-      return null;
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/next-code',
+      );
+      return result?['nextCode'] as int?;
     } catch (e) {
-      print('❌ Ошибка получения следующего кода: $e');
+      Logger.error('Ошибка получения следующего кода', e);
       return null;
     }
   }
@@ -31,23 +38,20 @@ class ReferralService {
   /// Проверить валидность кода приглашения
   static Future<Map<String, dynamic>?> validateReferralCode(int code) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/validate-code/$code'),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/validate-code/$code',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return {
-            'valid': result['valid'] ?? false,
-            'message': result['message'],
-            'employee': result['employee'],
-          };
-        }
+      if (result != null) {
+        return {
+          'valid': result['valid'] ?? false,
+          'message': result['message'],
+          'employee': result['employee'],
+        };
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка валидации кода: $e');
+      Logger.error('Ошибка валидации кода', e);
       return null;
     }
   }
@@ -55,27 +59,24 @@ class ReferralService {
   /// Получить статистику всех сотрудников
   static Future<Map<String, dynamic>?> getAllStats() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/stats'),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/stats',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final stats = (result['employeeStats'] as List?)
-              ?.map((e) => EmployeeReferralStats.fromJson(e))
-              .toList() ?? [];
+      if (result != null) {
+        final stats = (result['employeeStats'] as List?)
+            ?.map((e) => EmployeeReferralStats.fromJson(e))
+            .toList() ?? [];
 
-          return {
-            'totalClients': result['totalClients'] ?? 0,
-            'unassignedCount': result['unassignedCount'] ?? 0,
-            'employeeStats': stats,
-          };
-        }
+        return {
+          'totalClients': result['totalClients'] ?? 0,
+          'unassignedCount': result['unassignedCount'] ?? 0,
+          'employeeStats': stats,
+        };
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения статистики: $e');
+      Logger.error('Ошибка получения статистики', e);
       return null;
     }
   }
@@ -83,32 +84,29 @@ class ReferralService {
   /// Получить статистику одного сотрудника
   static Future<Map<String, dynamic>?> getEmployeeStats(String employeeId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/stats/$employeeId'),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/stats/$employeeId',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final clients = (result['stats']?['clients'] as List?)
-              ?.map((e) => ReferredClient.fromJson(e))
-              .toList() ?? [];
+      if (result != null) {
+        final clients = (result['stats']?['clients'] as List?)
+            ?.map((e) => ReferredClient.fromJson(e))
+            .toList() ?? [];
 
-          return {
-            'employeeId': result['employeeId'],
-            'employeeName': result['employeeName'],
-            'referralCode': result['referralCode'],
-            'today': result['stats']?['today'] ?? 0,
-            'currentMonth': result['stats']?['currentMonth'] ?? 0,
-            'previousMonth': result['stats']?['previousMonth'] ?? 0,
-            'total': result['stats']?['total'] ?? 0,
-            'clients': clients,
-          };
-        }
+        return {
+          'employeeId': result['employeeId'],
+          'employeeName': result['employeeName'],
+          'referralCode': result['referralCode'],
+          'today': result['stats']?['today'] ?? 0,
+          'currentMonth': result['stats']?['currentMonth'] ?? 0,
+          'previousMonth': result['stats']?['previousMonth'] ?? 0,
+          'total': result['stats']?['total'] ?? 0,
+          'clients': clients,
+        };
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения статистики сотрудника: $e');
+      Logger.error('Ошибка получения статистики сотрудника', e);
       return null;
     }
   }
@@ -116,21 +114,18 @@ class ReferralService {
   /// Получить список клиентов по коду приглашения
   static Future<List<ReferredClient>> getClientsByCode(int referralCode) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/clients/$referralCode'),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/clients/$referralCode',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return (result['clients'] as List?)
-              ?.map((e) => ReferredClient.fromJson(e))
-              .toList() ?? [];
-        }
+      if (result != null) {
+        return (result['clients'] as List?)
+            ?.map((e) => ReferredClient.fromJson(e))
+            .toList() ?? [];
       }
       return [];
     } catch (e) {
-      print('❌ Ошибка получения клиентов: $e');
+      Logger.error('Ошибка получения клиентов', e);
       return [];
     }
   }
@@ -138,19 +133,12 @@ class ReferralService {
   /// Получить количество неучтённых клиентов
   static Future<int> getUnassignedCount() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/unassigned'),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return result['count'] ?? 0;
-        }
-      }
-      return 0;
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/unassigned',
+      );
+      return result?['count'] as int? ?? 0;
     } catch (e) {
-      print('❌ Ошибка получения неучтённых: $e');
+      Logger.error('Ошибка получения неучтённых', e);
       return 0;
     }
   }
@@ -158,19 +146,16 @@ class ReferralService {
   /// Получить настройки баллов за приглашения
   static Future<ReferralSettings> getSettings() async {
     try {
-      final response = await http.get(
-        Uri.parse(_pointsSettingsUrl),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: _pointsSettingsEndpoint,
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true && result['settings'] != null) {
-          return ReferralSettings.fromJson(result['settings']);
-        }
+      if (result != null && result['settings'] != null) {
+        return ReferralSettings.fromJson(result['settings']);
       }
       return ReferralSettings(pointsPerReferral: 1);
     } catch (e) {
-      print('❌ Ошибка получения настроек: $e');
+      Logger.error('Ошибка получения настроек', e);
       return ReferralSettings(pointsPerReferral: 1);
     }
   }
@@ -178,19 +163,12 @@ class ReferralService {
   /// Обновить настройки баллов за приглашения
   static Future<bool> updateSettings(ReferralSettings settings) async {
     try {
-      final response = await http.post(
-        Uri.parse(_pointsSettingsUrl),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(settings.toJson()),
-      ).timeout(ApiConstants.defaultTimeout);
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        return result['success'] == true;
-      }
-      return false;
+      return await BaseHttpService.simplePost(
+        endpoint: _pointsSettingsEndpoint,
+        body: settings.toJson(),
+      );
     } catch (e) {
-      print('❌ Ошибка обновления настроек: $e');
+      Logger.error('Ошибка обновления настроек', e);
       return false;
     }
   }
@@ -198,19 +176,16 @@ class ReferralService {
   /// Получить баллы сотрудника за приглашения
   static Future<EmployeeReferralPoints?> getEmployeePoints(String employeeId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/employee-points/$employeeId'),
-      ).timeout(ApiConstants.defaultTimeout);
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/employee-points/$employeeId',
+      );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          return EmployeeReferralPoints.fromJson(result);
-        }
+      if (result != null) {
+        return EmployeeReferralPoints.fromJson(result);
       }
       return null;
     } catch (e) {
-      print('❌ Ошибка получения баллов: $e');
+      Logger.error('Ошибка получения баллов', e);
       return null;
     }
   }

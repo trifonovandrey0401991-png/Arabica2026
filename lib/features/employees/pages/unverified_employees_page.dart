@@ -4,6 +4,7 @@ import '../services/employee_service.dart';
 import '../services/employee_registration_service.dart';
 import 'employee_registration_view_page.dart';
 import '../models/employee_registration_model.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница не верифицированных сотрудников (у которых была снята верификация)
 class UnverifiedEmployeesPage extends StatefulWidget {
@@ -42,28 +43,27 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
           // Показываем только тех, у кого была снята верификация
           // (есть регистрация, verifiedAt != null, но isVerified = false)
           if (registration != null) {
-            print('🔍 Проверка для не верифицированных: ${employee.name}');
-            print('   isVerified: ${registration.isVerified}');
-            print('   verifiedAt: ${registration.verifiedAt}');
-            
+            Logger.debug('Проверка для не верифицированных: ${employee.name}');
+            Logger.debug('isVerified: ${registration.isVerified}, verifiedAt: ${registration.verifiedAt}');
+
             if (registration.verifiedAt != null && !registration.isVerified) {
-              print('   ✅ Добавлен в список не верифицированных');
+              Logger.success('Добавлен в список не верифицированных: ${employee.name}');
               employees.add(employee);
               _registrations[normalizedPhone] = registration;
             } else {
-              print('   ❌ Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
+              Logger.debug('Не подходит: verifiedAt=${registration.verifiedAt}, isVerified=${registration.isVerified}');
             }
           } else {
-            print('🔍 Регистрация не найдена для: ${employee.name}');
+            Logger.debug('Регистрация не найдена для: ${employee.name}');
           }
         }
       }
 
       employees.sort((a, b) => a.name.compareTo(b.name));
-      
+
       return employees;
     } catch (e) {
-      print('Ошибка загрузки не верифицированных сотрудников: $e');
+      Logger.error('Ошибка загрузки не верифицированных сотрудников', e);
       rethrow;
     }
   }
@@ -200,9 +200,12 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                         trailing: const Icon(Icons.pending, color: Colors.orange),
                         onTap: employee.phone != null && employee.phone!.isNotEmpty
                             ? () async {
-                                final existingRegistration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-                                final result = await Navigator.push(
-                                  context,
+                                // Сохраняем navigator перед async операцией
+                                final navigator = Navigator.of(context);
+
+                                if (!mounted) return;
+
+                                final result = await navigator.push(
                                   MaterialPageRoute(
                                     builder: (context) => EmployeeRegistrationViewPage(
                                       employeePhone: employee.phone!,
@@ -210,6 +213,8 @@ class _UnverifiedEmployeesPageState extends State<UnverifiedEmployeesPage> {
                                     ),
                                   ),
                                 );
+
+                                if (!mounted) return;
                                 if (result == true) {
                                   // Обновляем список после верификации
                                   setState(() {
