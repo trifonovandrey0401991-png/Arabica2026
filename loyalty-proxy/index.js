@@ -17,6 +17,8 @@ const setupRatingWheelAPI = require("./rating_wheel_api");
 const setupReferralsAPI = require("./referrals_api");
 const { setupTasksAPI } = require("./tasks_api");
 const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
+const { setupReportNotificationsAPI } = require("./report_notifications_api");
+const { setupClientsAPI } = require("./api/clients_api");
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
@@ -854,6 +856,7 @@ app.post('/api/employees', async (req, res) => {
       phone: req.body.phone || null,
       email: req.body.email || null,
       isAdmin: req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1,
+      isManager: req.body.isManager === true || req.body.isManager === 'true' || req.body.isManager === 1,
       employeeName: req.body.employeeName || null,
       preferredWorkDays: req.body.preferredWorkDays || [],
       preferredShops: req.body.preferredShops || [],
@@ -909,6 +912,7 @@ app.put('/api/employees/:id', async (req, res) => {
       phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
       email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
       isAdmin: req.body.isAdmin !== undefined ? (req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1) : oldEmployee.isAdmin,
+      isManager: req.body.isManager !== undefined ? (req.body.isManager === true || req.body.isManager === 'true' || req.body.isManager === 1) : oldEmployee.isManager,
       employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
       preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
       preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
@@ -955,83 +959,154 @@ app.delete('/api/employees/:id', (req, res) => {
 
 // ========== API для магазинов ==========
 
+const SHOPS_DIR = '/var/www/shops';
+
+// Дефолтные магазины (создаются при первом запуске)
+const DEFAULT_SHOPS = [
+  { id: 'shop_1', name: 'Арабика Винсады', address: 'с.Винсады,ул Подгорная 156д (На Выезде)', icon: 'store_outlined', latitude: 44.091173, longitude: 42.952451 },
+  { id: 'shop_2', name: 'Арабика Лермонтов', address: 'Лермонтов,ул Пятигорская 19', icon: 'store_outlined', latitude: 44.100923, longitude: 42.967543 },
+  { id: 'shop_3', name: 'Арабика Лермонтов (Площадь)', address: 'Лермонтов,Комсомольская 1 (На Площади)', icon: 'store_outlined', latitude: 44.104619, longitude: 42.970543 },
+  { id: 'shop_4', name: 'Арабика Лермонтов (Остановка)', address: 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )', icon: 'store_outlined', latitude: 44.105379, longitude: 42.978421 },
+  { id: 'shop_5', name: 'Арабика Ессентуки', address: 'Ессентуки , ул пятигорская 149/1 (Золотушка)', icon: 'store_mall_directory_outlined', latitude: 44.055559, longitude: 42.911012 },
+  { id: 'shop_6', name: 'Арабика Иноземцево', address: 'Иноземцево , ул Гагарина 1', icon: 'store_outlined', latitude: 44.080153, longitude: 43.081593 },
+  { id: 'shop_7', name: 'Арабика Пятигорск (Ромашка)', address: 'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)', icon: 'store_outlined', latitude: 44.061053, longitude: 43.063672 },
+  { id: 'shop_8', name: 'Арабика Пятигорск', address: 'Пятигорск,ул Коллективная 26а', icon: 'store_outlined', latitude: 44.032997, longitude: 43.042525 },
+];
+
+// Инициализация директории магазинов
+function initShopsDir() {
+  if (!fs.existsSync(SHOPS_DIR)) {
+    fs.mkdirSync(SHOPS_DIR, { recursive: true });
+    // Создаем дефолтные магазины
+    DEFAULT_SHOPS.forEach(shop => {
+      const shopFile = path.join(SHOPS_DIR, `${shop.id}.json`);
+      fs.writeFileSync(shopFile, JSON.stringify(shop, null, 2));
+    });
+    console.log('✅ Директория магазинов создана с дефолтными данными');
+  }
+}
+initShopsDir();
+
 // GET /api/shops - получить все магазины
 app.get('/api/shops', (req, res) => {
   try {
     console.log('GET /api/shops');
-    
-    // Возвращаем список магазинов по умолчанию
-    // Это те же магазины, что и в shop_model.dart _getDefaultShops()
-    const shops = [
-      {
-        id: 'shop_1',
-        name: 'Арабика Винсады',
-        address: 'с.Винсады,ул Подгорная 156д (На Выезде)',
-        icon: 'store_outlined',
-        latitude: 44.091173,
-        longitude: 42.952451,
-      },
-      {
-        id: 'shop_2',
-        name: 'Арабика Лермонтов',
-        address: 'Лермонтов,ул Пятигорская 19',
-        icon: 'store_outlined',
-        latitude: 44.100923,
-        longitude: 42.967543,
-      },
-      {
-        id: 'shop_3',
-        name: 'Арабика Лермонтов (Площадь)',
-        address: 'Лермонтов,Комсомольская 1 (На Площади)',
-        icon: 'store_outlined',
-        latitude: 44.104619,
-        longitude: 42.970543,
-      },
-      {
-        id: 'shop_4',
-        name: 'Арабика Лермонтов (Остановка)',
-        address: 'Лермонтов,пр-кт Лермонтова 1стр1 (На Остановке )',
-        icon: 'store_outlined',
-        latitude: 44.105379,
-        longitude: 42.978421,
-      },
-      {
-        id: 'shop_5',
-        name: 'Арабика Ессентуки',
-        address: 'Ессентуки , ул пятигорская 149/1 (Золотушка)',
-        icon: 'store_mall_directory_outlined',
-        latitude: 44.055559,
-        longitude: 42.911012,
-      },
-      {
-        id: 'shop_6',
-        name: 'Арабика Иноземцево',
-        address: 'Иноземцево , ул Гагарина 1',
-        icon: 'store_outlined',
-        latitude: 44.080153,
-        longitude: 43.081593,
-      },
-      {
-        id: 'shop_7',
-        name: 'Арабика Пятигорск (Ромашка)',
-        address: 'Пятигорск, 295-стрелковой дивизии 2А стр1 (ромашка)',
-        icon: 'store_outlined',
-        latitude: 44.061053,
-        longitude: 43.063672,
-      },
-      {
-        id: 'shop_8',
-        name: 'Арабика Пятигорск',
-        address: 'Пятигорск,ул Коллективная 26а',
-        icon: 'store_outlined',
-        latitude: 44.032997,
-        longitude: 43.042525,
-      },
-    ];
-    
+
+    const shops = [];
+    const files = fs.readdirSync(SHOPS_DIR).filter(f => f.endsWith('.json'));
+
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(path.join(SHOPS_DIR, file), 'utf8');
+        shops.push(JSON.parse(content));
+      } catch (e) {
+        console.error(`Ошибка чтения файла ${file}:`, e.message);
+      }
+    }
+
     res.json({ success: true, shops });
   } catch (error) {
     console.error('Ошибка получения магазинов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/shops/:id - получить магазин по ID
+app.get('/api/shops/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('GET /api/shops/' + id);
+
+    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+    if (!fs.existsSync(shopFile)) {
+      return res.status(404).json({ success: false, error: 'Магазин не найден' });
+    }
+
+    const shop = JSON.parse(fs.readFileSync(shopFile, 'utf8'));
+    res.json({ success: true, shop });
+  } catch (error) {
+    console.error('Ошибка получения магазина:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/shops - создать магазин
+app.post('/api/shops', (req, res) => {
+  try {
+    const { name, address, latitude, longitude, icon } = req.body;
+    console.log('POST /api/shops', req.body);
+
+    const id = 'shop_' + Date.now();
+    const shop = {
+      id,
+      name: name || '',
+      address: address || '',
+      icon: icon || 'store_outlined',
+      latitude: latitude || null,
+      longitude: longitude || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+    fs.writeFileSync(shopFile, JSON.stringify(shop, null, 2));
+
+    console.log('✅ Магазин создан:', id);
+    res.json({ success: true, shop });
+  } catch (error) {
+    console.error('Ошибка создания магазина:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/shops/:id - обновить магазин
+app.put('/api/shops/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    console.log('PUT /api/shops/' + id, updates);
+
+    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+    if (!fs.existsSync(shopFile)) {
+      return res.status(404).json({ success: false, error: 'Магазин не найден' });
+    }
+
+    const shop = JSON.parse(fs.readFileSync(shopFile, 'utf8'));
+
+    // Обновляем только переданные поля
+    if (updates.name !== undefined) shop.name = updates.name;
+    if (updates.address !== undefined) shop.address = updates.address;
+    if (updates.latitude !== undefined) shop.latitude = updates.latitude;
+    if (updates.longitude !== undefined) shop.longitude = updates.longitude;
+    if (updates.icon !== undefined) shop.icon = updates.icon;
+    shop.updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(shopFile, JSON.stringify(shop, null, 2));
+
+    console.log('✅ Магазин обновлен:', id);
+    res.json({ success: true, shop });
+  } catch (error) {
+    console.error('Ошибка обновления магазина:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/shops/:id - удалить магазин
+app.delete('/api/shops/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('DELETE /api/shops/' + id);
+
+    const shopFile = path.join(SHOPS_DIR, `${id}.json`);
+    if (!fs.existsSync(shopFile)) {
+      return res.status(404).json({ success: false, error: 'Магазин не найден' });
+    }
+
+    fs.unlinkSync(shopFile);
+
+    console.log('✅ Магазин удален:', id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления магазина:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1129,6 +1204,17 @@ app.post('/api/shop-settings', async (req, res) => {
       inn: req.body.inn || '',
       directorName: req.body.directorName || '',
       lastDocumentNumber: lastDocumentNumber,
+      // Интервалы времени для смен
+      morningShiftStart: req.body.morningShiftStart || null,
+      morningShiftEnd: req.body.morningShiftEnd || null,
+      dayShiftStart: req.body.dayShiftStart || null,
+      dayShiftEnd: req.body.dayShiftEnd || null,
+      nightShiftStart: req.body.nightShiftStart || null,
+      nightShiftEnd: req.body.nightShiftEnd || null,
+      // Аббревиатуры для смен
+      morningAbbreviation: req.body.morningAbbreviation || null,
+      dayAbbreviation: req.body.dayAbbreviation || null,
+      nightAbbreviation: req.body.nightAbbreviation || null,
       updatedAt: new Date().toISOString(),
     };
     
@@ -1156,7 +1242,8 @@ app.post('/api/shop-settings', async (req, res) => {
       
       res.json({
         success: true,
-        message: 'Настройки успешно сохранены'
+        message: 'Настройки успешно сохранены',
+        settings: settings
       });
     } catch (writeError) {
       console.error('   ❌ Ошибка записи файла:', writeError);
@@ -1987,17 +2074,20 @@ app.post('/api/work-schedule', (req, res) => {
     const month = entry.month;
     const schedule = loadSchedule(month);
     
-    // Генерируем ID, если его нет
-    if (!entry.id) {
+    // Если есть ID - это обновление существующей записи
+    if (entry.id) {
+      // Удаляем старую запись по ID
+      schedule.entries = schedule.entries.filter(e => e.id !== entry.id);
+    } else {
+      // Новая запись - генерируем ID
       entry.id = `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Удаляем возможные дубликаты для этого сотрудника, даты и типа смены
+      schedule.entries = schedule.entries.filter(e =>
+        !(e.employeeId === entry.employeeId &&
+          e.date === entry.date &&
+          e.shiftType === entry.shiftType)
+      );
     }
-
-    // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
-    schedule.entries = schedule.entries.filter(e => 
-      !(e.employeeId === entry.employeeId && 
-        e.date === entry.date && 
-        e.shiftType === entry.shiftType)
-    );
 
     // Добавляем новую запись
     schedule.entries.push(entry);
@@ -2284,16 +2374,20 @@ app.post('/api/suppliers', async (req, res) => {
       name: req.body.name.trim(),
       inn: req.body.inn ? req.body.inn.trim() : null,
       legalType: req.body.legalType,
-      deliveryDays: req.body.deliveryDays || [],
       phone: req.body.phone ? req.body.phone.trim() : null,
+      email: req.body.email ? req.body.email.trim() : null,
+      contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
       paymentType: req.body.paymentType,
+      shopDeliveries: req.body.shopDeliveries || null,
+      // Устаревшее поле для обратной совместимости
+      deliveryDays: req.body.deliveryDays || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
+
     fs.writeFileSync(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
     console.log('Поставщик создан:', supplierFile);
-    
+
     res.json({ success: true, supplier });
   } catch (error) {
     console.error('Ошибка создания поставщика:', error);
@@ -2345,13 +2439,16 @@ app.put('/api/suppliers/:id', async (req, res) => {
     
     const supplier = {
       id: sanitizedId,
-      referralCode: req.body.referralCode || getNextReferralCode(),
+      referralCode: req.body.referralCode || oldSupplier.referralCode || getNextReferralCode(),
       name: req.body.name.trim(),
       inn: req.body.inn ? req.body.inn.trim() : null,
       legalType: req.body.legalType,
-      deliveryDays: req.body.deliveryDays || [],
       phone: req.body.phone ? req.body.phone.trim() : null,
+      email: req.body.email ? req.body.email.trim() : null,
+      contactPerson: req.body.contactPerson ? req.body.contactPerson.trim() : null,
       paymentType: req.body.paymentType,
+      shopDeliveries: req.body.shopDeliveries || null,
+      deliveryDays: req.body.deliveryDays || [],
       createdAt: oldSupplier.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3027,7 +3124,10 @@ app.get('/api/shift-handover-questions', async (req, res) => {
 
         // Фильтр по магазину, если указан
         if (req.query.shopAddress) {
-          if (question.shops && question.shops.includes(req.query.shopAddress)) {
+          // Вопрос показывается если:
+          // 1. У него shops == null (для всех магазинов)
+          // 2. Или shops содержит указанный магазин
+          if (!question.shops || question.shops.length === 0 || question.shops.includes(req.query.shopAddress)) {
             questions.push(question);
           }
         } else {
@@ -3249,6 +3349,187 @@ app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ========== API для вопросов конверта (Envelope Questions) ==========
+const ENVELOPE_QUESTIONS_DIR = '/var/www/envelope-questions';
+
+// Создаем директорию, если её нет
+if (!fs.existsSync(ENVELOPE_QUESTIONS_DIR)) {
+  fs.mkdirSync(ENVELOPE_QUESTIONS_DIR, { recursive: true });
+}
+
+// Дефолтные вопросы конверта для инициализации
+const defaultEnvelopeQuestions = [
+  { id: 'envelope_q_1', title: 'Выбор смены', description: 'Выберите тип смены', type: 'shift_select', section: 'general', order: 1, isRequired: true, isActive: true },
+  { id: 'envelope_q_2', title: 'ООО: Z-отчет', description: 'Сфотографируйте Z-отчет ООО', type: 'photo', section: 'ooo', order: 2, isRequired: true, isActive: true },
+  { id: 'envelope_q_3', title: 'ООО: Выручка и наличные', description: 'Введите данные ООО', type: 'numbers', section: 'ooo', order: 3, isRequired: true, isActive: true },
+  { id: 'envelope_q_4', title: 'ООО: Фото конверта', description: 'Сфотографируйте сформированный конверт ООО', type: 'photo', section: 'ooo', order: 4, isRequired: true, isActive: true },
+  { id: 'envelope_q_5', title: 'ИП: Z-отчет', description: 'Сфотографируйте Z-отчет ИП', type: 'photo', section: 'ip', order: 5, isRequired: true, isActive: true },
+  { id: 'envelope_q_6', title: 'ИП: Выручка и наличные', description: 'Введите данные ИП', type: 'numbers', section: 'ip', order: 6, isRequired: true, isActive: true },
+  { id: 'envelope_q_7', title: 'ИП: Расходы', description: 'Добавьте расходы', type: 'expenses', section: 'ip', order: 7, isRequired: true, isActive: true },
+  { id: 'envelope_q_8', title: 'ИП: Фото конверта', description: 'Сфотографируйте сформированный конверт ИП', type: 'photo', section: 'ip', order: 8, isRequired: true, isActive: true },
+  { id: 'envelope_q_9', title: 'Итог', description: 'Проверьте данные и отправьте отчет', type: 'summary', section: 'general', order: 9, isRequired: true, isActive: true },
+];
+
+// Инициализация дефолтных вопросов при старте
+(async function initEnvelopeQuestions() {
+  try {
+    const files = fs.readdirSync(ENVELOPE_QUESTIONS_DIR);
+    if (files.filter(f => f.endsWith('.json')).length === 0) {
+      console.log('Инициализация дефолтных вопросов конверта...');
+      for (const q of defaultEnvelopeQuestions) {
+        const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${q.id}.json`);
+        fs.writeFileSync(filePath, JSON.stringify({ ...q, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, null, 2));
+      }
+      console.log('✅ Дефолтные вопросы конверта созданы');
+    }
+  } catch (e) {
+    console.error('Ошибка инициализации вопросов конверта:', e);
+  }
+})();
+
+// GET /api/envelope-questions - получить все вопросы
+app.get('/api/envelope-questions', async (req, res) => {
+  try {
+    console.log('GET /api/envelope-questions');
+    const files = fs.readdirSync(ENVELOPE_QUESTIONS_DIR);
+    const questions = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const filePath = path.join(ENVELOPE_QUESTIONS_DIR, file);
+        const data = fs.readFileSync(filePath, 'utf8');
+        const question = JSON.parse(data);
+        questions.push(question);
+      }
+    }
+
+    // Сортировка по order
+    questions.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    res.json({ success: true, questions });
+  } catch (error) {
+    console.error('Ошибка получения вопросов конверта:', error);
+    res.status(500).json({ success: false, error: error.message, questions: [] });
+  }
+});
+
+// GET /api/envelope-questions/:id - получить один вопрос
+app.get('/api/envelope-questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+    }
+
+    const data = fs.readFileSync(filePath, 'utf8');
+    const question = JSON.parse(data);
+
+    res.json({ success: true, question });
+  } catch (error) {
+    console.error('Ошибка получения вопроса конверта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/envelope-questions - создать вопрос
+app.post('/api/envelope-questions', async (req, res) => {
+  try {
+    console.log('POST /api/envelope-questions:', JSON.stringify(req.body).substring(0, 200));
+
+    const questionId = req.body.id || `envelope_q_${Date.now()}`;
+    const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    const question = {
+      id: questionId,
+      title: req.body.title || '',
+      description: req.body.description || '',
+      type: req.body.type || 'photo',
+      section: req.body.section || 'general',
+      order: req.body.order || 1,
+      isRequired: req.body.isRequired !== false,
+      isActive: req.body.isActive !== false,
+      referencePhotoUrl: req.body.referencePhotoUrl || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    console.log('Вопрос конверта создан:', filePath);
+
+    res.json({ success: true, question });
+  } catch (error) {
+    console.error('Ошибка создания вопроса конверта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/envelope-questions/:id - обновить вопрос
+app.put('/api/envelope-questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('PUT /api/envelope-questions:', id);
+
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    // Если файл не существует, создаем новый
+    let question = {};
+    if (fs.existsSync(filePath)) {
+      const existingData = fs.readFileSync(filePath, 'utf8');
+      question = JSON.parse(existingData);
+    }
+
+    // Обновляем поля
+    if (req.body.title !== undefined) question.title = req.body.title;
+    if (req.body.description !== undefined) question.description = req.body.description;
+    if (req.body.type !== undefined) question.type = req.body.type;
+    if (req.body.section !== undefined) question.section = req.body.section;
+    if (req.body.order !== undefined) question.order = req.body.order;
+    if (req.body.isRequired !== undefined) question.isRequired = req.body.isRequired;
+    if (req.body.isActive !== undefined) question.isActive = req.body.isActive;
+    if (req.body.referencePhotoUrl !== undefined) question.referencePhotoUrl = req.body.referencePhotoUrl;
+
+    question.id = id;
+    question.updatedAt = new Date().toISOString();
+    if (!question.createdAt) question.createdAt = new Date().toISOString();
+
+    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    console.log('Вопрос конверта обновлен:', filePath);
+
+    res.json({ success: true, question });
+  } catch (error) {
+    console.error('Ошибка обновления вопроса конверта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/envelope-questions/:id - удалить вопрос
+app.delete('/api/envelope-questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('DELETE /api/envelope-questions:', id);
+
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Вопрос не найден' });
+    }
+
+    fs.unlinkSync(filePath);
+    console.log('Вопрос конверта удален:', filePath);
+
+    res.json({ success: true, message: 'Вопрос успешно удален' });
+  } catch (error) {
+    console.error('Ошибка удаления вопроса конверта:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -3521,6 +3802,64 @@ app.delete('/api/test-questions/:id', async (req, res) => {
   }
 });
 
+// ========== API для результатов тестирования ==========
+const TEST_RESULTS_DIR = '/var/www/test-results';
+if (!fs.existsSync(TEST_RESULTS_DIR)) {
+  fs.mkdirSync(TEST_RESULTS_DIR, { recursive: true });
+}
+
+// GET /api/test-results - получить все результаты тестов
+app.get('/api/test-results', async (req, res) => {
+  try {
+    console.log('GET /api/test-results');
+    const results = [];
+    if (fs.existsSync(TEST_RESULTS_DIR)) {
+      const files = fs.readdirSync(TEST_RESULTS_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(TEST_RESULTS_DIR, file), 'utf8');
+          const result = JSON.parse(content);
+          results.push(result);
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+    // Сортировка по дате (новые сначала)
+    results.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+    console.log(`✅ Найдено результатов тестов: ${results.length}`);
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('Ошибка получения результатов тестов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/test-results - сохранить результат теста
+app.post('/api/test-results', async (req, res) => {
+  try {
+    console.log('POST /api/test-results', req.body);
+    const result = {
+      id: req.body.id || `test_result_${Date.now()}`,
+      employeeName: req.body.employeeName,
+      employeePhone: req.body.employeePhone,
+      score: req.body.score,
+      totalQuestions: req.body.totalQuestions,
+      timeSpent: req.body.timeSpent,
+      completedAt: req.body.completedAt || new Date().toISOString(),
+    };
+
+    const resultFile = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
+    fs.writeFileSync(resultFile, JSON.stringify(result, null, 2), 'utf8');
+
+    console.log(`✅ Результат теста сохранен: ${result.employeeName} - ${result.score}/${result.totalQuestions}`);
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('Ошибка сохранения результата теста:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== API для отзывов ==========
 const REVIEWS_DIR = '/var/www/reviews';
 if (!fs.existsSync(REVIEWS_DIR)) {
@@ -3674,7 +4013,7 @@ app.get('/api/recipes/photo/:recipeId', async (req, res) => {
   try {
     const { recipeId } = req.params;
     const photoPath = path.join(RECIPE_PHOTOS_DIR, `${recipeId}.jpg`);
-    
+
     if (fs.existsSync(photoPath)) {
       res.sendFile(photoPath);
     } else {
@@ -3682,6 +4021,100 @@ app.get('/api/recipes/photo/:recipeId', async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка получения фото рецепта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/recipes - создать новый рецепт
+app.post('/api/recipes', async (req, res) => {
+  try {
+    const { name, category, price, ingredients, steps } = req.body;
+    console.log('POST /api/recipes:', name);
+
+    if (!name || !category) {
+      return res.status(400).json({ success: false, error: 'Название и категория обязательны' });
+    }
+
+    const id = `recipe_${Date.now()}`;
+    const recipe = {
+      id,
+      name,
+      category,
+      price: price || '',
+      ingredients: ingredients || '',
+      steps: steps || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
+    fs.writeFileSync(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
+
+    res.json({ success: true, recipe });
+  } catch (error) {
+    console.error('Ошибка создания рецепта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/recipes/:id - обновить рецепт
+app.put('/api/recipes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    console.log('PUT /api/recipes:', id);
+
+    const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
+
+    if (!fs.existsSync(recipeFile)) {
+      return res.status(404).json({ success: false, error: 'Рецепт не найден' });
+    }
+
+    const content = fs.readFileSync(recipeFile, 'utf8');
+    const recipe = JSON.parse(content);
+
+    // Обновляем поля
+    if (updates.name) recipe.name = updates.name;
+    if (updates.category) recipe.category = updates.category;
+    if (updates.price !== undefined) recipe.price = updates.price;
+    if (updates.ingredients !== undefined) recipe.ingredients = updates.ingredients;
+    if (updates.steps !== undefined) recipe.steps = updates.steps;
+    if (updates.photoUrl !== undefined) recipe.photoUrl = updates.photoUrl;
+    recipe.updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
+
+    res.json({ success: true, recipe });
+  } catch (error) {
+    console.error('Ошибка обновления рецепта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/recipes/:id - удалить рецепт
+app.delete('/api/recipes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('DELETE /api/recipes:', id);
+
+    const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
+
+    if (!fs.existsSync(recipeFile)) {
+      return res.status(404).json({ success: false, error: 'Рецепт не найден' });
+    }
+
+    // Удаляем файл рецепта
+    fs.unlinkSync(recipeFile);
+
+    // Удаляем фото рецепта, если есть
+    const photoPath = path.join(RECIPE_PHOTOS_DIR, `${id}.jpg`);
+    if (fs.existsSync(photoPath)) {
+      fs.unlinkSync(photoPath);
+    }
+
+    res.json({ success: true, message: 'Рецепт успешно удален' });
+  } catch (error) {
+    console.error('Ошибка удаления рецепта:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3975,9 +4408,47 @@ if (!fs.existsSync(ORDERS_DIR)) {
 }
 
 // POST /api/orders - создать заказ
-// POST /api/orders - создать заказapp.post('/api/orders', async (req, res) => {  try {    const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;    const normalizedPhone = clientPhone.replace(/[s+]/g, '');        const order = await ordersModule.createOrder({      clientPhone: normalizedPhone,      clientName,      shopAddress,      items,      totalPrice,      comment    });        console.log(`✅ Создан заказ #${order.orderNumber} от ${clientName}`);    res.json({ success: true, order });  } catch (err) {    console.error('❌ Ошибка создания заказа:', err);    res.status(500).json({ success: false, error: err.message });  }});
+app.post('/api/orders', async (req, res) => {
+  try {
+    console.log('POST /api/orders', req.body);
+    const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
+    const normalizedPhone = clientPhone.replace(/[\s+]/g, '');
+
+    const order = await ordersModule.createOrder({
+      clientPhone: normalizedPhone,
+      clientName,
+      shopAddress,
+      items,
+      totalPrice,
+      comment
+    });
+
+    console.log(`✅ Создан заказ #${order.orderNumber} от ${clientName}`);
+    res.json({ success: true, order });
+  } catch (err) {
+    console.error('❌ Ошибка создания заказа:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/orders - получить заказы (с фильтрацией по clientPhone)
-app.get('/api/orders', async (req, res) => {  try {    const filters = {};    if (req.query.clientPhone) {      filters.clientPhone = req.query.clientPhone.replace(/[s+]/g, '');    }    if (req.query.status) filters.status = req.query.status;    if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;    const orders = await ordersModule.getOrders(filters);    res.json({ success: true, orders });  } catch (err) {    console.error('❌ Ошибка получения заказов:', err);    res.status(500).json({ success: false, error: err.message });  }});
+app.get('/api/orders', async (req, res) => {
+  try {
+    console.log('GET /api/orders', req.query);
+    const filters = {};
+    if (req.query.clientPhone) {
+      filters.clientPhone = req.query.clientPhone.replace(/[\s+]/g, '');
+    }
+    if (req.query.status) filters.status = req.query.status;
+    if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;
+
+    const orders = await ordersModule.getOrders(filters);
+    res.json({ success: true, orders });
+  } catch (err) {
+    console.error('❌ Ошибка получения заказов:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // GET /api/orders/:id - получить заказ по ID
 app.get('/api/orders/:id', async (req, res) => {
@@ -4048,7 +4519,37 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
-// POST /api/fcm-tokens - сохранение FCM токенаapp.post('/api/fcm-tokens', async (req, res) => {  try {    const { phone, token } = req.body;    const normalizedPhone = phone.replace(/[s+]/g, '');        const tokenDir = '/var/www/fcm-tokens';    if (!fs.existsSync(tokenDir)) {      fs.mkdirSync(tokenDir, { recursive: true });    }        const tokenFile = path.join(tokenDir, `${normalizedPhone}.json`);    fs.writeFileSync(tokenFile, JSON.stringify({      phone: normalizedPhone,      token,      updatedAt: new Date().toISOString()    }, null, 2), 'utf8');        console.log(`✅ FCM токен сохранен для ${normalizedPhone}`);    res.json({ success: true });  } catch (err) {    console.error('❌ Ошибка сохранения токена:', err);    res.status(500).json({ success: false, error: err.message });  }});
+// POST /api/fcm-tokens - сохранение FCM токена
+app.post('/api/fcm-tokens', async (req, res) => {
+  try {
+    console.log('POST /api/fcm-tokens', req.body);
+    const { phone, token } = req.body;
+
+    if (!phone || !token) {
+      return res.status(400).json({ success: false, error: 'phone и token обязательны' });
+    }
+
+    const normalizedPhone = phone.replace(/[\s+]/g, '');
+
+    const tokenDir = '/var/www/fcm-tokens';
+    if (!fs.existsSync(tokenDir)) {
+      fs.mkdirSync(tokenDir, { recursive: true });
+    }
+
+    const tokenFile = path.join(tokenDir, `${normalizedPhone}.json`);
+    fs.writeFileSync(tokenFile, JSON.stringify({
+      phone: normalizedPhone,
+      token,
+      updatedAt: new Date().toISOString()
+    }, null, 2), 'utf8');
+
+    console.log(`✅ FCM токен сохранен для ${normalizedPhone}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ Ошибка сохранения FCM токена:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ==================== ПРЕМИИ И ШТРАФЫ ====================
 const BONUS_PENALTIES_DIR = '/var/www/bonus-penalties';
@@ -4278,3 +4779,5 @@ setupReferralsAPI(app);
 setupRatingWheelAPI(app);
 setupTasksAPI(app);
 setupRecurringTasksAPI(app);
+setupReportNotificationsAPI(app);
+setupClientsAPI(app);

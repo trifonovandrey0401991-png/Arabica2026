@@ -16,6 +16,8 @@ import '../../../shared/dialogs/schedule_validation_dialog.dart';
 import '../../employees/pages/employee_schedule_page.dart';
 import '../../../shared/dialogs/auto_fill_schedule_dialog.dart';
 import '../services/auto_fill_schedule_service.dart';
+import '../../../shared/dialogs/shift_edit_dialog.dart';
+import '../../../shared/dialogs/schedule_errors_dialog.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -45,6 +47,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   List<ShiftTransferRequest> _adminNotifications = [];
   int _adminUnreadCount = 0;
   bool _isLoadingNotifications = false;
+
+  // Валидация графика
+  bool _hasErrors = false;
+  int _errorCount = 0;
+  ScheduleValidationResult? _validationResult;
 
   @override
   void initState() {
@@ -126,6 +133,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
           _schedule = schedule;
           _isLoading = false;
         });
+        // Валидация графика после загрузки
+        _validateCurrentSchedule();
       }
     } catch (e) {
       if (mounted) {
@@ -174,17 +183,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
     }
 
-    Logger.debug('Открываем диалог выбора аббревиатуры...');
+    Logger.debug('Открываем диалог редактирования смены...');
     Logger.debug('Магазинов доступно: ${_shops.length}');
-    
+
     try {
       final result = await showDialog<Map<String, dynamic>>(
         context: context,
-        builder: (context) => AbbreviationSelectionDialog(
-          employeeId: employee.id,
-          employeeName: employee.name,
-          date: date,
+        builder: (context) => ShiftEditDialog(
           existingEntry: entryToEdit,
+          date: date,
+          employee: employee,
+          schedule: _schedule!,
+          allEmployees: _employees,
           shops: _shops,
         ),
       );
@@ -249,7 +259,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         } else if (result['action'] == 'delete') {
           final entry = result['entry'] as WorkScheduleEntry;
           Logger.debug('Удаление смены: ${entry.id}');
-          final success = await WorkScheduleService.deleteShift(entry.id);
+          final success = await WorkScheduleService.deleteShift(entry.id, entry.date);
           if (success) {
             Logger.success('Смена успешно удалена');
             if (mounted) {
@@ -295,6 +305,291 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         onOperationComplete: () => _loadData(),
       ),
     );
+  }
+
+  /// Валидация текущего графика
+  void _validateCurrentSchedule() {
+    if (_schedule == null || _shops.isEmpty) {
+      setState(() {
+        _hasErrors = false;
+        _errorCount = 0;
+        _validationResult = null;
+      });
+      return;
+    }
+
+    final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, _startDay);
+    final lastDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
+    final actualEndDay = _endDay > lastDayOfMonth ? lastDayOfMonth : _endDay;
+    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month, actualEndDay);
+
+    _validationResult = WorkScheduleValidator.validateSchedule(
+      _schedule!,
+      startDate,
+      endDate,
+      _shops,
+    );
+
+    setState(() {
+      _hasErrors = _validationResult!.hasErrors;
+      _errorCount = _validationResult!.totalCount;
+    });
+
+    Logger.debug('Валидация графика: найдено $_errorCount ошибок');
+  }
+
+  /// Показать диалог ошибок
+  Future<void> _showErrorsDialog() async {
+    if (_validationResult == null) {
+      _validateCurrentSchedule();
+    }
+
+    if (!_hasErrors) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ошибок в графике не найдено! ✓'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) => ScheduleErrorsDialog(
+        validationResult: _validationResult!,
+        onErrorTap: (error) => _handleErrorTap(error),
+      ),
+    );
+  }
+
+  /// Обработка клика на ошибку в диалоге
+  Future<void> _handleErrorTap(ScheduleError error) async {
+    Employee? employee;
+
+    if (error.employeeName != null) {
+      // Находим сотрудника по имени
+      try {
+        employee = _employees.firstWhere(
+          (e) => e.name == error.employeeName,
+        );
+      } catch (e) {
+        employee = _employees.isNotEmpty ? _employees.first : null;
+      }
+    } else {
+      // Для отсутствующих смен - выбираем первого сотрудника
+      employee = _employees.isNotEmpty ? _employees.first : null;
+    }
+
+    if (employee == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось найти сотрудника'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Определяем требуемый тип смены на основе ошибки
+    ShiftType? requiredShiftType;
+    switch (error.type) {
+      case ScheduleErrorType.missingMorning:
+        requiredShiftType = ShiftType.morning;
+        break;
+      case ScheduleErrorType.missingEvening:
+        requiredShiftType = ShiftType.evening;
+        break;
+      case ScheduleErrorType.duplicateMorning:
+        requiredShiftType = ShiftType.morning;
+        break;
+      case ScheduleErrorType.duplicateEvening:
+        requiredShiftType = ShiftType.evening;
+        break;
+      case ScheduleErrorType.morningAfterEvening:
+      case ScheduleErrorType.eveningAfterMorning:
+      case ScheduleErrorType.dayAfterEvening:
+        // Для конфликтов используем тип смены из ошибки, если указан
+        requiredShiftType = error.shiftType;
+        break;
+    }
+
+    // Находим магазин по адресу из ошибки
+    Shop? requiredShop;
+    try {
+      requiredShop = _shops.firstWhere(
+        (shop) => shop.address == error.shopAddress,
+      );
+    } catch (e) {
+      Logger.error('Магазин не найден по адресу: ${error.shopAddress}', e);
+      requiredShop = null;
+    }
+
+    // Открываем диалог редактирования с заблокированными полями
+    await _editShiftNew(
+      employee,
+      error.date,
+      requiredShiftType: requiredShiftType,
+      requiredShop: requiredShop,
+    );
+  }
+
+  /// Новый метод редактирования смены с использованием ShiftEditDialog
+  Future<void> _editShiftNew(
+    Employee employee,
+    DateTime date, {
+    ShiftType? requiredShiftType,
+    Shop? requiredShop,
+  }) async {
+    WorkScheduleEntry? existingEntry;
+    if (_schedule != null) {
+      try {
+        // Если указан требуемый тип смены, ищем запись с этим типом
+        if (requiredShiftType != null) {
+          existingEntry = _schedule!.entries.firstWhere(
+            (e) => e.employeeId == employee.id &&
+                   e.date.year == date.year &&
+                   e.date.month == date.month &&
+                   e.date.day == date.day &&
+                   e.shiftType == requiredShiftType,
+          );
+        } else {
+          // Если тип смены не указан, ищем любую запись этого сотрудника на эту дату
+          existingEntry = _schedule!.entries.firstWhere(
+            (e) => e.employeeId == employee.id &&
+                   e.date.year == date.year &&
+                   e.date.month == date.month &&
+                   e.date.day == date.day,
+          );
+        }
+      } catch (e) {
+        existingEntry = null;
+      }
+    }
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => ShiftEditDialog(
+        existingEntry: existingEntry,
+        date: date,
+        employee: employee,
+        schedule: _schedule!,
+        allEmployees: _employees,
+        shops: _shops,
+        requiredShiftType: requiredShiftType,
+        requiredShop: requiredShop,
+      ),
+    );
+
+    if (result == null) return;
+
+    final action = result['action'] as String?;
+    final entry = result['entry'] as WorkScheduleEntry?;
+
+    if (action == 'save' && entry != null) {
+      // Проверяем валидацию перед сохранением
+      final warnings = _validateShiftBeforeSave(entry);
+      if (warnings.isNotEmpty) {
+        final shouldSave = await _showValidationWarning(warnings);
+        if (!shouldSave) {
+          return;
+        }
+      }
+
+      final success = await WorkScheduleService.saveShift(entry);
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Смена сохранена')),
+          );
+        }
+        await _loadData();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка сохранения смены'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else if (action == 'delete' && entry != null) {
+      // Проверяем что ID не пустой
+      if (entry.id.isEmpty) {
+        Logger.error('Попытка удалить смену с пустым ID', null);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка: ID смены не найден'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      Logger.debug('Удаление смены: ID=${entry.id}, сотрудник=${entry.employeeName}, дата=${entry.date}');
+      final success = await WorkScheduleService.deleteShift(entry.id, entry.date);
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Смена удалена')),
+          );
+        }
+        await _loadData();
+      } else {
+        Logger.error('Не удалось удалить смену: ID=${entry.id}', null);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка удаления смены'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// Получить ошибку для конкретной ячейки
+  ScheduleError? _getCellError(String employeeId, DateTime day) {
+    if (_validationResult == null) return null;
+
+    // Проверяем критичные ошибки
+    for (var error in _validationResult!.criticalErrors) {
+      if (error.date.year == day.year &&
+          error.date.month == day.month &&
+          error.date.day == day.day &&
+          error.employeeName != null) {
+        // Проверяем, относится ли ошибка к этому сотруднику
+        final emp = _employees.firstWhere(
+          (e) => e.id == employeeId,
+          orElse: () => Employee(id: '', name: ''),
+        );
+        if (emp.name == error.employeeName) {
+          return error;
+        }
+      }
+    }
+
+    // Проверяем предупреждения
+    for (var warning in _validationResult!.warnings) {
+      if (warning.date.year == day.year &&
+          warning.date.month == day.month &&
+          warning.date.day == day.day &&
+          warning.employeeName != null) {
+        final emp = _employees.firstWhere(
+          (e) => e.id == employeeId,
+          orElse: () => Employee(id: '', name: ''),
+        );
+        if (emp.name == warning.employeeName) {
+          return warning;
+        }
+      }
+    }
+
+    return null;
   }
 
   List<DateTime> _getDaysInMonth() {
@@ -518,6 +813,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     _buildAdminNotificationsTab(),
                   ],
                 ),
+      floatingActionButton: _schedule != null
+          ? FloatingActionButton(
+              onPressed: _showErrorsDialog,
+              backgroundColor: _hasErrors ? Colors.red : Colors.grey,
+              foregroundColor: Colors.white,
+              child: Badge(
+                label: Text('$_errorCount'),
+                isLabelVisible: _hasErrors,
+                child: const Icon(Icons.error_outline),
+              ),
+            )
+          : null,
     );
   }
 
@@ -705,15 +1012,24 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final abbreviation = entry != null ? _getAbbreviationForEntry(entry) : null;
     final employeeIndex = _employees.indexWhere((e) => e.id == employee.id);
     final isEven = employeeIndex % 2 == 0;
-    
-    // Проверяем наличие конфликта для этой ячейки
-    bool hasConflict = false;
-    if (!isEmpty && _schedule != null && entry != null) {
-      hasConflict = WorkScheduleValidator.hasConflictForCell(
-        employee.id,
-        date,
-        _schedule!,
-      );
+
+    // Получаем ошибку для ячейки из результата валидации
+    final cellError = _getCellError(employee.id, date);
+    final hasError = cellError != null;
+
+    Color? borderColor;
+    Widget? errorIcon;
+
+    if (hasError) {
+      if (cellError!.isCritical) {
+        // Критичная ошибка: красная рамка
+        borderColor = Colors.red;
+        errorIcon = const Icon(Icons.error, color: Colors.red, size: 12);
+      } else {
+        // Предупреждение: оранжевая рамка
+        borderColor = Colors.orange;
+        errorIcon = const Icon(Icons.warning, color: Colors.orange, size: 12);
+      }
     }
 
     return InkWell(
@@ -722,55 +1038,51 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         _editShift(employee, date);
       },
       child: Container(
-        constraints: const BoxConstraints(
-          minHeight: 40,
-          minWidth: 70,
-        ),
-        padding: const EdgeInsets.all(2.0),
+        width: 70,
+        height: 40,
         decoration: BoxDecoration(
-          color: isEmpty 
+          color: isEmpty
               ? (isEven ? Colors.white : Colors.grey[50])
               : entry!.shiftType.color.withOpacity(0.2),
-          border: isEmpty
-              ? null
-              : Border.all(
-                  color: hasConflict ? Colors.red : entry.shiftType.color,
-                  width: hasConflict ? 2.0 : 1.5,
-                ),
+          border: Border.all(
+            color: hasError
+                ? borderColor!
+                : (isEmpty ? Colors.grey[300]! : entry.shiftType.color),
+            width: hasError ? 2.0 : (isEmpty ? 0.5 : 1.0),
+          ),
         ),
         child: isEmpty
             ? const SizedBox()
             : Stack(
                 children: [
                   Center(
-                    child: Text(
-                      abbreviation ?? entry.shiftType.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: entry.shiftType.color,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                      child: Text(
+                        abbreviation ?? entry.shiftType.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: entry.shiftType.color,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Иконка предупреждения для конфликтов
-                  if (hasConflict)
+                  // Иконка ошибки/предупреждения
+                  if (errorIcon != null)
                     Positioned(
-                      top: 0,
-                      right: 0,
+                      top: 1,
+                      right: 1,
                       child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
+                        padding: const EdgeInsets.all(1),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.warning,
-                          color: Colors.white,
-                          size: 12,
-                        ),
+                        child: errorIcon,
                       ),
                     ),
                 ],
@@ -804,7 +1116,13 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
   /// Показывает диалог автозаполнения
   Future<void> _showAutoFillDialog() async {
+    Logger.info('📋 Нажата кнопка автозаполнения');
+    Logger.debug('   График: ${_schedule != null ? "загружен (${_schedule!.entries.length} записей)" : "не загружен"}');
+    Logger.debug('   Сотрудников: ${_employees.length}');
+    Logger.debug('   Магазинов: ${_shops.length}');
+
     if (_schedule == null || _employees.isEmpty || _shops.isEmpty) {
+      Logger.warning('⚠️ Недостаточно данных для автозаполнения');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Необходимо загрузить график, сотрудников и магазины'),
@@ -813,6 +1131,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       );
       return;
     }
+
+    Logger.info('✅ Все данные загружены, показываем диалог автозаполнения');
+    print('🔵 ПЕРЕД showDialog');
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -827,17 +1148,34 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       ),
     );
 
+    print('🔵 ПОСЛЕ showDialog, result: $result');
+    print('🔵 result != null: ${result != null}');
+    Logger.info('📥 Диалог закрыт, результат: ${result != null ? "получен" : "null"}');
+
     if (result != null) {
+      print('🔵 Внутри if, вызываем _performAutoFill');
+      Logger.debug('   startDay: ${result['startDay']}, endDay: ${result['endDay']}, replace: ${result['replaceExisting']}');
       await _performAutoFill(result);
+      print('🔵 _performAutoFill завершен');
+    } else {
+      print('🔵 result == null, пропускаем');
+      Logger.warning('⚠️ Результат диалога = null, автозаполнение не выполнено');
     }
   }
 
   /// Выполняет автозаполнение графика
   Future<void> _performAutoFill(Map<String, dynamic> options) async {
+    print('🟢 _performAutoFill НАЧАЛО');
     final startDay = options['startDay'] as int;
     final endDay = options['endDay'] as int;
     final replaceExisting = options['replaceExisting'] as bool;
 
+    print('🔄 Начало автозаполнения: с $startDay по $endDay, заменить=$replaceExisting');
+    print('   Сотрудников: ${_employees.length}, Магазинов: ${_shops.length}');
+    Logger.info('🔄 Начало автозаполнения: с $startDay по $endDay, заменить=$replaceExisting');
+    Logger.debug('   Сотрудников: ${_employees.length}, Магазинов: ${_shops.length}');
+
+    print('🔵 Показываем диалог загрузки...');
     // Показываем индикатор загрузки
     showDialog(
       context: context,
@@ -858,28 +1196,20 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         ),
       ),
     );
+    print('🔵 Диалог загрузки показан');
 
     try {
+      print('🔵 В блоке try, вычисляем даты...');
       // Вычисляем даты начала и конца периода
       final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, startDay);
       final endDate = DateTime(_selectedMonth.year, _selectedMonth.month, endDay);
+      print('🔵 Даты: $startDate - $endDate');
 
-      // Если режим "Заменить", удаляем существующие смены в периоде
-      if (replaceExisting && _schedule != null) {
-        final entriesToDelete = _schedule!.entries.where((e) {
-          final entryDate = DateTime(e.date.year, e.date.month, e.date.day);
-          return entryDate.isAfter(startDate.subtract(const Duration(days: 1))) &&
-                 entryDate.isBefore(endDate.add(const Duration(days: 1)));
-        }).toList();
-
-        for (var entry in entriesToDelete) {
-          if (entry.id.isNotEmpty) {
-            await WorkScheduleService.deleteShift(entry.id);
-          }
-        }
-      }
+      // ОПТИМИЗАЦИЯ: Не удаляем смены здесь, AutoFillScheduleService сам фильтрует существующие
+      // при replaceExisting=true (строки 35-40 в auto_fill_schedule_service.dart)
 
       // Выполняем автозаполнение
+      print('🟢 Вызываем AutoFillScheduleService.autoFill...');
       final newEntries = await AutoFillScheduleService.autoFill(
         startDate: startDate,
         endDate: endDate,
@@ -890,14 +1220,27 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         replaceExisting: replaceExisting,
       );
 
+      print('🟢 AutoFillScheduleService.autoFill вернул ${newEntries.length} записей');
+      Logger.info('🔄 Автозаполнение создало ${newEntries.length} записей');
+
       // Сохраняем новые смены батчами по 50 записей
       if (newEntries.isNotEmpty) {
         const batchSize = 50;
         int savedCount = 0;
-        
+
         for (int i = 0; i < newEntries.length; i += batchSize) {
           final batch = newEntries.skip(i).take(batchSize).toList();
-          final success = await WorkScheduleService.bulkCreateShifts(batch);
+
+          // В первый батч передаём параметры замены
+          final success = i == 0 && replaceExisting
+              ? await WorkScheduleService.bulkCreateShifts(
+                  batch,
+                  replaceMode: 'all',
+                  startDate: startDate,
+                  endDate: endDate,
+                )
+              : await WorkScheduleService.bulkCreateShifts(batch);
+
           if (success) {
             savedCount += batch.length;
           } else {
@@ -907,7 +1250,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               savedCount++;
             }
           }
-          
+
           // Небольшая задержка между батчами
           await Future.delayed(const Duration(milliseconds: 100));
         }
@@ -921,22 +1264,28 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
 
       // Обновляем график - принудительно перезагружаем данные
+      print('🟢 Обновляем график после автозаполнения...');
       setState(() {
         _isLoading = true;
       });
-      
+
       await _loadData();
-      
+      print('🟢 _loadData завершен, график содержит ${_schedule?.entries.length ?? 0} записей');
+
       // Дополнительная проверка - загружаем график еще раз для уверенности
       try {
+        print('🟢 Повторная загрузка графика...');
         final refreshedSchedule = await WorkScheduleService.getSchedule(_selectedMonth);
+        print('🟢 Повторная загрузка вернула ${refreshedSchedule.entries.length} записей');
         if (mounted) {
           setState(() {
             _schedule = refreshedSchedule;
             _isLoading = false;
           });
+          print('🟢 setState вызван, таблица должна обновиться');
         }
       } catch (e) {
+        print('❌ Ошибка при повторной загрузке: $e');
         Logger.error('Ошибка при обновлении графика', e);
         if (mounted) {
           setState(() {
