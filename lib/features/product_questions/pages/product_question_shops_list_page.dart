@@ -245,7 +245,6 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                 MaterialPageRoute(
                   builder: (context) => ProductQuestionDialogPage(
                     questionId: questionId!,
-                    shopAddress: shopAddress,
                   ),
                 ),
               );
