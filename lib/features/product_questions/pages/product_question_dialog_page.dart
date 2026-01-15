@@ -167,9 +167,20 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.network(
-                                  message.imageUrl!,
+                                  message.imageUrl!.startsWith('http')
+                                      ? message.imageUrl!
+                                      : 'https://arabica26.ru${message.imageUrl}',
                                   width: double.infinity,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 200,
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ],

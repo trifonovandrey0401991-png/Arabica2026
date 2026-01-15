@@ -326,7 +326,9 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      message.imageUrl!,
+                      message.imageUrl!.startsWith('http')
+                          ? message.imageUrl!
+                          : 'https://arabica26.ru${message.imageUrl}',
                       width: double.infinity,
                       fit: BoxFit.cover,
                       loadingBuilder: (context, child, loadingProgress) {
