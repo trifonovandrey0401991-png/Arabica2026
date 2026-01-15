@@ -518,25 +518,28 @@ class FirebaseService {
     
     // Обработка уведомлений о новом вопросе о товаре (для сотрудников)
     if (type == 'product_question_created') {
-      Navigator.of(_globalContext!).push(
-        MaterialPageRoute(
-          builder: (context) => const ProductQuestionAnswerPage(),
-        ),
-      );
+      final questionId = data['questionId'] as String?;
+      if (questionId != null) {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionAnswerPage(
+              questionId: questionId,
+            ),
+          ),
+        );
+      }
       return;
     }
 
     // Обработка уведомлений об ответе на вопрос о товаре (для клиентов)
     if (type == 'product_question_answered') {
       final questionId = data['questionId'] as String?;
-      final shopAddress = data['shopAddress'] as String?;
 
-      if (questionId != null && shopAddress != null) {
+      if (questionId != null) {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
             builder: (context) => ProductQuestionDialogPage(
               questionId: questionId,
-              shopAddress: shopAddress,
             ),
           ),
         );
