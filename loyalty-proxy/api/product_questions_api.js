@@ -15,7 +15,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   app.get('/api/product-questions', async (req, res) => {
     try {
       console.log('GET /api/product-questions');
-      const { status, shopAddress } = req.query;
+      const { shopAddress } = req.query;
       const questions = [];
 
       if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
@@ -26,8 +26,21 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
             const content = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
             const question = JSON.parse(content);
 
-            if (status && question.status !== status) continue;
-            if (shopAddress && question.shopAddress !== shopAddress) continue;
+            // Фильтр по магазину - проверяем shops[] массив или старый формат
+            if (shopAddress) {
+              let matchesShop = false;
+
+              // Новый формат - проверяем shops[]
+              if (question.shops && Array.isArray(question.shops)) {
+                matchesShop = question.shops.some(shop => shop.shopAddress === shopAddress);
+              }
+              // Старый формат - проверяем shopAddress напрямую
+              else if (question.shopAddress === shopAddress) {
+                matchesShop = true;
+              }
+
+              if (!matchesShop) continue;
+            }
 
             questions.push(question);
           } catch (e) {
@@ -36,7 +49,14 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         }
       }
 
-      questions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // Сортировка по timestamp или createdAt (для совместимости со старым форматом)
+      questions.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.createdAt || 0);
+        const timeB = new Date(b.timestamp || b.createdAt || 0);
+        return timeB - timeA;
+      });
+
+      console.log(`✅ Found ${questions.length} product questions`);
       res.json({ success: true, questions });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
