@@ -245,24 +245,59 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
 
   /// Открыть диалог с магазином
   Future<void> _openShopDialog(String shopAddress, String? questionId) async {
-    if (questionId == null) {
-      // Если questionId нет - создаем персональный диалог
-      await _startPersonalDialog(shopAddress);
+    // Если есть questionId - открываем существующий диалог
+    if (questionId != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProductQuestionDialogPage(
+            questionId: questionId,
+          ),
+        ),
+      );
+      _loadMessages();
       return;
     }
 
-    // Открываем существующий диалог с магазином
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProductQuestionDialogPage(
-          questionId: questionId,
-        ),
-      ),
-    );
+    // Если questionId нет - ищем или создаем персональный диалог
+    try {
+      // Сначала проверим, есть ли уже персональный диалог с этим магазином
+      if (_clientPhone == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка: не удалось получить телефон клиента'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-    // Обновить данные после возврата
-    _loadMessages();
+      final dialogs = await ProductQuestionService.getClientPersonalDialogs(_clientPhone!);
+      final existingDialog = dialogs.where((d) => d.shopAddress == shopAddress).firstOrNull;
+
+      if (existingDialog != null) {
+        // Открываем существующий персональный диалог
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionDialogPage(
+              questionId: existingDialog.id,
+            ),
+          ),
+        );
+        _loadMessages();
+      } else {
+        // Создаем новый персональный диалог
+        await _startPersonalDialog(shopAddress);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка при открытии диалога: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   /// Создать персональный диалог с магазином
