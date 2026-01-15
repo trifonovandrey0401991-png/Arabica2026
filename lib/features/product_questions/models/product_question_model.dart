@@ -51,24 +51,52 @@ class ProductQuestion {
     'messages': messages.map((m) => m.toJson()).toList(),
   };
 
-  factory ProductQuestion.fromJson(Map<String, dynamic> json) => ProductQuestion(
-    id: json['id'] ?? '',
-    clientPhone: json['clientPhone'] ?? '',
-    clientName: json['clientName'] ?? '',
-    shopAddress: json['shopAddress'] ?? '',
-    shopName: json['shopName'] as String?,
-    questionText: json['questionText'] ?? '',
-    questionImageUrl: json['questionImageUrl'] as String?,
-    timestamp: json['timestamp'] ?? '',
-    isAnswered: json['isAnswered'] ?? false,
-    answeredBy: json['answeredBy'] as String?,
-    answeredByName: json['answeredByName'] as String?,
-    lastAnswerTime: json['lastAnswerTime'] as String?,
-    isNetworkWide: json['isNetworkWide'] ?? false,
-    messages: (json['messages'] as List<dynamic>?)
-        ?.map((m) => ProductQuestionMessage.fromJson(m as Map<String, dynamic>))
-        .toList() ?? [],
-  );
+  factory ProductQuestion.fromJson(Map<String, dynamic> json) {
+    // Поддержка новой структуры с shops[] и старой структуры
+    String shopAddress = '';
+    bool isAnswered = false;
+    String? answeredBy;
+    String? answeredByName;
+    String? lastAnswerTime;
+
+    // Новая структура - shops[] массив
+    if (json['shops'] != null && json['shops'] is List && (json['shops'] as List).isNotEmpty) {
+      final shops = json['shops'] as List;
+      final firstShop = shops[0] as Map<String, dynamic>;
+      shopAddress = firstShop['shopAddress'] ?? json['originalShopAddress'] ?? '';
+      isAnswered = firstShop['isAnswered'] ?? false;
+      answeredBy = firstShop['answeredBy'] as String?;
+      answeredByName = firstShop['answeredByName'] as String?;
+      lastAnswerTime = firstShop['lastAnswerTime'] as String?;
+    }
+    // Старая структура - прямые поля
+    else {
+      shopAddress = json['shopAddress'] ?? '';
+      isAnswered = json['isAnswered'] ?? false;
+      answeredBy = json['answeredBy'] as String?;
+      answeredByName = json['answeredByName'] as String?;
+      lastAnswerTime = json['lastAnswerTime'] as String?;
+    }
+
+    return ProductQuestion(
+      id: json['id'] ?? '',
+      clientPhone: json['clientPhone'] ?? '',
+      clientName: json['clientName'] ?? '',
+      shopAddress: shopAddress,
+      shopName: json['shopName'] as String?,
+      questionText: json['questionText'] ?? '',
+      questionImageUrl: json['questionImageUrl'] as String?,
+      timestamp: json['timestamp'] ?? json['createdAt'] ?? '',
+      isAnswered: isAnswered,
+      answeredBy: answeredBy,
+      answeredByName: answeredByName,
+      lastAnswerTime: lastAnswerTime,
+      isNetworkWide: json['isNetworkWide'] ?? false,
+      messages: (json['messages'] as List<dynamic>?)
+          ?.map((m) => ProductQuestionMessage.fromJson(m as Map<String, dynamic>))
+          .toList() ?? [],
+    );
+  }
 
   /// Получить последнее сообщение
   ProductQuestionMessage? getLastMessage() {
