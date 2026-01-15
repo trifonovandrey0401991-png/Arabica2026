@@ -181,18 +181,81 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     return await showDialog<Shop>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Выберите магазин'),
+        title: Row(
+          children: [
+            Icon(Icons.store, color: Colors.orange[700], size: 24),
+            const SizedBox(width: 8),
+            const Text('Выберите магазин'),
+          ],
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
+          child: ListView.separated(
             shrinkWrap: true,
             itemCount: unansweredShops.length,
+            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final shop = unansweredShops[index];
-              return ListTile(
-                title: Text(shop.name),
-                subtitle: Text(shop.address),
+              return InkWell(
                 onTap: () => Navigator.pop(context, shop),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: Colors.orange[700]!,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.storefront,
+                          color: Colors.orange[700],
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              shop.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              shop.address,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Colors.grey[400],
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           ),
@@ -200,6 +263,9 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[700],
+            ),
             child: const Text('Отмена'),
           ),
         ],

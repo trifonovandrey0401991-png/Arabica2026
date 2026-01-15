@@ -243,17 +243,16 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     }
   }
 
-  /// Открыть существующий диалог с магазином
-  Future<void> _openQuestionDialog(String questionId, String shopAddress) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProductQuestionDialogPage(
-          questionId: questionId,
-        ),
+  /// Открыть диалог с магазином
+  Future<void> _openShopDialog(String shopAddress) async {
+    // Показываем диалог с вопросом
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Откройте "Поиск Товара" в главном меню и выберите магазин "$shopAddress" чтобы начать диалог'),
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.orange,
       ),
     );
-    _loadData(); // Обновить после возврата
   }
 
   /// Создать персональный диалог с магазином
@@ -397,14 +396,14 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
             ),
           ),
         ),
-        // Кнопка "Перейти в диалог" под ответами сотрудников
+        // Кнопка "Написать в магазин" под ответами сотрудников
         if (!isClientMessage && shopAddress != null) ...[
           Padding(
             padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
             child: ElevatedButton.icon(
-              onPressed: () => _openQuestionDialog(message.questionId!, shopAddress),
-              icon: const Icon(Icons.arrow_forward, size: 16),
-              label: const Text('Перейти в диалог'),
+              onPressed: () => _openShopDialog(shopAddress),
+              icon: const Icon(Icons.store, size: 16),
+              label: const Text('Написать в магазин'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF004D40),
                 foregroundColor: Colors.white,
