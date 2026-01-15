@@ -20,6 +20,7 @@ const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
 const { setupReportNotificationsAPI } = require("./report_notifications_api");
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
+const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
@@ -4859,3 +4860,4 @@ setupRecurringTasksAPI(app);
 setupReportNotificationsAPI(app);
 setupClientsAPI(app);
 setupShiftTransfersAPI(app);
+setupTaskPointsSettingsAPI(app);

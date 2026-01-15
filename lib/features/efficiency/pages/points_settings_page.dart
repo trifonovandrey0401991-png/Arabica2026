@@ -9,6 +9,7 @@ import 'settings_tabs/shift_handover_points_settings_page.dart';
 import 'settings_tabs/reviews_points_settings_page.dart';
 import 'settings_tabs/product_search_points_settings_page.dart';
 import 'settings_tabs/orders_points_settings_page.dart';
+import 'settings_tabs/task_points_settings_page.dart';
 
 /// Page for configuring efficiency points settings
 class PointsSettingsPage extends StatefulWidget {
@@ -76,6 +77,12 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       title: 'Заказы клиентов',
       icon: Icons.shopping_cart,
       description: 'Баллы за обработку заказов',
+    ),
+    _PointsCategory(
+      id: 'tasks',
+      title: 'Задачи',
+      icon: Icons.assignment,
+      description: 'Баллы за выполнение задач',
     ),
     _PointsCategory(
       id: 'fortune_wheel',
@@ -147,6 +154,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
         context,
         MaterialPageRoute(
           builder: (context) => const OrdersPointsSettingsPage(),
+        ),
+      );
+    } else if (categoryId == 'tasks') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const TaskPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'fortune_wheel') {

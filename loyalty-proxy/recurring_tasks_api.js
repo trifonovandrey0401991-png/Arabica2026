@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getTaskPointsConfig } = require('./api/task_points_settings_api');
 
 // Директории хранения
 const RECURRING_TASKS_DIR = '/var/www/recurring-tasks';
@@ -207,6 +208,10 @@ async function checkExpiredTasks() {
   let expiredCount = 0;
   const penalties = [];
 
+  // Получаем настройки баллов
+  const config = getTaskPointsConfig();
+  const penaltyPoints = config.recurringTasks.penaltyPoints;
+
   for (const instance of instances) {
     if (instance.status !== 'pending') continue;
 
@@ -216,7 +221,7 @@ async function checkExpiredTasks() {
       instance.expiredAt = now.toISOString();
       expiredCount++;
 
-      // Создаем штраф
+      // Создаем штраф с настраиваемыми баллами
       penalties.push({
         id: 'penalty_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
         type: 'employee',
@@ -225,7 +230,7 @@ async function checkExpiredTasks() {
         category: 'recurring_task_penalty',
         categoryName: 'Штраф за циклическую задачу',
         date: instance.date,
-        points: -3,
+        points: penaltyPoints,
         reason: 'expired',
         sourceId: instance.id,
         createdAt: now.toISOString()

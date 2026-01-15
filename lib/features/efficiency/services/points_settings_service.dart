@@ -308,4 +308,70 @@ class PointsSettingsService {
       itemKey: 'settings',
     );
   }
+
+  // ===== REGULAR TASK POINTS (Обычные задачи) =====
+
+  /// Get regular task points settings
+  static Future<RegularTaskPointsSettings> getRegularTaskPointsSettings() async {
+    Logger.debug('Fetching regular task points settings...');
+
+    final result = await BaseHttpService.get<RegularTaskPointsSettings>(
+      endpoint: '$baseEndpoint/regular-tasks',
+      fromJson: (json) => RegularTaskPointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+
+    return result ?? RegularTaskPointsSettings.defaults();
+  }
+
+  /// Save regular task points settings
+  static Future<RegularTaskPointsSettings?> saveRegularTaskPointsSettings({
+    required double completionPoints,
+    required double penaltyPoints,
+  }) async {
+    Logger.debug('Saving regular task points settings: completion=$completionPoints, penalty=$penaltyPoints');
+
+    return await BaseHttpService.post<RegularTaskPointsSettings>(
+      endpoint: '$baseEndpoint/regular-tasks',
+      body: {
+        'completionPoints': completionPoints,
+        'penaltyPoints': penaltyPoints,
+      },
+      fromJson: (json) => RegularTaskPointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+  }
+
+  // ===== RECURRING TASK POINTS (Циклические задачи) =====
+
+  /// Get recurring task points settings
+  static Future<RecurringTaskPointsSettings> getRecurringTaskPointsSettings() async {
+    Logger.debug('Fetching recurring task points settings...');
+
+    final result = await BaseHttpService.get<RecurringTaskPointsSettings>(
+      endpoint: '$baseEndpoint/recurring-tasks',
+      fromJson: (json) => RecurringTaskPointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+
+    return result ?? RecurringTaskPointsSettings.defaults();
+  }
+
+  /// Save recurring task points settings
+  static Future<RecurringTaskPointsSettings?> saveRecurringTaskPointsSettings({
+    required double completionPoints,
+    required double penaltyPoints,
+  }) async {
+    Logger.debug('Saving recurring task points settings: completion=$completionPoints, penalty=$penaltyPoints');
+
+    return await BaseHttpService.post<RecurringTaskPointsSettings>(
+      endpoint: '$baseEndpoint/recurring-tasks',
+      body: {
+        'completionPoints': completionPoints,
+        'penaltyPoints': penaltyPoints,
+      },
+      fromJson: (json) => RecurringTaskPointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+  }
 }

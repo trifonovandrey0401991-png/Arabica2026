@@ -738,3 +738,67 @@ class OrdersPointsSettings {
     );
   }
 }
+
+/// Model for regular task points settings (Обычные задачи)
+class RegularTaskPointsSettings {
+  final double completionPoints;  // Премия за выполнение
+  final double penaltyPoints;     // Штраф за невыполнение
+
+  RegularTaskPointsSettings({
+    required this.completionPoints,
+    required this.penaltyPoints,
+  });
+
+  factory RegularTaskPointsSettings.defaults() {
+    return RegularTaskPointsSettings(
+      completionPoints: 1.0,
+      penaltyPoints: -3.0,
+    );
+  }
+
+  factory RegularTaskPointsSettings.fromJson(Map<String, dynamic> json) {
+    return RegularTaskPointsSettings(
+      completionPoints: (json['completionPoints'] as num?)?.toDouble() ?? 1.0,
+      penaltyPoints: (json['penaltyPoints'] as num?)?.toDouble() ?? -3.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'completionPoints': completionPoints,
+      'penaltyPoints': penaltyPoints,
+    };
+  }
+}
+
+/// Model for recurring task points settings (Циклические задачи)
+class RecurringTaskPointsSettings {
+  final double completionPoints;  // Премия за выполнение
+  final double penaltyPoints;     // Штраф за невыполнение
+
+  RecurringTaskPointsSettings({
+    required this.completionPoints,
+    required this.penaltyPoints,
+  });
+
+  factory RecurringTaskPointsSettings.defaults() {
+    return RecurringTaskPointsSettings(
+      completionPoints: 2.0,
+      penaltyPoints: -3.0,  // Текущее значение в recurring_tasks_api.js
+    );
+  }
+
+  factory RecurringTaskPointsSettings.fromJson(Map<String, dynamic> json) {
+    return RecurringTaskPointsSettings(
+      completionPoints: (json['completionPoints'] as num?)?.toDouble() ?? 2.0,
+      penaltyPoints: (json['penaltyPoints'] as num?)?.toDouble() ?? -3.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'completionPoints': completionPoints,
+      'penaltyPoints': penaltyPoints,
+    };
+  }
+}
