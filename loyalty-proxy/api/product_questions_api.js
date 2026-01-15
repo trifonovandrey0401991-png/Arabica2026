@@ -639,6 +639,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
       const response = {
+        success: true,
         hasQuestions: questions.length > 0,
         messages: allMessages,
         unreadCount: unreadCount,
