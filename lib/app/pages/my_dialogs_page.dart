@@ -233,8 +233,8 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
             }
 
             final dialogs = snapshot.data ?? [];
-            // Считаем элементы: сеть + руководство + отзывы + поиск товара (общий или персональные) + диалоги
-            final productDialogsCount = hasPersonalDialogs ? _personalDialogs.length : (hasProductQuestions ? 1 : 0);
+            // Считаем элементы: сеть + руководство + отзывы + поиск товара (общий + персональные) + диалоги
+            final productDialogsCount = (hasProductQuestions ? 1 : 0) + _personalDialogs.length;
             final totalItems = (hasNetworkMessages ? 1 : 0) + (hasManagementMessages ? 1 : 0) + (hasReviews ? 1 : 0) + productDialogsCount + dialogs.length;
 
             return ListView.builder(
@@ -517,12 +517,108 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   );
                 }
 
-                // Четвёртый элемент (или несколько) - персональные диалоги "Поиск Товара" или общий чат
+                // Четвёртый элемент (или несколько) - сначала общая строка "Поиск Товара", затем персональные диалоги
                 final productQuestionStartIndex = (hasNetworkMessages ? 1 : 0) + (hasManagementMessages ? 1 : 0) + (hasReviews ? 1 : 0);
 
-                // Если есть персональные диалоги - показываем их
+                // Показываем общую строку "Поиск Товара" (если есть вопросы)
+                if (hasProductQuestions && index == productQuestionStartIndex) {
+                  final productUnread = _productQuestionData!.unreadCount;
+                  final lastProductMessage = _productQuestionData!.lastMessage;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: productUnread > 0 ? Colors.purple[50] : null,
+                    child: ListTile(
+                      leading: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: productUnread > 0
+                                ? Colors.purple
+                                : const Color(0xFF004D40),
+                            child: const Icon(
+                              Icons.search,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (productUnread > 0)
+                            Positioned(
+                              right: -4,
+                              top: -4,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    productUnread > 9 ? '9+' : productUnread.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      title: Text(
+                        'Поиск Товара',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: productUnread > 0 ? Colors.purple[800] : null,
+                        ),
+                      ),
+                      subtitle: lastProductMessage != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (lastProductMessage.senderType == 'employee' && lastProductMessage.shopAddress != null)
+                                  Text(
+                                    '${lastProductMessage.shopAddress} - ${lastProductMessage.senderName ?? "Сотрудник"}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                Text(
+                                  _formatTimestamp(lastProductMessage.timestamp),
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  lastProductMessage.text.length > 50
+                                      ? '${lastProductMessage.text.substring(0, 50)}...'
+                                      : lastProductMessage.text,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: productUnread > 0 ? Colors.purple : Colors.grey,
+                                    fontWeight: productUnread > 0 ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Text('Нажмите, чтобы открыть'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProductQuestionClientDialogPage(),
+                          ),
+                        );
+                        _loadDialogs();
+                      },
+                    ),
+                  );
+                }
+
+                // Если есть персональные диалоги - показываем их после общей строки
                 if (hasPersonalDialogs) {
-                  final personalDialogIndex = index - productQuestionStartIndex;
+                  final personalDialogStartIndex = productQuestionStartIndex + (hasProductQuestions ? 1 : 0);
+                  final personalDialogIndex = index - personalDialogStartIndex;
                   if (personalDialogIndex >= 0 && personalDialogIndex < _personalDialogs.length) {
                     final personalDialog = _personalDialogs[personalDialogIndex];
                     final hasUnread = personalDialog.hasUnreadFromEmployee;
@@ -615,101 +711,6 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                       ),
                     );
                   }
-                }
-
-                // Если нет персональных диалогов, показываем общий чат "Поиск Товара"
-                if (!hasPersonalDialogs && hasProductQuestions && index == productQuestionStartIndex) {
-                  final productUnread = _productQuestionData!.unreadCount;
-                  final lastProductMessage = _productQuestionData!.lastMessage;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: productUnread > 0 ? Colors.purple[50] : null,
-                    child: ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: productUnread > 0
-                                ? Colors.purple
-                                : const Color(0xFF004D40),
-                            child: const Icon(
-                              Icons.search,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (productUnread > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    productUnread > 9 ? '9+' : productUnread.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        'Поиск Товара',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: productUnread > 0 ? Colors.purple[800] : null,
-                        ),
-                      ),
-                      subtitle: lastProductMessage != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (lastProductMessage.senderType == 'employee' && lastProductMessage.shopAddress != null)
-                                  Text(
-                                    '${lastProductMessage.shopAddress} - ${lastProductMessage.senderName ?? "Сотрудник"}',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                Text(
-                                  _formatTimestamp(lastProductMessage.timestamp),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  lastProductMessage.text.length > 50
-                                      ? '${lastProductMessage.text.substring(0, 50)}...'
-                                      : lastProductMessage.text,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: productUnread > 0 ? Colors.purple : Colors.grey,
-                                    fontWeight: productUnread > 0 ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Text('Нажмите, чтобы открыть'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ProductQuestionClientDialogPage(),
-                          ),
-                        );
-                        _loadDialogs();
-                      },
-                    ),
-                  );
                 }
 
                 // Остальные диалоги (с магазинами)
