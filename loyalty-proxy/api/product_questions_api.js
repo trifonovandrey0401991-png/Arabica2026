@@ -588,6 +588,71 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
+  // ===== CLIENT ENDPOINTS =====
+
+  // GET /api/product-questions/client/:phone - Получить все вопросы клиента (для "Мои диалоги")
+  app.get('/api/product-questions/client/:phone', (req, res) => {
+    try {
+      const { phone } = req.params;
+      console.log('GET /api/product-questions/client/:phone', phone);
+
+      const questions = [];
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            if (question.clientPhone === phone) {
+              questions.push(question);
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      // Собираем все сообщения в единый массив
+      const allMessages = [];
+      let unreadCount = 0;
+      let lastMessage = null;
+
+      questions.forEach(question => {
+        if (question.messages && question.messages.length > 0) {
+          question.messages.forEach(msg => {
+            allMessages.push(msg);
+            // Последнее сообщение - самое новое по timestamp
+            if (!lastMessage || new Date(msg.timestamp) > new Date(lastMessage.timestamp)) {
+              lastMessage = msg;
+            }
+            // Подсчитываем непрочитанные от сотрудников
+            if (msg.senderType === 'employee' && (!msg.isRead || msg.isRead === false)) {
+              unreadCount++;
+            }
+          });
+        }
+      });
+
+      // Сортируем сообщения по timestamp
+      allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      const response = {
+        hasQuestions: questions.length > 0,
+        messages: allMessages,
+        unreadCount: unreadCount,
+        lastMessage: lastMessage
+      };
+
+      console.log(`✅ Found ${questions.length} questions with ${allMessages.length} messages for client ${phone}, unread: ${unreadCount}`);
+      res.json(response);
+    } catch (error) {
+      console.error('Error getting client questions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ===== GROUPING ENDPOINT (1 endpoint) =====
 
   // GET /api/product-questions/client/:phone/grouped - Группировка диалогов по магазинам
