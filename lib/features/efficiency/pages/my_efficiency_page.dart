@@ -11,6 +11,8 @@ import '../../bonuses/pages/bonus_penalty_history_page.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
 import '../../rating/pages/my_rating_page.dart';
+import '../../tests/services/test_result_service.dart';
+import '../../tests/models/test_result_model.dart';
 
 /// Страница "Моя эффективность" для сотрудника
 class MyEfficiencyPage extends StatefulWidget {
@@ -30,6 +32,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
   int _selectedYear = DateTime.now().year;
   BonusPenaltySummary? _bonusSummary;
   EmployeeReferralPoints? _referralPoints;
+  double? _avgTestScore; // Средний балл тестирования
+  int _totalTests = 0; // Количество тестов
 
   @override
   void initState() {
@@ -90,10 +94,34 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
         referralPoints = await ReferralService.getEmployeePoints(_employeeId!);
       }
 
+      // Загружаем результаты тестирования для текущего сотрудника
+      double? avgScore;
+      int totalTests = 0;
+      try {
+        final testResults = await TestResultService.getResults();
+        // Фильтруем по телефону текущего сотрудника
+        final myTests = testResults.where((t) {
+          final phone = _employeeId?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+          final testPhone = t.employeePhone.replaceAll(RegExp(r'[^0-9]'), '');
+          return testPhone == phone || t.employeeName == employeeName;
+        }).toList();
+
+        if (myTests.isNotEmpty) {
+          totalTests = myTests.length;
+          final totalScore = myTests.fold<int>(0, (sum, t) => sum + t.score);
+          // Средний балл = сумма баллов / количество тестов
+          avgScore = totalScore / totalTests;
+        }
+      } catch (e) {
+        // Игнорируем ошибки загрузки тестов
+      }
+
       setState(() {
         _summary = mySummary;
         _bonusSummary = bonusSummary;
         _referralPoints = referralPoints;
+        _avgTestScore = avgScore;
+        _totalTests = totalTests;
         _isLoading = false;
       });
     } catch (e) {
@@ -345,6 +373,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
             const SizedBox(height: 16),
             _buildRatingButton(),
             const SizedBox(height: 16),
+            _buildTestScoreCard(),
             _buildBonusPenaltySection(),
             _buildCategoriesCard(),
             const SizedBox(height: 16),
@@ -422,6 +451,95 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTestScoreCard() {
+    // Если нет данных о тестах - не показываем карточку
+    if (_avgTestScore == null || _totalTests == 0) {
+      return const SizedBox.shrink();
+    }
+
+    // Определяем цвет в зависимости от среднего балла (из 20)
+    Color scoreColor;
+    if (_avgTestScore! >= 16) {
+      scoreColor = Colors.green;
+    } else if (_avgTestScore! >= 12) {
+      scoreColor = Colors.orange;
+    } else {
+      scoreColor = Colors.red;
+    }
+
+    return Column(
+      children: [
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.quiz,
+                    color: Colors.indigo,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Тестирование',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Пройдено тестов: $_totalTests',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${_avgTestScore!.toStringAsFixed(1)}/20',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: scoreColor,
+                      ),
+                    ),
+                    Text(
+                      'средний балл',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
