@@ -130,6 +130,23 @@ class ProductQuestionService {
     return null;
   }
 
+  /// Получить группированные диалоги клиента (по магазинам)
+  static Future<ProductQuestionGroupedData?> getClientGroupedDialogs(String clientPhone) async {
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    Logger.debug('📥 Загрузка группированных диалогов: $normalizedPhone');
+
+    final result = await BaseHttpService.getRaw(
+      endpoint: '$baseEndpoint/client/$normalizedPhone/grouped',
+    );
+
+    if (result != null) {
+      final data = ProductQuestionGroupedData.fromJson(result);
+      Logger.debug('✅ Загружено ${data.byShop.length} магазинов, общий unread: ${data.totalUnread}');
+      return data;
+    }
+    return null;
+  }
+
   /// Отправить ответ клиента (продолжить диалог)
   static Future<ProductQuestionMessage?> sendClientReply({
     required String clientPhone,

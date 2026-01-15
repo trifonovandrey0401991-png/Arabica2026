@@ -262,5 +262,116 @@ class PersonalProductDialog {
   String get displayName => 'Поиск товара - $shopAddress';
 }
 
+/// Группа вопросов по магазину
+class ProductQuestionShopGroup {
+  final String shopAddress;
+  final List<ProductQuestion> questions;
+  final List<PersonalProductDialog> dialogs;
+  final int unreadCount;
 
+  ProductQuestionShopGroup({
+    required this.shopAddress,
+    required this.questions,
+    required this.dialogs,
+    required this.unreadCount,
+  });
 
+  factory ProductQuestionShopGroup.fromJson(Map<String, dynamic> json) {
+    return ProductQuestionShopGroup(
+      shopAddress: json['shopAddress'] ?? '',
+      questions: (json['questions'] as List<dynamic>?)
+          ?.map((q) => ProductQuestion.fromJson(q as Map<String, dynamic>))
+          .toList() ?? [],
+      dialogs: (json['dialogs'] as List<dynamic>?)
+          ?.map((d) => PersonalProductDialog.fromJson(d as Map<String, dynamic>))
+          .toList() ?? [],
+      unreadCount: json['unreadCount'] ?? 0,
+    );
+  }
+
+  /// Получить последнее сообщение (из вопросов или диалогов)
+  ProductQuestionMessage? getLastMessage() {
+    ProductQuestionMessage? lastMessage;
+    DateTime? lastTime;
+
+    // Проверяем вопросы
+    for (final q in questions) {
+      final msg = q.getLastMessage();
+      if (msg != null) {
+        final msgTime = DateTime.tryParse(msg.timestamp);
+        if (msgTime != null && (lastTime == null || msgTime.isAfter(lastTime))) {
+          lastMessage = msg;
+          lastTime = msgTime;
+        }
+      }
+    }
+
+    // Проверяем диалоги
+    for (final d in dialogs) {
+      final msg = d.getLastMessage();
+      if (msg != null) {
+        final msgTime = DateTime.tryParse(msg.timestamp);
+        if (msgTime != null && (lastTime == null || msgTime.isAfter(lastTime))) {
+          lastMessage = msg;
+          lastTime = msgTime;
+        }
+      }
+    }
+
+    return lastMessage;
+  }
+}
+
+/// Группированные данные клиента по поиску товара
+class ProductQuestionGroupedData {
+  final int totalUnread;
+  final List<ProductQuestion> networkWideQuestions;
+  final int networkWideUnreadCount;
+  final Map<String, ProductQuestionShopGroup> byShop;
+
+  ProductQuestionGroupedData({
+    required this.totalUnread,
+    required this.networkWideQuestions,
+    required this.networkWideUnreadCount,
+    required this.byShop,
+  });
+
+  factory ProductQuestionGroupedData.fromJson(Map<String, dynamic> json) {
+    final byShopJson = json['byShop'] as Map<String, dynamic>? ?? {};
+    final byShopMap = <String, ProductQuestionShopGroup>{};
+
+    byShopJson.forEach((key, value) {
+      byShopMap[key] = ProductQuestionShopGroup.fromJson(value as Map<String, dynamic>);
+    });
+
+    return ProductQuestionGroupedData(
+      totalUnread: json['totalUnread'] ?? 0,
+      networkWideQuestions: (json['networkWide']?['questions'] as List<dynamic>?)
+          ?.map((q) => ProductQuestion.fromJson(q as Map<String, dynamic>))
+          .toList() ?? [],
+      networkWideUnreadCount: json['networkWide']?['unreadCount'] ?? 0,
+      byShop: byShopMap,
+    );
+  }
+
+  /// Получить список магазинов, отсортированных по последнему сообщению
+  List<String> getSortedShops() {
+    final entries = byShop.entries.toList();
+    entries.sort((a, b) {
+      final aMsg = a.value.getLastMessage();
+      final bMsg = b.value.getLastMessage();
+
+      if (aMsg == null && bMsg == null) return 0;
+      if (aMsg == null) return 1;
+      if (bMsg == null) return -1;
+
+      final aTime = DateTime.tryParse(aMsg.timestamp);
+      final bTime = DateTime.tryParse(bMsg.timestamp);
+
+      if (aTime == null || bTime == null) return 0;
+      return bTime.compareTo(aTime); // Новые сверху
+    });
+
+    return entries.map((e) => e.key).toList();
+  }
+}

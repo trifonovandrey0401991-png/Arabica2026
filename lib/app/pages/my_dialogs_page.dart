@@ -13,6 +13,7 @@ import '../../features/product_questions/models/product_question_model.dart';
 import '../../features/product_questions/services/product_question_service.dart';
 import '../../features/product_questions/pages/product_question_client_dialog_page.dart';
 import '../../features/product_questions/pages/product_question_personal_dialog_page.dart';
+import '../../features/product_questions/pages/product_question_shops_list_page.dart';
 import '../../features/reviews/models/review_model.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/pages/client_reviews_list_page.dart';
@@ -95,6 +96,10 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
 
     // Загружаем общий чат "Поиск Товара" (всегда, независимо от персональных диалогов)
     final productQuestionData = await ProductQuestionService.getClientDialog(phone);
+    print('🔍 DEBUG: productQuestionData = $productQuestionData');
+    print('🔍 DEBUG: hasQuestions = ${productQuestionData?.hasQuestions}');
+    print('🔍 DEBUG: messages count = ${productQuestionData?.messages.length}');
+    print('🔍 DEBUG: unreadCount = ${productQuestionData?.unreadCount}');
     if (mounted) {
       setState(() {
         _productQuestionData = productQuestionData;
@@ -523,7 +528,6 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                 // Показываем общую строку "Поиск Товара" (если есть вопросы)
                 if (hasProductQuestions && index == productQuestionStartIndex) {
                   final productUnread = _productQuestionData!.unreadCount;
-                  final lastProductMessage = _productQuestionData!.lastMessage;
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -573,40 +577,13 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                           color: productUnread > 0 ? Colors.purple[800] : null,
                         ),
                       ),
-                      subtitle: lastProductMessage != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (lastProductMessage.senderType == 'employee' && lastProductMessage.shopAddress != null)
-                                  Text(
-                                    '${lastProductMessage.shopAddress} - ${lastProductMessage.senderName ?? "Сотрудник"}',
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                Text(
-                                  _formatTimestamp(lastProductMessage.timestamp),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  lastProductMessage.text.length > 50
-                                      ? '${lastProductMessage.text.substring(0, 50)}...'
-                                      : lastProductMessage.text,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: productUnread > 0 ? Colors.purple : Colors.grey,
-                                    fontWeight: productUnread > 0 ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Text('Нажмите, чтобы открыть'),
+                      subtitle: const Text('Нажмите, чтобы открыть список магазинов'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () async {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ProductQuestionClientDialogPage(),
+                            builder: (context) => const ProductQuestionShopsListPage(),
                           ),
                         );
                         _loadDialogs();
