@@ -203,6 +203,14 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         timestamp
       };
 
+      // Инициализируем массивы если они отсутствуют (для старых вопросов)
+      if (!question.messages) {
+        question.messages = [];
+      }
+      if (!question.shops) {
+        question.shops = [];
+      }
+
       // Добавляем сообщение в массив messages
       question.messages.push(newMessage);
 
@@ -283,17 +291,19 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // ===== PRODUCT QUESTION PHOTOS =====
 
   if (uploadProductQuestionPhoto) {
-    app.post('/upload-product-question-photo', uploadProductQuestionPhoto.single('photo'), async (req, res) => {
+    app.post('/api/product-questions/upload-photo', uploadProductQuestionPhoto.single('photo'), async (req, res) => {
       try {
-        console.log('POST /upload-product-question-photo');
+        console.log('POST /api/product-questions/upload-photo');
 
         if (!req.file) {
           return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
         const photoUrl = `/product-question-photos/${req.file.filename}`;
+        console.log('✅ Photo uploaded:', photoUrl);
         res.json({ success: true, photoUrl });
       } catch (error) {
+        console.error('Error uploading product question photo:', error);
         res.status(500).json({ success: false, error: error.message });
       }
     });
