@@ -244,15 +244,25 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
   }
 
   /// Открыть диалог с магазином
-  Future<void> _openShopDialog(String shopAddress) async {
-    // Показываем диалог с вопросом
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Откройте "Поиск Товара" в главном меню и выберите магазин "$shopAddress" чтобы начать диалог'),
-        duration: const Duration(seconds: 3),
-        backgroundColor: Colors.orange,
+  Future<void> _openShopDialog(String shopAddress, String? questionId) async {
+    if (questionId == null) {
+      // Если questionId нет - создаем персональный диалог
+      await _startPersonalDialog(shopAddress);
+      return;
+    }
+
+    // Открываем существующий диалог с магазином
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductQuestionDialogPage(
+          questionId: questionId,
+        ),
       ),
     );
+
+    // Обновить данные после возврата
+    _loadMessages();
   }
 
   /// Создать персональный диалог с магазином
@@ -401,7 +411,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
           Padding(
             padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
             child: ElevatedButton.icon(
-              onPressed: () => _openShopDialog(shopAddress),
+              onPressed: () => _openShopDialog(shopAddress, message.questionId),
               icon: const Icon(Icons.store, size: 16),
               label: const Text('Написать в магазин'),
               style: ElevatedButton.styleFrom(
