@@ -14,6 +14,8 @@ import '../../features/product_questions/pages/product_question_dialog_page.dart
 import '../../features/product_questions/pages/product_question_answer_page.dart';
 import '../../features/orders/pages/employee_orders_page.dart';
 import '../../features/orders/pages/orders_page.dart';
+import '../../features/work_schedule/pages/my_schedule_page.dart';
+import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -403,6 +405,16 @@ class FirebaseService {
         priority: Priority.high,
         showWhen: true,
       );
+    } else if (type != null && type.startsWith('shift_transfer')) {
+      // Канал для замен смены
+      androidDetails = const AndroidNotificationDetails(
+        'shift_transfers_channel',
+        'Замены смен',
+        channelDescription: 'Уведомления о заменах смены',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
     } else {
       androidDetails = const AndroidNotificationDetails(
         'reviews_channel',
@@ -503,6 +515,41 @@ class FirebaseService {
             builder: (context) => ProductQuestionDialogPage(
               questionId: questionId,
             ),
+          ),
+        );
+        return;
+      }
+    }
+
+    // Обработка уведомлений о заменах смены
+    if (type != null && type.startsWith('shift_transfer')) {
+      final action = data['action'] as String?;
+
+      // Для админа - переход на вкладку одобрения
+      if (action == 'admin_review') {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const WorkSchedulePage(initialTab: 3), // Вкладка "Заявки"
+          ),
+        );
+        return;
+      }
+
+      // Для сотрудника - переход к списку заявок
+      if (action == 'view_request') {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const MySchedulePage(initialTab: 2), // Вкладка "Заявки"
+          ),
+        );
+        return;
+      }
+
+      // При одобрении - переход к графику
+      if (action == 'view_schedule') {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => const MySchedulePage(),
           ),
         );
         return;
