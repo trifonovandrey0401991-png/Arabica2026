@@ -334,19 +334,21 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Не удалось создать диалог'),
+            content: Text('Не удалось создать диалог - сервер не вернул данные'),
             backgroundColor: Colors.red,
           ),
         );
+        print('DEBUG: createPersonalDialog returned null for shopAddress: $shopAddress');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e'),
+            content: Text('Ошибка при создании диалога: $e'),
             backgroundColor: Colors.red,
           ),
         );
+        print('DEBUG: Exception in createPersonalDialog: $e');
       }
     } finally {
       if (mounted) {

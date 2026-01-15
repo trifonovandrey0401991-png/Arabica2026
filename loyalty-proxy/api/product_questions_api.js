@@ -418,18 +418,21 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
   // 1. POST /api/product-question-dialogs - Создать персональный диалог
   app.post('/api/product-question-dialogs', async (req, res) => {
     try {
-      const { clientPhone, clientName, shopAddress, originalQuestionId, messageText, imageUrl } = req.body;
+      const { clientPhone, clientName, shopAddress, originalQuestionId, messageText, initialMessage, imageUrl, initialImageUrl } = req.body;
       console.log('POST /api/product-question-dialogs');
 
-      if (!clientPhone || !clientName || !shopAddress || !messageText) {
+      // Поддержка обоих вариантов названия поля
+      const text = messageText || initialMessage;
+      const image = imageUrl || initialImageUrl;
+
+      if (!clientPhone || !clientName || !shopAddress) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: clientPhone, clientName, shopAddress, messageText'
+          error: 'Missing required fields: clientPhone, clientName, shopAddress'
         });
       }
 
       const dialogId = 'dialog_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       const timestamp = new Date().toISOString();
 
       const dialog = {
@@ -439,30 +442,38 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         shopAddress,
         originalQuestionId: originalQuestionId || null,
         createdAt: timestamp,
-        hasUnreadFromClient: true,
+        hasUnreadFromClient: text ? true : false,
         hasUnreadFromEmployee: false,
-        lastMessageTime: timestamp,
-        messages: [{
+        lastMessageTime: text ? timestamp : null,
+        messages: []
+      };
+
+      // Добавляем начальное сообщение если оно есть
+      if (text) {
+        const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        dialog.messages.push({
           id: messageId,
           senderType: 'client',
           senderPhone: clientPhone,
           senderName: clientName,
           shopAddress: null,
-          text: messageText,
-          imageUrl: imageUrl || null,
+          text: text,
+          imageUrl: image || null,
           timestamp,
           isRead: false
-        }]
-      };
+        });
+      }
 
       const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
       fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
 
-      // Отправить push сотрудникам
-      try {
-        await notifyQuestionCreated(dialog.messages[0]);
-      } catch (e) {
-        console.error('❌ Ошибка отправки уведомлений:', e);
+      // Отправить push сотрудникам только если есть сообщение
+      if (text && dialog.messages.length > 0) {
+        try {
+          await notifyQuestionCreated(dialog.messages[0]);
+        } catch (e) {
+          console.error('❌ Ошибка отправки уведомлений:', e);
+        }
       }
 
       console.log('✅ Personal dialog created:', dialogId);
