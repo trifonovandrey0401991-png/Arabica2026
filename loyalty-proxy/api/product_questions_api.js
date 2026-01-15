@@ -166,6 +166,65 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
+  // ===== PRODUCT QUESTION MESSAGES (для ответов сотрудников) =====
+
+  app.post('/api/product-questions/:questionId/messages', async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const { shopAddress, text, senderPhone, senderName, imageUrl } = req.body;
+      console.log('POST /api/product-questions/:questionId/messages', questionId, 'shop:', shopAddress);
+
+      if (!shopAddress || !text) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: shopAddress, text'
+        });
+      }
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Question not found' });
+      }
+
+      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const timestamp = new Date().toISOString();
+      const messageId = `msg_${Date.now()}`;
+
+      // Создаем новое сообщение от сотрудника
+      const newMessage = {
+        id: messageId,
+        senderType: 'employee',
+        senderPhone: senderPhone || null,
+        senderName: senderName || 'Сотрудник',
+        shopAddress: shopAddress,
+        text: text,
+        imageUrl: imageUrl || null,
+        timestamp
+      };
+
+      // Добавляем сообщение в массив messages
+      question.messages.push(newMessage);
+
+      // Обновляем статус в массиве shops для конкретного магазина
+      const shopIndex = question.shops.findIndex(s => s.shopAddress === shopAddress);
+      if (shopIndex !== -1) {
+        question.shops[shopIndex].isAnswered = true;
+        question.shops[shopIndex].answeredBy = senderPhone;
+        question.shops[shopIndex].answeredByName = senderName || 'Сотрудник';
+        question.shops[shopIndex].lastAnswerTime = timestamp;
+      }
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+
+      console.log('✅ Answer added to question:', questionId, 'by shop:', shopAddress);
+      res.json({ success: true, message: newMessage });
+    } catch (error) {
+      console.error('Error adding answer to product question:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ===== PRODUCT QUESTION DIALOGS =====
 
   app.get('/api/product-questions/:questionId/dialog', async (req, res) => {
