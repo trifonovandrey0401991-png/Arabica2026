@@ -93,25 +93,19 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       });
     }
 
-    // Загружаем общий чат "Поиск Товара" только если нет персональных диалогов
-    if (personalDialogs.isEmpty) {
-      final productQuestionData = await ProductQuestionService.getClientDialog(phone);
-      if (mounted) {
-        setState(() {
-          _productQuestionData = productQuestionData;
-        });
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _productQuestionData = null;
-        });
-      }
+    // Загружаем общий чат "Поиск Товара" (всегда, независимо от персональных диалогов)
+    final productQuestionData = await ProductQuestionService.getClientDialog(phone);
+    if (mounted) {
+      setState(() {
+        _productQuestionData = productQuestionData;
+      });
     }
 
-    setState(() {
-      _dialogsFuture = ClientDialogService.getClientDialogs(phone);
-    });
+    if (mounted) {
+      setState(() {
+        _dialogsFuture = ClientDialogService.getClientDialogs(phone);
+      });
+    }
   }
 
   String _formatTimestamp(String timestamp) {
