@@ -21,6 +21,7 @@ const { setupReportNotificationsAPI } = require("./report_notifications_api");
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
+const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
@@ -68,6 +69,29 @@ const shiftHandoverPhotoStorage = multer.diskStorage({
 
 const uploadShiftHandoverPhoto = multer({
   storage: shiftHandoverPhotoStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
+// Настройка multer для загрузки фото вопросов о товарах
+const productQuestionPhotoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = '/var/www/product-question-photos';
+    // Создаем директорию, если её нет
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Генерируем уникальное имя файла
+    const timestamp = Date.now();
+    const safeName = `product_question_${timestamp}_${file.originalname}`;
+    cb(null, safeName);
+  }
+});
+
+const uploadProductQuestionPhoto = multer({
+  storage: productQuestionPhotoStorage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
@@ -4861,3 +4885,4 @@ setupReportNotificationsAPI(app);
 setupClientsAPI(app);
 setupShiftTransfersAPI(app);
 setupTaskPointsSettingsAPI(app);
+setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
