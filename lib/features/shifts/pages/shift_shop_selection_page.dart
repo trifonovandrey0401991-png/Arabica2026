@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import 'shift_questions_page.dart';
 
@@ -66,58 +67,62 @@ class ShiftShopSelectionPage extends StatelessWidget {
               );
             }
 
-            return GridView.builder(
+            return ListView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.85,
-              ),
               itemCount: shops.length,
               itemBuilder: (context, index) {
                 final shop = shops[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ShiftQuestionsPage(
-                          employeeName: employeeName,
-                          shopAddress: shop.address,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Material(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 2,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(shop.icon, size: 40, color: Colors.white),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            shop.address,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ShiftQuestionsPage(
+                              employeeName: employeeName,
+                              shopAddress: shop.address,
                             ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 2,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            const ShopIcon(size: 56),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                shop.address,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Colors.white70,
+                              size: 28,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );

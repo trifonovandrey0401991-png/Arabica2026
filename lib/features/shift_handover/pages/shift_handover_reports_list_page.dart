@@ -3,6 +3,7 @@ import '../models/shift_handover_report_model.dart';
 import '../models/pending_shift_handover_model.dart';
 import '../services/shift_handover_report_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 import 'shift_handover_report_view_page.dart';
 import '../../envelope/models/envelope_report_model.dart';
 import '../../envelope/services/envelope_report_service.dart';
@@ -37,6 +38,8 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(_handleTabChange);
     _loadData();
+    // Отмечаем все уведомления этого типа как просмотренные
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftReport);
   }
 
   void _handleTabChange() {

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 import '../models/recount_question_model.dart';
 import '../models/recount_answer_model.dart';
 import '../models/recount_report_model.dart';
@@ -405,6 +406,14 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
       if (mounted) {
         if (success) {
+          // Отправляем уведомление админу о новом отчёте
+          await ReportNotificationService.createNotification(
+            reportType: ReportType.recount,
+            reportId: report.id,
+            employeeName: widget.employeeName,
+            shopName: widget.shopAddress,
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Отчет успешно отправлен'),

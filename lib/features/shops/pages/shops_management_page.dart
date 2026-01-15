@@ -33,8 +33,15 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     });
 
     try {
+      // Очищаем кэш магазинов перед загрузкой
+      CacheManager.remove('shops_list');
+
       final shops = await ShopService.getShops();
-      
+      Logger.debug('📋 Загружено магазинов: ${shops.length}');
+      for (var shop in shops) {
+        Logger.debug('   - ${shop.name} (ID: ${shop.id})');
+      }
+
       // Загружаем настройки для каждого магазина
       final Map<String, ShopSettings?> settings = {};
       for (var shop in shops) {
@@ -326,10 +333,16 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
   }
 
   Future<void> _updateShopLocation(BuildContext dialogContext, Shop shop) async {
-    // Показываем диалог загрузки
+    Logger.debug('🗺️ Начало обновления геолокации для магазина: ${shop.name}');
+
+    // Используем rootNavigator для вложенных диалогов, чтобы не закрывать родительский диалог
+    final navigator = Navigator.of(context, rootNavigator: true);
+
+    // Показываем диалог загрузки поверх всего (используя root context)
     showDialog(
-      context: dialogContext,
+      context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (ctx) => const AlertDialog(
         content: Row(
           children: [
@@ -342,30 +355,24 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
     );
 
     try {
-      // Получаем текущую геолокацию
-      final position = await AttendanceService.getCurrentLocation();
+      // Получаем текущую геолокацию с таймаутом
+      Logger.debug('🗺️ Запрос геолокации...');
+      final position = await AttendanceService.getCurrentLocation()
+          .timeout(const Duration(seconds: 15), onTimeout: () {
+        throw Exception('Таймаут получения геолокации. Убедитесь что GPS включен.');
+      });
+      Logger.debug('🗺️ Геолокация получена: ${position.latitude}, ${position.longitude}');
 
-      // Закрываем диалог загрузки
-      if (dialogContext.mounted) {
-        Navigator.of(dialogContext).pop();
+      // Закрываем диалог загрузки (используя root navigator)
+      if (mounted) {
+        navigator.pop();
       }
 
-      if (position == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Не удалось получить геолокацию. Проверьте разрешения.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Показываем диалог подтверждения с координатами
-      if (!dialogContext.mounted) return;
+      // Показываем диалог подтверждения с координатами (используя root navigator)
+      if (!mounted) return;
       final confirm = await showDialog<bool>(
-        context: dialogContext,
+        context: context,
+        useRootNavigator: true,
         builder: (ctx) => AlertDialog(
           title: const Text('Обновить геолокацию?'),
           content: Column(
@@ -404,11 +411,13 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
 
       if (confirm == true) {
         // Обновляем геолокацию магазина
+        Logger.debug('🗺️ Отправляем обновление геолокации: id=${shop.id}, lat=${position.latitude}, lon=${position.longitude}');
         final updatedShop = await ShopService.updateShop(
           id: shop.id,
           latitude: position.latitude,
           longitude: position.longitude,
         );
+        Logger.debug('🗺️ Результат обновления: ${updatedShop != null ? "успешно" : "ошибка"}');
 
         if (mounted) {
           if (updatedShop != null) {
@@ -421,9 +430,10 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
                 backgroundColor: Colors.green,
               ),
             );
-            // Перезагружаем данные
+            // Перезагружаем данные (но НЕ закрываем диалог настроек!)
             await _loadShops();
           } else {
+            Logger.error('🗺️ ShopService.updateShop вернул null');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Ошибка обновления геолокации'),
@@ -433,10 +443,11 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> {
           }
         }
       }
-    } catch (e) {
-      // Закрываем диалог загрузки если он открыт
-      if (dialogContext.mounted) {
-        Navigator.of(dialogContext).pop();
+    } catch (e, stackTrace) {
+      Logger.error('🗺️ Ошибка обновления геолокации: $e\n$stackTrace');
+      // Закрываем диалог загрузки если он открыт (используя root navigator)
+      if (mounted) {
+        navigator.pop();
       }
 
       if (mounted) {

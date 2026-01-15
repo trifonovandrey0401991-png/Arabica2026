@@ -72,6 +72,249 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
     }
   }
 
+  /// Диалог добавления/редактирования вопроса
+  Future<void> _showAddEditDialog({EnvelopeQuestion? question}) async {
+    final isEdit = question != null;
+    final titleController = TextEditingController(text: question?.title ?? '');
+    final descriptionController = TextEditingController(text: question?.description ?? '');
+
+    String selectedType = question?.type ?? 'photo';
+    String selectedSection = question?.section ?? 'general';
+    int order = question?.order ?? (_questions.isEmpty ? 1 : _questions.last.order + 1);
+    bool isRequired = question?.isRequired ?? true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Редактировать вопрос' : 'Новый вопрос'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Название *',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Описание',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                // Тип вопроса
+                const Text('Тип:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Фото'),
+                      selected: selectedType == 'photo',
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedType = 'photo');
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('Числа'),
+                      selected: selectedType == 'numbers',
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedType = 'numbers');
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('Расходы'),
+                      selected: selectedType == 'expenses',
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedType = 'expenses');
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Секция
+                const Text('Секция:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('ООО'),
+                      selected: selectedSection == 'ooo',
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedSection = 'ooo');
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('ИП'),
+                      selected: selectedSection == 'ip',
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedSection = 'ip');
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('Общее'),
+                      selected: selectedSection == 'general',
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedSection = 'general');
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Порядок
+                Row(
+                  children: [
+                    const Text('Порядок:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: order > 1 ? () => setDialogState(() => order--) : null,
+                    ),
+                    Text('$order', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () => setDialogState(() => order++),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Обязательный
+                SwitchListTile(
+                  title: const Text('Обязательный'),
+                  value: isRequired,
+                  onChanged: (value) => setDialogState(() => isRequired = value),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Введите название'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF004D40),
+                foregroundColor: Colors.white,
+              ),
+              child: Text(isEdit ? 'Сохранить' : 'Создать'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      final newQuestion = EnvelopeQuestion(
+        id: question?.id ?? 'envelope_q_${DateTime.now().millisecondsSinceEpoch}',
+        title: titleController.text.trim(),
+        description: descriptionController.text.trim(),
+        type: selectedType,
+        section: selectedSection,
+        order: order,
+        isRequired: isRequired,
+        isActive: question?.isActive ?? true,
+        referencePhotoUrl: question?.referencePhotoUrl,
+      );
+
+      EnvelopeQuestion? savedQuestion;
+      if (isEdit) {
+        savedQuestion = await EnvelopeQuestionService.updateQuestion(newQuestion);
+      } else {
+        savedQuestion = await EnvelopeQuestionService.createQuestion(newQuestion);
+      }
+
+      if (savedQuestion != null) {
+        await _loadQuestions();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isEdit ? 'Вопрос обновлен' : 'Вопрос создан'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isEdit ? 'Ошибка обновления' : 'Ошибка создания'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// Удаление вопроса
+  Future<void> _deleteQuestion(EnvelopeQuestion question) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить вопрос?'),
+        content: Text('Вопрос "${question.title}" будет удален безвозвратно.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await EnvelopeQuestionService.deleteQuestion(question.id);
+      if (success) {
+        await _loadQuestions();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Вопрос удален'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка удаления'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _uploadReferencePhoto(EnvelopeQuestion question) async {
     try {
       final ImagePicker picker = ImagePicker();
@@ -294,18 +537,33 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddEditDialog(),
+        backgroundColor: const Color(0xFF004D40),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _questions.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.mail_outline, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
+                      const Icon(Icons.mail_outline, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text(
                         'Нет вопросов',
                         style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _showAddEditDialog(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Добавить вопрос'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004D40),
+                          foregroundColor: Colors.white,
+                        ),
                       ),
                     ],
                   ),
@@ -400,10 +658,27 @@ class _EnvelopeQuestionsManagementPageState extends State<EnvelopeQuestionsManag
                                 ),
                               ],
                             ),
-                            trailing: Switch(
-                              value: question.isActive,
-                              onChanged: (_) => _toggleQuestion(question),
-                              activeColor: const Color(0xFF004D40),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 20),
+                                  onPressed: () => _showAddEditDialog(question: question),
+                                  tooltip: 'Редактировать',
+                                  color: Colors.blue,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, size: 20),
+                                  onPressed: () => _deleteQuestion(question),
+                                  tooltip: 'Удалить',
+                                  color: Colors.red,
+                                ),
+                                Switch(
+                                  value: question.isActive,
+                                  onChanged: (_) => _toggleQuestion(question),
+                                  activeColor: const Color(0xFF004D40),
+                                ),
+                              ],
                             ),
                           ),
                           // Секция эталонного фото для типа photo

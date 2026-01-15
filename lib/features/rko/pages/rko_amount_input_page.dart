@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../kpi/services/kpi_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
@@ -236,7 +237,16 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           KPIService.clearCacheForDate(_selectedShop!.address, now);
           // Также очищаем кэш для всего магазина на случай, если нужно обновить другие даты
           KPIService.clearCacheForShop(_selectedShop!.address);
-          
+
+          // Отправляем уведомление администратору
+          await ReportNotificationService.createNotification(
+            reportType: ReportType.rko,
+            reportId: 'rko_${now.millisecondsSinceEpoch}',
+            employeeName: employeeNameForRKO,
+            shopName: _selectedShop!.address,
+            description: '${widget.rkoType}: ${amount.toStringAsFixed(0)} ₽',
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('РКО успешно создан и загружен на сервер'),

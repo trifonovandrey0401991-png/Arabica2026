@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
 import 'recount_questions_page.dart';
 
@@ -177,59 +178,63 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                               ),
                             ),
                             Expanded(
-                              child: GridView.builder(
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: 0.85,
-                                ),
+                              child: ListView.builder(
                                 itemCount: shops.length,
                                 itemBuilder: (context, index) {
                                   final shop = shops[index];
 
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => RecountQuestionsPage(
-                                            employeeName: _employeeName!,
-                                            shopAddress: shop.address,
-                                            employeePhone: _employeePhone,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Material(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: InkWell(
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.white.withOpacity(0.5),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(shop.icon, size: 40, color: Colors.white),
-                                          const SizedBox(height: 8),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                                            child: Text(
-                                              shop.address,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.white,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => RecountQuestionsPage(
+                                                employeeName: _employeeName!,
+                                                shopAddress: shop.address,
+                                                employeePhone: _employeePhone,
                                               ),
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: Colors.white.withOpacity(0.5),
+                                              width: 2,
                                             ),
                                           ),
-                                        ],
+                                          child: Row(
+                                            children: [
+                                              const ShopIcon(size: 56),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: Text(
+                                                  shop.address,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const Icon(
+                                                Icons.chevron_right,
+                                                color: Colors.white70,
+                                                size: 28,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   );

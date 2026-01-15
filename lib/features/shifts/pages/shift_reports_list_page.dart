@@ -5,6 +5,7 @@ import '../services/shift_report_service.dart';
 import '../services/pending_shift_service.dart';
 import 'shift_report_view_page.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 
 /// Страница со списком отчетов по пересменкам с вкладками
 class ShiftReportsListPage extends StatefulWidget {
@@ -30,6 +31,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadData();
+    // Отмечаем все уведомления этого типа как просмотренные
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftHandover);
   }
 
   @override

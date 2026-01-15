@@ -45,6 +45,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   // Переменные для выбора роли
   String? _selectedRole; // 'admin' или 'employee'
   bool _isAdmin = false;
+  bool _isManager = false; // Флаг заведующего(ей)
 
   @override
   void initState() {
@@ -68,6 +69,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
     // По умолчанию роль - сотрудник
     _selectedRole = 'employee';
     _isAdmin = false;
+    _isManager = false;
     
     // Загружаем текущую роль сотрудника, если редактируем существующую регистрацию
     if (widget.existingRegistration != null || widget.employeePhone != null) {
@@ -93,13 +95,15 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           if (empPhone == normalizedPhone) {
             // Найден сотрудник, устанавливаем его роль
             final isAdmin = emp.isAdmin == true;
+            final isManager = emp.isManager == true;
             if (mounted) {
               setState(() {
                 _isAdmin = isAdmin;
+                _isManager = isManager;
                 _selectedRole = isAdmin ? 'admin' : 'employee';
               });
             }
-            Logger.success('Загружена роль сотрудника: ${isAdmin ? "Админ" : "Сотрудник"}');
+            Logger.success('Загружена роль сотрудника: ${isAdmin ? "Админ" : "Сотрудник"}, Заведующий: $isManager');
             return;
           }
         }
@@ -171,7 +175,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   }
 
   /// Создать или обновить запись сотрудника с указанной ролью
-  Future<void> _createOrUpdateEmployee(String phone, String name, bool isAdmin) async {
+  Future<void> _createOrUpdateEmployee(String phone, String name, bool isAdmin, bool isManager) async {
     try {
       // Получаем всех сотрудников и ищем по телефону
       final allEmployees = await EmployeeService.getEmployees();
@@ -195,16 +199,18 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
           name: name,
           phone: normalizedPhone,
           isAdmin: isAdmin,
+          isManager: isManager,
         );
-        Logger.success('Сотрудник обновлен: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
+        Logger.success('Сотрудник обновлен: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}, Заведующий: $isManager');
       } else {
         // Создаем нового сотрудника
         await EmployeeService.createEmployee(
           name: name,
           phone: normalizedPhone,
           isAdmin: isAdmin,
+          isManager: isManager,
         );
-        Logger.success('Сотрудник создан: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}');
+        Logger.success('Сотрудник создан: $name, роль: ${isAdmin ? "Админ" : "Сотрудник"}, Заведующий: $isManager');
       }
     } catch (e) {
       Logger.warning('Ошибка создания/обновления сотрудника: $e');
@@ -313,7 +319,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       if (!mounted) return;
       if (success) {
         // Создаем или обновляем запись сотрудника с указанной ролью
-        await _createOrUpdateEmployee(phone, _fullNameController.text.trim(), _isAdmin);
+        await _createOrUpdateEmployee(phone, _fullNameController.text.trim(), _isAdmin, _isManager);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -596,6 +602,18 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
                   _isAdmin = true;
                 });
               },
+            ),
+            const Divider(),
+            CheckboxListTile(
+              title: const Text('Заведующий(ая)'),
+              subtitle: const Text('Доступ к функциям заведующего'),
+              value: _isManager,
+              onChanged: _isLoading ? null : (value) {
+                setState(() {
+                  _isManager = value ?? false;
+                });
+              },
+              secondary: const Icon(Icons.supervisor_account, color: Colors.purple),
             ),
             const SizedBox(height: 16),
 

@@ -7,6 +7,7 @@ const ORDERS_DIR = '/var/www/orders';
 const COUNTER_FILE = path.join(ORDERS_DIR, 'order-counter.json');
 const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
 const DIALOGS_DIR = '/var/www/client-dialogs';
+const EMPLOYEES_DIR = '/var/www/employees';
 
 async function fileExists(filePath) {
   try {
@@ -72,6 +73,9 @@ async function createOrder(orderData) {
   await fs.writeFile(orderFile, JSON.stringify(order, null, 2));
 
   await addOrderToDialog(order);
+
+  // Отправляем push уведомления всем админам о новом заказе
+  await sendNewOrderNotificationToAdmins(order);
 
   console.log('✅ Создан заказ #' + orderNumber + ' от ' + orderData.clientName + ' (ID: ' + orderId + ')');
   return order;
@@ -173,6 +177,73 @@ async function sendOrderNotification(order, type) {
     console.log('✅ Push-уведомление отправлено клиенту ' + order.clientPhone);
   } catch (err) {
     console.error('❌ Ошибка отправки push-уведомления:', err.message);
+  }
+}
+
+// Отправка push уведомления всем админам о новом заказе
+async function sendNewOrderNotificationToAdmins(order) {
+  if (!firebaseInitialized) {
+    console.warn('⚠️  Push админам не отправлен: Firebase не инициализирован');
+    return;
+  }
+
+  try {
+    // Получаем список всех сотрудников
+    const files = await fs.readdir(EMPLOYEES_DIR);
+    let adminCount = 0;
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      try {
+        const content = await fs.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const employee = JSON.parse(content);
+
+        // Проверяем, является ли сотрудник админом
+        if (!employee.isAdmin) continue;
+
+        // Получаем телефон сотрудника (нормализуем)
+        const phone = (employee.phone || '').replace(/[\s+]/g, '');
+        if (!phone) continue;
+
+        // Проверяем наличие FCM токена
+        const tokenFile = path.join(FCM_TOKENS_DIR, phone + '.json');
+        if (!(await fileExists(tokenFile))) continue;
+
+        const tokenContent = await fs.readFile(tokenFile, 'utf8');
+        const { token } = JSON.parse(tokenContent);
+
+        // Формируем уведомление
+        const title = 'Новый заказ #' + order.orderNumber;
+        const body = order.clientName + ' - ' + order.shopAddress;
+
+        await admin.messaging().send({
+          token,
+          notification: { title, body },
+          data: {
+            type: 'new_order',
+            orderId: order.id,
+            orderNumber: String(order.orderNumber),
+            shopAddress: order.shopAddress,
+            clientName: order.clientName,
+            totalPrice: String(order.totalPrice)
+          },
+          android: { priority: 'high' },
+          apns: { payload: { aps: { sound: 'default' } } }
+        });
+
+        adminCount++;
+        console.log('✅ Push о новом заказе отправлен админу: ' + employee.name);
+      } catch (err) {
+        // Продолжаем для других админов
+      }
+    }
+
+    if (adminCount > 0) {
+      console.log('✅ Push о новом заказе #' + order.orderNumber + ' отправлен ' + adminCount + ' админам');
+    }
+  } catch (err) {
+    console.error('❌ Ошибка отправки push админам:', err.message);
   }
 }
 

@@ -1,15 +1,59 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
+import '../../employees/pages/employees_page.dart';
+import '../../employees/services/employee_service.dart';
 import 'shift_handover_role_selection_page.dart';
 
 /// Страница выбора магазина для сдачи смены
-class ShiftHandoverShopSelectionPage extends StatelessWidget {
+class ShiftHandoverShopSelectionPage extends StatefulWidget {
   final String employeeName;
 
   const ShiftHandoverShopSelectionPage({
     super.key,
     required this.employeeName,
   });
+
+  @override
+  State<ShiftHandoverShopSelectionPage> createState() => _ShiftHandoverShopSelectionPageState();
+}
+
+class _ShiftHandoverShopSelectionPageState extends State<ShiftHandoverShopSelectionPage> {
+  bool _isManager = false;
+  bool _isLoadingManager = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadManagerStatus();
+  }
+
+  Future<void> _loadManagerStatus() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final employees = await EmployeeService.getEmployees();
+        final employee = employees.firstWhere(
+          (e) => e.id == employeeId,
+          orElse: () => throw StateError('Employee not found'),
+        );
+        if (mounted) {
+          setState(() {
+            _isManager = employee.isManager == true;
+            _isLoadingManager = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isLoadingManager = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingManager = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +74,7 @@ class ShiftHandoverShopSelectionPage extends StatelessWidget {
         child: FutureBuilder<List<Shop>>(
           future: Shop.loadShopsFromGoogleSheets(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting || _isLoadingManager) {
               return const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               );
@@ -72,62 +116,63 @@ class ShiftHandoverShopSelectionPage extends StatelessWidget {
               );
             }
 
-            return GridView.builder(
+            return ListView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.85,
-              ),
               itemCount: shops.length,
               itemBuilder: (context, index) {
                 final shop = shops[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ShiftHandoverRoleSelectionPage(
-                          employeeName: employeeName,
-                          shopAddress: shop.address,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Material(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 2,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.store,
-                          size: 48,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            shop.address,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ShiftHandoverRoleSelectionPage(
+                              employeeName: widget.employeeName,
+                              shopAddress: shop.address,
+                              isCurrentUserManager: _isManager,
                             ),
-                            textAlign: TextAlign.center,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 2,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            const ShopIcon(size: 56),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                shop.address,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Colors.white70,
+                              size: 28,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );

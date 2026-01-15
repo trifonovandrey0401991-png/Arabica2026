@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../../core/widgets/shop_icon.dart';
 import '../services/shop_service.dart';
 
 /// Модель магазина
@@ -8,7 +9,7 @@ class Shop {
   final String id;
   final String name;
   final String address;
-  final IconData icon;
+  final IconData icon; // Оставлено для обратной совместимости
   final double? latitude;  // Широта
   final double? longitude; // Долгота
 
@@ -16,10 +17,16 @@ class Shop {
     required this.id,
     required this.name,
     required this.address,
-    required this.icon,
+    this.icon = Icons.store, // Fallback иконка
     this.latitude,
     this.longitude,
   });
+
+  /// Виджет иконки магазина (используйте вместо Icon(shop.icon))
+  Widget get iconWidget => const ShopIcon(size: 72);
+
+  /// Виджет иконки для leading в ListTile
+  Widget get leadingIcon => const ShopIcon(size: 72);
 
   /// Создать Shop из JSON
   factory Shop.fromJson(Map<String, dynamic> json) {
@@ -27,7 +34,7 @@ class Shop {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
-      icon: _getIconForShop(json['name'] ?? ''),
+      icon: Icons.store, // Fallback, используйте iconWidget вместо Icon(shop.icon)
       latitude: json['latitude'] != null ? (json['latitude'] is double ? json['latitude'] : double.tryParse(json['latitude'].toString())) : null,
       longitude: json['longitude'] != null ? (json['longitude'] is double ? json['longitude'] : double.tryParse(json['longitude'].toString())) : null,
     );

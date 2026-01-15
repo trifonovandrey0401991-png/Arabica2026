@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 950">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+    <linearGradient id="clientGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF9800"/>
+      <stop offset="100%" style="stop-color:#EF6C00"/>
+    </linearGradient>
+    <linearGradient id="adminGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F44336"/>
+      <stop offset="100%" style="stop-color:#C62828"/>
+    </linearGradient>
+    <linearGradient id="serverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0"/>
+      <stop offset="100%" style="stop-color:#6A1B9A"/>
+    </linearGradient>
+    <linearGradient id="dayGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFC107"/>
+      <stop offset="100%" style="stop-color:#FF9800"/>
+    </linearGradient>
+    <linearGradient id="nightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3F51B5"/>
+      <stop offset="100%" style="stop-color:#303F9F"/>
+    </linearGradient>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="950" fill="#f5f5f5"/>
+
+  <!-- Title -->
+  <text x="700" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#333">
+    СИСТЕМА ЗАЯВОК НА РАБОТУ
+  </text>
+  <text x="700" y="65" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666">
+    Arabica App - Блок A, Система #3 | "Устроиться на работу"
+  </text>
+
+  <!-- ============ VISUAL FLOW SECTION ============ -->
+  <rect x="20" y="85" width="860" height="450" rx="10" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+  <text x="450" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    ВИЗУАЛЬНАЯ СХЕМА
+  </text>
+
+  <!-- Client Block -->
+  <rect x="50" y="130" width="160" height="80" rx="10" fill="url(#clientGrad)" filter="url(#shadow)"/>
+  <text x="130" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">КЛИЕНТ</text>
+  <text x="130" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Главное меню</text>
+
+  <!-- Arrow to Form -->
+  <path d="M210 170 L270 170" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Application Form -->
+  <rect x="280" y="130" width="220" height="140" rx="10" fill="#E3F2FD" stroke="#1976D2" stroke-width="2"/>
+  <text x="390" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#1565C0">
+    Форма "Устроиться на работу"
+  </text>
+
+  <text x="295" y="180" font-family="Arial" font-size="10" fill="#333">1. ФИО (fullName)</text>
+  <text x="295" y="198" font-family="Arial" font-size="10" fill="#333">2. Телефон (phone)</text>
+  <text x="295" y="216" font-family="Arial" font-size="10" fill="#333">3. Смена: День / Ночь</text>
+  <text x="295" y="234" font-family="Arial" font-size="10" fill="#333">4. Выбор магазинов (мультивыбор)</text>
+  <text x="295" y="258" font-family="Arial" font-size="10" fill="#4CAF50" font-weight="bold">→ Отправить заявку</text>
+
+  <!-- Arrow to Server -->
+  <path d="M500 200 L560 200" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="530" y="190" font-family="Arial" font-size="9" fill="#333">POST</text>
+
+  <!-- Server Block -->
+  <rect x="570" y="140" width="180" height="100" rx="10" fill="url(#serverGrad)" filter="url(#shadow)"/>
+  <text x="660" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">СЕРВЕР</text>
+  <text x="660" y="190" text-anchor="middle" font-family="monospace" font-size="9" fill="white">/api/job-applications</text>
+  <text x="660" y="210" text-anchor="middle" font-family="Arial" font-size="9" fill="white">Сохраняет заявку</text>
+  <text x="660" y="225" text-anchor="middle" font-family="Arial" font-size="9" fill="white">isViewed = false</text>
+
+  <!-- Arrow to Admin -->
+  <path d="M660 240 L660 290" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Admin Block -->
+  <rect x="50" y="300" width="160" height="80" rx="10" fill="url(#adminGrad)" filter="url(#shadow)"/>
+  <text x="130" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">АДМИН</text>
+  <text x="130" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Отчеты</text>
+
+  <!-- Arrow to Report -->
+  <path d="M210 340 L270 340" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Reports Page (with badge) -->
+  <rect x="280" y="300" width="220" height="90" rx="10" fill="#FFEBEE" stroke="#E53935" stroke-width="2"/>
+  <text x="390" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#C62828">
+    Отчет (Устроиться на работу)
+  </text>
+  <!-- Badge -->
+  <circle cx="485" cy="315" r="12" fill="#F44336"/>
+  <text x="485" y="320" text-anchor="middle" font-family="Arial" font-size="10" font-weight="bold" fill="white">3</text>
+  <text x="295" y="350" font-family="Arial" font-size="10" fill="#333">Бейдж: количество непросмотренных</text>
+  <text x="295" y="370" font-family="Arial" font-size="10" fill="#333">GET /api/job-applications/unviewed-count</text>
+
+  <!-- Arrow to List -->
+  <path d="M500 345 L560 345" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Applications List Page -->
+  <rect x="570" y="290" width="290" height="130" rx="10" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+  <text x="715" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#2E7D32">
+    JobApplicationsListPage
+  </text>
+
+  <text x="585" y="340" font-family="Arial" font-size="10" fill="#333">- Список всех заявок (новые сверху)</text>
+  <text x="585" y="358" font-family="Arial" font-size="10" fill="#333">- Карточка: ФИО, телефон, смена, магазины</text>
+  <text x="585" y="376" font-family="Arial" font-size="10" fill="#333">- Бейдж "Новая" если isViewed = false</text>
+  <text x="585" y="394" font-family="Arial" font-size="10" fill="#333">- При клике → PATCH /view → isViewed = true</text>
+  <text x="585" y="412" font-family="Arial" font-size="10" fill="#333">- Переход на JobApplicationDetailPage</text>
+
+  <!-- Shift Types -->
+  <text x="450" y="455" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">
+    ТИПЫ СМЕН
+  </text>
+
+  <!-- Day Shift -->
+  <rect x="150" y="470" width="200" height="50" rx="8" fill="url(#dayGrad)" filter="url(#shadow)"/>
+  <text x="250" y="500" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    ДЕНЬ (day)
+  </text>
+
+  <!-- Night Shift -->
+  <rect x="550" y="470" width="200" height="50" rx="8" fill="url(#nightGrad)" filter="url(#shadow)"/>
+  <text x="650" y="500" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    НОЧЬ (night)
+  </text>
+
+  <!-- ============ DESCRIPTION SECTION ============ -->
+  <rect x="900" y="85" width="480" height="450" rx="10" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+  <text x="1140" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    ОПИСАНИЕ СИСТЕМЫ
+  </text>
+
+  <!-- Files Section -->
+  <rect x="920" y="125" width="440" height="120" rx="5" fill="#FFF3E0" stroke="#FF9800"/>
+  <text x="1140" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#E65100">ФАЙЛЫ FLUTTER</text>
+
+  <text x="940" y="170" font-family="monospace" font-size="9" fill="#333">lib/features/job_application/pages/</text>
+  <text x="955" y="185" font-family="monospace" font-size="9" fill="#1565C0">job_applications_list_page.dart</text>
+  <text x="1200" y="185" font-family="Arial" font-size="8" fill="#666">← Список</text>
+  <text x="955" y="200" font-family="monospace" font-size="9" fill="#1565C0">job_application_detail_page.dart</text>
+  <text x="1200" y="200" font-family="Arial" font-size="8" fill="#666">← Детали</text>
+
+  <text x="940" y="220" font-family="monospace" font-size="9" fill="#333">lib/features/job_application/services/</text>
+  <text x="955" y="235" font-family="monospace" font-size="9" fill="#1565C0">job_application_service.dart</text>
+  <text x="1200" y="235" font-family="Arial" font-size="8" fill="#666">← API</text>
+
+  <!-- API Section -->
+  <rect x="920" y="255" width="440" height="115" rx="5" fill="#E8F5E9" stroke="#4CAF50"/>
+  <text x="1140" y="275" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#2E7D32">API ЭНДПОИНТЫ</text>
+
+  <text x="940" y="300" font-family="monospace" font-size="10" fill="#333">POST  /api/job-applications</text>
+  <text x="1220" y="300" font-family="Arial" font-size="9" fill="#666">Создать</text>
+  <text x="940" y="318" font-family="monospace" font-size="10" fill="#333">GET   /api/job-applications</text>
+  <text x="1220" y="318" font-family="Arial" font-size="9" fill="#666">Все заявки</text>
+  <text x="940" y="336" font-family="monospace" font-size="10" fill="#333">GET   /api/job-applications/unviewed-count</text>
+  <text x="1285" y="336" font-family="Arial" font-size="9" fill="#666">Счётчик</text>
+  <text x="940" y="354" font-family="monospace" font-size="10" fill="#333">PATCH /api/job-applications/:id/view</text>
+  <text x="1240" y="354" font-family="Arial" font-size="9" fill="#666">Просмотрено</text>
+
+  <!-- Model Section -->
+  <rect x="920" y="380" width="440" height="145" rx="5" fill="#F3E5F5" stroke="#9C27B0"/>
+  <text x="1140" y="400" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#7B1FA2">JobApplication Model</text>
+
+  <text x="940" y="425" font-family="monospace" font-size="9" fill="#333">id: String              - Уникальный ID</text>
+  <text x="940" y="442" font-family="monospace" font-size="9" fill="#333">fullName: String        - ФИО кандидата</text>
+  <text x="940" y="459" font-family="monospace" font-size="9" fill="#333">phone: String           - Телефон</text>
+  <text x="940" y="476" font-family="monospace" font-size="9" fill="#333">preferredShift: String  - 'day' / 'night'</text>
+  <text x="940" y="493" font-family="monospace" font-size="9" fill="#333">shopAddresses: List     - Желаемые магазины</text>
+  <text x="940" y="510" font-family="monospace" font-size="9" fill="#333">createdAt: DateTime     - Дата создания</text>
+  <text x="940" y="527" font-family="monospace" font-size="9" fill="#333">isViewed: bool          - Просмотрена ли</text>
+  <text x="940" y="544" font-family="monospace" font-size="9" fill="#333">viewedAt: DateTime?     - Когда просмотрена</text>
+  <text x="940" y="561" font-family="monospace" font-size="9" fill="#333">viewedBy: String?       - Кем просмотрена</text>
+
+  <!-- ============ FLOW DETAILS ============ -->
+  <rect x="20" y="550" width="1360" height="180" rx="10" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+  <text x="700" y="575" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    ПОТОК РАБОТЫ С ЗАЯВКАМИ
+  </text>
+
+  <!-- Step 1 -->
+  <rect x="40" y="595" width="300" height="120" rx="8" fill="#FFF3E0" stroke="#FF9800"/>
+  <text x="190" y="618" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#E65100">
+    1. КЛИЕНТ ПОДАЁТ ЗАЯВКУ
+  </text>
+  <text x="55" y="645" font-family="Arial" font-size="10" fill="#333">Главное меню → "Устроиться на работу"</text>
+  <text x="55" y="665" font-family="Arial" font-size="10" fill="#333">Заполняет: ФИО, телефон</text>
+  <text x="55" y="685" font-family="Arial" font-size="10" fill="#333">Выбирает смену (день/ночь)</text>
+  <text x="55" y="705" font-family="Arial" font-size="10" fill="#333">Выбирает магазины из списка</text>
+
+  <!-- Arrow -->
+  <path d="M340 655 L380 655" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 2 -->
+  <rect x="390" y="595" width="300" height="120" rx="8" fill="#E3F2FD" stroke="#2196F3"/>
+  <text x="540" y="618" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#1565C0">
+    2. СЕРВЕР СОХРАНЯЕТ
+  </text>
+  <text x="405" y="645" font-family="Arial" font-size="10" fill="#333">POST /api/job-applications</text>
+  <text x="405" y="665" font-family="Arial" font-size="10" fill="#333">Генерирует уникальный ID</text>
+  <text x="405" y="685" font-family="Arial" font-size="10" fill="#333">isViewed = false (новая заявка)</text>
+  <text x="405" y="705" font-family="Arial" font-size="10" fill="#333">createdAt = текущее время</text>
+
+  <!-- Arrow -->
+  <path d="M690 655 L730 655" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 3 -->
+  <rect x="740" y="595" width="300" height="120" rx="8" fill="#FFEBEE" stroke="#E53935"/>
+  <text x="890" y="618" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#C62828">
+    3. АДМИН ВИДИТ БЕЙДЖ
+  </text>
+  <text x="755" y="645" font-family="Arial" font-size="10" fill="#333">В разделе Отчёты появляется бейдж</text>
+  <text x="755" y="665" font-family="Arial" font-size="10" fill="#333">с количеством непросмотренных заявок</text>
+  <text x="755" y="685" font-family="Arial" font-size="10" fill="#333">GET /api/job-applications/unviewed-count</text>
+  <text x="755" y="705" font-family="Arial" font-size="10" fill="#333">→ { count: 3 }</text>
+
+  <!-- Arrow -->
+  <path d="M1040 655 L1080 655" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- Step 4 -->
+  <rect x="1090" y="595" width="270" height="120" rx="8" fill="#E8F5E9" stroke="#4CAF50"/>
+  <text x="1225" y="618" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#2E7D32">
+    4. АДМИН ПРОСМАТРИВАЕТ
+  </text>
+  <text x="1105" y="645" font-family="Arial" font-size="10" fill="#333">Открывает список заявок</text>
+  <text x="1105" y="665" font-family="Arial" font-size="10" fill="#333">Кликает на заявку</text>
+  <text x="1105" y="685" font-family="Arial" font-size="10" fill="#333">PATCH /:id/view { adminName }</text>
+  <text x="1105" y="705" font-family="Arial" font-size="10" fill="#333">isViewed = true, viewedBy = "Имя"</text>
+
+  <!-- ============ STORAGE SECTION ============ -->
+  <rect x="20" y="745" width="1360" height="80" rx="10" fill="#E0E0E0"/>
+  <text x="700" y="775" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">
+    ХРАНЕНИЕ ДАННЫХ
+  </text>
+  <text x="700" y="800" text-anchor="middle" font-family="monospace" font-size="12" fill="#333">
+    Сервер: /root/arabica_app/data/job_applications.json
+  </text>
+  <text x="700" y="820" text-anchor="middle" font-family="Arial" font-size="11" fill="#666">
+    Массив объектов JobApplication, сортировка по createdAt DESC (новые сверху)
+  </text>
+
+  <!-- Version info -->
+  <rect x="20" y="840" width="1360" height="50" rx="10" fill="#E0E0E0"/>
+  <text x="700" y="870" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    Arabica App v1.6.1 | Документация: Блок A - Система #3 | Создано: 2026-01-13
+  </text>
+</svg>

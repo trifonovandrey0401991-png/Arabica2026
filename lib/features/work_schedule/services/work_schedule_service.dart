@@ -16,7 +16,7 @@ class WorkScheduleService {
       Logger.debug('Загрузка графика на месяц: $monthStr');
 
       final result = await BaseHttpService.get<WorkSchedule>(
-        endpoint: _baseEndpoint,
+        endpoint: '$_baseEndpoint?month=$monthStr',
         fromJson: (json) => WorkSchedule.fromJson(json),
         itemKey: 'schedule',
       );
@@ -76,26 +76,75 @@ class WorkScheduleService {
   }
 
   /// Удалить смену
-  static Future<bool> deleteShift(String entryId) async {
+  static Future<bool> deleteShift(String entryId, DateTime entryDate) async {
     try {
-      Logger.debug('Удаление смены: $entryId');
-      return await BaseHttpService.delete(endpoint: '$_baseEndpoint/$entryId');
+      final monthStr = '${entryDate.year}-${entryDate.month.toString().padLeft(2, '0')}';
+      Logger.debug('Удаление смены: $entryId, месяц: $monthStr');
+
+      return await BaseHttpService.delete(
+        endpoint: '$_baseEndpoint/$entryId?month=$monthStr',
+      );
     } catch (e) {
       Logger.error('Ошибка удаления смены', e);
       return false;
     }
   }
 
+  /// Очистить весь месяц (удалить все смены за месяц)
+  static Future<Map<String, dynamic>> clearMonth(DateTime month) async {
+    try {
+      final monthStr = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      Logger.info('Очистка графика за месяц: $monthStr');
+
+      final response = await BaseHttpService.deleteWithResponse(
+        endpoint: '$_baseEndpoint/clear?month=$monthStr',
+      );
+
+      if (response != null && response['success'] == true) {
+        final deletedCount = response['deletedCount'] ?? 0;
+        Logger.info('График очищен. Удалено смен: $deletedCount');
+        return {
+          'success': true,
+          'deletedCount': deletedCount,
+          'message': response['message'] ?? 'График очищен'
+        };
+      }
+
+      return {'success': false, 'message': 'Ошибка очистки графика'};
+    } catch (e) {
+      Logger.error('Ошибка очистки месяца', e);
+      return {'success': false, 'message': 'Ошибка: $e'};
+    }
+  }
+
   /// Массовое создание смен
-  static Future<bool> bulkCreateShifts(List<WorkScheduleEntry> entries) async {
+  static Future<bool> bulkCreateShifts(
+    List<WorkScheduleEntry> entries, {
+    String? replaceMode,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
       Logger.debug('Массовое создание смен: ${entries.length} записей');
 
+      final body = <String, dynamic>{
+        'entries': entries.map((e) => e.toJson()).toList(),
+      };
+
+      // Добавляем параметры замены если указаны
+      if (replaceMode != null) {
+        body['replaceMode'] = replaceMode;
+      }
+      if (startDate != null) {
+        body['startDate'] = startDate.toIso8601String();
+      }
+      if (endDate != null) {
+        body['endDate'] = endDate.toIso8601String();
+      }
+
       return await BaseHttpService.simplePost(
         endpoint: '$_baseEndpoint/bulk',
-        body: {
-          'entries': entries.map((e) => e.toJson()).toList(),
-        },
+        body: body,
         timeout: ApiConstants.longTimeout,
       );
     } catch (e) {

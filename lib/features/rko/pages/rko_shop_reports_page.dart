@@ -89,7 +89,7 @@ class _RKOShopReportsPageState extends State<RKOShopReportsPage> {
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     child: ListTile(
-                      leading: Icon(shop.icon, color: const Color(0xFF004D40)),
+                      leading: shop.leadingIcon,
                       title: Text(
                         shop.name,
                         style: const TextStyle(fontWeight: FontWeight.bold),

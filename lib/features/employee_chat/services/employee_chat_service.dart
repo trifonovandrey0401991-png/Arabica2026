@@ -15,13 +15,16 @@ class EmployeeChatService {
   static const String baseEndpoint = ApiConstants.employeeChatsEndpoint;
 
   /// Получить список всех чатов для пользователя
-  static Future<List<EmployeeChat>> getChats(String phone) async {
-    Logger.debug('📥 Загрузка списка чатов для $phone...');
+  static Future<List<EmployeeChat>> getChats(String phone, {bool isAdmin = false}) async {
+    Logger.debug('📥 Загрузка списка чатов для $phone (isAdmin: $isAdmin)...');
     return await BaseHttpService.getList<EmployeeChat>(
       endpoint: baseEndpoint,
       fromJson: (json) => EmployeeChat.fromJson(json),
       listKey: 'chats',
-      queryParams: {'phone': phone},
+      queryParams: {
+        'phone': phone,
+        if (isAdmin) 'isAdmin': 'true',
+      },
     );
   }
 
@@ -153,4 +156,73 @@ class EmployeeChatService {
       endpoint: '$baseEndpoint/$chatId/messages/$messageId',
     );
   }
+
+  // ===== УПРАВЛЕНИЕ УЧАСТНИКАМИ ЧАТА МАГАЗИНА =====
+
+  /// Получить участников чата магазина
+  static Future<List<ShopChatMember>> getShopChatMembers(String shopAddress) async {
+    Logger.debug('📥 Загрузка участников чата магазина $shopAddress...');
+    return await BaseHttpService.getList<ShopChatMember>(
+      endpoint: '$baseEndpoint/shop/$shopAddress/members',
+      fromJson: (json) => ShopChatMember.fromJson(json),
+      listKey: 'members',
+    );
+  }
+
+  /// Добавить сотрудников в чат магазина
+  static Future<bool> addShopChatMembers(String shopAddress, List<String> phones) async {
+    Logger.debug('➕ Добавление ${phones.length} сотрудников в чат магазина $shopAddress...');
+    return await BaseHttpService.simplePost(
+      endpoint: '$baseEndpoint/shop/$shopAddress/members',
+      body: {'phones': phones},
+    );
+  }
+
+  /// Удалить сотрудника из чата магазина
+  static Future<bool> removeShopChatMember(String shopAddress, String phone) async {
+    Logger.debug('➖ Удаление сотрудника $phone из чата магазина $shopAddress...');
+    return await BaseHttpService.delete(
+      endpoint: '$baseEndpoint/shop/$shopAddress/members/$phone',
+    );
+  }
+
+  // ===== ОЧИСТКА СООБЩЕНИЙ =====
+
+  /// Очистить сообщения чата
+  /// mode: "previous_month" - удалить за предыдущий месяц, "all" - удалить все
+  static Future<int> clearChatMessages(String chatId, String mode) async {
+    Logger.debug('🗑️ Очистка сообщений чата $chatId (режим: $mode)...');
+    try {
+      final response = await BaseHttpService.postRaw(
+        endpoint: '$baseEndpoint/$chatId/clear',
+        body: {'mode': mode},
+      );
+      if (response != null && response['deletedCount'] != null) {
+        return response['deletedCount'] as int;
+      }
+      return 0;
+    } catch (e) {
+      Logger.error('Ошибка очистки сообщений', e);
+      return 0;
+    }
+  }
+}
+
+/// Модель участника чата магазина
+class ShopChatMember {
+  final String phone;
+  final String name;
+  final String position;
+
+  ShopChatMember({
+    required this.phone,
+    required this.name,
+    this.position = '',
+  });
+
+  factory ShopChatMember.fromJson(Map<String, dynamic> json) => ShopChatMember(
+    phone: json['phone'] ?? '',
+    name: json['name'] ?? '',
+    position: json['position'] ?? '',
+  );
 }

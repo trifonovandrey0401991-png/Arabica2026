@@ -69,7 +69,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
             itemBuilder: (context, index) {
               final shop = _shops[index];
               return ListTile(
-                leading: Icon(shop.icon),
+                leading: shop.leadingIcon,
                 title: Text(shop.name),
                 subtitle: Text(shop.address),
                 onTap: () => Navigator.pop(context, shop),

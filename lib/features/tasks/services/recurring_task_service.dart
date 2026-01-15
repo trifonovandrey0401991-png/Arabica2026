@@ -3,6 +3,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../models/recurring_task_model.dart';
 import '../models/task_model.dart' show TaskResponseType, TaskResponseTypeExtension;
+import '../../suppliers/models/supplier_model.dart';
 
 /// Сервис для работы с циклическими задачами
 class RecurringTaskService {
@@ -284,5 +285,213 @@ class RecurringTaskService {
       Logger.error('Ошибка генерации задач', e);
       rethrow;
     }
+  }
+
+  // ==================== ЗАДАЧИ ПОСТАВЩИКОВ ====================
+
+  /// Маппинг названий дней недели на числа (0=Вс, 1=Пн, 2=Вт, 3=Ср, 4=Чт, 5=Пт, 6=Сб)
+  static int _dayNameToNumber(String dayName) {
+    final normalized = dayName.toLowerCase().trim();
+
+    // Полные названия
+    if (normalized.startsWith('понедельник')) return 1;
+    if (normalized.startsWith('вторник')) return 2;
+    if (normalized.startsWith('сред')) return 3;
+    if (normalized.startsWith('четверг')) return 4;
+    if (normalized.startsWith('пятниц')) return 5;
+    if (normalized.startsWith('суббот')) return 6;
+    if (normalized.startsWith('воскресень')) return 0;
+
+    // Сокращенные (Пн, Вт, Ср...)
+    if (normalized.startsWith('пн')) return 1;
+    if (normalized.startsWith('вт')) return 2;
+    if (normalized.startsWith('ср')) return 3;
+    if (normalized.startsWith('чт')) return 4;
+    if (normalized.startsWith('пт')) return 5;
+    if (normalized.startsWith('сб')) return 6;
+    if (normalized.startsWith('вс')) return 0;
+
+    Logger.warning('Неизвестный день недели: $dayName');
+    return -1;
+  }
+
+  /// Конвертировать список названий дней в числа
+  static List<int> _convertDaysToNumbers(List<String> dayNames) {
+    return dayNames
+        .map((d) => _dayNameToNumber(d))
+        .where((d) => d >= 0)
+        .toList()
+      ..sort();
+  }
+
+  /// Создать циклические задачи для поставщика
+  /// Создаёт отдельную задачу для каждого магазина из shopDeliveries
+  static Future<List<RecurringTask>> createTasksForSupplier({
+    required String supplierId,
+    required String supplierName,
+    required List<SupplierShopDelivery> shopDeliveries,
+    required List<Map<String, String>> managersData, // [{id, name, phone}, ...]
+    String? createdBy,
+  }) async {
+    final createdTasks = <RecurringTask>[];
+
+    for (final delivery in shopDeliveries) {
+      // Пропускаем магазины без дней доставки или без заведующих
+      if (delivery.days.isEmpty) {
+        Logger.debug('Пропуск магазина ${delivery.shopName} - нет дней доставки');
+        continue;
+      }
+      if (delivery.managerIds == null || delivery.managerIds!.isEmpty) {
+        Logger.debug('Пропуск магазина ${delivery.shopName} - нет заведующих');
+        continue;
+      }
+
+      // Конвертируем дни
+      final daysOfWeek = _convertDaysToNumbers(delivery.days);
+      if (daysOfWeek.isEmpty) {
+        Logger.warning('Пропуск магазина ${delivery.shopName} - не удалось сконвертировать дни');
+        continue;
+      }
+
+      // Собираем получателей (заведующих)
+      final assignees = <TaskRecipient>[];
+      for (final managerId in delivery.managerIds!) {
+        // Ищем данные заведующего
+        final managerData = managersData.firstWhere(
+          (m) => m['id'] == managerId,
+          orElse: () => <String, String>{},
+        );
+
+        if (managerData.isNotEmpty) {
+          assignees.add(TaskRecipient(
+            id: managerId,
+            name: managerData['name'] ?? '',
+            phone: managerData['phone'] ?? '',
+          ));
+        }
+      }
+
+      if (assignees.isEmpty) {
+        Logger.warning('Пропуск магазина ${delivery.shopName} - не найдены данные заведующих');
+        continue;
+      }
+
+      try {
+        // Создаём задачу для этого магазина
+        final task = await createTemplateForSupplier(
+          title: 'Заказ Поставщика $supplierName',
+          description: 'Магазин: ${delivery.shopName}',
+          responseType: TaskResponseType.text, // "text" используется для да/нет
+          daysOfWeek: daysOfWeek,
+          startTime: '07:00',
+          endTime: '18:00',
+          reminderTimes: ['09:00', '12:00', '17:00'],
+          assignees: assignees,
+          createdBy: createdBy ?? 'system',
+          supplierId: supplierId,
+          shopId: delivery.shopId,
+          supplierName: supplierName,
+        );
+
+        createdTasks.add(task);
+        Logger.info('Создана задача для поставщика $supplierName, магазин: ${delivery.shopName}');
+      } catch (e) {
+        Logger.error('Ошибка создания задачи для магазина ${delivery.shopName}', e);
+      }
+    }
+
+    Logger.info('Создано ${createdTasks.length} задач для поставщика $supplierName');
+    return createdTasks;
+  }
+
+  /// Создать шаблон задачи для поставщика (с дополнительными полями)
+  static Future<RecurringTask> createTemplateForSupplier({
+    required String title,
+    required String description,
+    required TaskResponseType responseType,
+    required List<int> daysOfWeek,
+    required String startTime,
+    required String endTime,
+    required List<String> reminderTimes,
+    required List<TaskRecipient> assignees,
+    required String createdBy,
+    required String supplierId,
+    required String shopId,
+    required String supplierName,
+  }) async {
+    try {
+      final result = await BaseHttpService.post<RecurringTask>(
+        endpoint: _baseEndpoint,
+        body: {
+          'title': title,
+          'description': description,
+          'responseType': responseType.code,
+          'daysOfWeek': daysOfWeek,
+          'startTime': startTime,
+          'endTime': endTime,
+          'reminderTimes': reminderTimes,
+          'assignees': assignees.map((e) => e.toJson()).toList(),
+          'createdBy': createdBy,
+          'supplierId': supplierId,
+          'shopId': shopId,
+          'supplierName': supplierName,
+        },
+        fromJson: (json) => RecurringTask.fromJson(json),
+        itemKey: 'task',
+      );
+
+      if (result == null) {
+        throw Exception('Не удалось создать задачу');
+      }
+
+      return result;
+    } catch (e) {
+      Logger.error('Ошибка создания шаблона задачи для поставщика', e);
+      rethrow;
+    }
+  }
+
+  /// Удалить все задачи поставщика
+  static Future<void> deleteTasksForSupplier(String supplierId) async {
+    try {
+      // Получаем все задачи
+      final allTasks = await getAllTemplates();
+
+      // Фильтруем по supplierId
+      final supplierTasks = allTasks.where((t) => t.supplierId == supplierId).toList();
+
+      Logger.debug('Найдено ${supplierTasks.length} задач для удаления (поставщик: $supplierId)');
+
+      // Удаляем каждую задачу
+      for (final task in supplierTasks) {
+        await deleteTemplate(task.id);
+      }
+
+      Logger.info('Удалено ${supplierTasks.length} задач поставщика $supplierId');
+    } catch (e) {
+      Logger.error('Ошибка удаления задач поставщика', e);
+      rethrow;
+    }
+  }
+
+  /// Обновить задачи поставщика (удаляет старые и создаёт новые)
+  static Future<List<RecurringTask>> updateTasksForSupplier({
+    required String supplierId,
+    required String supplierName,
+    required List<SupplierShopDelivery> shopDeliveries,
+    required List<Map<String, String>> managersData,
+    String? createdBy,
+  }) async {
+    // Удаляем старые задачи
+    await deleteTasksForSupplier(supplierId);
+
+    // Создаём новые
+    return await createTasksForSupplier(
+      supplierId: supplierId,
+      supplierName: supplierName,
+      shopDeliveries: shopDeliveries,
+      managersData: managersData,
+      createdBy: createdBy,
+    );
   }
 }

@@ -9,6 +9,7 @@ import '../models/shift_question_model.dart';
 import '../models/shift_report_model.dart';
 import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница с вопросами пересменки
@@ -462,11 +463,19 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
       // Сохраняем на сервере
       final saved = await ShiftReportService.saveReport(report);
-      
+
       if (!saved) {
         // Если не удалось сохранить на сервере, сохраняем локально как резерв
         await ShiftReport.saveReport(report);
       }
+
+      // Отправляем уведомление админу о новом отчёте (пересменка)
+      await ReportNotificationService.createNotification(
+        reportType: ReportType.shiftHandover,
+        reportId: reportId,
+        employeeName: widget.employeeName,
+        shopName: widget.shopAddress,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

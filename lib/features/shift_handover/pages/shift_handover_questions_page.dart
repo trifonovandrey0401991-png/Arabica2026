@@ -9,6 +9,7 @@ import '../models/shift_handover_question_model.dart';
 import '../models/shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
+import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../envelope/pages/envelope_form_page.dart';
 
@@ -479,6 +480,15 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         // Если не удалось сохранить на сервере, сохраняем локально как резерв
         await ShiftHandoverReport.saveLocal(report);
       }
+
+      // Отправляем уведомление админу о новом отчёте (сдача смены)
+      await ReportNotificationService.createNotification(
+        reportType: ReportType.shiftReport,
+        reportId: reportId,
+        employeeName: widget.employeeName,
+        shopName: widget.shopAddress,
+        description: widget.targetRole == 'manager' ? 'Заведующая' : 'Сотрудник',
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

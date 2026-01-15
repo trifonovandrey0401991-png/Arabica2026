@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 import 'rko_employee_reports_page.dart';
 import 'rko_shop_reports_page.dart';
+import '../../../core/services/report_notification_service.dart';
 
 /// Главная страница отчетов по РКО
-class RKOReportsPage extends StatelessWidget {
+class RKOReportsPage extends StatefulWidget {
   const RKOReportsPage({super.key});
+
+  @override
+  State<RKOReportsPage> createState() => _RKOReportsPageState();
+}
+
+class _RKOReportsPageState extends State<RKOReportsPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Отмечаем все уведомления этого типа как просмотренные
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.rko);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,14 +95,3 @@ class RKOReportsPage extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-

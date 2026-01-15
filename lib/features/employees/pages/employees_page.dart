@@ -17,6 +17,7 @@ class Employee {
   final String? phone;
   final String? email;
   final bool? isAdmin;
+  final bool? isManager; // Флаг заведующего(ей)
   final String? employeeName;
   final int? referralCode; // Уникальный код приглашения (1-1000)
   final List<String> preferredWorkDays; // Желаемые дни работы (monday, tuesday, etc.)
@@ -31,6 +32,7 @@ class Employee {
     this.phone,
     this.email,
     this.isAdmin,
+    this.isManager,
     this.employeeName,
     this.referralCode,
     this.preferredWorkDays = const [],
@@ -85,6 +87,7 @@ class Employee {
       phone: json['phone']?.toString().trim(),
       email: json['email']?.toString().trim(),
       isAdmin: json['isAdmin'] == true || json['isAdmin'] == 1 || json['isAdmin'] == '1',
+      isManager: json['isManager'] == true || json['isManager'] == 1 || json['isManager'] == '1',
       employeeName: json['employeeName']?.toString().trim(),
       referralCode: json['referralCode'] is int ? json['referralCode'] : int.tryParse(json['referralCode']?.toString() ?? ''),
       preferredWorkDays: workDays,
@@ -102,6 +105,7 @@ class Employee {
       'phone': phone,
       'email': email,
       'isAdmin': isAdmin,
+      'isManager': isManager,
       'employeeName': employeeName,
       'referralCode': referralCode,
       'preferredWorkDays': preferredWorkDays,
@@ -118,6 +122,7 @@ class Employee {
     String? phone,
     String? email,
     bool? isAdmin,
+    bool? isManager,
     String? employeeName,
     int? referralCode,
     List<String>? preferredWorkDays,
@@ -132,6 +137,7 @@ class Employee {
       phone: phone ?? this.phone,
       email: email ?? this.email,
       isAdmin: isAdmin ?? this.isAdmin,
+      isManager: isManager ?? this.isManager,
       employeeName: employeeName ?? this.employeeName,
       referralCode: referralCode ?? this.referralCode,
       preferredWorkDays: preferredWorkDays ?? this.preferredWorkDays,

@@ -107,7 +107,7 @@ class _ProductSearchShopSelectionPageState extends State<ProductSearchShopSelect
                     ..._shops.map((shop) => Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
-                            leading: Icon(shop.icon, color: const Color(0xFF004D40), size: 32),
+                            leading: shop.leadingIcon,
                             title: Text(
                               shop.name,
                               style: const TextStyle(fontWeight: FontWeight.bold),

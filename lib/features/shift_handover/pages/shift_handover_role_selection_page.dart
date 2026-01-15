@@ -6,11 +6,13 @@ import '../../envelope/pages/envelope_form_page.dart';
 class ShiftHandoverRoleSelectionPage extends StatelessWidget {
   final String employeeName;
   final String shopAddress;
+  final bool isCurrentUserManager;
 
   const ShiftHandoverRoleSelectionPage({
     super.key,
     required this.employeeName,
     required this.shopAddress,
+    this.isCurrentUserManager = false,
   });
 
   @override
@@ -115,28 +117,29 @@ class ShiftHandoverRoleSelectionPage extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
-
-                // Заведующая
-                _buildOptionCard(
-                  context,
-                  title: 'Заведующая',
-                  icon: Icons.supervisor_account,
-                  description: 'Вопросы для заведующих',
-                  color: Colors.purple,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ShiftHandoverQuestionsPage(
-                          employeeName: employeeName,
-                          shopAddress: shopAddress,
-                          targetRole: 'manager',
+                // Заведующая - показываем только для сотрудников с флагом isManager
+                if (isCurrentUserManager) ...[
+                  const SizedBox(height: 16),
+                  _buildOptionCard(
+                    context,
+                    title: 'Заведующая',
+                    icon: Icons.supervisor_account,
+                    description: 'Вопросы для заведующих',
+                    color: Colors.purple,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ShiftHandoverQuestionsPage(
+                            employeeName: employeeName,
+                            shopAddress: shopAddress,
+                            targetRole: 'manager',
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),

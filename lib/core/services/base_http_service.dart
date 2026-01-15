@@ -231,6 +231,46 @@ class BaseHttpService {
     }
   }
 
+  /// Удалить элемент на сервере с возвратом полного ответа.
+  ///
+  /// [endpoint] - путь API с ID (например, '/api/tasks/123')
+  /// Возвращает Map с данными ответа или null при ошибке.
+  static Future<Map<String, dynamic>?> deleteWithResponse({
+    required String endpoint,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('🗑️ DELETE $endpoint');
+
+      final response = await http
+          .delete(Uri.parse('${ApiConstants.serverUrl}$endpoint'))
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('✅ Deleted item at $endpoint');
+          return result;
+        } else {
+          Logger.error('❌ API error: ${result['error']}');
+          return result;
+        }
+      } else {
+        Logger.error('❌ HTTP ${response.statusCode} on $endpoint');
+        return {
+          'success': false,
+          'error': 'HTTP ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
   /// Простой POST-запрос без десериализации ответа.
   ///
   /// Используется когда не нужен возвращаемый объект.
@@ -382,6 +422,38 @@ class BaseHttpService {
         if (result['success'] == true) {
           Logger.debug('✅ Patched item at $endpoint');
           return fromJson(result[itemKey] as Map<String, dynamic>);
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    }
+  }
+
+  /// PATCH-запрос возвращающий сырой JSON.
+  ///
+  /// Используется когда нужен доступ к нескольким полям ответа.
+  static Future<Map<String, dynamic>?> patchRaw({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 PATCH $endpoint');
+
+      final response = await http
+          .patch(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.jsonHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
         }
       }
       return null;

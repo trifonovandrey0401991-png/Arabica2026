@@ -48,6 +48,10 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
   }
 
   Future<void> _performAutoFill() async {
+    print('📋 Диалог автозаполнения: нажата кнопка Заполнить');
+    print('   Период: с $_selectedStartDay по $_selectedEndDay');
+    print('   Режим: ${_replaceExisting ? "Заменить" : "Только пустые"}');
+
     if (_selectedStartDay > _selectedEndDay) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -58,17 +62,21 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    print('✅ Диалог автозаполнения: возвращаем результат');
+    print('   mounted: $mounted');
 
     // Возвращаем результат диалога
     if (mounted) {
-      Navigator.of(context).pop({
+      final result = {
         'startDay': _selectedStartDay,
         'endDay': _selectedEndDay,
         'replaceExisting': _replaceExisting,
-      });
+      };
+      print('   Результат: $result');
+      Navigator.of(context).pop(result);
+      print('   Navigator.pop вызван');
+    } else {
+      print('   ⚠️ Диалог не mounted!');
     }
   }
 

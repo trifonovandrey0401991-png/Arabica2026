@@ -177,7 +177,7 @@ class _MenuPageState extends State<MenuPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            '${item.price} ₽',
+            '${item.price} руб.',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ],
@@ -336,9 +336,9 @@ class _MenuPageState extends State<MenuPage> {
                                     gridDelegate:
                                         const SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: 2,
-                                      crossAxisSpacing: 14,
-                                      mainAxisSpacing: 14,
-                                      childAspectRatio: 0.72,
+                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: 12,
+                                      childAspectRatio: 0.9,
                                     ),
                                     itemCount: itemsOfCategory.length,
                                     itemBuilder: (context, i) {
@@ -365,6 +365,7 @@ class _MenuPageState extends State<MenuPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.stretch,
                                             children: [
+                                              // Фото занимает всё доступное место
                                               Expanded(
                                                 child: ClipRRect(
                                                   borderRadius:
@@ -374,27 +375,29 @@ class _MenuPageState extends State<MenuPage> {
                                                   child: _buildItemImage(item),
                                                 ),
                                               ),
+                                              // Компактная информация внизу
                                               Padding(
-                                                padding: const EdgeInsets.all(10),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8, vertical: 6),
+                                                child: Row(
                                                   children: [
-                                                    Text(
-                                                      item.name,
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.w600,
+                                                    Expanded(
+                                                      child: Text(
+                                                        item.name,
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow.ellipsis,
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 4),
+                                                    const SizedBox(width: 4),
                                                     Text(
-                                                      "${item.price} ₽",
+                                                      "${item.price} руб.",
                                                       style: const TextStyle(
-                                                        fontSize: 16,
+                                                        fontSize: 14,
                                                         fontWeight: FontWeight.bold,
                                                         color: Color(0xFF00695C),
                                                       ),

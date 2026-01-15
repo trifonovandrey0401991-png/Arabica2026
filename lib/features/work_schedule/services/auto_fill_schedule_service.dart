@@ -27,19 +27,6 @@ class AutoFillScheduleService {
 
     // 1. Подготовка данных
     final days = _getDaysInPeriod(startDate, endDate);
-    
-    // Разделяем сотрудников на группы
-    final employeesWithPreferences = employees.where((e) =>
-      e.preferredWorkDays.isNotEmpty ||
-      e.preferredShops.isNotEmpty ||
-      e.shiftPreferences.isNotEmpty
-    ).toList();
-    
-    final employeesWithoutPreferences = employees.where((e) =>
-      e.preferredWorkDays.isEmpty &&
-      e.preferredShops.isEmpty &&
-      e.shiftPreferences.isEmpty
-    ).toList();
 
     // Создаем копию существующего графика для работы
     final workingSchedule = existingSchedule != null
@@ -53,8 +40,11 @@ class AutoFillScheduleService {
           )
         : WorkSchedule(month: startDate, entries: []);
 
+    Logger.debug('🔧 Начинаем заполнение. Рабочий график содержит ${workingSchedule.entries.length} записей');
+
     // 2. Для каждого дня периода
     for (var day in days) {
+      Logger.debug('📅 Обрабатываем день: ${day.day}.${day.month}.${day.year}');
       // Для каждого магазина
       for (var shop in shops) {
         final settings = shopSettingsCache[shop.address];
@@ -65,7 +55,8 @@ class AutoFillScheduleService {
           ShiftType.morning,
           ShiftType.evening,
         ];
-        
+        Logger.debug('🏪 Магазин: ${shop.name}, требуемые смены: ${requiredShifts.map((s) => s.label).join(", ")}');
+
         // Если режим "Заполнить пустые", проверяем существующие смены
         if (!replaceExisting) {
           final existingShifts = workingSchedule.entries.where((e) =>
@@ -89,32 +80,52 @@ class AutoFillScheduleService {
 
         // Заполняем необходимые смены
         for (var shiftType in requiredShifts) {
-          // Сначала пытаемся найти сотрудника с предпочтениями
-          Employee? selectedEmployee = _selectBestEmployee(
-            shop: shop,
-            day: day,
-            shiftType: shiftType,
-            employees: employeesWithPreferences,
-            schedule: workingSchedule,
-          );
+          // КРИТИЧНО: Проверяем, нет ли уже смены для этого магазина+дня+типа
+          final existingForThisSlot = workingSchedule.entries.where((e) =>
+            e.date.year == day.year &&
+            e.date.month == day.month &&
+            e.date.day == day.day &&
+            e.shopAddress == shop.address &&
+            e.shiftType == shiftType
+          ).toList();
 
-          // Если не нашли с предпочтениями, используем без предпочтений
-          selectedEmployee ??= _selectBestEmployee(
-            shop: shop,
-            day: day,
-            shiftType: shiftType,
-            employees: employeesWithoutPreferences,
-            schedule: workingSchedule,
-          );
+          if (existingForThisSlot.isNotEmpty) {
+            Logger.debug('⏭️ ДУБЛИКАТ ОБНАРУЖЕН! Пропускаем ${shop.name}, ${day.day}.${day.month}, ${shiftType.label}');
+            Logger.debug('   Уже существует ${existingForThisSlot.length} смен:');
+            for (var e in existingForThisSlot) {
+              Logger.debug('     - ID=${e.id}, Сотрудник=${e.employeeName}');
+            }
+            continue;
+          }
 
-          // Если все еще не нашли, используем любого доступного
-          selectedEmployee ??= _selectAnyAvailableEmployee(
-            shop: shop,
-            day: day,
-            shiftType: shiftType,
-            employees: employees,
-            schedule: workingSchedule,
-          );
+          Logger.debug('🆕 Создаём смену: ${shop.name}, ${day.day}.${day.month}, ${shiftType.label}');
+
+          Employee? selectedEmployee;
+
+          // Пытаемся найти сотрудника с 4 уровнями приоритета
+          for (int priorityLevel = 0; priorityLevel <= 3; priorityLevel++) {
+            selectedEmployee = _selectBestEmployee(
+              shop: shop,
+              day: day,
+              shiftType: shiftType,
+              employees: employees,
+              schedule: workingSchedule,
+              priorityLevel: priorityLevel,
+            );
+
+            if (selectedEmployee != null) {
+              // Логируем если использовали пониженный приоритет
+              if (priorityLevel > 0) {
+                final priorityMessage = priorityLevel == 1
+                    ? 'игнорируем предпочтения по дням'
+                    : priorityLevel == 2
+                        ? 'игнорируем предпочтения по магазинам'
+                        : 'игнорируем предпочтения по сменам';
+                Logger.debug('⚠️ ${shop.name}, ${day.day}.${day.month}, ${shiftType.label}: $priorityMessage');
+              }
+              break;
+            }
+          }
 
           if (selectedEmployee != null) {
             final entry = WorkScheduleEntry(
@@ -127,7 +138,8 @@ class AutoFillScheduleService {
             );
             newEntries.add(entry);
             workingSchedule.entries.add(entry);
-            Logger.debug('📝 Назначен: ${selectedEmployee.name} → ${shop.name}, ${day.day}.${day.month}.${day.year}, ${shiftType.label}');
+            Logger.debug('✅ Добавлена смена: ${selectedEmployee.name} → ${shop.name}, ${day.day}.${day.month}.${day.year}, ${shiftType.label}');
+            Logger.debug('   Теперь в рабочем графике ${workingSchedule.entries.length} записей');
           } else {
             warnings.add(
               'Не удалось найти сотрудника для ${shop.name}, ${day.day}.${day.month}, ${shiftType.label}'
@@ -171,50 +183,55 @@ class AutoFillScheduleService {
   }
 
   /// Выбрать лучшего сотрудника для смены
+  /// priorityLevel: 0-3 определяет какие предпочтения учитываются
+  /// 0 = учитываем ВСЕ предпочтения
+  /// 1 = игнорируем предпочтения по дням
+  /// 2 = игнорируем дни + магазины
+  /// 3 = игнорируем всё (дни + магазины + смены)
   static Employee? _selectBestEmployee({
     required Shop shop,
     required DateTime day,
     required ShiftType shiftType,
     required List<Employee> employees,
     required WorkSchedule schedule,
+    required int priorityLevel,
   }) {
     // Сортируем сотрудников по приоритету
     final scoredEmployees = employees.map((employee) {
       int score = 0;
 
-      // Приоритет 1: Предпочтение магазина (+10)
-      if (_isPreferredShop(employee, shop)) {
+      // Предпочтение магазина (учитываем если priorityLevel < 2)
+      if (priorityLevel < 2 && _isPreferredShop(employee, shop)) {
         score += 10;
       }
 
-      // Приоритет 2: Желаемый день работы (+5)
-      if (_isPreferredDay(employee, day)) {
+      // Желаемый день работы (учитываем если priorityLevel < 1)
+      if (priorityLevel < 1 && _isPreferredDay(employee, day)) {
         score += 5;
       }
 
-      // Приоритет 3: Предпочтение смены
-      final grade = _getShiftPreferenceGrade(employee, shiftType);
-      if (grade == 1) {
-        score += 3; // Всегда хочет
-      } else if (grade == 2) {
-        score += 1; // Может, но не хочет
-      } else if (grade == 3) {
-        score -= 10; // Не будет работать
+      // Предпочтение смены (учитываем если priorityLevel < 3)
+      if (priorityLevel < 3) {
+        final grade = _getShiftPreferenceGrade(employee, shiftType);
+        if (grade == 1) {
+          score += 3; // Всегда хочет
+        } else if (grade == 2) {
+          score += 1; // Может, но не хочет
+        } else if (grade == 3) {
+          score -= 100; // Не будет работать (блокирует)
+        }
       }
 
-      // Приоритет 4: Отсутствие конфликтов (+2)
+      // Отсутствие конфликтов (+2)
       if (!_hasConflict(employee, day, shiftType, schedule)) {
         score += 2;
       }
 
-      // Приоритет 5: Усиленная балансировка нагрузки
-      // Чем меньше смен назначено, тем выше приоритет
+      // Балансировка нагрузки
       final assignedShiftsCount = schedule.entries
           .where((e) => e.employeeId == employee.id)
           .length;
 
-      // Экстра-бонус для сотрудников без смен (+100)
-      // Обычная балансировка (от +30 до 0)
       if (assignedShiftsCount == 0) {
         score += 100; // Гарантированный максимальный приоритет
       } else {
@@ -225,8 +242,10 @@ class AutoFillScheduleService {
       return {'employee': employee, 'score': score};
     }).toList();
 
-    // Фильтруем сотрудников с отрицательным счетом (не будут работать)
-    scoredEmployees.removeWhere((item) => item['score'] as int < 0);
+    // Фильтруем с отрицательным счетом (только если priorityLevel < 3)
+    if (priorityLevel < 3) {
+      scoredEmployees.removeWhere((item) => item['score'] as int < 0);
+    }
 
     // Сортируем по счету (больше = лучше)
     scoredEmployees.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
@@ -239,22 +258,6 @@ class AutoFillScheduleService {
       }
     }
 
-    return null;
-  }
-
-  /// Выбрать любого доступного сотрудника
-  static Employee? _selectAnyAvailableEmployee({
-    required Shop shop,
-    required DateTime day,
-    required ShiftType shiftType,
-    required List<Employee> employees,
-    required WorkSchedule schedule,
-  }) {
-    for (var employee in employees) {
-      if (_canWorkShift(employee, day, shiftType, schedule)) {
-        return employee;
-      }
-    }
     return null;
   }
 
@@ -321,23 +324,52 @@ class AutoFillScheduleService {
            employee.preferredShops.contains(shop.address);
   }
 
-  /// Проверить конфликты (утро после вечера)
+  /// Проверить конфликты (24-часовые ограничения)
   static bool _hasConflict(
     Employee employee,
     DateTime day,
     ShiftType shiftType,
     WorkSchedule schedule,
   ) {
-    if (shiftType != ShiftType.morning) return false;
+    // Запрет 1: Утро после вечерней смены предыдущего дня
+    if (shiftType == ShiftType.morning) {
+      final previousDay = day.subtract(const Duration(days: 1));
+      final hadEvening = schedule.entries.any((e) =>
+        e.employeeId == employee.id &&
+        e.date.year == previousDay.year &&
+        e.date.month == previousDay.month &&
+        e.date.day == previousDay.day &&
+        e.shiftType == ShiftType.evening
+      );
+      if (hadEvening) return true;
+    }
 
-    final previousDay = day.subtract(const Duration(days: 1));
-    return schedule.entries.any((e) =>
-      e.employeeId == employee.id &&
-      e.date.year == previousDay.year &&
-      e.date.month == previousDay.month &&
-      e.date.day == previousDay.day &&
-      e.shiftType == ShiftType.evening
-    );
+    // Запрет 2: Вечерняя в тот же день после утренней (24 часа работы)
+    if (shiftType == ShiftType.evening) {
+      final hadMorning = schedule.entries.any((e) =>
+        e.employeeId == employee.id &&
+        e.date.year == day.year &&
+        e.date.month == day.month &&
+        e.date.day == day.day &&
+        e.shiftType == ShiftType.morning
+      );
+      if (hadMorning) return true;
+    }
+
+    // Запрет 3: Дневная на следующий день после вечерней (24 часа работы)
+    if (shiftType == ShiftType.day) {
+      final previousDay = day.subtract(const Duration(days: 1));
+      final hadEvening = schedule.entries.any((e) =>
+        e.employeeId == employee.id &&
+        e.date.year == previousDay.year &&
+        e.date.month == previousDay.month &&
+        e.date.day == previousDay.day &&
+        e.shiftType == ShiftType.evening
+      );
+      if (hadEvening) return true;
+    }
+
+    return false;
   }
 
   /// Валидация графика

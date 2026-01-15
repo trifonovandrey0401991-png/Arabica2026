@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 2600">
+  <defs>
+    <linearGradient id="employeeBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E3F2FD"/>
+      <stop offset="100%" style="stop-color:#BBDEFB"/>
+    </linearGradient>
+    <linearGradient id="adminBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FCE4EC"/>
+      <stop offset="100%" style="stop-color:#F8BBD9"/>
+    </linearGradient>
+    <linearGradient id="serverBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8F5E9"/>
+      <stop offset="100%" style="stop-color:#C8E6C9"/>
+    </linearGradient>
+    <linearGradient id="storageBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFF3E0"/>
+      <stop offset="100%" style="stop-color:#FFE0B2"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="3" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="2600" fill="#FAFAFA"/>
+
+  <!-- Title -->
+  <text x="700" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#1A237E">
+    Система #11: График работы (Work Schedule)
+  </text>
+  <text x="700" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#666">
+    Расписание смен сотрудников + Передача смен между сотрудниками
+  </text>
+
+  <!-- ==================== SHIFT TYPES ==================== -->
+
+  <rect x="50" y="120" width="1300" height="140" rx="15" fill="url(#storageBg)" filter="url(#shadow)"/>
+  <text x="700" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#E65100">
+    ТИПЫ СМЕН (ShiftType)
+  </text>
+
+  <!-- Morning -->
+  <rect x="70" y="175" width="380" height="70" rx="10" fill="#C8E6C9" stroke="#4CAF50" stroke-width="2"/>
+  <text x="260" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2E7D32">MORNING (Утро)</text>
+  <text x="260" y="225" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#333">08:00 - 16:00</text>
+
+  <!-- Day -->
+  <rect x="510" y="175" width="380" height="70" rx="10" fill="#BBDEFB" stroke="#2196F3" stroke-width="2"/>
+  <text x="700" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1565C0">DAY (День)</text>
+  <text x="700" y="225" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#333">12:00 - 20:00</text>
+
+  <!-- Evening -->
+  <rect x="950" y="175" width="380" height="70" rx="10" fill="#FFE0B2" stroke="#FF9800" stroke-width="2"/>
+  <text x="1140" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#E65100">EVENING (Вечер)</text>
+  <text x="1140" y="225" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#333">16:00 - 00:00</text>
+
+  <!-- ==================== EMPLOYEE SECTION ==================== -->
+
+  <rect x="50" y="280" width="650" height="530" rx="15" fill="url(#employeeBg)" filter="url(#shadow)"/>
+  <text x="375" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#1565C0">
+    СОТРУДНИК (MySchedulePage)
+  </text>
+
+  <!-- Schedule Tab -->
+  <rect x="70" y="335" width="290" height="200" rx="10" fill="white" stroke="#1565C0" stroke-width="2"/>
+  <text x="215" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1565C0">Вкладка: Расписание</text>
+  <text x="90" y="385" font-family="Arial, sans-serif" font-size="11" fill="#333">• Календарь на месяц</text>
+  <text x="90" y="405" font-family="Arial, sans-serif" font-size="11" fill="#333">• Список смен по датам</text>
+  <text x="90" y="425" font-family="Arial, sans-serif" font-size="11" fill="#333">• Цвета по типу смены</text>
+  <text x="90" y="445" font-family="Arial, sans-serif" font-size="11" fill="#333">• Время из ShopSettings</text>
+  <text x="90" y="465" font-family="Arial, sans-serif" font-size="11" fill="#333">• Адрес магазина</text>
+  <text x="90" y="485" font-family="Arial, sans-serif" font-size="11" fill="#666">• Статистика (утро/день/вечер)</text>
+  <rect x="90" y="505" width="180" height="25" rx="5" fill="#E3F2FD" stroke="#1565C0"/>
+  <text x="180" y="522" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#1565C0">Кнопка: Передать смену</text>
+
+  <!-- Notifications Tab -->
+  <rect x="380" y="335" width="300" height="200" rx="10" fill="white" stroke="#FF9800" stroke-width="2"/>
+  <text x="530" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF9800">Вкладка: Входящие</text>
+  <text x="400" y="385" font-family="Arial, sans-serif" font-size="11" fill="#333">• Запросы от коллег</text>
+  <text x="400" y="405" font-family="Arial, sans-serif" font-size="11" fill="#333">• Badge с непрочитанными</text>
+  <text x="400" y="425" font-family="Arial, sans-serif" font-size="11" fill="#333">• Информация о смене</text>
+  <text x="400" y="445" font-family="Arial, sans-serif" font-size="11" fill="#333">• Комментарий отправителя</text>
+  <text x="400" y="485" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#FF9800">Действия:</text>
+  <rect x="400" y="500" width="80" height="25" rx="5" fill="#C8E6C9" stroke="#4CAF50"/>
+  <text x="440" y="517" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#2E7D32">Принять</text>
+  <rect x="490" y="500" width="80" height="25" rx="5" fill="#FFCDD2" stroke="#F44336"/>
+  <text x="530" y="517" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#C62828">Отклонить</text>
+
+  <!-- Outgoing Tab -->
+  <rect x="70" y="545" width="610" height="130" rx="10" fill="white" stroke="#9C27B0" stroke-width="2"/>
+  <text x="375" y="570" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#9C27B0">Вкладка: Мои заявки (исходящие)</text>
+  <text x="90" y="595" font-family="Arial, sans-serif" font-size="11" fill="#333">• Отправленные запросы на передачу</text>
+  <text x="90" y="615" font-family="Arial, sans-serif" font-size="11" fill="#333">• Статусы: pending → accepted → approved / rejected / declined / expired</text>
+  <text x="90" y="635" font-family="Arial, sans-serif" font-size="11" fill="#333">• Badge с обновлёнными статусами (зелёный)</text>
+  <text x="90" y="655" font-family="Arial, sans-serif" font-size="11" fill="#666">• Информация: кто принял, когда отправлено</text>
+
+  <!-- Transfer Process -->
+  <rect x="70" y="685" width="610" height="110" rx="10" fill="#E8EAF6" stroke="#3F51B5" stroke-width="2"/>
+  <text x="375" y="710" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#3F51B5">Процесс передачи смены</text>
+  <text x="90" y="735" font-family="Arial, sans-serif" font-size="11" fill="#333">1. Выбор смены из списка → 2. Выбор получателя (или "всем") →</text>
+  <text x="90" y="755" font-family="Arial, sans-serif" font-size="11" fill="#333">3. Комментарий (опционально) → 4. Отправка запроса →</text>
+  <text x="90" y="775" font-family="Arial, sans-serif" font-size="11" fill="#333">5. Получатель принимает → 6. Админ одобряет → 7. График обновляется</text>
+
+  <!-- ==================== ADMIN SECTION ==================== -->
+
+  <rect x="720" y="280" width="630" height="530" rx="15" fill="url(#adminBg)" filter="url(#shadow)"/>
+  <text x="1035" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#C2185B">
+    АДМИН (WorkSchedulePage)
+  </text>
+
+  <!-- Schedule Management -->
+  <rect x="740" y="335" width="590" height="200" rx="10" fill="white" stroke="#C2185B" stroke-width="2"/>
+  <text x="1035" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#C2185B">Управление графиком</text>
+  <text x="760" y="385" font-family="Arial, sans-serif" font-size="11" fill="#333">• Календарь на месяц для ВСЕХ сотрудников</text>
+  <text x="760" y="405" font-family="Arial, sans-serif" font-size="11" fill="#333">• Добавление/редактирование/удаление смен</text>
+  <text x="760" y="425" font-family="Arial, sans-serif" font-size="11" fill="#333">• Массовое создание: bulkCreateShifts()</text>
+  <text x="760" y="445" font-family="Arial, sans-serif" font-size="11" fill="#333">• Копирование недели: copyWeek()</text>
+  <text x="760" y="465" font-family="Arial, sans-serif" font-size="11" fill="#333">• Шаблоны: сохранение и применение</text>
+  <text x="760" y="485" font-family="Arial, sans-serif" font-size="11" fill="#666">• Автозаполнение: AutoFillScheduleService</text>
+
+  <rect x="760" y="505" width="150" height="25" rx="5" fill="#FCE4EC" stroke="#C2185B"/>
+  <text x="835" y="522" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#C2185B">Сохранить шаблон</text>
+  <rect x="920" y="505" width="150" height="25" rx="5" fill="#FCE4EC" stroke="#C2185B"/>
+  <text x="995" y="522" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#C2185B">Применить шаблон</text>
+
+  <!-- Transfer Approval -->
+  <rect x="740" y="545" width="590" height="130" rx="10" fill="white" stroke="#C2185B" stroke-width="2"/>
+  <text x="1035" y="570" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#C2185B">Одобрение передач (accepted → approved/declined)</text>
+  <text x="760" y="595" font-family="Arial, sans-serif" font-size="11" fill="#333">• Список запросов со статусом "accepted"</text>
+  <text x="760" y="615" font-family="Arial, sans-serif" font-size="11" fill="#333">• Информация: от кого → кому, дата, магазин</text>
+  <text x="760" y="635" font-family="Arial, sans-serif" font-size="11" fill="#333">• Одобрить → график автоматически обновляется</text>
+  <text x="760" y="655" font-family="Arial, sans-serif" font-size="11" fill="#333">• Отклонить → статус declined</text>
+
+  <!-- Statistics -->
+  <rect x="740" y="685" width="590" height="110" rx="10" fill="white" stroke="#C2185B" stroke-width="2"/>
+  <text x="1035" y="710" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#C2185B">Статистика</text>
+  <text x="760" y="735" font-family="Arial, sans-serif" font-size="11" fill="#333">• Смены по сотрудникам</text>
+  <text x="760" y="755" font-family="Arial, sans-serif" font-size="11" fill="#333">• Смены по магазинам</text>
+  <text x="760" y="775" font-family="Arial, sans-serif" font-size="11" fill="#333">• Количество утро/день/вечер</text>
+  <text x="1000" y="735" font-family="Arial, sans-serif" font-size="11" fill="#333">• Валидатор: WorkScheduleValidator</text>
+  <text x="1000" y="755" font-family="Arial, sans-serif" font-size="11" fill="#333">• Проверка конфликтов</text>
+
+  <!-- ==================== SERVER SECTION ==================== -->
+
+  <rect x="50" y="830" width="1300" height="280" rx="15" fill="url(#serverBg)" filter="url(#shadow)"/>
+  <text x="700" y="865" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#2E7D32">
+    СЕРВЕР (API)
+  </text>
+
+  <!-- Schedule API -->
+  <rect x="70" y="890" width="600" height="200" rx="10" fill="white" stroke="#2E7D32" stroke-width="2"/>
+  <text x="370" y="915" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2E7D32">Work Schedule API</text>
+
+  <text x="90" y="945" font-family="monospace" font-size="10" fill="#333">GET  /api/work-schedule?month=YYYY-MM</text>
+  <text x="100" y="960" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Весь график на месяц</text>
+
+  <text x="90" y="985" font-family="monospace" font-size="10" fill="#333">GET  /api/work-schedule/employee/:id?month=YYYY-MM</text>
+  <text x="100" y="1000" font-family="Arial, sans-serif" font-size="9" fill="#666">→ График конкретного сотрудника</text>
+
+  <text x="90" y="1025" font-family="monospace" font-size="10" fill="#333">POST /api/work-schedule (body: entry + month)</text>
+  <text x="100" y="1040" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Создать/обновить смену</text>
+
+  <text x="90" y="1065" font-family="monospace" font-size="10" fill="#333">POST /api/work-schedule/bulk (body: entries[])</text>
+  <text x="100" y="1080" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Массовое создание</text>
+
+  <!-- Transfer API -->
+  <rect x="690" y="890" width="640" height="200" rx="10" fill="white" stroke="#2E7D32" stroke-width="2"/>
+  <text x="1010" y="915" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2E7D32">Shift Transfer API</text>
+
+  <text x="710" y="945" font-family="monospace" font-size="10" fill="#333">POST /api/shift-transfer (body: request)</text>
+  <text x="720" y="960" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Создать запрос на передачу</text>
+
+  <text x="710" y="985" font-family="monospace" font-size="10" fill="#333">GET  /api/shift-transfer/employee/:id</text>
+  <text x="720" y="1000" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Входящие запросы</text>
+
+  <text x="710" y="1025" font-family="monospace" font-size="10" fill="#333">POST /api/shift-transfer/:id/accept (body: employeeId, name)</text>
+  <text x="720" y="1040" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Сотрудник принимает запрос</text>
+
+  <text x="710" y="1065" font-family="monospace" font-size="10" fill="#333">POST /api/shift-transfer/:id/approve | /decline</text>
+  <text x="720" y="1080" font-family="Arial, sans-serif" font-size="9" fill="#666">→ Админ одобряет/отклоняет</text>
+
+  <!-- ==================== DETAILED DESCRIPTION ==================== -->
+
+  <rect x="50" y="1130" width="1300" height="1440" rx="15" fill="white" stroke="#1A237E" stroke-width="2" filter="url(#shadow)"/>
+  <text x="700" y="1165" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#1A237E">
+    ДЕТАЛЬНОЕ ОПИСАНИЕ СИСТЕМЫ
+  </text>
+
+  <!-- WorkScheduleEntry Model -->
+  <rect x="70" y="1190" width="600" height="200" rx="10" fill="#E3F2FD" stroke="#1976D2" stroke-width="2"/>
+  <text x="370" y="1215" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1976D2">
+    WorkScheduleEntry (Запись графика)
+  </text>
+  <text x="90" y="1245" font-family="monospace" font-size="11" fill="#333">class WorkScheduleEntry {</text>
+  <text x="100" y="1265" font-family="monospace" font-size="11" fill="#333">  String id;           // UUID записи</text>
+  <text x="100" y="1285" font-family="monospace" font-size="11" fill="#333">  String employeeId;   // ID сотрудника</text>
+  <text x="100" y="1305" font-family="monospace" font-size="11" fill="#333">  String employeeName; // Имя сотрудника</text>
+  <text x="100" y="1325" font-family="monospace" font-size="11" fill="#333">  String shopAddress;  // Адрес магазина</text>
+  <text x="100" y="1345" font-family="monospace" font-size="11" fill="#333">  DateTime date;       // Дата смены (YYYY-MM-DD)</text>
+  <text x="100" y="1365" font-family="monospace" font-size="11" fill="#333">  ShiftType shiftType; // morning | day | evening</text>
+  <text x="90" y="1385" font-family="monospace" font-size="11" fill="#333">}</text>
+
+  <!-- ShiftTransferRequest Model -->
+  <rect x="690" y="1190" width="640" height="200" rx="10" fill="#FCE4EC" stroke="#C2185B" stroke-width="2"/>
+  <text x="1010" y="1215" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#C2185B">
+    ShiftTransferRequest (Запрос на передачу)
+  </text>
+  <text x="710" y="1245" font-family="monospace" font-size="10" fill="#333">String id, fromEmployeeId, fromEmployeeName</text>
+  <text x="710" y="1265" font-family="monospace" font-size="10" fill="#333">String? toEmployeeId, toEmployeeName // null = broadcast</text>
+  <text x="710" y="1285" font-family="monospace" font-size="10" fill="#333">String scheduleEntryId, shopAddress, shopName</text>
+  <text x="710" y="1305" font-family="monospace" font-size="10" fill="#333">DateTime shiftDate, createdAt, acceptedAt?, resolvedAt?</text>
+  <text x="710" y="1325" font-family="monospace" font-size="10" fill="#333">ShiftType shiftType, String? comment</text>
+  <text x="710" y="1345" font-family="monospace" font-size="10" fill="#333">ShiftTransferStatus status</text>
+  <text x="710" y="1365" font-family="monospace" font-size="10" fill="#333">String? acceptedByEmployeeId, acceptedByEmployeeName</text>
+  <text x="710" y="1385" font-family="monospace" font-size="10" fill="#333">bool isReadByRecipient, isReadByAdmin</text>
+
+  <!-- Status Flow -->
+  <rect x="70" y="1405" width="1260" height="160" rx="10" fill="#E8F5E9" stroke="#388E3C" stroke-width="2"/>
+  <text x="700" y="1430" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#388E3C">
+    ShiftTransferStatus (Статусы передачи)
+  </text>
+
+  <!-- Status boxes -->
+  <rect x="90" y="1455" width="130" height="50" rx="8" fill="#FFE0B2"/>
+  <text x="155" y="1475" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#E65100">PENDING</text>
+  <text x="155" y="1495" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Ожидает ответа</text>
+
+  <path d="M 220 1480 L 260 1480" stroke="#388E3C" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="260" y="1455" width="130" height="50" rx="8" fill="#BBDEFB"/>
+  <text x="325" y="1475" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#1565C0">ACCEPTED</text>
+  <text x="325" y="1495" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Ждёт админа</text>
+
+  <path d="M 390 1465 L 430 1455" stroke="#388E3C" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 390 1495 L 430 1505" stroke="#C62828" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="430" y="1440" width="130" height="40" rx="8" fill="#C8E6C9"/>
+  <text x="495" y="1465" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#2E7D32">APPROVED</text>
+
+  <rect x="430" y="1495" width="130" height="40" rx="8" fill="#FFCDD2"/>
+  <text x="495" y="1520" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#C62828">DECLINED</text>
+
+  <!-- Alternative paths -->
+  <path d="M 155 1505 L 155 1535 L 640 1535 L 640 1505" stroke="#C62828" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <rect x="580" y="1495" width="130" height="40" rx="8" fill="#FFCDD2"/>
+  <text x="645" y="1520" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#C62828">REJECTED</text>
+
+  <rect x="730" y="1495" width="130" height="40" rx="8" fill="#E0E0E0"/>
+  <text x="795" y="1520" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#616161">EXPIRED</text>
+
+  <text x="900" y="1475" font-family="Arial, sans-serif" font-size="10" fill="#666">• APPROVED → график обновляется</text>
+  <text x="900" y="1495" font-family="Arial, sans-serif" font-size="10" fill="#666">• REJECTED → сотрудник отклонил</text>
+  <text x="900" y="1515" font-family="Arial, sans-serif" font-size="10" fill="#666">• DECLINED → админ отклонил</text>
+  <text x="900" y="1535" font-family="Arial, sans-serif" font-size="10" fill="#666">• EXPIRED → истёк срок (30 дней)</text>
+
+  <!-- Flutter Files -->
+  <rect x="70" y="1580" width="600" height="280" rx="10" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="2"/>
+  <text x="370" y="1605" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#7B1FA2">
+    Flutter файлы
+  </text>
+
+  <text x="90" y="1635" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7B1FA2">Pages:</text>
+  <text x="100" y="1655" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/pages/my_schedule_page.dart</text>
+  <text x="100" y="1675" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/pages/work_schedule_page.dart</text>
+
+  <text x="90" y="1700" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7B1FA2">Services:</text>
+  <text x="100" y="1720" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/services/work_schedule_service.dart</text>
+  <text x="100" y="1740" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/services/shift_transfer_service.dart</text>
+  <text x="100" y="1760" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/services/auto_fill_schedule_service.dart</text>
+
+  <text x="90" y="1785" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7B1FA2">Models:</text>
+  <text x="100" y="1805" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/models/work_schedule_model.dart</text>
+  <text x="100" y="1825" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/models/shift_transfer_model.dart</text>
+
+  <text x="90" y="1850" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7B1FA2">Validators:</text>
+  <text x="100" y="1870" font-family="monospace" font-size="10" fill="#333">lib/features/work_schedule/work_schedule_validator.dart</text>
+
+  <!-- Server Files -->
+  <rect x="690" y="1580" width="640" height="280" rx="10" fill="#FFEBEE" stroke="#D32F2F" stroke-width="2"/>
+  <text x="1010" y="1605" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#D32F2F">
+    Серверные файлы и данные
+  </text>
+
+  <text x="710" y="1635" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#D32F2F">API (loyalty-proxy/index.js):</text>
+  <text x="720" y="1655" font-family="monospace" font-size="10" fill="#333">GET/POST /api/work-schedule/*</text>
+  <text x="720" y="1675" font-family="monospace" font-size="10" fill="#333">GET/POST /api/shift-transfer/*</text>
+  <text x="720" y="1695" font-family="monospace" font-size="10" fill="#333">GET/POST /api/work-schedule/template</text>
+
+  <text x="710" y="1720" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#D32F2F">Хранилище:</text>
+  <text x="720" y="1740" font-family="monospace" font-size="10" fill="#333">/root/arabica_app/data/work-schedule/</text>
+  <text x="730" y="1760" font-family="monospace" font-size="9" fill="#666">├── YYYY-MM.json (график на месяц)</text>
+  <text x="730" y="1780" font-family="monospace" font-size="9" fill="#666">├── templates.json (шаблоны графиков)</text>
+  <text x="730" y="1800" font-family="monospace" font-size="9" fill="#666">└── shift-transfers.json (запросы на передачу)</text>
+
+  <text x="710" y="1830" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#D32F2F">Время смен из ShopSettings:</text>
+  <text x="720" y="1850" font-family="Arial, sans-serif" font-size="10" fill="#333">morningShiftStart/End, dayShiftStart/End, nightShiftStart/End</text>
+
+  <!-- Important Notes -->
+  <rect x="70" y="1875" width="1260" height="180" rx="10" fill="#FFF8E1" stroke="#FF8F00" stroke-width="2"/>
+  <text x="700" y="1900" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FF8F00">
+    ВАЖНЫЕ ОСОБЕННОСТИ
+  </text>
+
+  <text x="90" y="1930" font-family="Arial, sans-serif" font-size="12" fill="#333">1. Broadcast запросы: toEmployeeId = null → запрос видят все сотрудники, первый принявший получает смену</text>
+  <text x="90" y="1955" font-family="Arial, sans-serif" font-size="12" fill="#333">2. Время смен: берётся из ShopSettings магазина (morningShiftStart/End...) или дефолт из enum</text>
+  <text x="90" y="1980" font-family="Arial, sans-serif" font-size="12" fill="#333">3. Двухэтапное одобрение: сотрудник принимает → админ подтверждает → график обновляется</text>
+  <text x="90" y="2005" font-family="Arial, sans-serif" font-size="12" fill="#333">4. Шаблоны графиков: можно сохранить неделю как шаблон и применять на другие недели</text>
+  <text x="90" y="2030" font-family="Arial, sans-serif" font-size="12" fill="#333">5. Копирование недели: copyWeek() переносит смены с одной недели на другую</text>
+  <text x="90" y="2055" font-family="Arial, sans-serif" font-size="12" fill="#333">6. Срок действия: запросы автоматически получают статус EXPIRED через 30 дней</text>
+
+  <!-- Transfer Flow Diagram -->
+  <rect x="70" y="2070" width="1260" height="230" rx="10" fill="#E8EAF6" stroke="#3F51B5" stroke-width="2"/>
+  <text x="700" y="2095" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#3F51B5">
+    ПОЛНАЯ СХЕМА ПЕРЕДАЧИ СМЕНЫ
+  </text>
+
+  <!-- Flow boxes -->
+  <rect x="90" y="2120" width="150" height="50" rx="8" fill="#C5CAE9"/>
+  <text x="165" y="2145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#3F51B5">1. Сотрудник A</text>
+  <text x="165" y="2160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">создаёт запрос</text>
+
+  <path d="M 240 2145 L 280 2145" stroke="#3F51B5" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="280" y="2120" width="150" height="50" rx="8" fill="#C5CAE9"/>
+  <text x="355" y="2145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#3F51B5">2. Сотрудник B</text>
+  <text x="355" y="2160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">видит входящий</text>
+
+  <path d="M 430 2145 L 470 2145" stroke="#3F51B5" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="470" y="2120" width="150" height="50" rx="8" fill="#C5CAE9"/>
+  <text x="545" y="2145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#3F51B5">3. Сотрудник B</text>
+  <text x="545" y="2160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">принимает</text>
+
+  <path d="M 620 2145 L 660 2145" stroke="#3F51B5" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="660" y="2120" width="150" height="50" rx="8" fill="#F8BBD9"/>
+  <text x="735" y="2145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#C2185B">4. Админ</text>
+  <text x="735" y="2160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">видит запрос</text>
+
+  <path d="M 810 2145 L 850 2145" stroke="#C2185B" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="850" y="2120" width="150" height="50" rx="8" fill="#F8BBD9"/>
+  <text x="925" y="2145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#C2185B">5. Админ</text>
+  <text x="925" y="2160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">одобряет</text>
+
+  <path d="M 1000 2145 L 1040 2145" stroke="#2E7D32" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <rect x="1040" y="2120" width="160" height="50" rx="8" fill="#C8E6C9"/>
+  <text x="1120" y="2145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#2E7D32">6. График</text>
+  <text x="1120" y="2160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">обновляется</text>
+
+  <!-- Details -->
+  <text x="90" y="2200" font-family="Arial, sans-serif" font-size="10" fill="#666">
+    1: ShiftTransferService.createRequest() → status: pending
+  </text>
+  <text x="90" y="2220" font-family="Arial, sans-serif" font-size="10" fill="#666">
+    3: ShiftTransferService.acceptRequest() → status: accepted, acceptedByEmployeeId/Name заполняются
+  </text>
+  <text x="90" y="2240" font-family="Arial, sans-serif" font-size="10" fill="#666">
+    5: ShiftTransferService.approveRequest() → status: approved, WorkScheduleEntry обновляется (employeeId/Name меняются)
+  </text>
+
+  <!-- MySchedulePage Tabs -->
+  <rect x="70" y="2315" width="1260" height="230" rx="10" fill="#E0F2F1" stroke="#00695C" stroke-width="2"/>
+  <text x="700" y="2340" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#00695C">
+    MySchedulePage - 3 вкладки (TabController)
+  </text>
+
+  <!-- Tab 1 -->
+  <rect x="90" y="2360" width="380" height="170" rx="8" fill="white" stroke="#00695C"/>
+  <text x="280" y="2385" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#00695C">Tab 0: Расписание</text>
+  <text x="110" y="2410" font-family="Arial, sans-serif" font-size="10" fill="#333">• _buildScheduleTab() + _buildCalendarView()</text>
+  <text x="110" y="2430" font-family="Arial, sans-serif" font-size="10" fill="#333">• ListView с карточками смен</text>
+  <text x="110" y="2450" font-family="Arial, sans-serif" font-size="10" fill="#333">• Статистика внизу (всего/утро/день/вечер)</text>
+  <text x="110" y="2470" font-family="Arial, sans-serif" font-size="10" fill="#333">• Кнопка "Передать смену"</text>
+  <text x="110" y="2490" font-family="Arial, sans-serif" font-size="10" fill="#333">• _showSwapDialog() → выбор смены</text>
+  <text x="110" y="2510" font-family="Arial, sans-serif" font-size="10" fill="#333">• _showRecipientSelectionDialog() → выбор кому</text>
+
+  <!-- Tab 2 -->
+  <rect x="490" y="2360" width="380" height="170" rx="8" fill="white" stroke="#FF9800"/>
+  <text x="680" y="2385" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#FF9800">Tab 1: Входящие</text>
+  <text x="510" y="2410" font-family="Arial, sans-serif" font-size="10" fill="#333">• _buildNotificationsTab()</text>
+  <text x="510" y="2430" font-family="Arial, sans-serif" font-size="10" fill="#333">• ShiftTransferService.getEmployeeRequests()</text>
+  <text x="510" y="2450" font-family="Arial, sans-serif" font-size="10" fill="#333">• _buildNotificationCard() для каждого</text>
+  <text x="510" y="2470" font-family="Arial, sans-serif" font-size="10" fill="#333">• Badge: _unreadCount (красный)</text>
+  <text x="510" y="2490" font-family="Arial, sans-serif" font-size="10" fill="#333">• _acceptRequest() / _rejectRequest()</text>
+  <text x="510" y="2510" font-family="Arial, sans-serif" font-size="10" fill="#333">• Подтверждение через AlertDialog</text>
+
+  <!-- Tab 3 -->
+  <rect x="890" y="2360" width="420" height="170" rx="8" fill="white" stroke="#9C27B0"/>
+  <text x="1100" y="2385" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#9C27B0">Tab 2: Мои заявки</text>
+  <text x="910" y="2410" font-family="Arial, sans-serif" font-size="10" fill="#333">• _buildOutgoingRequestsTab()</text>
+  <text x="910" y="2430" font-family="Arial, sans-serif" font-size="10" fill="#333">• ShiftTransferService.getOutgoingRequests()</text>
+  <text x="910" y="2450" font-family="Arial, sans-serif" font-size="10" fill="#333">• _buildOutgoingRequestCard() для каждого</text>
+  <text x="910" y="2470" font-family="Arial, sans-serif" font-size="10" fill="#333">• Badge: _outgoingUpdatesCount (зелёный)</text>
+  <text x="910" y="2490" font-family="Arial, sans-serif" font-size="10" fill="#333">• Статусы: pending → accepted → approved</text>
+  <text x="910" y="2510" font-family="Arial, sans-serif" font-size="10" fill="#333">• Кто принял: acceptedByEmployeeName</text>
+
+</svg>

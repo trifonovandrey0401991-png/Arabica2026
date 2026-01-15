@@ -5,6 +5,7 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 
 class AttendanceService {
   static const String _baseEndpoint = ApiConstants.attendanceEndpoint;
@@ -111,6 +112,14 @@ class AttendanceService {
       );
 
       if (result != null) {
+        // Отправляем уведомление админу о новой отметке прихода
+        await ReportNotificationService.createNotification(
+          reportType: ReportType.attendance,
+          reportId: record.id,
+          employeeName: employeeName,
+          shopName: shopAddress,
+        );
+
         return AttendanceResult(
           success: true,
           isOnTime: result['isOnTime'] as bool?,

@@ -17,9 +17,11 @@ import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
+import '../../features/orders/pages/orders_report_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
+import '../../core/services/report_notification_service.dart';
 
 /// Страница отчетов (только для администраторов и верифицированных сотрудников)
 class ReportsPage extends StatefulWidget {
@@ -34,12 +36,23 @@ class _ReportsPageState extends State<ReportsPage> {
   bool _isVerified = false;
   bool _isLoading = true;
   int _jobApplicationsUnviewedCount = 0;
+  UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
   void initState() {
     super.initState();
     _loadUserRole();
     _loadJobApplicationsCount();
+    _loadReportCounts();
+  }
+
+  Future<void> _loadReportCounts() async {
+    final counts = await ReportNotificationService.getUnviewedCounts();
+    if (mounted) {
+      setState(() {
+        _reportCounts = counts;
+      });
+    }
   }
 
   Future<void> _loadJobApplicationsCount() async {
@@ -119,75 +132,85 @@ class _ReportsPageState extends State<ReportsPage> {
         children: [
           // Отчет по РКО - для админов и верифицированных сотрудников
           if (isAdmin || _isVerified)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет по РКО',
               icon: Icons.receipt_long,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _reportCounts.rko,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const RKOReportsPage()),
                 );
+                _loadReportCounts();
               },
             ),
           if (isAdmin || _isVerified) const SizedBox(height: 8),
 
           // Отчет по пересменкам - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет по пересменкам',
               icon: Icons.assessment,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _reportCounts.shiftHandover,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ShiftReportsListPage()),
                 );
+                _loadReportCounts();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
 
           // Отчет по сдаче смены - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет (Сдача Смены)',
               icon: Icons.assignment_turned_in,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _reportCounts.shiftReport,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ShiftHandoverReportsListPage()),
                 );
+                _loadReportCounts();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
 
           // Отчет по пересчету - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет по пересчету',
               icon: Icons.inventory_2,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _reportCounts.recount,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const RecountReportsListPage()),
                 );
+                _loadReportCounts();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
 
           // Отчеты по приходам - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчеты по приходам',
               icon: Icons.access_time_filled,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _reportCounts.attendance,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const AttendanceReportsPage()),
                 );
+                _loadReportCounts();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
@@ -239,15 +262,17 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчет (Тестирование) - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет (Тестирование)',
               icon: Icons.quiz,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _reportCounts.test,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const TestReportPage()),
                 );
+                _loadReportCounts();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
@@ -340,6 +365,21 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const WheelReportsPage()),
+                );
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчёты (Заказы клиентов) - только админ
+          if (isAdmin)
+            _buildSection(
+              context,
+              title: 'Отчёты (Заказы клиентов)',
+              icon: Icons.shopping_bag,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OrdersReportPage()),
                 );
               },
             ),

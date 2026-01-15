@@ -23,6 +23,8 @@ import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
 import '../../features/rating/widgets/rating_badge_widget.dart';
 import '../../core/utils/logger.dart';
+import '../../core/widgets/shop_icon.dart';
+import '../../core/services/report_notification_service.dart';
 import 'my_dialogs_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
@@ -39,6 +41,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   UserRoleData? _userRole;
   String? _employeeId; // ID сотрудника для рейтинга
   bool _isLoadingRole = false; // Флаг для предотвращения параллельных запросов
+  int _totalUnviewedReports = 0; // Счётчик непросмотренных отчётов
 
   @override
   void initState() {
@@ -51,6 +54,17 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _syncReports();
     // Загружаем ID сотрудника для рейтинга
     _loadEmployeeId();
+    // Загружаем счётчик непросмотренных отчётов
+    _loadReportCounts();
+  }
+
+  Future<void> _loadReportCounts() async {
+    final counts = await ReportNotificationService.getUnviewedCounts();
+    if (mounted) {
+      setState(() {
+        _totalUnviewedReports = counts.total;
+      });
+    }
   }
 
   Future<void> _loadEmployeeId() async {
@@ -408,11 +422,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Отчеты - только для админов
     if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.assessment, 'Отчеты', () {
-        Navigator.push(
+      items.add(_tileWithBadge(context, Icons.assessment, 'Отчеты', _totalUnviewedReports, () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ReportsPage()),
         );
+        // Обновляем счётчик после возврата
+        _loadReportCounts();
       }));
     }
 
@@ -530,6 +546,66 @@ class _MainMenuPageState extends State<MainMenuPage> {
     );
   }
 
+  Widget _tileWithBadge(
+      BuildContext ctx, IconData icon, String label, int badgeCount, VoidCallback onTap) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ElevatedButton(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            backgroundColor: Colors.white.withOpacity(0.2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: Colors.white.withOpacity(0.5),
+                width: 1,
+              ),
+            ),
+            elevation: 4,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 48, color: Colors.white),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        if (badgeCount > 0)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                badgeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   /// Показать диалог выбора магазина
   Future<Shop?> _showShopSelectionDialog(BuildContext context) async {
     try {
@@ -558,62 +634,53 @@ class _MainMenuPageState extends State<MainMenuPage> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: GridView.builder(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: ListView.builder(
               shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.85,
-              ),
               itemCount: shops.length,
               itemBuilder: (context, index) {
                 final shop = shops[index];
-                return GestureDetector(
-                  onTap: () => Navigator.pop(context, shop),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Material(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          shop.icon,
-                          size: 36,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(height: 4),
-                        Flexible(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              shop.address,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                      onTap: () => Navigator.pop(context, shop),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 2,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          children: [
+                            const ShopIcon(size: 56),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
+                                shop.address,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Colors.white70,
+                              size: 28,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );

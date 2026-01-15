@@ -29,6 +29,7 @@ class EmployeeService {
     required String name,
     String? phone,
     bool? isAdmin,
+    bool? isManager,
     String? employeeName,
     List<String>? preferredWorkDays,
     List<String>? preferredShops,
@@ -41,6 +42,7 @@ class EmployeeService {
     };
     if (phone != null) requestBody['phone'] = phone;
     if (isAdmin != null) requestBody['isAdmin'] = isAdmin;
+    if (isManager != null) requestBody['isManager'] = isManager;
     if (employeeName != null) requestBody['employeeName'] = employeeName;
     if (preferredWorkDays != null) requestBody['preferredWorkDays'] = preferredWorkDays;
     if (preferredShops != null) requestBody['preferredShops'] = preferredShops;
@@ -60,6 +62,7 @@ class EmployeeService {
     String? name,
     String? phone,
     bool? isAdmin,
+    bool? isManager,
     String? employeeName,
     List<String>? preferredWorkDays,
     List<String>? preferredShops,
@@ -71,6 +74,7 @@ class EmployeeService {
     if (name != null) body['name'] = name;
     if (phone != null) body['phone'] = phone;
     if (isAdmin != null) body['isAdmin'] = isAdmin;
+    if (isManager != null) body['isManager'] = isManager;
     if (employeeName != null) body['employeeName'] = employeeName;
     if (preferredWorkDays != null) body['preferredWorkDays'] = preferredWorkDays;
     if (preferredShops != null) body['preferredShops'] = preferredShops;

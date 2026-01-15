@@ -332,7 +332,7 @@ class _EmployeeSchedulePageState extends State<EmployeeSchedulePage> {
             try {
               final existingEntry = _schedule!.getEntry(_employee.id, day);
               if (existingEntry != null && existingEntry.id.isNotEmpty) {
-                await WorkScheduleService.deleteShift(existingEntry.id);
+                await WorkScheduleService.deleteShift(existingEntry.id, existingEntry.date);
               }
             } catch (e) {
               // Запись не найдена - это нормально

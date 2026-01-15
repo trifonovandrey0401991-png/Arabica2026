@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 import '../models/recount_report_model.dart';
 import '../models/pending_recount_model.dart';
 import '../services/recount_service.dart';
@@ -33,6 +34,8 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       setState(() {}); // Для обновления фильтров при смене вкладки
     });
     _loadData();
+    // Отмечаем все уведомления этого типа как просмотренные
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.recount);
   }
 
   @override

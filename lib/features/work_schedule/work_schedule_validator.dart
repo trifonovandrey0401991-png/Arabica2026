@@ -1,5 +1,6 @@
 import 'models/work_schedule_model.dart';
 import '../shops/models/shop_model.dart';
+import '../../core/utils/logger.dart';
 
 /// Статус валидации дня
 enum DayValidationStatus {
@@ -171,11 +172,23 @@ class WorkScheduleValidator {
             e.shiftType == ShiftType.morning).toList();
 
         if (morningShifts.length > 1) {
+          final employeeNames = morningShifts.map((e) => e.employeeName).toList();
+
+          Logger.debug('🔴 ДУБЛИКАТ утренней смены обнаружен!');
+          Logger.debug('   Магазин: ${shop.address} (${shop.name})');
+          Logger.debug('   Дата: ${currentDay.day}.${currentDay.month}.${currentDay.year}');
+          Logger.debug('   Количество утренних смен: ${morningShifts.length}');
+          for (var i = 0; i < morningShifts.length; i++) {
+            final shift = morningShifts[i];
+            Logger.debug('   Смена $i: ID=${shift.id}, Сотрудник=${shift.employeeName}, Дата=${shift.date}');
+          }
+
           criticalErrors.add(ScheduleError(
             type: ScheduleErrorType.duplicateMorning,
             date: currentDay,
             shopAddress: shop.address,
             shopName: shop.name,
+            duplicateEmployeeNames: employeeNames,
           ));
         }
 
@@ -188,11 +201,23 @@ class WorkScheduleValidator {
             e.shiftType == ShiftType.evening).toList();
 
         if (eveningShifts.length > 1) {
+          final employeeNames = eveningShifts.map((e) => e.employeeName).toList();
+
+          Logger.debug('🔴 ДУБЛИКАТ вечерней смены обнаружен!');
+          Logger.debug('   Магазин: ${shop.address} (${shop.name})');
+          Logger.debug('   Дата: ${currentDay.day}.${currentDay.month}.${currentDay.year}');
+          Logger.debug('   Количество вечерних смен: ${eveningShifts.length}');
+          for (var i = 0; i < eveningShifts.length; i++) {
+            final shift = eveningShifts[i];
+            Logger.debug('   Смена $i: ID=${shift.id}, Сотрудник=${shift.employeeName}, Дата=${shift.date}');
+          }
+
           criticalErrors.add(ScheduleError(
             type: ScheduleErrorType.duplicateEvening,
             date: currentDay,
             shopAddress: shop.address,
             shopName: shop.name,
+            duplicateEmployeeNames: employeeNames,
           ));
         }
       }
@@ -303,6 +328,7 @@ class ScheduleError {
   final String? shopName;
   final String? employeeName;
   final ShiftType? shiftType;
+  final List<String>? duplicateEmployeeNames; // Список сотрудников-дубликатов
 
   ScheduleError({
     required this.type,
@@ -311,6 +337,7 @@ class ScheduleError {
     this.shopName,
     this.employeeName,
     this.shiftType,
+    this.duplicateEmployeeNames,
   });
 
   /// Получить текст сообщения об ошибке
@@ -324,8 +351,14 @@ class ScheduleError {
       case ScheduleErrorType.missingEvening:
         return 'Нет вечерней смены в $shopNameStr ($dateStr)';
       case ScheduleErrorType.duplicateMorning:
+        if (duplicateEmployeeNames != null && duplicateEmployeeNames!.isNotEmpty) {
+          return 'Дубликат утренней смены в $shopNameStr ($dateStr): ${duplicateEmployeeNames!.join(", ")}';
+        }
         return 'Дубликат утренней смены в $shopNameStr ($dateStr)';
       case ScheduleErrorType.duplicateEvening:
+        if (duplicateEmployeeNames != null && duplicateEmployeeNames!.isNotEmpty) {
+          return 'Дубликат вечерней смены в $shopNameStr ($dateStr): ${duplicateEmployeeNames!.join(", ")}';
+        }
         return 'Дубликат вечерней смены в $shopNameStr ($dateStr)';
       case ScheduleErrorType.morningAfterEvening:
         return 'Утро после вечерней смены: $employeeName ($dateStr)';

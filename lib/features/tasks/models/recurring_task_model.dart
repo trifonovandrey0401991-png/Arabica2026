@@ -48,6 +48,11 @@ class RecurringTask {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // Поля для связи с поставщиком (автогенерированные задачи)
+  final String? supplierId;   // ID поставщика
+  final String? shopId;       // ID магазина
+  final String? supplierName; // Имя поставщика для отображения
+
   const RecurringTask({
     required this.id,
     required this.title,
@@ -62,6 +67,9 @@ class RecurringTask {
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
+    this.supplierId,
+    this.shopId,
+    this.supplierName,
   });
 
   factory RecurringTask.fromJson(Map<String, dynamic> json) {
@@ -90,11 +98,14 @@ class RecurringTask {
           DateTime.now(),
       updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
           DateTime.now(),
+      supplierId: json['supplierId']?.toString(),
+      shopId: json['shopId']?.toString(),
+      supplierName: json['supplierName']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
+    final json = <String, dynamic>{
       'id': id,
       'title': title,
       'description': description,
@@ -109,6 +120,10 @@ class RecurringTask {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
+    if (supplierId != null) json['supplierId'] = supplierId;
+    if (shopId != null) json['shopId'] = shopId;
+    if (supplierName != null) json['supplierName'] = supplierName;
+    return json;
   }
 
   /// Копирование с изменениями
@@ -126,6 +141,9 @@ class RecurringTask {
     String? createdBy,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? supplierId,
+    String? shopId,
+    String? supplierName,
   }) {
     return RecurringTask(
       id: id ?? this.id,
@@ -141,6 +159,9 @@ class RecurringTask {
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      supplierId: supplierId ?? this.supplierId,
+      shopId: shopId ?? this.shopId,
+      supplierName: supplierName ?? this.supplierName,
     );
   }
 

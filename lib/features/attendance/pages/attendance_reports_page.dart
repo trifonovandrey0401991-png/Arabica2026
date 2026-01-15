@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_service.dart';
+import '../../../core/services/report_notification_service.dart';
 
 class AttendanceReportsPage extends StatefulWidget {
   const AttendanceReportsPage({super.key});
@@ -20,6 +21,8 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
   void initState() {
     super.initState();
     _loadData();
+    // Отмечаем все уведомления этого типа как просмотренные
+    ReportNotificationService.markAllAsViewed(reportType: ReportType.attendance);
   }
 
   Future<void> _loadData() async {

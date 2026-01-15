@@ -13,12 +13,14 @@ class EmployeeChatPage extends StatefulWidget {
   final EmployeeChat chat;
   final String userPhone;
   final String userName;
+  final bool isAdmin;
 
   const EmployeeChatPage({
     super.key,
     required this.chat,
     required this.userPhone,
     required this.userName,
+    this.isAdmin = false,
   });
 
   @override
@@ -326,6 +328,89 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     );
   }
 
+  void _showClearMessagesDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить сообщения'),
+        content: const Text('Выберите период для удаления:'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _confirmClearMessages('previous_month', 'за предыдущий месяц');
+            },
+            child: const Text('За предыдущий месяц'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _confirmClearMessages('all', 'все');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Все сообщения'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmClearMessages(String mode, String periodText) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Вы уверены?'),
+        content: Text(
+          'Будут удалены $periodText сообщения.\nЭто действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _clearMessages(mode);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _clearMessages(String mode) async {
+    final deletedCount = await EmployeeChatService.clearChatMessages(
+      widget.chat.id,
+      mode,
+    );
+
+    if (mounted) {
+      if (deletedCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Удалено $deletedCount сообщений'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadMessages();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Нет сообщений для удаления'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -346,6 +431,12 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         ),
         backgroundColor: const Color(0xFF004D40),
         actions: [
+          if (widget.isAdmin)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              onPressed: _showClearMessagesDialog,
+              tooltip: 'Очистить сообщения',
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadMessages,

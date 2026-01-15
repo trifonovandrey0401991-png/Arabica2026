@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/report_notification_service.dart';
 import '../models/test_model.dart';
 import '../services/test_result_service.dart';
 
@@ -159,6 +160,14 @@ class _TestPageState extends State<TestPage> {
         score: score,
         totalQuestions: _questions.length,
         timeSpent: timeSpent,
+      );
+
+      // Отправляем уведомление админу о новом результате теста
+      await ReportNotificationService.createNotification(
+        reportType: ReportType.test,
+        reportId: 'test_${DateTime.now().millisecondsSinceEpoch}',
+        employeeName: employeeName,
+        description: '$score из ${_questions.length}',
       );
 
       Logger.success('Результат теста сохранен: $employeeName - $score/${_questions.length}');

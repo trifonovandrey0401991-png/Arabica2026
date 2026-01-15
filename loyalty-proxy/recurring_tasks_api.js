@@ -413,7 +413,11 @@ function setupRecurringTasksAPI(app) {
         endTime,
         reminderTimes,
         assignees,
-        createdBy
+        createdBy,
+        // Поля для связи с поставщиком
+        supplierId,
+        shopId,
+        supplierName
       } = req.body;
 
       if (!title || !daysOfWeek || !daysOfWeek.length || !assignees || !assignees.length) {
@@ -438,6 +442,11 @@ function setupRecurringTasksAPI(app) {
         createdAt: now,
         updatedAt: now
       };
+
+      // Добавляем поля поставщика если переданы
+      if (supplierId) newTask.supplierId = supplierId;
+      if (shopId) newTask.shopId = shopId;
+      if (supplierName) newTask.supplierName = supplierName;
 
       templates.push(newTask);
       saveTemplates(templates);
@@ -476,7 +485,11 @@ function setupRecurringTasksAPI(app) {
         startTime,
         endTime,
         reminderTimes,
-        assignees
+        assignees,
+        // Поля для связи с поставщиком
+        supplierId,
+        shopId,
+        supplierName
       } = req.body;
 
       templates[index] = {
@@ -489,6 +502,9 @@ function setupRecurringTasksAPI(app) {
         endTime: endTime !== undefined ? endTime : templates[index].endTime,
         reminderTimes: reminderTimes !== undefined ? reminderTimes : templates[index].reminderTimes,
         assignees: assignees !== undefined ? assignees : templates[index].assignees,
+        supplierId: supplierId !== undefined ? supplierId : templates[index].supplierId,
+        shopId: shopId !== undefined ? shopId : templates[index].shopId,
+        supplierName: supplierName !== undefined ? supplierName : templates[index].supplierName,
         updatedAt: new Date().toISOString()
       };
 

@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1200">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+    <linearGradient id="adminGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F44336"/>
+      <stop offset="100%" style="stop-color:#C62828"/>
+    </linearGradient>
+    <linearGradient id="serverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0"/>
+      <stop offset="100%" style="stop-color:#6A1B9A"/>
+    </linearGradient>
+    <linearGradient id="verifiedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50"/>
+      <stop offset="100%" style="stop-color:#2E7D32"/>
+    </linearGradient>
+    <linearGradient id="unverifiedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF9800"/>
+      <stop offset="100%" style="stop-color:#EF6C00"/>
+    </linearGradient>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1200" fill="#f5f5f5"/>
+
+  <!-- Title -->
+  <text x="700" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#333">
+    СИСТЕМА УПРАВЛЕНИЯ СОТРУДНИКАМИ
+  </text>
+  <text x="700" y="65" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666">
+    Arabica App - Блок A, Система #2
+  </text>
+
+  <!-- ============ VISUAL FLOW SECTION ============ -->
+  <rect x="20" y="85" width="860" height="550" rx="10" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+  <text x="450" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    ВИЗУАЛЬНАЯ СХЕМА
+  </text>
+
+  <!-- Admin Block -->
+  <rect x="50" y="130" width="150" height="80" rx="10" fill="url(#adminGrad)" filter="url(#shadow)"/>
+  <text x="125" y="165" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">АДМИН</text>
+  <text x="125" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="white">Управление данными</text>
+
+  <!-- Arrow to EmployeesPage -->
+  <path d="M200 170 L260 170" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- EmployeesPage Block with 3 tabs -->
+  <rect x="270" y="130" width="320" height="180" rx="10" fill="#E3F2FD" stroke="#1976D2" stroke-width="2"/>
+  <text x="430" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1565C0">
+    EmployeesPage (3 вкладки)
+  </text>
+
+  <!-- Tab 1: Сотрудники -->
+  <rect x="285" y="170" width="90" height="55" rx="5" fill="#BBDEFB" stroke="#1976D2"/>
+  <text x="330" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#1565C0">Сотрудники</text>
+  <text x="330" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">Список всех</text>
+  <text x="330" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">+ поиск</text>
+
+  <!-- Tab 2: Регистрация -->
+  <rect x="385" y="170" width="90" height="55" rx="5" fill="#BBDEFB" stroke="#1976D2"/>
+  <text x="430" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#1565C0">Регистрация</text>
+  <text x="430" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">Новые</text>
+  <text x="430" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">сотрудники</text>
+
+  <!-- Tab 3: Магазины -->
+  <rect x="485" y="170" width="90" height="55" rx="5" fill="#BBDEFB" stroke="#1976D2"/>
+  <text x="530" y="190" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#1565C0">Магазины</text>
+  <text x="530" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">Управление</text>
+  <text x="530" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#333">магазинами</text>
+
+  <!-- Unverified Button -->
+  <rect x="285" y="240" width="200" height="35" rx="5" fill="#FFECB3" stroke="#FFA000"/>
+  <text x="385" y="262" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#E65100">
+    Кнопка: Не верифицированные
+  </text>
+
+  <!-- Employee Model Box -->
+  <rect x="620" y="130" width="250" height="200" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
+  <text x="745" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7B1FA2">
+    Employee Model
+  </text>
+  <text x="635" y="175" font-family="monospace" font-size="9" fill="#333">id: String</text>
+  <text x="635" y="190" font-family="monospace" font-size="9" fill="#333">name: String</text>
+  <text x="635" y="205" font-family="monospace" font-size="9" fill="#333">phone: String?</text>
+  <text x="635" y="220" font-family="monospace" font-size="9" fill="#333">position: String?</text>
+  <text x="635" y="235" font-family="monospace" font-size="9" fill="#333">department: String?</text>
+  <text x="635" y="250" font-family="monospace" font-size="9" fill="#333">email: String?</text>
+  <text x="635" y="265" font-family="monospace" font-size="9" fill="#333">isAdmin: bool?</text>
+  <text x="635" y="280" font-family="monospace" font-size="9" fill="#333">referralCode: int? (1-1000)</text>
+  <text x="635" y="295" font-family="monospace" font-size="9" fill="#333">preferredWorkDays: List</text>
+  <text x="635" y="310" font-family="monospace" font-size="9" fill="#333">preferredShops: List</text>
+  <text x="635" y="325" font-family="monospace" font-size="9" fill="#333">shiftPreferences: Map</text>
+
+  <!-- Verification Flow -->
+  <text x="450" y="360" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#333">
+    ПРОЦЕСС ВЕРИФИКАЦИИ
+  </text>
+
+  <!-- Verified Employee -->
+  <rect x="50" y="380" width="180" height="80" rx="10" fill="url(#verifiedGrad)" filter="url(#shadow)"/>
+  <text x="140" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">ВЕРИФИЦИРОВАН</text>
+  <text x="140" y="435" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">isVerified = true</text>
+  <text x="140" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Иконка галочки</text>
+
+  <!-- Unverified Employee -->
+  <rect x="260" y="380" width="180" height="80" rx="10" fill="url(#unverifiedGrad)" filter="url(#shadow)"/>
+  <text x="350" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="white">НЕ ВЕРИФИЦИРОВАН</text>
+  <text x="350" y="435" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">isVerified = false</text>
+  <text x="350" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Роль = client</text>
+
+  <!-- Arrow between statuses -->
+  <path d="M230 420 L255 420" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M350 460 L350 490 L140 490 L140 465" stroke="#4CAF50" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="245" y="505" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#4CAF50">Админ верифицирует</text>
+
+  <!-- Registration View Page -->
+  <rect x="470" y="380" width="200" height="100" rx="8" fill="#E8F5E9" stroke="#4CAF50"/>
+  <text x="570" y="400" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#2E7D32">
+    RegistrationViewPage
+  </text>
+  <text x="485" y="420" font-family="Arial" font-size="9" fill="#333">- Просмотр данных сотрудника</text>
+  <text x="485" y="435" font-family="Arial" font-size="9" fill="#333">- Паспортные данные</text>
+  <text x="485" y="450" font-family="Arial" font-size="9" fill="#333">- Фото документов</text>
+  <text x="485" y="465" font-family="Arial" font-size="9" fill="#333">- Кнопка верификации</text>
+
+  <!-- Registration Page -->
+  <rect x="690" y="380" width="170" height="100" rx="8" fill="#FFF3E0" stroke="#FF9800"/>
+  <text x="775" y="400" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#E65100">
+    RegistrationPage
+  </text>
+  <text x="705" y="420" font-family="Arial" font-size="9" fill="#333">- Ввод ФИО</text>
+  <text x="705" y="435" font-family="Arial" font-size="9" fill="#333">- Паспортные данные</text>
+  <text x="705" y="450" font-family="Arial" font-size="9" fill="#333">- Загрузка фото</text>
+  <text x="705" y="465" font-family="Arial" font-size="9" fill="#333">- Сохранение на сервер</text>
+
+  <!-- Server Block -->
+  <rect x="50" y="530" width="820" height="90" rx="10" fill="url(#serverGrad)" filter="url(#shadow)"/>
+  <text x="460" y="555" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">
+    СЕРВЕР (arabica26.ru)
+  </text>
+  <text x="150" y="580" font-family="monospace" font-size="10" fill="white">GET /api/employees</text>
+  <text x="320" y="580" font-family="monospace" font-size="10" fill="white">POST /api/employees</text>
+  <text x="490" y="580" font-family="monospace" font-size="10" fill="white">PUT /api/employees/:id</text>
+  <text x="680" y="580" font-family="monospace" font-size="10" fill="white">DELETE /api/employees/:id</text>
+  <text x="460" y="605" text-anchor="middle" font-family="monospace" font-size="10" fill="white">
+    Файл: /data/employees.json | /data/employee_registrations.json
+  </text>
+
+  <!-- ============ DESCRIPTION SECTION ============ -->
+  <rect x="900" y="85" width="480" height="550" rx="10" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+  <text x="1140" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    ОПИСАНИЕ СИСТЕМЫ
+  </text>
+
+  <!-- Files Section -->
+  <rect x="920" y="125" width="440" height="160" rx="5" fill="#FFF3E0" stroke="#FF9800"/>
+  <text x="1140" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#E65100">ФАЙЛЫ FLUTTER</text>
+
+  <text x="940" y="170" font-family="monospace" font-size="9" fill="#333">lib/features/employees/pages/</text>
+  <text x="955" y="185" font-family="monospace" font-size="9" fill="#1565C0">employees_page.dart</text>
+  <text x="1180" y="185" font-family="Arial" font-size="8" fill="#666">- 3 вкладки</text>
+  <text x="955" y="200" font-family="monospace" font-size="9" fill="#1565C0">employee_registration_page.dart</text>
+  <text x="1180" y="200" font-family="Arial" font-size="8" fill="#666">- Форма</text>
+  <text x="955" y="215" font-family="monospace" font-size="9" fill="#1565C0">employee_registration_view_page.dart</text>
+  <text x="1180" y="215" font-family="Arial" font-size="8" fill="#666">- Просмотр</text>
+  <text x="955" y="230" font-family="monospace" font-size="9" fill="#1565C0">unverified_employees_page.dart</text>
+  <text x="1180" y="230" font-family="Arial" font-size="8" fill="#666">- Список</text>
+
+  <text x="940" y="250" font-family="monospace" font-size="9" fill="#333">lib/features/employees/services/</text>
+  <text x="955" y="265" font-family="monospace" font-size="9" fill="#1565C0">employee_service.dart</text>
+  <text x="1180" y="265" font-family="Arial" font-size="8" fill="#666">- CRUD</text>
+  <text x="955" y="280" font-family="monospace" font-size="9" fill="#1565C0">employee_registration_service.dart</text>
+  <text x="1180" y="280" font-family="Arial" font-size="8" fill="#666">- Регистрация</text>
+
+  <!-- API Section -->
+  <rect x="920" y="295" width="440" height="130" rx="5" fill="#E8F5E9" stroke="#4CAF50"/>
+  <text x="1140" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#2E7D32">API ЭНДПОИНТЫ</text>
+
+  <text x="940" y="340" font-family="monospace" font-size="10" fill="#333">GET    /api/employees</text>
+  <text x="1180" y="340" font-family="Arial" font-size="9" fill="#666">Список всех</text>
+  <text x="940" y="358" font-family="monospace" font-size="10" fill="#333">GET    /api/employees/:id</text>
+  <text x="1180" y="358" font-family="Arial" font-size="9" fill="#666">По ID</text>
+  <text x="940" y="376" font-family="monospace" font-size="10" fill="#333">POST   /api/employees</text>
+  <text x="1180" y="376" font-family="Arial" font-size="9" fill="#666">Создать</text>
+  <text x="940" y="394" font-family="monospace" font-size="10" fill="#333">PUT    /api/employees/:id</text>
+  <text x="1180" y="394" font-family="Arial" font-size="9" fill="#666">Обновить</text>
+  <text x="940" y="412" font-family="monospace" font-size="10" fill="#333">DELETE /api/employees/:id</text>
+  <text x="1180" y="412" font-family="Arial" font-size="9" fill="#666">Удалить</text>
+
+  <!-- Registration API -->
+  <rect x="920" y="435" width="440" height="100" rx="5" fill="#E3F2FD" stroke="#2196F3"/>
+  <text x="1140" y="455" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1565C0">API РЕГИСТРАЦИИ</text>
+
+  <text x="940" y="478" font-family="monospace" font-size="10" fill="#333">POST /api/employee-registration</text>
+  <text x="1240" y="478" font-family="Arial" font-size="9" fill="#666">Сохранить</text>
+  <text x="940" y="496" font-family="monospace" font-size="10" fill="#333">GET  /api/employee-registration/:phone</text>
+  <text x="1290" y="496" font-family="Arial" font-size="9" fill="#666">По тел.</text>
+  <text x="940" y="514" font-family="monospace" font-size="10" fill="#333">POST /api/employee-registration/:phone/verify</text>
+  <text x="1310" y="514" font-family="Arial" font-size="9" fill="#666">Верификация</text>
+  <text x="940" y="532" font-family="monospace" font-size="10" fill="#333">GET  /api/employee-registrations</text>
+  <text x="1240" y="532" font-family="Arial" font-size="9" fill="#666">Все</text>
+
+  <!-- Storage Section -->
+  <rect x="920" y="545" width="440" height="80" rx="5" fill="#FFEBEE" stroke="#E53935"/>
+  <text x="1140" y="565" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#C62828">ФАЙЛЫ ДАННЫХ (СЕРВЕР)</text>
+
+  <text x="940" y="590" font-family="monospace" font-size="10" fill="#333">/root/arabica_app/data/employees.json</text>
+  <text x="940" y="608" font-family="monospace" font-size="10" fill="#333">/root/arabica_app/data/employee_registrations.json</text>
+  <text x="940" y="626" font-family="monospace" font-size="10" fill="#333">/root/arabica_app/uploads/employees/  (фото)</text>
+
+  <!-- ============ VERIFICATION DETAILS ============ -->
+  <rect x="20" y="650" width="1360" height="220" rx="10" fill="white" stroke="#ddd" filter="url(#shadow)"/>
+  <text x="700" y="675" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">
+    ДЕТАЛИ РЕГИСТРАЦИИ И ВЕРИФИКАЦИИ СОТРУДНИКА
+  </text>
+
+  <!-- Registration Model -->
+  <rect x="40" y="695" width="400" height="160" rx="8" fill="#F3E5F5" stroke="#9C27B0"/>
+  <text x="240" y="715" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7B1FA2">
+    EmployeeRegistration Model
+  </text>
+  <text x="55" y="740" font-family="monospace" font-size="9" fill="#333">phone: String            - Телефон (ключ)</text>
+  <text x="55" y="755" font-family="monospace" font-size="9" fill="#333">fullName: String         - Полное ФИО</text>
+  <text x="55" y="770" font-family="monospace" font-size="9" fill="#333">birthDate: String        - Дата рождения</text>
+  <text x="55" y="785" font-family="monospace" font-size="9" fill="#333">passportSeries: String   - Серия паспорта (4 цифры)</text>
+  <text x="55" y="800" font-family="monospace" font-size="9" fill="#333">passportNumber: String   - Номер паспорта (6 цифр)</text>
+  <text x="55" y="815" font-family="monospace" font-size="9" fill="#333">passportIssuedBy: String - Кем выдан</text>
+  <text x="55" y="830" font-family="monospace" font-size="9" fill="#333">passportIssueDate: String- Дата выдачи</text>
+  <text x="55" y="845" font-family="monospace" font-size="9" fill="#333">isVerified: bool         - Статус верификации</text>
+
+  <!-- Photo Types -->
+  <rect x="460" y="695" width="280" height="160" rx="8" fill="#E8F5E9" stroke="#4CAF50"/>
+  <text x="600" y="715" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#2E7D32">
+    ЗАГРУЖАЕМЫЕ ФОТО
+  </text>
+  <text x="475" y="745" font-family="Arial" font-size="11" fill="#333">1. photo_main - Основное фото</text>
+  <text x="475" y="765" font-family="Arial" font-size="11" fill="#333">2. photo_passport1 - Разворот паспорта</text>
+  <text x="475" y="785" font-family="Arial" font-size="11" fill="#333">3. photo_passport2 - Прописка</text>
+  <text x="475" y="810" font-family="Arial" font-size="10" fill="#666">Формат: {phone}_{photoType}.jpg</text>
+  <text x="475" y="830" font-family="Arial" font-size="10" fill="#666">Endpoint: POST /upload-employee-photo</text>
+  <text x="475" y="850" font-family="Arial" font-size="10" fill="#666">Хранение: /uploads/employees/</text>
+
+  <!-- Verification Process -->
+  <rect x="760" y="695" width="600" height="160" rx="8" fill="#FFF8E1" stroke="#FFC107"/>
+  <text x="1060" y="715" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#F57F17">
+    ПРОЦЕСС ВЕРИФИКАЦИИ
+  </text>
+
+  <text x="775" y="745" font-family="Arial" font-size="11" fill="#333" font-weight="bold">1. Сотрудник заполняет форму регистрации:</text>
+  <text x="790" y="762" font-family="Arial" font-size="10" fill="#666">ФИО, дата рождения, паспортные данные, загружает фото</text>
+
+  <text x="775" y="785" font-family="Arial" font-size="11" fill="#333" font-weight="bold">2. Админ просматривает заявку:</text>
+  <text x="790" y="802" font-family="Arial" font-size="10" fill="#666">Данные -> Управление данными -> Сотрудники -> Клик на сотрудника</text>
+
+  <text x="775" y="825" font-family="Arial" font-size="11" fill="#333" font-weight="bold">3. Админ нажимает "Верифицировать":</text>
+  <text x="790" y="842" font-family="Arial" font-size="10" fill="#666">POST /api/employee-registration/:phone/verify { isVerified: true }</text>
+
+  <text x="775" y="865" font-family="Arial" font-size="11" fill="#333" font-weight="bold">4. Результат:</text>
+  <text x="790" y="882" font-family="Arial" font-size="10" fill="#4CAF50">Сотрудник получает роль "employee" при следующем входе</text>
+
+  <!-- Footer -->
+  <rect x="20" y="885" width="1360" height="50" rx="10" fill="#E0E0E0"/>
+  <text x="700" y="915" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    Arabica App v1.6.1 | Документация: Блок A - Система #2 | Создано: 2026-01-13
+  </text>
+</svg>

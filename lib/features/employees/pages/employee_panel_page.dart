@@ -305,39 +305,40 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             },
           ),
           const SizedBox(height: 8),
-          // Секция "Списать бонусы" с кодом приглашения
-          Card(
-            elevation: 2,
-            child: Column(
+          // Секция "Списать бонусы" и "Ваш код приглашения" на одной строке
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ListTile(
-                  leading: const Icon(Icons.qr_code_scanner, color: Color(0xFF004D40)),
-                  title: const Text('Списать бонусы'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoyaltyScannerPage(),
-                      ),
-                    );
-                  },
+                // Списать бонусы
+                Expanded(
+                  child: Card(
+                    elevation: 2,
+                    child: ListTile(
+                      leading: const Icon(Icons.qr_code_scanner, color: Color(0xFF004D40)),
+                      title: const Text('Бонусы', style: TextStyle(fontSize: 14)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoyaltyScannerPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-                if (_referralCode != null) ...[
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.person_pin, size: 20, color: Color(0xFF004D40)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ваш код приглашения:',
-                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                // Ваш код приглашения
+                if (_referralCode != null)
+                  Expanded(
+                    child: Card(
+                      elevation: 2,
+                      child: ListTile(
+                        leading: const Icon(Icons.person_add, color: Color(0xFF004D40)),
+                        title: const Text('Код'),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: const Color(0xFF004D40),
                             borderRadius: BorderRadius.circular(8),
@@ -345,16 +346,15 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
                           child: Text(
                             '#$_referralCode',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ],
               ],
             ),
           ),

@@ -6,6 +6,7 @@ import '../services/employee_chat_service.dart';
 import '../../employees/pages/employees_page.dart';
 import 'employee_chat_page.dart';
 import 'new_chat_page.dart';
+import 'shop_chat_members_page.dart';
 
 /// Страница списка чатов сотрудников
 class EmployeeChatsListPage extends StatefulWidget {
@@ -20,6 +21,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
   bool _isLoading = true;
   String? _userPhone;
   String? _userName;
+  bool _isAdmin = false;
   Timer? _refreshTimer;
 
   @override
@@ -44,9 +46,17 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
     final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
     final fallbackName = prefs.getString('user_display_name') ?? prefs.getString('user_name') ?? '';
 
+    // Проверяем, является ли пользователь админом (роль хранится как 'admin', 'employee', 'client')
+    final userRole = prefs.getString('user_role') ?? '';
+    final isAdmin = userRole == 'admin';
+
+    // Debug: выводим роль в консоль
+    debugPrint('🔐 EmployeeChatsListPage: userRole=$userRole, isAdmin=$isAdmin');
+
     setState(() {
       _userPhone = phone;
       _userName = systemEmployeeName ?? fallbackName;
+      _isAdmin = isAdmin;
     });
     await _loadChats();
     _startAutoRefresh();
@@ -69,7 +79,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
     }
 
     try {
-      final chats = await EmployeeChatService.getChats(_userPhone!);
+      final chats = await EmployeeChatService.getChats(_userPhone!, isAdmin: _isAdmin);
       if (mounted) {
         setState(() {
           _chats = chats;
@@ -99,6 +109,19 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
           chat: chat,
           userPhone: _userPhone!,
           userName: _userName!,
+          isAdmin: _isAdmin,
+        ),
+      ),
+    );
+    _loadChats();
+  }
+
+  void _openShopChatMembers(EmployeeChat chat) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShopChatMembersPage(
+          shopAddress: chat.shopAddress ?? chat.displayName,
         ),
       ),
     );
@@ -211,6 +234,10 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
   }
 
   Widget _buildChatTile(EmployeeChat chat) {
+    final showMembersButton = _isAdmin && chat.type == EmployeeChatType.shop;
+    // ignore: avoid_print
+    print('🔍 Chat: ${chat.name}, type=${chat.type}, isAdmin=$_isAdmin, showButton=$showMembersButton');
+
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: _getChatColor(chat.type),
@@ -271,6 +298,19 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
             ),
         ],
       ),
+      trailing: showMembersButton
+          ? Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF004D40),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.group, color: Colors.white),
+                onPressed: () => _openShopChatMembers(chat),
+                tooltip: 'Управление участниками',
+              ),
+            )
+          : null,
       onTap: () => _openChat(chat),
     );
   }
