@@ -328,4 +328,26 @@ class ProductQuestionService {
     final dialogs = await getClientPersonalDialogs(clientPhone);
     return dialogs.isNotEmpty;
   }
+
+  /// Пометить сообщения вопроса как прочитанные
+  static Future<bool> markQuestionAsRead({
+    required String questionId,
+    required String readerType, // 'client' or 'employee'
+  }) async {
+    Logger.debug('📤 Пометка вопроса как прочитанного: $questionId ($readerType)');
+    return await BaseHttpService.simplePost(
+      endpoint: '$baseEndpoint/$questionId/mark-read',
+      body: {'readerType': readerType},
+    );
+  }
+
+  /// Пометить все сообщения клиента как прочитанные
+  static Future<bool> markAllClientQuestionsAsRead(String clientPhone) async {
+    final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s+]'), '');
+    Logger.debug('📤 Пометка всех вопросов клиента как прочитанных: $normalizedPhone');
+    return await BaseHttpService.simplePost(
+      endpoint: '$baseEndpoint/client/$normalizedPhone/mark-all-read',
+      body: {},
+    );
+  }
 }

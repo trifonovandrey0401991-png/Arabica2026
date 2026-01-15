@@ -61,6 +61,9 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     // Загружаем существующие персональные диалоги
     await _loadExistingDialogs();
     await _loadMessages();
+
+    // Помечаем все сообщения как прочитанные
+    _markAllAsRead();
   }
 
   Future<void> _loadExistingDialogs() async {
@@ -105,6 +108,16 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (_clientPhone == null || _clientPhone!.isEmpty) return;
+
+    try {
+      await ProductQuestionService.markAllClientQuestionsAsRead(_clientPhone!);
+    } catch (e) {
+      // Игнорируем ошибки
     }
   }
 

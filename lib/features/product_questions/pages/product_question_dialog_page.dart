@@ -23,6 +23,7 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
   void initState() {
     super.initState();
     _loadQuestion();
+    _markAsRead();
     _startAutoRefresh();
   }
 
@@ -88,6 +89,17 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
       }
     } catch (e) {
       return timestamp;
+    }
+  }
+
+  Future<void> _markAsRead() async {
+    try {
+      await ProductQuestionService.markQuestionAsRead(
+        questionId: widget.questionId,
+        readerType: 'client',
+      );
+    } catch (e) {
+      // Игнорируем ошибки
     }
   }
 

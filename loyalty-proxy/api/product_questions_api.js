@@ -286,6 +286,89 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
+  // POST /api/product-questions/:questionId/mark-read - Пометить сообщения вопроса как прочитанные
+  app.post('/api/product-questions/:questionId/mark-read', (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const { readerType } = req.body; // 'client' or 'employee'
+      console.log('POST /api/product-questions/:questionId/mark-read', questionId, readerType);
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Question not found' });
+      }
+
+      const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      // Помечаем сообщения как прочитанные
+      if (question.messages && question.messages.length > 0) {
+        question.messages.forEach(msg => {
+          if (readerType === 'client' && msg.senderType === 'employee') {
+            msg.isRead = true;
+          } else if (readerType === 'employee' && msg.senderType === 'client') {
+            msg.isRead = true;
+          }
+        });
+      }
+
+      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      console.log('✅ Messages marked as read for question:', questionId);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error marking question messages as read:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/product-questions/client/:phone/mark-all-read - Пометить все сообщения клиента как прочитанные
+  app.post('/api/product-questions/client/:phone/mark-all-read', (req, res) => {
+    try {
+      const { phone } = req.params;
+      console.log('POST /api/product-questions/client/:phone/mark-all-read', phone);
+
+      let markedCount = 0;
+
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        files.forEach(file => {
+          try {
+            const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
+            const question = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+            if (question.clientPhone === phone) {
+              let hasChanges = false;
+
+              if (question.messages && question.messages.length > 0) {
+                question.messages.forEach(msg => {
+                  if (msg.senderType === 'employee' && !msg.isRead) {
+                    msg.isRead = true;
+                    hasChanges = true;
+                  }
+                });
+              }
+
+              if (hasChanges) {
+                fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+                markedCount++;
+              }
+            }
+          } catch (e) {
+            console.error(`Error processing ${file}:`, e);
+          }
+        });
+      }
+
+      console.log(`✅ Marked ${markedCount} questions as read for client ${phone}`);
+      res.json({ success: true, markedCount });
+    } catch (error) {
+      console.error('Error marking all questions as read:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ===== PRODUCT QUESTION DIALOGS =====
 
   app.get('/api/product-questions/:questionId/dialog', async (req, res) => {

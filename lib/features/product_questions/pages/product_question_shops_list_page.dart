@@ -4,6 +4,7 @@ import 'dart:async';
 import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_dialog_page.dart';
+import 'product_question_client_dialog_page.dart';
 
 /// Страница списка магазинов для поиска товара
 class ProductQuestionShopsListPage extends StatefulWidget {
@@ -139,11 +140,15 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
           style: const TextStyle(fontSize: 14),
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // TODO: Открыть диалог "Вся сеть"
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Функция "Вся сеть" в разработке')),
+        onTap: () async {
+          // Открываем общий диалог (все вопросы без привязки к магазину)
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ProductQuestionClientDialogPage(),
+            ),
           );
+          _loadData();
         },
       ),
     );
