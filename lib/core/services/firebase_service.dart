@@ -525,21 +525,21 @@ class FirebaseService {
     if (type != null && type.startsWith('shift_transfer')) {
       final action = data['action'] as String?;
 
-      // Для админа - переход на вкладку одобрения
+      // Для админа - переход на страницу графика работы (TODO: добавить initialTab для открытия вкладки "Заявки")
       if (action == 'admin_review') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
-            builder: (context) => const WorkSchedulePage(initialTab: 3), // Вкладка "Заявки"
+            builder: (context) => const WorkSchedulePage(),
           ),
         );
         return;
       }
 
-      // Для сотрудника - переход к списку заявок
+      // Для сотрудника - переход к мой график (TODO: добавить initialTab для открытия вкладки "Заявки")
       if (action == 'view_request') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
-            builder: (context) => const MySchedulePage(initialTab: 2), // Вкладка "Заявки"
+            builder: (context) => const MySchedulePage(),
           ),
         );
         return;
