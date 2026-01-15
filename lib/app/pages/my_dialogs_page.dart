@@ -54,15 +54,19 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
 
     // Загружаем сетевые сообщения
     final networkData = await NetworkMessageService.getNetworkMessages(phone);
-    setState(() {
-      _networkData = networkData;
-    });
+    if (mounted) {
+      setState(() {
+        _networkData = networkData;
+      });
+    }
 
     // Загружаем сообщения руководству
     final managementData = await ManagementMessageService.getManagementMessages(phone);
-    setState(() {
-      _managementData = managementData;
-    });
+    if (mounted) {
+      setState(() {
+        _managementData = managementData;
+      });
+    }
 
     // Загружаем отзывы клиента
     try {
@@ -71,30 +75,38 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       for (final review in reviews) {
         unreadCount += review.getUnreadCountForClient();
       }
-      setState(() {
-        _clientReviews = reviews;
-        _reviewsUnreadCount = unreadCount;
-      });
+      if (mounted) {
+        setState(() {
+          _clientReviews = reviews;
+          _reviewsUnreadCount = unreadCount;
+        });
+      }
     } catch (e) {
       Logger.error('Ошибка загрузки отзывов', e);
     }
 
     // Загружаем персональные диалоги "Поиск Товара"
     final personalDialogs = await ProductQuestionService.getClientPersonalDialogs(phone);
-    setState(() {
-      _personalDialogs = personalDialogs;
-    });
+    if (mounted) {
+      setState(() {
+        _personalDialogs = personalDialogs;
+      });
+    }
 
     // Загружаем общий чат "Поиск Товара" только если нет персональных диалогов
     if (personalDialogs.isEmpty) {
       final productQuestionData = await ProductQuestionService.getClientDialog(phone);
-      setState(() {
-        _productQuestionData = productQuestionData;
-      });
+      if (mounted) {
+        setState(() {
+          _productQuestionData = productQuestionData;
+        });
+      }
     } else {
-      setState(() {
-        _productQuestionData = null;
-      });
+      if (mounted) {
+        setState(() {
+          _productQuestionData = null;
+        });
+      }
     }
 
     setState(() {
