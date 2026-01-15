@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';
+import 'product_question_dialog_page.dart';
 
 /// Страница чата клиента по поиску товара (единый чат со всеми магазинами)
 class ProductQuestionClientDialogPage extends StatefulWidget {
@@ -242,6 +243,19 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
     }
   }
 
+  /// Открыть существующий диалог с магазином
+  Future<void> _openQuestionDialog(String questionId, String shopAddress) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductQuestionDialogPage(
+          questionId: questionId,
+        ),
+      ),
+    );
+    _loadData(); // Обновить после возврата
+  }
+
   /// Создать персональный диалог с магазином
   Future<void> _startPersonalDialog(String shopAddress) async {
     if (_isCreatingDialog || _clientPhone == null) return;
@@ -383,20 +397,14 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
             ),
           ),
         ),
-        // Кнопка "Начать диалог" под ответами сотрудников
-        if (!isClientMessage && shopAddress != null && !hasExistingDialog) ...[
+        // Кнопка "Перейти в диалог" под ответами сотрудников
+        if (!isClientMessage && shopAddress != null) ...[
           Padding(
             padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
             child: ElevatedButton.icon(
-              onPressed: _isCreatingDialog ? null : () => _startPersonalDialog(shopAddress),
-              icon: _isCreatingDialog
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.chat, size: 16),
-              label: const Text('Начать диалог'),
+              onPressed: () => _openQuestionDialog(message.questionId!, shopAddress),
+              icon: const Icon(Icons.arrow_forward, size: 16),
+              label: const Text('Перейти в диалог'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF004D40),
                 foregroundColor: Colors.white,

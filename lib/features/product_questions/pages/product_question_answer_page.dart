@@ -77,9 +77,19 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
       setState(() {
         _shops = shops;
         _question = question;
-        // Используем переданный shopAddress или первый магазин из списка
+        // Используем переданный shopAddress
         if (widget.shopAddress != null && widget.shopAddress!.isNotEmpty) {
           _selectedShopAddress = widget.shopAddress;
+        } else {
+          // Если магазин не передан - показать ошибку
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Магазин не выбран. Вернитесь и выберите магазин.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
         _isLoading = false;
       });
@@ -315,28 +325,20 @@ class _ProductQuestionAnswerPageState extends State<ProductQuestionAnswerPage> {
                 )
               : Column(
                   children: [
-                    // Выбор магазина (только если можно отвечать)
-                    if (widget.canAnswer)
+                    // Отображение выбранного магазина (disabled, нельзя изменить)
+                    if (widget.canAnswer && _selectedShopAddress != null)
                       Container(
                         padding: const EdgeInsets.all(16),
                         color: Colors.orange[50],
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedShopAddress,
-                          decoration: InputDecoration(
-                            labelText: 'Магазин *',
-                            hintText: 'Выберите магазин',
-                            border: const OutlineInputBorder(),
-                            errorText: _selectedShopAddress == null ? 'Обязательное поле' : null,
+                        child: TextFormField(
+                          initialValue: _selectedShopAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Магазин',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.store),
                           ),
-                          items: _shops.map((shop) => DropdownMenuItem<String>(
-                            value: shop.address,
-                            child: Text(shop.address),
-                          )).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedShopAddress = value;
-                            });
-                          },
+                          enabled: false,
+                          style: const TextStyle(color: Colors.black87),
                         ),
                       ),
                     // Предупреждение если нельзя отвечать

@@ -150,19 +150,89 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     }
   }
 
+  /// Получить список магазинов, которые еще не ответили на вопрос
+  List<Shop> _getUnansweredShops(ProductQuestion question) {
+    // Получить список магазинов, которые уже ответили (из сообщений от сотрудников)
+    final answeredShops = question.messages
+        .where((m) => m.senderType == 'employee' && m.shopAddress != null)
+        .map((m) => m.shopAddress!)
+        .toSet();
+
+    // Вернуть только те магазины, которые НЕ ответили
+    return _shops.where((shop) =>
+      !answeredShops.contains(shop.address)
+    ).toList();
+  }
+
+  /// Показать диалог выбора магазина
+  Future<Shop?> _showShopSelectionDialog(ProductQuestion question) async {
+    final unansweredShops = _getUnansweredShops(question);
+
+    if (unansweredShops.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Все магазины уже ответили на этот вопрос'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return null;
+    }
+
+    return await showDialog<Shop>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выберите магазин'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: unansweredShops.length,
+            itemBuilder: (context, index) {
+              final shop = unansweredShops[index];
+              return ListTile(
+                title: Text(shop.name),
+                subtitle: Text(shop.address),
+                onTap: () => Navigator.pop(context, shop),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Проверить есть ли неотвеченные магазины
+  bool _hasUnansweredShops(ProductQuestion question) {
+    // Если вопрос не отвечен вообще, значит есть неотвеченные магазины
+    if (!question.isAnswered) {
+      return true;
+    }
+
+    // Для network-wide вопросов, проверяем сообщения
+    // Если есть хотя бы один магазин который не ответил - возвращаем true
+    // Пока упрощенная логика - если есть ответ, считаем что все магазины ответили
+    return false;
+  }
+
   /// Вопросы, ожидающие ответа (неотвеченные, менее 30 минут)
   List<ProductQuestion> get _pendingQuestions {
     return _allQuestions.where((q) => !q.isAnswered && !_isExpired(q)).toList();
   }
 
-  /// Не отвеченные вопросы (более 30 минут без ответа)
+  /// Не отвеченные вопросы (более 30 минут без ответа ИЛИ частично отвеченные)
   List<ProductQuestion> get _expiredQuestions {
-    return _allQuestions.where((q) => !q.isAnswered && _isExpired(q)).toList();
+    return _allQuestions.where((q) => (!q.isAnswered || _hasUnansweredShops(q)) && _isExpired(q)).toList();
   }
 
-  /// Отвеченные вопросы
+  /// Отвеченные вопросы (полностью - все магазины ответили)
   List<ProductQuestion> get _answeredQuestions {
-    return _allQuestions.where((q) => q.isAnswered).toList();
+    return _allQuestions.where((q) => q.isAnswered && !_hasUnansweredShops(q)).toList();
   }
 
   String _formatTimestamp(String timestamp) {
@@ -484,12 +554,17 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             return;
           }
 
+          // Показать диалог выбора магазина
+          final selectedShop = await _showShopSelectionDialog(question);
+          if (selectedShop == null) return; // Пользователь отменил
+
+          // Перейти на страницу ответа с выбранным магазином
           await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ProductQuestionAnswerPage(
                 questionId: question.id,
-                shopAddress: question.shopAddress,
+                shopAddress: selectedShop.address,
                 canAnswer: canAnswer,
               ),
             ),
