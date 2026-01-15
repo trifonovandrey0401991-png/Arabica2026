@@ -19,6 +19,7 @@ const { setupTasksAPI } = require("./tasks_api");
 const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
 const { setupReportNotificationsAPI } = require("./report_notifications_api");
 const { setupClientsAPI } = require("./api/clients_api");
+const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
@@ -2104,6 +2105,45 @@ app.post('/api/work-schedule', (req, res) => {
   }
 });
 
+// DELETE /api/work-schedule/clear - очистить весь месяц
+app.delete('/api/work-schedule/clear', (req, res) => {
+  try {
+    const month = req.query.month;
+
+    if (!month) {
+      return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+    }
+
+    console.log(`🗑️ Запрос на очистку графика за месяц: ${month}`);
+
+    const schedule = loadSchedule(month);
+    const entriesCount = schedule.entries.length;
+
+    if (entriesCount === 0) {
+      console.log(`ℹ️ График за ${month} уже пуст`);
+      return res.json({ success: true, message: 'График уже пуст', deletedCount: 0 });
+    }
+
+    // Очищаем все записи
+    schedule.entries = [];
+
+    if (saveSchedule(schedule)) {
+      console.log(`✅ График за ${month} очищен. Удалено записей: ${entriesCount}`);
+      res.json({
+        success: true,
+        message: `График очищен. Удалено смен: ${entriesCount}`,
+        deletedCount: entriesCount
+      });
+    } else {
+      console.error(`❌ Ошибка сохранения графика при очистке ${month}`);
+      res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
+    }
+  } catch (error) {
+    console.error('Ошибка очистки графика:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // DELETE /api/work-schedule/:entryId - удалить смену
 app.delete('/api/work-schedule/:entryId', (req, res) => {
   try {
@@ -2138,11 +2178,25 @@ app.post('/api/work-schedule/bulk', (req, res) => {
   try {
     const entries = req.body.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Не указаны записи (entries)' 
+      return res.status(400).json({
+        success: false,
+        error: 'Не указаны записи (entries)'
       });
     }
+
+    console.log(`📥 BULK-создание: получено ${entries.length} записей от клиента`);
+
+    // Проверяем наличие дубликатов во входящих данных
+    const duplicatesCheck = {};
+    entries.forEach((e, i) => {
+      const key = `${e.shopAddress}|${e.date}|${e.shiftType}`;
+      if (duplicatesCheck[key]) {
+        console.log(`⚠️ ДУБЛИКАТ ВО ВХОДЯЩИХ ДАННЫХ [${i}]: ${e.employeeName} → ${e.shopAddress}, ${e.date}, ${e.shiftType}`);
+        console.log(`   Первое вхождение: [${duplicatesCheck[key].index}] ${duplicatesCheck[key].employeeName}`);
+      } else {
+        duplicatesCheck[key] = { index: i, employeeName: e.employeeName };
+      }
+    });
 
     // Группируем по месяцам
     const schedulesByMonth = {};
@@ -2163,11 +2217,34 @@ app.post('/api/work-schedule/bulk', (req, res) => {
       }
 
       // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
-      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => 
-        !(e.employeeId === entry.employeeId && 
-          e.date === entry.date && 
-          e.shiftType === entry.shiftType)
-      );
+      // КРИТИЧНО: Также удаляем дубликаты по магазину+дате+типу смены (независимо от сотрудника)
+      const beforeFilter = schedulesByMonth[entry.month].entries.length;
+
+      schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => {
+        // Удаляем если совпадают: сотрудник + дата + тип смены
+        const sameEmployeeShift = (e.employeeId === entry.employeeId &&
+                                    e.date === entry.date &&
+                                    e.shiftType === entry.shiftType);
+
+        // ИЛИ удаляем если совпадают: магазин + дата + тип смены (дубликат слота)
+        const sameSlot = (e.shopAddress === entry.shopAddress &&
+                          e.date === entry.date &&
+                          e.shiftType === entry.shiftType);
+
+        const shouldRemove = (sameEmployeeShift || sameSlot);
+
+        if (shouldRemove) {
+          console.log(`🗑️ Удаление дубликата: ${e.employeeName} → ${e.shopAddress}, ${e.date}, ${e.shiftType}`);
+          console.log(`   Причина: ${sameEmployeeShift ? 'тот же сотрудник' : ''} ${sameSlot ? 'тот же слот' : ''}`);
+        }
+
+        return !shouldRemove;
+      });
+
+      const afterFilter = schedulesByMonth[entry.month].entries.length;
+      if (beforeFilter !== afterFilter) {
+        console.log(`📉 Фильтрация: было ${beforeFilter} записей, осталось ${afterFilter} (удалено ${beforeFilter - afterFilter})`);
+      }
 
       // Добавляем новую запись
       schedulesByMonth[entry.month].entries.push(entry);
@@ -4781,3 +4858,4 @@ setupTasksAPI(app);
 setupRecurringTasksAPI(app);
 setupReportNotificationsAPI(app);
 setupClientsAPI(app);
+setupShiftTransfersAPI(app);
