@@ -415,6 +415,16 @@ class FirebaseService {
         priority: Priority.high,
         showWhen: true,
       );
+    } else if (type == 'product_question_created' || type == 'product_question_answered') {
+      // Канал для вопросов о товаре
+      androidDetails = const AndroidNotificationDetails(
+        'product_questions_channel',
+        'Поиск товара',
+        channelDescription: 'Уведомления о вопросах и ответах по поиску товара',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
     } else {
       androidDetails = const AndroidNotificationDetails(
         'reviews_channel',
@@ -506,7 +516,35 @@ class FirebaseService {
       }
     }
     
-    // Обработка уведомлений об ответах на вопросы о товаре
+    // Обработка уведомлений о новом вопросе о товаре (для сотрудников)
+    if (type == 'product_question_created') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const ProductQuestionAnswerPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомлений об ответе на вопрос о товаре (для клиентов)
+    if (type == 'product_question_answered') {
+      final questionId = data['questionId'] as String?;
+      final shopAddress = data['shopAddress'] as String?;
+
+      if (questionId != null && shopAddress != null) {
+        Navigator.of(_globalContext!).push(
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionDialogPage(
+              questionId: questionId,
+              shopAddress: shopAddress,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Обработка уведомлений об ответах на вопросы о товаре (старая логика)
     if (type == 'product_answer') {
       final questionId = data['questionId'] as String?;
       if (questionId != null) {
