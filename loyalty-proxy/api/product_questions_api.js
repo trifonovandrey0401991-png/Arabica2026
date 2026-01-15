@@ -45,21 +45,64 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   app.post('/api/product-questions', async (req, res) => {
     try {
-      const question = req.body;
-      console.log('POST /api/product-questions:', question.text?.substring(0, 50));
+      const { clientPhone, clientName, shopAddress, questionText, questionImageUrl } = req.body;
+      console.log('POST /api/product-questions:', questionText?.substring(0, 50));
 
-      if (!question.id) {
-        question.id = `pq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!clientPhone || !clientName || !shopAddress || !questionText) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: clientPhone, clientName, shopAddress, questionText'
+        });
       }
 
-      question.createdAt = question.createdAt || new Date().toISOString();
-      question.status = question.status || 'open';
+      const questionId = `pq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const timestamp = new Date().toISOString();
+      const messageId = `msg_${Date.now()}`;
 
-      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${question.id}.json`);
+      // Определяем, это вопрос для всей сети или для конкретного магазина
+      const isNetworkWide = shopAddress === 'Вся сеть';
+
+      // Создаем структуру вопроса с поддержкой множественных магазинов
+      const question = {
+        id: questionId,
+        clientPhone,
+        clientName,
+        originalShopAddress: shopAddress,
+        isNetworkWide,
+        questionText,
+        questionImageUrl: questionImageUrl || null,
+        timestamp,
+        shops: [
+          {
+            shopAddress,
+            shopName: shopAddress,
+            isAnswered: false,
+            answeredBy: null,
+            answeredByName: null,
+            lastAnswerTime: null
+          }
+        ],
+        messages: [
+          {
+            id: messageId,
+            senderType: 'client',
+            senderPhone: clientPhone,
+            senderName: clientName,
+            shopAddress: null,
+            text: questionText,
+            imageUrl: questionImageUrl || null,
+            timestamp
+          }
+        ]
+      };
+
+      const filePath = path.join(PRODUCT_QUESTIONS_DIR, `${questionId}.json`);
       fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
 
-      res.json({ success: true, question });
+      console.log('✅ Question created:', questionId);
+      res.json({ success: true, questionId, question });
     } catch (error) {
+      console.error('Error creating product question:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
