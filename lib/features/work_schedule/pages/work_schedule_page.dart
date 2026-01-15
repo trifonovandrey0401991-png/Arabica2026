@@ -56,7 +56,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadData();
     _loadAdminUnreadCount();
@@ -161,6 +161,208 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         _selectedMonth = DateTime(picked.year, picked.month);
       });
       await _loadData();
+    }
+  }
+
+  /// Показывает диалог подтверждения очистки графика
+  Future<void> _confirmClearSchedule() async {
+    Logger.info('🔵 _confirmClearSchedule вызван');
+
+    if (_schedule == null || _schedule!.entries.isEmpty) {
+      Logger.warning('График пуст или не загружен');
+      return;
+    }
+
+    final entryCount = _schedule!.entries.length;
+    final monthName = _getMonthName(_selectedMonth.month);
+
+    Logger.info('Запрос подтверждения очистки. Записей: $entryCount, Месяц: $monthName ${_selectedMonth.year}');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 32),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Подтвердите очистку'),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Вы уверены, что хотите удалить ВСЕ смены из графика?',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Месяц: $monthName ${_selectedMonth.year}',
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Будет удалено смен: $entryCount',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '⚠️ Это действие НЕОБРАТИМО!',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Logger.info('🔴 Кнопка "Да, очистить график" в диалоге нажата!');
+              Navigator.of(context).pop(true);
+              Logger.info('🔴 Navigator.pop(true) вызван');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[700],
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Да, очистить график'),
+          ),
+        ],
+      ),
+    );
+
+    Logger.info('Результат подтверждения: $confirmed');
+
+    if (confirmed == true) {
+      Logger.info('Пользователь подтвердил очистку, вызываем _clearSchedule');
+      await _clearSchedule();
+    } else {
+      Logger.info('Пользователь отменил очистку');
+    }
+  }
+
+  /// Очищает график работы (удаляет все смены)
+  Future<void> _clearSchedule() async {
+    if (_schedule == null) return;
+
+    try {
+      // Показываем индикатор загрузки
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Очистка графика...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      Logger.info('Начинаем очистку графика за ${_selectedMonth.month}.${_selectedMonth.year}');
+
+      // Используем новый API для быстрой очистки всего месяца
+      final result = await WorkScheduleService.clearMonth(_selectedMonth);
+
+      if (result['success'] == true) {
+        final deletedCount = result['deletedCount'] ?? 0;
+        Logger.info('График успешно очищен. Удалено смен: $deletedCount');
+      } else {
+        throw Exception(result['message'] ?? 'Ошибка очистки графика');
+      }
+
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Перезагружаем данные
+      await _loadData();
+
+      // Показываем сообщение об успехе
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('График успешно очищен'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[700],
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Переключаемся на первую вкладку (График)
+        _tabController.animateTo(0);
+      }
+    } catch (e) {
+      Logger.error('Ошибка при очистке графика', e);
+
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Показываем ошибку
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Ошибка при очистке графика: $e'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -747,6 +949,17 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                 ],
               ),
             ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.delete_sweep, size: 18),
+                  SizedBox(width: 4),
+                  Text('Очистить график'),
+                ],
+              ),
+            ),
           ],
         ),
         actions: [
@@ -811,6 +1024,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     _buildByEmployeesTab(),
                     // Вкладка "Заявки на передачу смен"
                     _buildAdminNotificationsTab(),
+                    // Вкладка "Очистить график"
+                    _buildClearScheduleTab(),
                   ],
                 ),
       floatingActionButton: _schedule != null
@@ -1461,6 +1676,8 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -1481,6 +1698,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
                         ),
                       ],
                     ),
@@ -1614,10 +1834,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Одобрить заявку?'),
-        content: Text(
-          'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
-          'будет передана от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName}.\n\n'
-          'График будет обновлен автоматически.',
+        content: SingleChildScrollView(
+          child: Text(
+            'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
+            'будет передана от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName}.\n\n'
+            'График будет обновлен автоматически.',
+          ),
         ),
         actions: [
           TextButton(
@@ -1665,9 +1887,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Отклонить заявку?'),
-        content: Text(
-          'Заявка на передачу смены ${request.shiftDate.day}.${request.shiftDate.month} '
-          'от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName} будет отклонена.',
+        content: SingleChildScrollView(
+          child: Text(
+            'Заявка на передачу смены ${request.shiftDate.day}.${request.shiftDate.month} '
+            'от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName} будет отклонена.',
+          ),
         ),
         actions: [
           TextButton(
@@ -1706,6 +1930,131 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         }
       }
     }
+  }
+
+  /// Строит вкладку "Очистить график"
+  Widget _buildClearScheduleTab() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              size: 80,
+              color: Colors.orange[700],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Очистка графика работы',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Выбранный месяц: ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.info_outline, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Это действие удалит ВСЕ смены из текущего месяца',
+                            style: TextStyle(fontSize: 15),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: const [
+                        Icon(Icons.warning, color: Colors.red),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Это действие НЕОБРАТИМО',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            if (_schedule != null && _schedule!.entries.isNotEmpty) ...[
+              Text(
+                'Текущих смен в графике: ${_schedule!.entries.length}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _schedule != null && _schedule!.entries.isNotEmpty
+                    ? () {
+                        Logger.info('🔴 КНОПКА ОЧИСТИТЬ ГРАФИК НАЖАТА!');
+                        Logger.info('   Записей в графике: ${_schedule!.entries.length}');
+                        _confirmClearSchedule();
+                      }
+                    : null,
+                icon: const Icon(Icons.delete_forever, size: 28),
+                label: const Text(
+                  'Очистить график',
+                  style: TextStyle(fontSize: 18),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[700],
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey[300],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            if (_schedule == null || _schedule!.entries.isEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'График уже пуст',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   /// Строит вкладку "По сотрудникам"
