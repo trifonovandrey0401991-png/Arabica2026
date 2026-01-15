@@ -209,10 +209,21 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       // Обновляем статус в массиве shops для конкретного магазина
       const shopIndex = question.shops.findIndex(s => s.shopAddress === shopAddress);
       if (shopIndex !== -1) {
+        // Магазин уже есть в списке - обновляем его статус
         question.shops[shopIndex].isAnswered = true;
         question.shops[shopIndex].answeredBy = senderPhone;
         question.shops[shopIndex].answeredByName = senderName || 'Сотрудник';
         question.shops[shopIndex].lastAnswerTime = timestamp;
+      } else {
+        // Магазина нет в списке - добавляем его (для случая когда сотрудник отвечает из другого магазина)
+        question.shops.push({
+          shopAddress: shopAddress,
+          shopName: shopAddress,
+          isAnswered: true,
+          answeredBy: senderPhone,
+          answeredByName: senderName || 'Сотрудник',
+          lastAnswerTime: timestamp
+        });
       }
 
       fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
