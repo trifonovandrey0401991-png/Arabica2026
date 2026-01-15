@@ -45,6 +45,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
   app.post('/api/product-questions', async (req, res) => {
     try {
+      console.log('POST /api/product-questions - req.body:', JSON.stringify(req.body));
       const { clientPhone, clientName, shopAddress, questionText, questionImageUrl } = req.body;
       console.log('POST /api/product-questions:', questionText?.substring(0, 50));
 
