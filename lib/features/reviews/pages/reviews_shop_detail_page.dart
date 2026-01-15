@@ -91,7 +91,7 @@ class ReviewsShopDetailPage extends StatelessWidget {
                           Row(
                             children: [
                               Text(
-                                dateFormat.format(review.createdAt),
+                                dateFormat.format(review.createdAt.add(const Duration(hours: 3))),
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontSize: 12,

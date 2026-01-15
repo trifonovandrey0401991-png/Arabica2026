@@ -341,8 +341,10 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
   }
 
   String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
+    // Добавляем 3 часа для конвертации UTC в МСК (UTC+3)
+    final moscowDateTime = dateTime.add(const Duration(hours: 3));
+    final now = DateTime.now().toUtc().add(const Duration(hours: 3));
+    final difference = now.difference(moscowDateTime);
 
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
@@ -357,7 +359,7 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
     } else if (difference.inDays < 7) {
       return '${difference.inDays} дн. назад';
     } else {
-      return '${dateTime.day}.${dateTime.month}.${dateTime.year}';
+      return '${moscowDateTime.day}.${moscowDateTime.month}.${moscowDateTime.year}';
     }
   }
 }

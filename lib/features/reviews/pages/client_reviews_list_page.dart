@@ -181,7 +181,7 @@ class _ClientReviewsListPageState extends State<ClientReviewsListPage> {
                               const SizedBox(height: 4),
                               Text(
                                 dateFormat.format(
-                                  lastMessage?.createdAt ?? review.createdAt,
+                                  (lastMessage?.createdAt ?? review.createdAt).add(const Duration(hours: 3)),
                                 ),
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
