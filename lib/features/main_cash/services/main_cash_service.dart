@@ -47,9 +47,9 @@ class MainCashService {
         for (final withdrawal in withdrawals) {
           if (withdrawal.shopAddress == shop.address) {
             if (withdrawal.type == 'ooo') {
-              oooWithdrawals += withdrawal.amount;
+              oooWithdrawals += withdrawal.totalAmount;
             } else if (withdrawal.type == 'ip') {
-              ipWithdrawals += withdrawal.amount;
+              ipWithdrawals += withdrawal.totalAmount;
             }
           }
         }
@@ -117,9 +117,9 @@ class MainCashService {
 
       for (final withdrawal in withdrawals) {
         if (withdrawal.type == 'ooo') {
-          oooWithdrawals += withdrawal.amount;
+          oooWithdrawals += withdrawal.totalAmount;
         } else if (withdrawal.type == 'ip') {
-          ipWithdrawals += withdrawal.amount;
+          ipWithdrawals += withdrawal.totalAmount;
         }
       }
 

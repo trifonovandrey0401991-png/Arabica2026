@@ -31,7 +31,7 @@ class WithdrawalService {
 
   /// Создать новую выемку
   static Future<Withdrawal?> createWithdrawal(Withdrawal withdrawal) async {
-    Logger.debug('Создание выемки: ${withdrawal.shopAddress}, ${withdrawal.type}, ${withdrawal.amount}');
+    Logger.debug('Создание выемки: ${withdrawal.shopAddress}, ${withdrawal.type}, ${withdrawal.totalAmount}');
     return await BaseHttpService.post<Withdrawal>(
       endpoint: baseEndpoint,
       body: withdrawal.toJson(),
@@ -56,9 +56,9 @@ class WithdrawalService {
 
       for (final w in withdrawals) {
         if (w.type == 'ooo') {
-          oooTotal += w.amount;
+          oooTotal += w.totalAmount;
         } else if (w.type == 'ip') {
-          ipTotal += w.amount;
+          ipTotal += w.totalAmount;
         }
       }
 

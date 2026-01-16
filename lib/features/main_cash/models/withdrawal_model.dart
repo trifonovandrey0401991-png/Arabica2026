@@ -1,34 +1,46 @@
 import 'package:uuid/uuid.dart';
+import 'withdrawal_expense_model.dart';
 
 /// Модель выемки денег из кассы
 class Withdrawal {
   final String id;
   final String shopAddress;
+  final String employeeName;
+  final String employeeId;
   final String type; // "ooo" или "ip"
-  final double amount;
-  final String comment;
-  final String adminName;
+  final double totalAmount; // Общая сумма всех расходов
+  final List<WithdrawalExpense> expenses; // Список расходов
+  final String? adminName;
   final DateTime createdAt;
 
   Withdrawal({
     String? id,
     required this.shopAddress,
+    required this.employeeName,
+    required this.employeeId,
     required this.type,
-    required this.amount,
-    required this.comment,
-    required this.adminName,
+    required this.totalAmount,
+    required this.expenses,
+    this.adminName,
     DateTime? createdAt,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
 
   factory Withdrawal.fromJson(Map<String, dynamic> json) {
+    final expensesJson = json['expenses'] as List<dynamic>? ?? [];
+    final expenses = expensesJson
+        .map((e) => WithdrawalExpense.fromJson(e as Map<String, dynamic>))
+        .toList();
+
     return Withdrawal(
       id: json['id'] as String,
       shopAddress: json['shopAddress'] as String,
+      employeeName: json['employeeName'] as String,
+      employeeId: json['employeeId'] as String,
       type: json['type'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      comment: json['comment'] as String? ?? '',
-      adminName: json['adminName'] as String,
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      expenses: expenses,
+      adminName: json['adminName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -37,9 +49,11 @@ class Withdrawal {
     return {
       'id': id,
       'shopAddress': shopAddress,
+      'employeeName': employeeName,
+      'employeeId': employeeId,
       'type': type,
-      'amount': amount,
-      'comment': comment,
+      'totalAmount': totalAmount,
+      'expenses': expenses.map((e) => e.toJson()).toList(),
       'adminName': adminName,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -48,18 +62,22 @@ class Withdrawal {
   Withdrawal copyWith({
     String? id,
     String? shopAddress,
+    String? employeeName,
+    String? employeeId,
     String? type,
-    double? amount,
-    String? comment,
+    double? totalAmount,
+    List<WithdrawalExpense>? expenses,
     String? adminName,
     DateTime? createdAt,
   }) {
     return Withdrawal(
       id: id ?? this.id,
       shopAddress: shopAddress ?? this.shopAddress,
+      employeeName: employeeName ?? this.employeeName,
+      employeeId: employeeId ?? this.employeeId,
       type: type ?? this.type,
-      amount: amount ?? this.amount,
-      comment: comment ?? this.comment,
+      totalAmount: totalAmount ?? this.totalAmount,
+      expenses: expenses ?? this.expenses,
       adminName: adminName ?? this.adminName,
       createdAt: createdAt ?? this.createdAt,
     );

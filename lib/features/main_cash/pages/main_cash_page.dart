@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../models/withdrawal_model.dart';
 import '../services/main_cash_service.dart';
 import '../services/withdrawal_service.dart';
-import '../widgets/withdrawal_dialog.dart';
 import 'shop_balance_details_page.dart';
+import 'withdrawal_shop_selection_page.dart';
 
 /// Главная страница отчета по кассе
 class MainCashPage extends StatefulWidget {
@@ -78,15 +79,25 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     return list;
   }
 
-  Future<void> _showWithdrawalDialog() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => WithdrawalDialog(shopAddresses: _shopAddresses),
+  Future<void> _navigateToWithdrawal() async {
+    // Получить имя текущего пользователя
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserName = prefs.getString('employeeName') ?? 'Администратор';
+
+    if (!mounted) return;
+
+    // Перейти к выбору магазина
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WithdrawalShopSelectionPage(
+          currentUserName: currentUserName,
+        ),
+      ),
     );
 
-    if (result == true) {
-      _loadData();
-    }
+    // Обновить данные после возврата
+    _loadData();
   }
 
   String _formatAmount(double amount) {
@@ -217,7 +228,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           color: const Color(0xFF00695C),
           child: ElevatedButton.icon(
-            onPressed: _showWithdrawalDialog,
+            onPressed: _navigateToWithdrawal,
             icon: const Icon(Icons.add, color: Colors.white),
             label: const Text('Сделать выемку', style: TextStyle(color: Colors.white)),
             style: ElevatedButton.styleFrom(
@@ -422,77 +433,156 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   Widget _buildWithdrawalCard(Withdrawal withdrawal) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  withdrawal.formattedDateTime,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: withdrawal.type == 'ooo'
-                        ? Colors.blue.withOpacity(0.1)
-                        : Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    withdrawal.typeDisplayName,
-                    style: TextStyle(
-                      color: withdrawal.type == 'ooo' ? Colors.blue : Colors.orange,
-                      fontWeight: FontWeight.bold,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    withdrawal.formattedDateTime,
+                    style: const TextStyle(
+                      color: Colors.grey,
                       fontSize: 12,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              withdrawal.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (withdrawal.comment.isNotEmpty)
-                  Expanded(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: withdrawal.type == 'ooo'
+                          ? Colors.blue.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     child: Text(
-                      withdrawal.comment,
-                      style: const TextStyle(color: Colors.grey),
+                      withdrawal.typeDisplayName,
+                      style: TextStyle(
+                        color: withdrawal.type == 'ooo' ? Colors.blue : Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                Text(
-                  '${withdrawal.amount.toStringAsFixed(0)} \u20bd',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF004D40),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                withdrawal.shopAddress,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                withdrawal.employeeName,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${withdrawal.expenses.length} расход${_getExpenseEnding(withdrawal.expenses.length)}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Админ: ${withdrawal.adminName}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
+                  Text(
+                    '${withdrawal.totalAmount.toStringAsFixed(0)} ₽',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF004D40),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Детализация расходов:',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  ...withdrawal.expenses.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final expense = entry.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${index + 1}. ${expense.displayName}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Сумма:',
+                                style: TextStyle(color: Colors.grey, fontSize: 12),
+                              ),
+                              Text(
+                                '${expense.amount.toStringAsFixed(0)} ₽',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (expense.comment.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Комментарий: ${expense.comment}',
+                              style: TextStyle(color: Colors.grey[700], fontSize: 11),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  if (withdrawal.adminName != null && withdrawal.adminName!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Создал: ${withdrawal.adminName}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _getExpenseEnding(int count) {
+    if (count == 1) return '';
+    if (count >= 2 && count <= 4) return 'а';
+    return 'ов';
   }
 }
