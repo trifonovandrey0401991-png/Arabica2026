@@ -5,6 +5,7 @@ import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import 'kpi_shop_day_detail_dialog.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/widgets/shop_icon.dart';
 
 bool isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -59,20 +60,69 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
 
     final shop = await showDialog<Shop>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Выберите магазин'),
-        content: SizedBox(
-          width: double.maxFinite,
+      builder: (context) => Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Выберите магазин'),
+          backgroundColor: const Color(0xFF004D40),
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF004D40),
+            image: DecorationImage(
+              image: AssetImage('assets/images/arabica_background.png'),
+              fit: BoxFit.cover,
+              opacity: 0.6,
+            ),
+          ),
           child: ListView.builder(
-            shrinkWrap: true,
+            padding: const EdgeInsets.all(16),
             itemCount: _shops.length,
             itemBuilder: (context, index) {
               final shop = _shops[index];
-              return ListTile(
-                leading: shop.leadingIcon,
-                title: Text(shop.name),
-                subtitle: Text(shop.address),
-                onTap: () => Navigator.pop(context, shop),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.pop(context, shop),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.5),
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const ShopIcon(size: 56),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              shop.address,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: Colors.white70,
+                            size: 28,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               );
             },
           ),

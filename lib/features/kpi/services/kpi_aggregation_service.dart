@@ -3,6 +3,8 @@ import '../../attendance/models/attendance_model.dart';
 import '../../shifts/models/shift_report_model.dart';
 import '../../recount/models/recount_report_model.dart';
 import '../../rko/models/rko_report_model.dart';
+import '../../envelope/models/envelope_report_model.dart';
+import '../../shift_handover/models/shift_handover_report_model.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/constants/app_constants.dart';
 import 'kpi_normalizers.dart';
@@ -15,6 +17,8 @@ class KPIAggregationService {
     required List<ShiftReport> shifts,
     required List<RecountReport> recounts,
     required List<RKOMetadata> rkos,
+    required List<EnvelopeReport> envelopes,
+    required List<ShiftHandoverReport> shiftHandovers,
     required DateTime date,
     required String shopAddress,
   }) {
@@ -53,6 +57,22 @@ class KPIAggregationService {
     _processRKOs(
       employeesDataMap: employeesDataMap,
       rkos: rkos,
+      normalizedDate: normalizedDate,
+      shopAddress: shopAddress,
+    );
+
+    // Обработка конвертов
+    _processEnvelopes(
+      employeesDataMap: employeesDataMap,
+      envelopes: envelopes,
+      normalizedDate: normalizedDate,
+      shopAddress: shopAddress,
+    );
+
+    // Обработка сдач смены
+    _processShiftHandovers(
+      employeesDataMap: employeesDataMap,
+      shiftHandovers: shiftHandovers,
       normalizedDate: normalizedDate,
       shopAddress: shopAddress,
     );
@@ -114,6 +134,8 @@ class KPIAggregationService {
           hasShift: existing.hasShift,
           hasRecount: existing.hasRecount,
           hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
         );
         Logger.debug('   ✅ Обновлена запись для "$key": утро=${existing.hasMorningAttendance || isMorning}, вечер=${existing.hasEveningAttendance || isEvening}');
       }
@@ -166,6 +188,8 @@ class KPIAggregationService {
           hasShift: true,
           hasRecount: existing.hasRecount,
           hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
         );
       }
     }
@@ -207,6 +231,8 @@ class KPIAggregationService {
           hasShift: existing.hasShift,
           hasRecount: true,
           hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
         );
       }
     }
@@ -282,8 +308,96 @@ class KPIAggregationService {
           hasShift: existing.hasShift,
           hasRecount: existing.hasRecount,
           hasRKO: true,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
         );
         Logger.debug('   ✅ Обновлена запись для РКО: "$key", hasRKO=true');
+      }
+    }
+  }
+
+  /// Обработать конверты
+  static void _processEnvelopes({
+    required Map<String, KPIDayData> employeesDataMap,
+    required List<EnvelopeReport> envelopes,
+    required DateTime normalizedDate,
+    required String shopAddress,
+  }) {
+    Logger.debug('📋 Обработка конвертов: найдено ${envelopes.length}');
+
+    for (var envelope in envelopes) {
+      final key = KPINormalizers.normalizeEmployeeName(envelope.employeeName);
+      Logger.debug('   🔍 Обработка конверта: "${envelope.employeeName}" -> ключ: "$key"');
+      final existing = employeesDataMap[key];
+      if (existing != null) {
+        Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasEnvelope=true');
+      } else {
+        Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
+      }
+      if (existing == null) {
+        employeesDataMap[key] = KPIDayData(
+          date: normalizedDate,
+          employeeName: envelope.employeeName,
+          shopAddress: shopAddress,
+          hasEnvelope: true,
+        );
+      } else {
+        employeesDataMap[key] = KPIDayData(
+          date: normalizedDate,
+          employeeName: existing.employeeName,
+          shopAddress: shopAddress,
+          attendanceTime: existing.attendanceTime,
+          hasMorningAttendance: existing.hasMorningAttendance,
+          hasEveningAttendance: existing.hasEveningAttendance,
+          hasShift: existing.hasShift,
+          hasRecount: existing.hasRecount,
+          hasRKO: existing.hasRKO,
+          hasEnvelope: true,
+          hasShiftHandover: existing.hasShiftHandover,
+        );
+      }
+    }
+  }
+
+  /// Обработать сдачи смены
+  static void _processShiftHandovers({
+    required Map<String, KPIDayData> employeesDataMap,
+    required List<ShiftHandoverReport> shiftHandovers,
+    required DateTime normalizedDate,
+    required String shopAddress,
+  }) {
+    Logger.debug('📋 Обработка сдач смены: найдено ${shiftHandovers.length}');
+
+    for (var handover in shiftHandovers) {
+      final key = KPINormalizers.normalizeEmployeeName(handover.employeeName);
+      Logger.debug('   🔍 Обработка сдачи смены: "${handover.employeeName}" -> ключ: "$key"');
+      final existing = employeesDataMap[key];
+      if (existing != null) {
+        Logger.debug('   ✅ Найдена существующая запись для "$key", обновляем hasShiftHandover=true');
+      } else {
+        Logger.debug('   ⚠️ Запись для "$key" не найдена, создаем новую');
+      }
+      if (existing == null) {
+        employeesDataMap[key] = KPIDayData(
+          date: normalizedDate,
+          employeeName: handover.employeeName,
+          shopAddress: shopAddress,
+          hasShiftHandover: true,
+        );
+      } else {
+        employeesDataMap[key] = KPIDayData(
+          date: normalizedDate,
+          employeeName: existing.employeeName,
+          shopAddress: shopAddress,
+          attendanceTime: existing.attendanceTime,
+          hasMorningAttendance: existing.hasMorningAttendance,
+          hasEveningAttendance: existing.hasEveningAttendance,
+          hasShift: existing.hasShift,
+          hasRecount: existing.hasRecount,
+          hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: true,
+        );
       }
     }
   }
@@ -424,6 +538,8 @@ class KPIAggregationService {
     required List<ShiftReport> shifts,
     required List<RecountReport> recounts,
     required List<RKOMetadata> rkos,
+    required List<EnvelopeReport> envelopes,
+    required List<ShiftHandoverReport> shiftHandovers,
   }) {
     final Map<String, KPIEmployeeShopDayData> shopDaysMap = {};
 
@@ -467,9 +583,13 @@ class KPIAggregationService {
           hasShift: existing.hasShift,
           hasRecount: existing.hasRecount,
           hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
           rkoFileName: existing.rkoFileName,
           recountReportId: existing.recountReportId,
           shiftReportId: existing.shiftReportId,
+          envelopeReportId: existing.envelopeReportId,
+          shiftHandoverReportId: existing.shiftHandoverReportId,
         );
       }
     }
@@ -505,9 +625,13 @@ class KPIAggregationService {
           hasShift: true,
           hasRecount: existing.hasRecount,
           hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
           rkoFileName: existing.rkoFileName,
           recountReportId: existing.recountReportId,
           shiftReportId: shift.id,
+          envelopeReportId: existing.envelopeReportId,
+          shiftHandoverReportId: existing.shiftHandoverReportId,
         );
       }
     }
@@ -543,9 +667,13 @@ class KPIAggregationService {
           hasShift: existing.hasShift,
           hasRecount: true,
           hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
           rkoFileName: existing.rkoFileName,
           recountReportId: recount.id,
           shiftReportId: existing.shiftReportId,
+          envelopeReportId: existing.envelopeReportId,
+          shiftHandoverReportId: existing.shiftHandoverReportId,
         );
       }
     }
@@ -581,9 +709,13 @@ class KPIAggregationService {
           hasShift: existing.hasShift,
           hasRecount: existing.hasRecount,
           hasRKO: true,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: existing.hasShiftHandover,
           rkoFileName: rko.fileName,
           recountReportId: existing.recountReportId,
           shiftReportId: existing.shiftReportId,
+          envelopeReportId: existing.envelopeReportId,
+          shiftHandoverReportId: existing.shiftHandoverReportId,
         );
         Logger.debug('   Обновлена существующая запись: добавлено РКО');
       } else {
@@ -615,9 +747,13 @@ class KPIAggregationService {
             hasShift: existingRecord.hasShift,
             hasRecount: existingRecord.hasRecount,
             hasRKO: true,
+            hasEnvelope: existingRecord.hasEnvelope,
+            hasShiftHandover: existingRecord.hasShiftHandover,
             rkoFileName: rko.fileName,
             recountReportId: existingRecord.recountReportId,
             shiftReportId: existingRecord.shiftReportId,
+            envelopeReportId: existingRecord.envelopeReportId,
+            shiftHandoverReportId: existingRecord.shiftHandoverReportId,
           );
         } else {
           Logger.debug('   Создана новая запись для РКО');
@@ -629,6 +765,90 @@ class KPIAggregationService {
             rkoFileName: rko.fileName,
           );
         }
+      }
+    }
+
+    // Добавляем данные из конвертов
+    Logger.debug('📋 Обработка конвертов: всего ${envelopes.length} записей');
+    for (var envelope in envelopes) {
+      final date = DateTime(
+        envelope.createdAt.year,
+        envelope.createdAt.month,
+        envelope.createdAt.day,
+      );
+      final key = createShopDayKey(envelope.shopAddress, date);
+      Logger.debug('   Конверт: дата=${date.year}-${date.month}-${date.day}, магазин="${envelope.shopAddress}", ключ="$key"');
+
+      if (!shopDaysMap.containsKey(key)) {
+        Logger.debug('   Создана новая запись для конверта');
+        shopDaysMap[key] = KPIEmployeeShopDayData(
+          date: date,
+          shopAddress: envelope.shopAddress,
+          employeeName: employeeName,
+          hasEnvelope: true,
+          envelopeReportId: envelope.id,
+        );
+      } else {
+        Logger.debug('   Обновлена существующая запись: добавлен конверт');
+        final existing = shopDaysMap[key]!;
+        shopDaysMap[key] = KPIEmployeeShopDayData(
+          date: date,
+          shopAddress: envelope.shopAddress,
+          employeeName: employeeName,
+          attendanceTime: existing.attendanceTime,
+          hasShift: existing.hasShift,
+          hasRecount: existing.hasRecount,
+          hasRKO: existing.hasRKO,
+          hasEnvelope: true,
+          hasShiftHandover: existing.hasShiftHandover,
+          rkoFileName: existing.rkoFileName,
+          recountReportId: existing.recountReportId,
+          shiftReportId: existing.shiftReportId,
+          envelopeReportId: envelope.id,
+          shiftHandoverReportId: existing.shiftHandoverReportId,
+        );
+      }
+    }
+
+    // Добавляем данные из сдач смены
+    Logger.debug('📋 Обработка сдач смены: всего ${shiftHandovers.length} записей');
+    for (var handover in shiftHandovers) {
+      final date = DateTime(
+        handover.createdAt.year,
+        handover.createdAt.month,
+        handover.createdAt.day,
+      );
+      final key = createShopDayKey(handover.shopAddress, date);
+      Logger.debug('   Сдача смены: дата=${date.year}-${date.month}-${date.day}, магазин="${handover.shopAddress}", ключ="$key"');
+
+      if (!shopDaysMap.containsKey(key)) {
+        Logger.debug('   Создана новая запись для сдачи смены');
+        shopDaysMap[key] = KPIEmployeeShopDayData(
+          date: date,
+          shopAddress: handover.shopAddress,
+          employeeName: employeeName,
+          hasShiftHandover: true,
+          shiftHandoverReportId: handover.id,
+        );
+      } else {
+        Logger.debug('   Обновлена существующая запись: добавлена сдача смены');
+        final existing = shopDaysMap[key]!;
+        shopDaysMap[key] = KPIEmployeeShopDayData(
+          date: date,
+          shopAddress: handover.shopAddress,
+          employeeName: employeeName,
+          attendanceTime: existing.attendanceTime,
+          hasShift: existing.hasShift,
+          hasRecount: existing.hasRecount,
+          hasRKO: existing.hasRKO,
+          hasEnvelope: existing.hasEnvelope,
+          hasShiftHandover: true,
+          rkoFileName: existing.rkoFileName,
+          recountReportId: existing.recountReportId,
+          shiftReportId: existing.shiftReportId,
+          envelopeReportId: existing.envelopeReportId,
+          shiftHandoverReportId: handover.id,
+        );
       }
     }
 

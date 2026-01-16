@@ -1,29 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/review_model.dart';
+import '../services/review_service.dart';
 import 'review_detail_page.dart';
 
 /// Страница списка отзывов конкретного магазина (для админа)
-class ReviewsShopDetailPage extends StatelessWidget {
+class ReviewsShopDetailPage extends StatefulWidget {
   final String shopAddress;
-  final List<Review> reviews;
+  final List<Review> initialReviews;
 
   const ReviewsShopDetailPage({
     super.key,
     required this.shopAddress,
-    required this.reviews,
-  });
+    required List<Review> reviews,
+  }) : initialReviews = reviews;
+
+  @override
+  State<ReviewsShopDetailPage> createState() => _ReviewsShopDetailPageState();
+}
+
+class _ReviewsShopDetailPageState extends State<ReviewsShopDetailPage> {
+  late List<Review> _reviews;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reviews = widget.initialReviews;
+  }
+
+  Future<void> _loadReviews() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final allReviews = await ReviewService.getAllReviews();
+      final filteredReviews = allReviews
+          .where((r) => r.shopAddress == widget.shopAddress)
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _reviews = filteredReviews;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     // Сортируем отзывы по дате (новые сверху)
-    final sortedReviews = List<Review>.from(reviews)
+    final sortedReviews = List<Review>.from(_reviews)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          shopAddress,
+          widget.shopAddress,
           style: const TextStyle(fontSize: 16),
         ),
         backgroundColor: const Color(0xFF004D40),
@@ -37,14 +78,16 @@ class ReviewsShopDetailPage extends StatelessWidget {
             opacity: 0.6,
           ),
         ),
-        child: sortedReviews.isEmpty
-            ? const Center(
-                child: Text(
-                  'Нет отзывов',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              )
-            : ListView.builder(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : sortedReviews.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Нет отзывов',
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  )
+                : ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: sortedReviews.length,
                 itemBuilder: (context, index) {
@@ -117,13 +160,35 @@ class ReviewsShopDetailPage extends StatelessWidget {
                                   ),
                                 ),
                               ],
+                              // Показать badge с непрочитанными от клиента
+                              if (review.hasUnreadFromClient) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'непрочитано',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ],
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
-                        final result = await Navigator.push(
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ReviewDetailPage(
@@ -132,11 +197,8 @@ class ReviewsShopDetailPage extends StatelessWidget {
                             ),
                           ),
                         );
-                        if (!context.mounted) return;
-                        if (result == true) {
-                          // Возвращаем true, чтобы обновить список на предыдущей странице
-                          Navigator.of(context).pop(true);
-                        }
+                        // Перезагружаем список отзывов после возврата
+                        await _loadReviews();
                       },
                     ),
                   );

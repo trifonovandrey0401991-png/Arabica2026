@@ -101,7 +101,7 @@ function getAdminFcmTokens() {
   return tokens;
 }
 
-// Отправить push-уведомление
+// Отправить push-уведомление всем админам
 async function sendPushNotification(title, body, data = {}) {
   if (!firebaseInitialized || !admin) {
     console.log('Firebase не инициализирован, push-уведомление не отправлено');
@@ -140,6 +140,58 @@ async function sendPushNotification(title, body, data = {}) {
     } catch (e) {
       console.error('❌ Ошибка отправки push-уведомления:', e.message);
     }
+  }
+}
+
+// Отправить push-уведомление конкретному пользователю по номеру телефона
+async function sendPushToPhone(phone, title, body, data = {}) {
+  if (!firebaseInitialized || !admin) {
+    console.log('Firebase не инициализирован, push-уведомление не отправлено');
+    return false;
+  }
+
+  try {
+    // Нормализуем телефон (убираем + и пробелы)
+    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
+
+    if (!fs.existsSync(tokenFile)) {
+      console.log(`Нет FCM токена для телефона: ${phone}`);
+      return false;
+    }
+
+    const tokenData = loadJsonFile(tokenFile, null);
+    if (!tokenData || !tokenData.token) {
+      console.log(`Некорректный FCM токен для телефона: ${phone}`);
+      return false;
+    }
+
+    console.log(`Отправка push-уведомления на ${phone}: ${title}`);
+
+    await admin.messaging().send({
+      token: tokenData.token,
+      notification: {
+        title: title,
+        body: body,
+      },
+      data: {
+        ...data,
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'reviews_channel',
+        },
+      },
+    });
+
+    console.log(`✓ Push-уведомление отправлено на ${phone}`);
+    return true;
+  } catch (e) {
+    console.error(`❌ Ошибка отправки push-уведомления на ${phone}:`, e.message);
+    return false;
   }
 }
 
@@ -371,4 +423,4 @@ function setupReportNotificationsAPI(app) {
   console.log('Report Notifications API setup complete');
 }
 
-module.exports = { setupReportNotificationsAPI };
+module.exports = { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone };

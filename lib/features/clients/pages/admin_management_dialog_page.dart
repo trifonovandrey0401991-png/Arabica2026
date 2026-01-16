@@ -31,7 +31,13 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   void initState() {
     super.initState();
     _loadMessages();
-    _startAutoRefresh();
+
+    // Only start auto-refresh if phone is not empty
+    if (widget.client.phone.isNotEmpty) {
+      _startAutoRefresh();
+    } else {
+      print('⚠️ Auto-refresh disabled: empty phone number');
+    }
   }
 
   @override
@@ -51,6 +57,13 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   }
 
   Future<void> _loadMessages() async {
+    // Guard against empty phone
+    if (widget.client.phone.isEmpty) {
+      print('⚠️ Cannot load messages: empty phone number');
+      setState(() => _isLoading = false);
+      return;
+    }
+
     try {
       final data = await ManagementMessageService.getManagementMessages(widget.client.phone);
 
@@ -60,19 +73,29 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
       }
 
       if (mounted) {
+        print('🔍 DEBUG AdminManagementDialog: Got ${data.messages.length} messages');
+        for (var i = 0; i < data.messages.length && i < 3; i++) {
+          print('🔍 Message $i: ${data.messages[i].text}, sender: ${data.messages[i].senderType}');
+        }
+
         setState(() {
           _messages = data.messages;
           _isLoading = false;
         });
 
+        print('🔍 DEBUG AdminManagementDialog: After setState, _messages.length = ${_messages.length}');
+
         // Прокручиваем к последнему сообщению
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients && _messages.isNotEmpty) {
+            print('🔍 DEBUG AdminManagementDialog: Scrolling to bottom');
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
+          } else {
+            print('🔍 DEBUG AdminManagementDialog: NOT scrolling - hasClients: ${_scrollController.hasClients}, isEmpty: ${_messages.isEmpty}');
           }
         });
       }
@@ -353,7 +376,12 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                         controller: _scrollController,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         itemCount: _messages.length,
-                        itemBuilder: (context, index) => _buildMessage(_messages[index]),
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            print('🔍 DEBUG AdminManagementDialog: Building first message, total count: ${_messages.length}');
+                          }
+                          return _buildMessage(_messages[index]);
+                        },
                       ),
           ),
           // Предпросмотр прикреплённого медиа

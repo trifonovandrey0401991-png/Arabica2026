@@ -33,7 +33,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadUserRole();
     _loadData();
     // Автообновление каждые 10 секунд
@@ -95,16 +95,25 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
   Future<void> _loadPersonalDialogs() async {
     try {
       List<PersonalProductDialog> dialogs;
+      print('📋 DEBUG: Loading personal dialogs, _selectedShopAddress = $_selectedShopAddress');
       if (_selectedShopAddress != null) {
+        print('📋 DEBUG: Calling getShopPersonalDialogs for shop: $_selectedShopAddress');
         dialogs = await ProductQuestionService.getShopPersonalDialogs(_selectedShopAddress!);
       } else {
+        print('📋 DEBUG: Calling getAllPersonalDialogs');
         dialogs = await ProductQuestionService.getAllPersonalDialogs();
+      }
+
+      print('📋 DEBUG: Loaded ${dialogs.length} personal dialogs');
+      for (var dialog in dialogs) {
+        print('  - Dialog: ${dialog.id}, shop: ${dialog.shopAddress}, client: ${dialog.clientName}');
       }
 
       setState(() {
         _personalDialogs = dialogs;
       });
     } catch (e) {
+      print('❌ DEBUG: Error loading personal dialogs: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -353,20 +362,18 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
           indicatorColor: Colors.white,
           isScrollable: true,
           tabs: [
-            _buildTabWithBadge('Ожидают', _pendingCount, Colors.orange),
+            _buildTabWithBadge('Ожидают', _pendingCount + _unreadDialogsCount, Colors.orange),
             _buildTabWithBadge('Не отвечено', _expiredCount, Colors.red),
             const Tab(text: 'Отвеченные'),
-            _buildTabWithBadge('Персональные', _unreadDialogsCount, Colors.red),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildQuestionsTab(_pendingQuestions, isPending: true),
+          _buildCombinedPendingTab(),
           _buildQuestionsTab(_expiredQuestions, isExpired: true),
           _buildQuestionsTab(_answeredQuestions, isAnswered: true),
-          _buildPersonalDialogsTab(),
         ],
       ),
     );
@@ -405,6 +412,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     bool isPending = false,
     bool isExpired = false,
     bool isAnswered = false,
+    List<PersonalProductDialog>? personalDialogs,
   }) {
     return Column(
       children: [
@@ -459,11 +467,11 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
               ],
             ),
           ),
-        // Список вопросов
+        // Список вопросов и персональных диалогов
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : questions.isEmpty
+              : (questions.isEmpty && (personalDialogs == null || personalDialogs.isEmpty))
                   ? Center(
                       child: Text(
                         isPending ? 'Нет ожидающих вопросов' :
@@ -474,9 +482,17 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: questions.length,
+                      itemCount: (personalDialogs?.length ?? 0) + questions.length,
                       itemBuilder: (context, index) {
-                        final question = questions[index];
+                        // Сначала показываем персональные диалоги
+                        if (personalDialogs != null && index < personalDialogs.length) {
+                          final dialog = personalDialogs[index];
+                          return _buildPersonalDialogCard(dialog);
+                        }
+
+                        // Потом обычные вопросы
+                        final questionIndex = index - (personalDialogs?.length ?? 0);
+                        final question = questions[questionIndex];
                         return _buildQuestionCard(
                           question,
                           isPending: isPending,
@@ -641,6 +657,110 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
     );
   }
 
+  Widget _buildPersonalDialogCard(PersonalProductDialog dialog) {
+    final hasUnread = dialog.hasUnreadFromClient;
+    final lastMessage = dialog.getLastMessage();
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: hasUnread ? Colors.orange[50] : null,
+      child: ListTile(
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              backgroundColor: hasUnread ? Colors.orange : const Color(0xFF004D40),
+              child: const Icon(
+                Icons.chat,
+                color: Colors.white,
+              ),
+            ),
+            if (hasUnread)
+              Positioned(
+                right: -4,
+                top: -4,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.person, size: 16, color: Colors.grey),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                '${dialog.shopAddress} | ${dialog.clientName}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              dialog.clientPhone,
+              style: const TextStyle(fontSize: 12),
+            ),
+            if (lastMessage != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                lastMessage.text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                  color: hasUnread ? Colors.orange[800] : null,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatTimestamp(lastMessage.timestamp),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ],
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProductQuestionEmployeeDialogPage(
+                dialogId: dialog.id,
+                shopAddress: dialog.shopAddress,
+                clientName: dialog.clientName,
+              ),
+            ),
+          );
+          _loadPersonalDialogs(); // Обновляем после возврата
+        },
+      ),
+    );
+  }
+
   Widget _buildPersonalDialogsTab() {
     return Column(
       children: [
@@ -795,6 +915,18 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
                     ),
         ),
       ],
+    );
+  }
+
+  /// Объединённая вкладка "Ожидают" с обычными вопросами и персональными диалогами
+  Widget _buildCombinedPendingTab() {
+    // Список непрочитанных персональных диалогов
+    final unreadDialogs = _personalDialogs.where((d) => d.hasUnreadFromClient).toList();
+
+    return _buildQuestionsTab(
+      _pendingQuestions,
+      isPending: true,
+      personalDialogs: unreadDialogs,
     );
   }
 }

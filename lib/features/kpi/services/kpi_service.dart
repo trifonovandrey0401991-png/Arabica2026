@@ -1,9 +1,12 @@
 import '../models/kpi_models.dart';
+import '../models/kpi_employee_month_stats.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../shifts/services/shift_report_service.dart';
 import '../../recount/services/recount_service.dart';
 import '../../rko/services/rko_reports_service.dart';
 import '../../rko/models/rko_report_model.dart';
+import '../../envelope/services/envelope_report_service.dart';
+import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../../core/utils/logger.dart';
 import 'kpi_cache_service.dart';
 import 'kpi_filters.dart';
@@ -150,12 +153,52 @@ class KPIService {
         }
       }
 
+      // Получаем конверты за день
+      Logger.debug('📋 Загрузка конвертов для магазина: "$shopAddress"');
+      Logger.debug('   Дата для фильтра: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
+      final allEnvelopes = await EnvelopeReportService.getReports(shopAddress: shopAddress);
+      Logger.debug('   Всего конвертов для магазина: ${allEnvelopes.length}');
+      if (allEnvelopes.isNotEmpty) {
+        Logger.debug('   Примеры конвертов:');
+        for (var i = 0; i < allEnvelopes.length && i < 3; i++) {
+          final env = allEnvelopes[i];
+          Logger.debug('     [$i] ID: ${env.id}');
+          Logger.debug('         Сотрудник: ${env.employeeName}');
+          Logger.debug('         Магазин: ${env.shopAddress}');
+          Logger.debug('         Дата UTC: ${env.createdAt.toIso8601String()}');
+          Logger.debug('         Дата Local: ${env.createdAt.toLocal().toIso8601String()}');
+        }
+      }
+
+      // Фильтруем по дате (учитываем, что createdAt в UTC, конвертируем в локальное время)
+      final dayEnvelopes = allEnvelopes.where((envelope) {
+        final envelopeDate = envelope.createdAt.toLocal();
+        final isSameDate = envelopeDate.year == normalizedDate.year &&
+                           envelopeDate.month == normalizedDate.month &&
+                           envelopeDate.day == normalizedDate.day;
+        if (isSameDate) {
+          Logger.debug('   ✅ Найден конверт: ${envelope.employeeName} - ${envelope.createdAt.toIso8601String()} (локально: ${envelopeDate.toIso8601String()})');
+        }
+        return isSameDate;
+      }).toList();
+      Logger.debug('📋 Загружено конвертов за ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}: ${dayEnvelopes.length}');
+
+      // Получаем сдачи смены за день
+      Logger.debug('📋 Загрузка сдач смены для магазина: "$shopAddress"');
+      final dayShiftHandovers = await ShiftHandoverReportService.getReports(
+        shopAddress: shopAddress,
+        date: normalizedDate,
+      );
+      Logger.debug('📋 Загружено сдач смены: ${dayShiftHandovers.length}');
+
       // Агрегируем данные по сотрудникам
       final employeesDataMap = KPIAggregationService.aggregateShopDayData(
         attendanceRecords: filteredAttendanceRecords,
         shifts: dayShifts,
         recounts: recounts,
         rkos: dayRKOs,
+        envelopes: dayEnvelopes,
+        shiftHandovers: dayShiftHandovers,
         date: normalizedDate,
         shopAddress: shopAddress,
       );
@@ -174,6 +217,8 @@ class KPIService {
         Logger.debug('   📋 Пересменок: ${dayShifts.length}');
         Logger.debug('   📋 Пересчетов: ${recounts.length}');
         Logger.debug('   📋 РКО: ${dayRKOs.length}');
+        Logger.debug('   📋 Конвертов: ${dayEnvelopes.length}');
+        Logger.debug('   📋 Сдач смены: ${dayShiftHandovers.length}');
         Logger.debug('   📋 Всего записей сотрудников в employeesDataMap: ${employeesDataMap.length}');
         for (var entry in employeesDataMap.entries) {
           Logger.debug('      - ${entry.key}: утро=${entry.value.hasMorningAttendance}, вечер=${entry.value.hasEveningAttendance}, время=${entry.value.attendanceTime?.hour}:${entry.value.attendanceTime?.minute.toString().padLeft(2, '0')}');
@@ -202,7 +247,7 @@ class KPIService {
           final timeStr = emp.attendanceTime != null
               ? '${emp.attendanceTime!.hour.toString().padLeft(2, '0')}:${emp.attendanceTime!.minute.toString().padLeft(2, '0')}'
               : 'null';
-          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, время=$timeStr');
+          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}, конверт=${emp.hasEnvelope}, сдача смены=${emp.hasShiftHandover}, время=$timeStr');
           Logger.debug('         attendanceTime объект: ${emp.attendanceTime?.toIso8601String() ?? "null"}');
           Logger.debug('         attendanceTime is null: ${emp.attendanceTime == null}');
         }
@@ -392,6 +437,90 @@ class KPIService {
     KPICacheService.clearForShop(shopAddress);
   }
 
+  /// Получить месячную статистику сотрудника (текущий, прошлый, позапрошлый месяц)
+  static Future<List<KPIEmployeeMonthStats>> getEmployeeMonthlyStats(
+    String employeeName,
+  ) async {
+    try {
+      Logger.debug('Загрузка месячной статистики для сотрудника $employeeName');
+
+      // Получить все данные сотрудника
+      final allData = await getEmployeeShopDaysData(employeeName);
+
+      // Определить текущий, прошлый и позапрошлый месяцы
+      final now = DateTime.now();
+      final currentMonth = DateTime(now.year, now.month);
+
+      DateTime previousMonth;
+      if (now.month == 1) {
+        previousMonth = DateTime(now.year - 1, 12);
+      } else {
+        previousMonth = DateTime(now.year, now.month - 1);
+      }
+
+      DateTime twoMonthsAgo;
+      if (now.month <= 2) {
+        twoMonthsAgo = DateTime(now.year - 1, 12 + now.month - 2);
+      } else {
+        twoMonthsAgo = DateTime(now.year, now.month - 2);
+      }
+
+      Logger.debug('Текущий месяц: ${currentMonth.year}-${currentMonth.month}');
+      Logger.debug('Прошлый месяц: ${previousMonth.year}-${previousMonth.month}');
+      Logger.debug('Позапрошлый месяц: ${twoMonthsAgo.year}-${twoMonthsAgo.month}');
+
+      // Группировать по месяцам
+      final Map<String, List<KPIEmployeeShopDayData>> byMonth = {
+        '${currentMonth.year}-${currentMonth.month}': [],
+        '${previousMonth.year}-${previousMonth.month}': [],
+        '${twoMonthsAgo.year}-${twoMonthsAgo.month}': [],
+      };
+
+      for (final day in allData) {
+        final key = '${day.date.year}-${day.date.month}';
+        if (byMonth.containsKey(key)) {
+          byMonth[key]!.add(day);
+        }
+      }
+
+      Logger.debug('Данные по месяцам:');
+      Logger.debug('  Текущий: ${byMonth['${currentMonth.year}-${currentMonth.month}']!.length} дней');
+      Logger.debug('  Прошлый: ${byMonth['${previousMonth.year}-${previousMonth.month}']!.length} дней');
+      Logger.debug('  Позапрошлый: ${byMonth['${twoMonthsAgo.year}-${twoMonthsAgo.month}']!.length} дней');
+
+      // Агрегировать статистику для каждого месяца
+      return [
+        _buildMonthStats(employeeName, currentMonth.year, currentMonth.month, byMonth['${currentMonth.year}-${currentMonth.month}']!),
+        _buildMonthStats(employeeName, previousMonth.year, previousMonth.month, byMonth['${previousMonth.year}-${previousMonth.month}']!),
+        _buildMonthStats(employeeName, twoMonthsAgo.year, twoMonthsAgo.month, byMonth['${twoMonthsAgo.year}-${twoMonthsAgo.month}']!),
+      ];
+    } catch (e) {
+      Logger.error('Ошибка получения месячной статистики сотрудника', e);
+      return [];
+    }
+  }
+
+  /// Построить статистику для одного месяца
+  static KPIEmployeeMonthStats _buildMonthStats(
+    String employeeName,
+    int year,
+    int month,
+    List<KPIEmployeeShopDayData> monthData,
+  ) {
+    return KPIEmployeeMonthStats(
+      employeeName: employeeName,
+      year: year,
+      month: month,
+      daysWorked: monthData.length,
+      attendanceCount: monthData.where((d) => d.attendanceTime != null).length,
+      shiftsCount: monthData.where((d) => d.hasShift).length,
+      recountsCount: monthData.where((d) => d.hasRecount).length,
+      rkosCount: monthData.where((d) => d.hasRKO).length,
+      envelopesCount: monthData.where((d) => d.hasEnvelope).length,
+      shiftHandoversCount: monthData.where((d) => d.hasShiftHandover).length,
+    );
+  }
+
   /// Получить данные по сотруднику, сгруппированные по магазинам и датам
   static Future<List<KPIEmployeeShopDayData>> getEmployeeShopDaysData(
     String employeeName,
@@ -483,6 +612,28 @@ class KPIService {
         Logger.debug('⚠️ РКО не загружены для $employeeName: employeeRKOs=${employeeRKOs != null}, success=${employeeRKOs?['success']}');
       }
 
+      // Получаем конверты сотрудника
+      Logger.debug('📋 Загрузка конвертов для сотрудника $employeeName');
+      final allEnvelopes = await EnvelopeReportService.getReports();
+      final filteredEnvelopes = allEnvelopes.where((envelope) {
+        final envelopeDate = envelope.createdAt;
+        final isInRange = (envelopeDate.year == currentMonth.year && envelopeDate.month == currentMonth.month) ||
+                          (envelopeDate.year == previousMonth.year && envelopeDate.month == previousMonth.month);
+        return envelope.employeeName == employeeName && isInRange;
+      }).toList();
+      Logger.debug('📋 Конвертов после фильтрации: ${filteredEnvelopes.length}');
+
+      // Получаем сдачи смены сотрудника
+      Logger.debug('📋 Загрузка сдач смены для сотрудника $employeeName');
+      final allShiftHandovers = await ShiftHandoverReportService.getReports(employeeName: employeeName);
+      final filteredShiftHandovers = allShiftHandovers.where((handover) {
+        final handoverDate = handover.createdAt;
+        final isInRange = (handoverDate.year == currentMonth.year && handoverDate.month == currentMonth.month) ||
+                          (handoverDate.year == previousMonth.year && handoverDate.month == previousMonth.month);
+        return isInRange;
+      }).toList();
+      Logger.debug('📋 Сдач смены после фильтрации: ${filteredShiftHandovers.length}');
+
       // Агрегируем данные по магазинам и датам
       final shopDaysMap = KPIAggregationService.aggregateEmployeeShopDaysData(
         employeeName: employeeName,
@@ -490,6 +641,8 @@ class KPIService {
         shifts: employeeShifts,
         recounts: filteredRecounts,
         rkos: filteredRKOs,
+        envelopes: filteredEnvelopes,
+        shiftHandovers: filteredShiftHandovers,
       );
 
       // Сортируем по дате (новые первыми)

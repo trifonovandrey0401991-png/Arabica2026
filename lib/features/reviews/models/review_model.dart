@@ -49,6 +49,8 @@ class Review {
   final String reviewType; // 'positive' или 'negative'
   final String reviewText;
   final List<ReviewMessage> messages;
+  final bool hasUnreadFromClient; // Есть ли непрочитанные от клиента для админа
+  final bool hasUnreadFromAdmin; // Есть ли непрочитанные от админа для клиента
 
   Review({
     required this.id,
@@ -59,6 +61,8 @@ class Review {
     required this.reviewType,
     required this.reviewText,
     List<ReviewMessage>? messages,
+    this.hasUnreadFromClient = false,
+    this.hasUnreadFromAdmin = false,
   }) : messages = messages ?? [];
 
   factory Review.fromJson(Map<String, dynamic> json) {
@@ -73,6 +77,8 @@ class Review {
       messages: (json['messages'] as List<dynamic>?)
           ?.map((m) => ReviewMessage.fromJson(m as Map<String, dynamic>))
           .toList() ?? [],
+      hasUnreadFromClient: json['hasUnreadFromClient'] ?? false,
+      hasUnreadFromAdmin: json['hasUnreadFromAdmin'] ?? false,
     );
   }
 
@@ -86,6 +92,8 @@ class Review {
       'reviewType': reviewType,
       'reviewText': reviewText,
       'messages': messages.map((m) => m.toJson()).toList(),
+      'hasUnreadFromClient': hasUnreadFromClient,
+      'hasUnreadFromAdmin': hasUnreadFromAdmin,
     };
   }
 

@@ -60,14 +60,14 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                   child: SingleChildScrollView(
                     child: DataTable(
                       columnSpacing: 12,
-                      headingRowHeight: 40,
+                      headingRowHeight: 80,
                       dataRowMinHeight: 36,
                       dataRowMaxHeight: 36,
                       headingRowColor: MaterialStateColor.resolveWith(
                         (states) => const Color(0xFF004D40).withOpacity(0.1),
                       ),
-                      columns: const [
-                        DataColumn(
+                      columns: [
+                        const DataColumn(
                           label: Text(
                             'ФИО',
                             style: TextStyle(
@@ -77,38 +77,74 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                           ),
                         ),
                         DataColumn(
-                          label: Text(
-                            'Приход',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                          label: RotatedBox(
+                            quarterTurns: 3,
+                            child: const Text(
+                              'Приход',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ),
                         DataColumn(
-                          label: Text(
-                            'Смена',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                          label: RotatedBox(
+                            quarterTurns: 3,
+                            child: const Text(
+                              'Смена',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ),
                         DataColumn(
-                          label: Text(
-                            'Пересчет',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                          label: RotatedBox(
+                            quarterTurns: 3,
+                            child: const Text(
+                              'Пересчет',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ),
                         DataColumn(
-                          label: Text(
-                            'РКО',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                          label: RotatedBox(
+                            quarterTurns: 3,
+                            child: const Text(
+                              'РКО',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: RotatedBox(
+                            quarterTurns: 3,
+                            child: const Text(
+                              'Конверт',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: RotatedBox(
+                            quarterTurns: 3,
+                            child: const Text(
+                              'Сдача',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ),
@@ -156,6 +192,20 @@ class KPIShopDayDetailDialog extends StatelessWidget {
                               Icon(
                                 row.hasRKO ? Icons.check : Icons.close,
                                 color: row.hasRKO ? Colors.green : Colors.red,
+                                size: 18,
+                              ),
+                            ),
+                            DataCell(
+                              Icon(
+                                row.hasEnvelope ? Icons.check : Icons.close,
+                                color: row.hasEnvelope ? Colors.green : Colors.red,
+                                size: 18,
+                              ),
+                            ),
+                            DataCell(
+                              Icon(
+                                row.hasShiftHandover ? Icons.check : Icons.close,
+                                color: row.hasShiftHandover ? Colors.green : Colors.red,
                                 size: 18,
                               ),
                             ),

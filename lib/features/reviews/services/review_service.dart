@@ -180,4 +180,23 @@ class ReviewService {
       timeout: ApiConstants.longTimeout,
     );
   }
+
+  /// Отметить диалог как прочитанный
+  static Future<bool> markDialogRead({
+    required String reviewId,
+    required String readerType, // 'admin' или 'client'
+  }) async {
+    try {
+      Logger.debug('Отметка диалога как прочитанного: $reviewId, readerType: $readerType');
+
+      return await BaseHttpService.simplePost(
+        endpoint: '${ApiConstants.reviewsEndpoint}/$reviewId/mark-read',
+        body: {'readerType': readerType},
+        timeout: ApiConstants.longTimeout,
+      );
+    } catch (e) {
+      Logger.error('Ошибка отметки диалога как прочитанного', e);
+      return false;
+    }
+  }
 }

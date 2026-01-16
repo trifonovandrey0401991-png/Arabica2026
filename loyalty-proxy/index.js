@@ -17,7 +17,7 @@ const setupRatingWheelAPI = require("./rating_wheel_api");
 const setupReferralsAPI = require("./referrals_api");
 const { setupTasksAPI } = require("./tasks_api");
 const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
-const { setupReportNotificationsAPI } = require("./report_notifications_api");
+const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = require("./report_notifications_api");
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
@@ -3636,6 +3636,250 @@ app.delete('/api/envelope-questions/:id', async (req, res) => {
   }
 });
 
+// ========== API для отчётов конвертов ==========
+const ENVELOPE_REPORTS_DIR = '/var/www/envelope-reports';
+if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+  fs.mkdirSync(ENVELOPE_REPORTS_DIR, { recursive: true });
+}
+
+// GET /api/envelope-reports - получить все отчеты
+app.get('/api/envelope-reports', async (req, res) => {
+  try {
+    console.log('GET /api/envelope-reports:', req.query);
+    let { shopAddress, status, fromDate, toDate } = req.query;
+
+    // Декодируем shop address если он URL-encoded
+    if (shopAddress && shopAddress.includes('%')) {
+      try {
+        shopAddress = decodeURIComponent(shopAddress);
+        console.log(`  📋 Декодирован shop address: "${shopAddress}"`);
+      } catch (e) {
+        console.error('  ⚠️ Ошибка декодирования shopAddress:', e);
+      }
+    }
+
+    // Нормализуем адрес магазина для сравнения (убираем лишние пробелы)
+    const normalizedShopAddress = shopAddress ? shopAddress.trim() : null;
+    if (normalizedShopAddress) {
+      console.log(`  📋 Фильтр по магазину: "${normalizedShopAddress}" (длина: ${normalizedShopAddress.length})`);
+    }
+
+    const reports = [];
+    if (fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+      const files = await fs.promises.readdir(ENVELOPE_REPORTS_DIR);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+      console.log(`  📋 Найдено файлов конвертов: ${jsonFiles.length}`);
+
+      for (const file of jsonFiles) {
+        try {
+          const content = await fs.promises.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
+          const report = JSON.parse(content);
+
+          // Применяем фильтры (с нормализацией адреса)
+          if (normalizedShopAddress) {
+            const reportShopTrimmed = report.shopAddress.trim();
+            console.log(`  📋 Сравнение: "${reportShopTrimmed}" (длина: ${reportShopTrimmed.length}) === "${normalizedShopAddress}" (длина: ${normalizedShopAddress.length}) => ${reportShopTrimmed === normalizedShopAddress}`);
+            if (reportShopTrimmed !== normalizedShopAddress) continue;
+          }
+          if (status && report.status !== status) continue;
+          if (fromDate && new Date(report.createdAt) < new Date(fromDate)) continue;
+          if (toDate && new Date(report.createdAt) > new Date(toDate)) continue;
+
+          reports.push(report);
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+
+    // Сортируем по дате создания (новые первыми)
+    reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({ success: true, reports });
+  } catch (error) {
+    console.error('Ошибка получения отчетов конвертов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/envelope-reports/expired - получить просроченные отчеты
+app.get('/api/envelope-reports/expired', async (req, res) => {
+  try {
+    console.log('GET /api/envelope-reports/expired');
+
+    const reports = [];
+    if (fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+      const files = await fs.promises.readdir(ENVELOPE_REPORTS_DIR);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      for (const file of jsonFiles) {
+        try {
+          const content = await fs.promises.readFile(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
+          const report = JSON.parse(content);
+
+          // Проверяем: не подтверждён И прошло более 24 часов
+          if (report.status === 'pending') {
+            const createdAt = new Date(report.createdAt);
+            const now = new Date();
+            const diffHours = (now - createdAt) / (1000 * 60 * 60);
+
+            if (diffHours >= 24) {
+              reports.push(report);
+            }
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+
+    // Сортируем по дате создания (старые первыми)
+    reports.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    res.json({ success: true, reports });
+  } catch (error) {
+    console.error('Ошибка получения просроченных отчетов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/envelope-reports/:id - получить один отчет
+app.get('/api/envelope-reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('GET /api/envelope-reports/:id', id);
+
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Отчет не найден' });
+    }
+
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const report = JSON.parse(content);
+
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error('Ошибка получения отчета:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/envelope-reports - создать новый отчет
+app.post('/api/envelope-reports', async (req, res) => {
+  try {
+    console.log('POST /api/envelope-reports:', JSON.stringify(req.body).substring(0, 300));
+
+    const reportId = req.body.id || `envelope_report_${Date.now()}`;
+    const report = {
+      ...req.body,
+      id: reportId,
+      createdAt: new Date().toISOString(),
+      status: req.body.status || 'pending',
+    };
+
+    const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
+
+    await fs.promises.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+    console.log('Отчет конверта создан:', filePath);
+
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error('Ошибка создания отчета конверта:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/envelope-reports/:id - обновить отчет
+app.put('/api/envelope-reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('PUT /api/envelope-reports/:id', id);
+
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Отчет не найден' });
+    }
+
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const existingReport = JSON.parse(content);
+
+    const updatedReport = {
+      ...existingReport,
+      ...req.body,
+      id: existingReport.id, // Не меняем ID
+      createdAt: existingReport.createdAt, // Не меняем дату создания
+    };
+
+    await fs.promises.writeFile(filePath, JSON.stringify(updatedReport, null, 2), 'utf8');
+    console.log('Отчет конверта обновлён:', filePath);
+
+    res.json({ success: true, report: updatedReport });
+  } catch (error) {
+    console.error('Ошибка обновления отчета:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой
+app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmedByAdmin, rating } = req.body;
+    console.log('PUT /api/envelope-reports/:id/confirm', id, confirmedByAdmin, rating);
+
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Отчет не найден' });
+    }
+
+    const content = await fs.promises.readFile(filePath, 'utf8');
+    const report = JSON.parse(content);
+
+    report.status = 'confirmed';
+    report.confirmedAt = new Date().toISOString();
+    report.confirmedByAdmin = confirmedByAdmin;
+    report.rating = rating;
+
+    await fs.promises.writeFile(filePath, JSON.stringify(report, null, 2), 'utf8');
+    console.log('Отчет конверта подтверждён:', filePath);
+
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error('Ошибка подтверждения отчета:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/envelope-reports/:id - удалить отчет
+app.delete('/api/envelope-reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('DELETE /api/envelope-reports/:id', id);
+
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Отчет не найден' });
+    }
+
+    await fs.promises.unlink(filePath);
+    console.log('Отчет конверта удалён:', filePath);
+
+    res.json({ success: true, message: 'Отчет успешно удален' });
+  } catch (error) {
+    console.error('Ошибка удаления отчета:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== API для клиентов ==========
 const CLIENTS_DIR = '/var/www/clients';
 if (!fs.existsSync(CLIENTS_DIR)) {
@@ -4005,9 +4249,25 @@ app.post('/api/reviews', async (req, res) => {
       reviewText: req.body.reviewText,
       messages: [],
       createdAt: new Date().toISOString(),
+      hasUnreadFromClient: true,  // Новый отзыв непрочитан для админа
+      hasUnreadFromAdmin: false,
     };
     const reviewFile = path.join(REVIEWS_DIR, `${review.id}.json`);
     fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+
+    // Отправить push-уведомление админам
+    const reviewEmoji = review.reviewType === 'positive' ? '👍' : '👎';
+    await sendPushNotification(
+      `Новый ${reviewEmoji} отзыв`,
+      `${review.clientName} - ${review.shopAddress}`,
+      {
+        type: 'review_created',
+        reviewId: review.id,
+        reviewType: review.reviewType,
+        shopAddress: review.shopAddress,
+      }
+    );
+
     res.json({ success: true, review });
   } catch (error) {
     console.error('Ошибка создания отзыва:', error);
@@ -4042,13 +4302,91 @@ app.post('/api/reviews/:id/messages', async (req, res) => {
       senderName: req.body.senderName,
       text: req.body.text,
       timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      isRead: false,
     };
     review.messages = review.messages || [];
     review.messages.push(message);
+
+    // Установить флаги непрочитанности и отправить push в зависимости от отправителя
+    if (message.sender === 'client') {
+      // Сообщение от клиента - отправить push админам
+      review.hasUnreadFromClient = true;
+
+      await sendPushNotification(
+        'Новое сообщение в отзыве',
+        `${review.clientName}: ${message.text.substring(0, 50)}${message.text.length > 50 ? '...' : ''}`,
+        {
+          type: 'review_message',
+          reviewId: review.id,
+          shopAddress: review.shopAddress,
+        }
+      );
+    } else if (message.sender === 'admin') {
+      // Сообщение от админа - отправить push клиенту
+      review.hasUnreadFromAdmin = true;
+
+      await sendPushToPhone(
+        review.clientPhone,
+        'Ответ на ваш отзыв',
+        message.text.substring(0, 50) + (message.text.length > 50 ? '...' : ''),
+        {
+          type: 'review_message',
+          reviewId: review.id,
+        }
+      );
+    }
+
     fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
     res.json({ success: true, message });
   } catch (error) {
     console.error('Ошибка добавления сообщения:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/reviews/:id/mark-read - Отметить диалог как прочитанный
+app.post('/api/reviews/:id/mark-read', async (req, res) => {
+  try {
+    const reviewFile = path.join(REVIEWS_DIR, `${req.params.id}.json`);
+    if (!fs.existsSync(reviewFile)) {
+      return res.status(404).json({ success: false, error: 'Отзыв не найден' });
+    }
+
+    const review = JSON.parse(fs.readFileSync(reviewFile, 'utf8'));
+    const { readerType } = req.body; // 'admin' или 'client'
+
+    if (!readerType) {
+      return res.status(400).json({ success: false, error: 'readerType обязателен' });
+    }
+
+    // Обновить флаги и отметить сообщения как прочитанные
+    if (readerType === 'admin') {
+      review.hasUnreadFromClient = false;
+      // Отметить все сообщения от клиента как прочитанные
+      if (review.messages) {
+        review.messages.forEach(msg => {
+          if (msg.sender === 'client') {
+            msg.isRead = true;
+          }
+        });
+      }
+    } else if (readerType === 'client') {
+      review.hasUnreadFromAdmin = false;
+      // Отметить все сообщения от админа как прочитанные
+      if (review.messages) {
+        review.messages.forEach(msg => {
+          if (msg.sender === 'admin') {
+            msg.isRead = true;
+          }
+        });
+      }
+    }
+
+    fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка отметки диалога как прочитанного:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

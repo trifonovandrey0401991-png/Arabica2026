@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
 import 'reviews_shop_detail_page.dart';
+import '../../../core/services/base_http_service.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../clients/pages/management_dialogs_list_page.dart';
 
 /// Страница списка отзывов, сгруппированных по магазинам (для админа)
 class ReviewsListPage extends StatefulWidget {
@@ -14,11 +17,13 @@ class ReviewsListPage extends StatefulWidget {
 class _ReviewsListPageState extends State<ReviewsListPage> {
   bool _isLoading = true;
   Map<String, ShopReviewStats> _shopStats = {};
+  int _managementUnreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadReviews();
+    _loadManagementUnreadCount();
   }
 
   Future<void> _loadReviews() async {
@@ -61,6 +66,25 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
     }
   }
 
+  Future<void> _loadManagementUnreadCount() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/management-dialogs',
+        timeout: ApiConstants.longTimeout,
+      );
+
+      if (result != null && result['success'] == true) {
+        if (mounted) {
+          setState(() {
+            _managementUnreadCount = result['totalUnread'] ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки загрузки счетчика
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,9 +119,70 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _shopStats.length,
+                    itemCount: _shopStats.length + 1,
                     itemBuilder: (context, index) {
-                      final shopAddress = _shopStats.keys.elementAt(index);
+                      // Первый элемент - "Связь с руководством"
+                      if (index == 0) {
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: Stack(
+                              children: [
+                                const CircleAvatar(
+                                  backgroundColor: Color(0xFFFF6F00),
+                                  child: Icon(
+                                    Icons.business,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (_managementUnreadCount > 0)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        _managementUnreadCount > 9 ? '9+' : '$_managementUnreadCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            title: const Text(
+                              'Связь с руководством',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: const Text(
+                              'Сообщения от клиентов',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ManagementDialogsListPage(),
+                                ),
+                              );
+                              // Перезагрузить счетчик после возврата
+                              _loadManagementUnreadCount();
+                            },
+                          ),
+                        );
+                      }
+
+                      // Остальные элементы - магазины
+                      final shopIndex = index - 1;
+                      final shopAddress = _shopStats.keys.elementAt(shopIndex);
                       final stats = _shopStats[shopAddress]!;
 
                       return Card(
@@ -114,78 +199,106 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                             shopAddress,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text(
-                            'Всего отзывов: ${stats.total}',
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Положительные
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle,
-                                      color: Colors.green,
-                                      size: 16,
+                              Text(
+                                'Всего отзывов: ${stats.total}',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  // Положительные
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${stats.positive}',
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Colors.green,
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '${stats.positive}',
+                                          style: const TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  // Отрицательные
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.cancel,
+                                          color: Colors.red,
+                                          size: 14,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '${stats.negative}',
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Непрочитанные
+                                  if (stats.unread > 0) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'непрочитано: ${stats.unread}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
-                                ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              // Отрицательные
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.cancel,
-                                      color: Colors.red,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${stats.negative}',
-                                      style: const TextStyle(
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.chevron_right),
                             ],
                           ),
+                          trailing: const Icon(Icons.chevron_right),
                           onTap: () async {
-                            final result = await Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ReviewsShopDetailPage(
@@ -194,9 +307,8 @@ class _ReviewsListPageState extends State<ReviewsListPage> {
                                 ),
                               ),
                             );
-                            if (result == true) {
-                              _loadReviews();
-                            }
+                            // Перезагрузить список после возврата
+                            _loadReviews();
                           },
                         ),
                       );
@@ -213,6 +325,7 @@ class ShopReviewStats {
   final List<Review> reviews = [];
   int positive = 0;
   int negative = 0;
+  int unread = 0;
 
   ShopReviewStats({required this.shopAddress});
 
@@ -224,6 +337,9 @@ class ShopReviewStats {
       positive++;
     } else {
       negative++;
+    }
+    if (review.hasUnreadFromClient) {
+      unread++;
     }
   }
 }

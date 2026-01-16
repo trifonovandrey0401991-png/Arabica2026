@@ -26,7 +26,7 @@ class MediaUploadService {
       Logger.debug('📤 Загружаем ${type == MediaType.video ? "видео" : "фото"}: $fileName');
       Logger.debug('📦 Размер: ${(bytes.length / 1024 / 1024).toStringAsFixed(2)} MB');
 
-      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-media');
+      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-photo');
 
       final request = http.MultipartRequest('POST', uri);
       request.files.add(

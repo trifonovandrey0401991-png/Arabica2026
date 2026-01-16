@@ -9,6 +9,8 @@ class KPIDayData {
   final bool hasShift; // Есть ли пересменка
   final bool hasRecount; // Есть ли пересчет
   final bool hasRKO; // Есть ли РКО
+  final bool hasEnvelope; // Есть ли конверт
+  final bool hasShiftHandover; // Есть ли сдача смены
 
   KPIDayData({
     required this.date,
@@ -20,6 +22,8 @@ class KPIDayData {
     this.hasShift = false,
     this.hasRecount = false,
     this.hasRKO = false,
+    this.hasEnvelope = false,
+    this.hasShiftHandover = false,
   });
 
   /// Проверить, работал ли сотрудник в этот день
@@ -35,20 +39,24 @@ class KPIDayData {
     'hasShift': hasShift,
     'hasRecount': hasRecount,
     'hasRKO': hasRKO,
+    'hasEnvelope': hasEnvelope,
+    'hasShiftHandover': hasShiftHandover,
   };
 
   factory KPIDayData.fromJson(Map<String, dynamic> json) => KPIDayData(
     date: DateTime.parse(json['date']),
     employeeName: json['employeeName'] ?? '',
     shopAddress: json['shopAddress'] ?? '',
-    attendanceTime: json['attendanceTime'] != null 
-        ? DateTime.parse(json['attendanceTime']) 
+    attendanceTime: json['attendanceTime'] != null
+        ? DateTime.parse(json['attendanceTime'])
         : null,
     hasMorningAttendance: json['hasMorningAttendance'] ?? false,
     hasEveningAttendance: json['hasEveningAttendance'] ?? false,
     hasShift: json['hasShift'] ?? false,
     hasRecount: json['hasRecount'] ?? false,
     hasRKO: json['hasRKO'] ?? false,
+    hasEnvelope: json['hasEnvelope'] ?? false,
+    hasShiftHandover: json['hasShiftHandover'] ?? false,
   );
 
   /// Создать ключ для группировки по дате (без времени)
@@ -136,11 +144,13 @@ class KPIShopDayData {
     if (workingEmployees.isEmpty) return false;
     
     // Для каждого сотрудника проверяем наличие всех действий
-    return workingEmployees.every((data) => 
+    return workingEmployees.every((data) =>
       data.attendanceTime != null && // Приход
       data.hasShift && // Пересменка
       data.hasRecount && // Пересчет
-      data.hasRKO // РКО
+      data.hasRKO && // РКО
+      data.hasEnvelope && // Конверт
+      data.hasShiftHandover // Сдача смены
     );
   }
 
@@ -157,6 +167,8 @@ class KPIDayTableRow {
   final bool hasShift;
   final bool hasRecount;
   final bool hasRKO;
+  final bool hasEnvelope;
+  final bool hasShiftHandover;
 
   KPIDayTableRow({
     required this.employeeName,
@@ -164,6 +176,8 @@ class KPIDayTableRow {
     this.hasShift = false,
     this.hasRecount = false,
     this.hasRKO = false,
+    this.hasEnvelope = false,
+    this.hasShiftHandover = false,
   });
 
   /// Создать из KPIDayData
@@ -182,6 +196,8 @@ class KPIDayTableRow {
       hasShift: data.hasShift,
       hasRecount: data.hasRecount,
       hasRKO: data.hasRKO,
+      hasEnvelope: data.hasEnvelope,
+      hasShiftHandover: data.hasShiftHandover,
     );
   }
 }
@@ -195,9 +211,13 @@ class KPIEmployeeShopDayData {
   final bool hasShift; // Есть ли пересменка
   final bool hasRecount; // Есть ли пересчет
   final bool hasRKO; // Есть ли РКО
+  final bool hasEnvelope; // Есть ли конверт
+  final bool hasShiftHandover; // Есть ли сдача смены
   final String? rkoFileName; // Имя файла РКО (если есть)
   final String? recountReportId; // ID отчета пересчета (если есть)
   final String? shiftReportId; // ID отчета пересменки (если есть)
+  final String? envelopeReportId; // ID отчета конверта (если есть)
+  final String? shiftHandoverReportId; // ID отчета сдачи смены (если есть)
 
   KPIEmployeeShopDayData({
     required this.date,
@@ -207,13 +227,17 @@ class KPIEmployeeShopDayData {
     this.hasShift = false,
     this.hasRecount = false,
     this.hasRKO = false,
+    this.hasEnvelope = false,
+    this.hasShiftHandover = false,
     this.rkoFileName,
     this.recountReportId,
     this.shiftReportId,
+    this.envelopeReportId,
+    this.shiftHandoverReportId,
   });
 
   /// Проверить, выполнены ли все условия
-  bool get allConditionsMet => attendanceTime != null && hasShift && hasRecount && hasRKO;
+  bool get allConditionsMet => attendanceTime != null && hasShift && hasRecount && hasRKO && hasEnvelope && hasShiftHandover;
 
   /// Получить форматированное время прихода
   String? get formattedAttendanceTime {
@@ -240,9 +264,13 @@ class KPIEmployeeShopDayData {
     'hasShift': hasShift,
     'hasRecount': hasRecount,
     'hasRKO': hasRKO,
+    'hasEnvelope': hasEnvelope,
+    'hasShiftHandover': hasShiftHandover,
     'rkoFileName': rkoFileName,
     'recountReportId': recountReportId,
     'shiftReportId': shiftReportId,
+    'envelopeReportId': envelopeReportId,
+    'shiftHandoverReportId': shiftHandoverReportId,
   };
 
   factory KPIEmployeeShopDayData.fromJson(Map<String, dynamic> json) => KPIEmployeeShopDayData(
@@ -253,9 +281,13 @@ class KPIEmployeeShopDayData {
     hasShift: json['hasShift'] ?? false,
     hasRecount: json['hasRecount'] ?? false,
     hasRKO: json['hasRKO'] ?? false,
+    hasEnvelope: json['hasEnvelope'] ?? false,
+    hasShiftHandover: json['hasShiftHandover'] ?? false,
     rkoFileName: json['rkoFileName'],
     recountReportId: json['recountReportId'],
     shiftReportId: json['shiftReportId'],
+    envelopeReportId: json['envelopeReportId'],
+    shiftHandoverReportId: json['shiftHandoverReportId'],
   );
 }
 

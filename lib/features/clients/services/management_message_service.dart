@@ -12,6 +12,13 @@ class ManagementMessageService {
       Logger.debug('Loading management messages for: $clientPhone');
 
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+
+      // Guard against empty phone
+      if (normalizedPhone.isEmpty) {
+        Logger.debug('⚠️ Empty phone number, skipping request');
+        return ManagementDialogData(messages: [], unreadCount: 0);
+      }
+
       final result = await BaseHttpService.getRaw(
         endpoint: '$_baseEndpoint/$normalizedPhone/management',
       );

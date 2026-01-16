@@ -6,6 +6,7 @@ import '../../features/recount/pages/recount_reports_list_page.dart';
 import '../../features/attendance/pages/attendance_reports_page.dart';
 import '../../features/kpi/pages/kpi_type_selection_page.dart';
 import '../../features/reviews/pages/reviews_list_page.dart';
+import '../../features/reviews/services/review_service.dart';
 import '../../features/product_questions/pages/product_questions_report_page.dart';
 import '../../features/tests/pages/test_report_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
@@ -22,6 +23,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
 import '../../core/services/report_notification_service.dart';
+import '../../core/services/base_http_service.dart';
+import '../../core/constants/api_constants.dart';
 
 /// Страница отчетов (только для администраторов и верифицированных сотрудников)
 class ReportsPage extends StatefulWidget {
@@ -36,6 +39,8 @@ class _ReportsPageState extends State<ReportsPage> {
   bool _isVerified = false;
   bool _isLoading = true;
   int _jobApplicationsUnviewedCount = 0;
+  int _unreadReviewsCount = 0;
+  int _managementUnreadCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -44,6 +49,42 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadUserRole();
     _loadJobApplicationsCount();
     _loadReportCounts();
+    _loadUnreadReviewsCount();
+    _loadManagementUnreadCount();
+  }
+
+  Future<void> _loadUnreadReviewsCount() async {
+    try {
+      final reviews = await ReviewService.getAllReviews();
+      final unreadCount = reviews.where((r) => r.hasUnreadFromClient).length;
+
+      if (mounted) {
+        setState(() {
+          _unreadReviewsCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества непрочитанных отзывов', e);
+    }
+  }
+
+  Future<void> _loadManagementUnreadCount() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/management-dialogs',
+        timeout: ApiConstants.longTimeout,
+      );
+
+      if (result != null && result['success'] == true) {
+        if (mounted) {
+          setState(() {
+            _managementUnreadCount = result['totalUnread'] ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества непрочитанных сообщений руководству', e);
+    }
   }
 
   Future<void> _loadReportCounts() async {
@@ -232,15 +273,19 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отзывы покупателей - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отзывы покупателей',
               icon: Icons.feedback,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _unreadReviewsCount + _managementUnreadCount,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ReviewsListPage()),
                 );
+                // Перезагрузить счетчики после возврата
+                _loadUnreadReviewsCount();
+                _loadManagementUnreadCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),

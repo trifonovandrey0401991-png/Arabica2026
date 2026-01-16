@@ -22,6 +22,7 @@ import '../../work_schedule/models/work_schedule_model.dart';
 import '../../loyalty/pages/loyalty_scanner_page.dart';
 import '../../work_schedule/pages/my_schedule_page.dart';
 import '../../product_questions/pages/product_questions_management_page.dart';
+import '../../product_questions/services/product_question_service.dart';
 import '../../efficiency/pages/my_efficiency_page.dart';
 import '../../tasks/pages/my_tasks_page.dart';
 import '../../fortune_wheel/pages/fortune_wheel_page.dart';
@@ -42,6 +43,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   int? _referralCode;
   int _availableSpins = 0;
   int _pendingOrdersCount = 0;
+  int _unreadProductQuestionsCount = 0;
 
   @override
   void initState() {
@@ -49,6 +51,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     _loadUserData();
     _loadAvailableSpins();
     _loadPendingOrdersCount();
+    _loadUnreadProductQuestionsCount();
   }
 
   Future<void> _loadUserData() async {
@@ -112,6 +115,24 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика заказов', e);
+    }
+  }
+
+  Future<void> _loadUnreadProductQuestionsCount() async {
+    try {
+      // Загружаем все персональные диалоги
+      final dialogs = await ProductQuestionService.getAllPersonalDialogs();
+
+      // Считаем непрочитанные диалоги (где hasUnreadFromClient = true)
+      final unreadCount = dialogs.where((d) => d.hasUnreadFromClient).length;
+
+      if (mounted) {
+        setState(() {
+          _unreadProductQuestionsCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика вопросов о товарах', e);
     }
   }
 
@@ -373,19 +394,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Ответы (поиск товара)',
-            icon: Icons.search,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProductQuestionsManagementPage(),
-                ),
-              );
-            },
-          ),
+          _buildProductQuestionsButton(context),
           const SizedBox(height: 8),
           _buildSection(
             context,
@@ -520,6 +529,72 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
           );
           // Обновляем счётчик после возврата
           _loadPendingOrdersCount();
+        },
+      ),
+    );
+  }
+
+  Widget _buildProductQuestionsButton(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: ListTile(
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.search, color: Color(0xFF004D40)),
+            if (_unreadProductQuestionsCount > 0)
+              Positioned(
+                right: -8,
+                top: -8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    '$_unreadProductQuestionsCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: const Text('Ответы (поиск товара)'),
+        trailing: _unreadProductQuestionsCount > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$_unreadProductQuestionsCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ProductQuestionsManagementPage(),
+            ),
+          );
+          // Обновляем счётчик после возврата
+          _loadUnreadProductQuestionsCount();
         },
       ),
     );

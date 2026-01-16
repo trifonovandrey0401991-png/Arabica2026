@@ -520,7 +520,38 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
-  // 3. GET /api/product-question-dialogs/shop/:shopAddress - Получить диалоги магазина
+  // 3. GET /api/product-question-dialogs/all - Получить все диалоги (для администраторов)
+  app.get('/api/product-question-dialogs/all', (req, res) => {
+    try {
+      console.log('GET /api/product-question-dialogs/all');
+
+      const dialogs = [];
+
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+            dialogs.push(dialog);
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      dialogs.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+
+      console.log(`✅ Found ${dialogs.length} total dialogs`);
+      res.json({ success: true, dialogs });
+    } catch (error) {
+      console.error('Error getting all dialogs:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 3.5. GET /api/product-question-dialogs/shop/:shopAddress - Получить диалоги магазина
   app.get('/api/product-question-dialogs/shop/:shopAddress', (req, res) => {
     try {
       const { shopAddress } = req.params;

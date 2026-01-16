@@ -28,6 +28,19 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
     super.initState();
     _currentReview = widget.review;
     _loadReview();
+    _markDialogAsRead();
+  }
+
+  /// Отметить весь диалог как прочитанный
+  Future<void> _markDialogAsRead() async {
+    try {
+      await ReviewService.markDialogRead(
+        reviewId: _currentReview.id,
+        readerType: widget.isAdmin ? 'admin' : 'client',
+      );
+    } catch (e) {
+      // Игнорируем ошибки отметки прочитанным
+    }
   }
 
   @override

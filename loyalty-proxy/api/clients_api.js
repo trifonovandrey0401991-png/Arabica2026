@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { sendPushNotification, sendPushToPhone } = require('../report_notifications_api');
 
 const CLIENTS_DIR = '/var/www/clients';
 const CLIENT_DIALOGS_DIR = '/var/www/client-dialogs';
@@ -274,6 +275,18 @@ function setupClientsAPI(app) {
 
       fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       console.log(`Сообщение руководству от клиента ${phone} сохранено`);
+
+      // Отправить push-уведомление админам
+      await sendPushNotification(
+        '💼 Связь с руководством',
+        `${clientName || 'Клиент'}: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`,
+        {
+          type: 'management_message',
+          clientPhone: phone,
+          clientName: clientName || 'Клиент',
+        }
+      );
+
       res.json({ success: true, message });
     } catch (error) {
       console.error('Ошибка сохранения management reply:', error);
@@ -288,7 +301,7 @@ function setupClientsAPI(app) {
 
       if (fs.existsSync(filePath)) {
         const dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        dialog.messages.forEach(m => { if (m.from === 'manager') m.readByClient = true; });
+        dialog.messages.forEach(m => { if (m.senderType === 'manager') m.isReadByClient = true; });
         fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       }
 
@@ -305,7 +318,7 @@ function setupClientsAPI(app) {
 
       if (fs.existsSync(filePath)) {
         const dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        dialog.messages.forEach(m => { if (m.from === 'client') m.readByManager = true; });
+        dialog.messages.forEach(m => { if (m.senderType === 'client') m.isReadByManager = true; });
         fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       }
 
@@ -342,6 +355,18 @@ function setupClientsAPI(app) {
 
       fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
       console.log(`Сообщение от руководства клиенту ${phone} сохранено`);
+
+      // Отправить push-уведомление клиенту
+      await sendPushToPhone(
+        phone,
+        '💼 Ответ от руководства',
+        text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+        {
+          type: 'management_message',
+          clientPhone: phone,
+        }
+      );
+
       res.json({ success: true, message });
     } catch (error) {
       console.error('Ошибка сохранения management send:', error);
@@ -433,6 +458,67 @@ function setupClientsAPI(app) {
 
       res.json({ success: true, sent });
     } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/management-dialogs - Получить все диалоги "Связь с руководством" для админа
+  app.get('/api/management-dialogs', async (req, res) => {
+    try {
+      console.log('GET /api/management-dialogs');
+      const dialogs = [];
+
+      if (!fs.existsSync(CLIENT_MESSAGES_MANAGEMENT_DIR)) {
+        return res.json({ success: true, dialogs: [], totalUnread: 0 });
+      }
+
+      const files = fs.readdirSync(CLIENT_MESSAGES_MANAGEMENT_DIR).filter(f => f.endsWith('.json'));
+
+      for (const file of files) {
+        try {
+          const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, file);
+          const dialog = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+          if (dialog.messages && dialog.messages.length > 0) {
+            // Подсчитываем непрочитанные сообщения от клиентов
+            const unreadCount = dialog.messages.filter(
+              m => m.senderType === 'client' && m.isReadByManager === false
+            ).length;
+
+            // Находим последнее сообщение
+            const lastMessage = dialog.messages[dialog.messages.length - 1];
+
+            // Получаем имя клиента из последнего сообщения
+            const clientName = dialog.messages.find(m => m.senderName && m.senderName !== 'Руководство')?.senderName || 'Клиент';
+
+            dialogs.push({
+              phone: dialog.phone,
+              clientName: clientName,
+              messagesCount: dialog.messages.length,
+              unreadCount: unreadCount,
+              lastMessage: {
+                text: lastMessage.text,
+                timestamp: lastMessage.timestamp,
+                senderType: lastMessage.senderType
+              }
+            });
+          }
+        } catch (e) {
+          console.error(`Error reading ${file}:`, e);
+        }
+      }
+
+      // Сортируем по последнему сообщению (новые первыми)
+      dialogs.sort((a, b) => {
+        return new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp);
+      });
+
+      // Подсчитываем общее количество непрочитанных
+      const totalUnread = dialogs.reduce((sum, d) => sum + d.unreadCount, 0);
+
+      res.json({ success: true, dialogs, totalUnread });
+    } catch (error) {
+      console.error('Error getting management dialogs:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

@@ -165,6 +165,18 @@ class _KPIEmployeeDayDetailPageState extends State<KPIEmployeeDayDetailPage> {
                             widget.shopDayData.hasRKO,
                             widget.shopDayData.hasRKO ? 'сдано' : 'не сдано',
                           ),
+                          const Divider(),
+                          _buildStatusRow(
+                            'Конверт',
+                            widget.shopDayData.hasEnvelope,
+                            widget.shopDayData.hasEnvelope ? 'сформирован' : 'не сформирован',
+                          ),
+                          const Divider(),
+                          _buildStatusRow(
+                            'Сдача смены',
+                            widget.shopDayData.hasShiftHandover,
+                            widget.shopDayData.hasShiftHandover ? 'сдана' : 'не сдана',
+                          ),
                         ],
                       ),
                     ),
