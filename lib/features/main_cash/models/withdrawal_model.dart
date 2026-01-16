@@ -27,18 +27,28 @@ class Withdrawal {
         createdAt = createdAt ?? DateTime.now();
 
   factory Withdrawal.fromJson(Map<String, dynamic> json) {
+    // Обратная совместимость со старым форматом
     final expensesJson = json['expenses'] as List<dynamic>? ?? [];
     final expenses = expensesJson
         .map((e) => WithdrawalExpense.fromJson(e as Map<String, dynamic>))
         .toList();
 
+    // Поддержка старого формата: amount -> totalAmount
+    final totalAmount = json['totalAmount'] != null
+        ? (json['totalAmount'] as num).toDouble()
+        : (json['amount'] as num?)?.toDouble() ?? 0.0;
+
+    // Поддержка старого формата: может не быть employeeName и employeeId
+    final employeeName = json['employeeName'] as String? ?? json['adminName'] as String? ?? 'Неизвестно';
+    final employeeId = json['employeeId'] as String? ?? '';
+
     return Withdrawal(
       id: json['id'] as String,
       shopAddress: json['shopAddress'] as String,
-      employeeName: json['employeeName'] as String,
-      employeeId: json['employeeId'] as String,
+      employeeName: employeeName,
+      employeeId: employeeId,
       type: json['type'] as String,
-      totalAmount: (json['totalAmount'] as num).toDouble(),
+      totalAmount: totalAmount,
       expenses: expenses,
       adminName: json['adminName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
