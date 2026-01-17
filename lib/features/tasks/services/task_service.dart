@@ -32,7 +32,14 @@ class TaskService {
     List<String>? attachments,
   }) async {
     try {
-      Logger.debug('Creating task: $title');
+      // Форматируем deadline как ISO строку без timezone
+      final deadlineStr = '${deadline.year.toString().padLeft(4, '0')}-'
+          '${deadline.month.toString().padLeft(2, '0')}-'
+          '${deadline.day.toString().padLeft(2, '0')}T'
+          '${deadline.hour.toString().padLeft(2, '0')}:'
+          '${deadline.minute.toString().padLeft(2, '0')}:00';
+
+      Logger.debug('Creating task: $title, deadline: $deadlineStr');
 
       return await BaseHttpService.post<Task>(
         endpoint: _tasksEndpoint,
@@ -40,7 +47,7 @@ class TaskService {
           'title': title,
           'description': description,
           'responseType': responseType.code,
-          'deadline': deadline.toIso8601String(),
+          'deadline': deadlineStr,
           'recipients': recipients.map((r) => r.toJson()).toList(),
           'createdBy': createdBy,
           'attachments': attachments ?? [],
@@ -244,6 +251,43 @@ class TaskService {
     } catch (e) {
       Logger.error('Error loading task stats', e);
       return {};
+    }
+  }
+
+  /// Получить количество непросмотренных просроченных задач (для админа)
+  static Future<int> getUnviewedExpiredCount() async {
+    try {
+      Logger.debug('Loading unviewed expired count...');
+
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_assignmentsEndpoint/unviewed-expired-count',
+      );
+
+      if (result != null && result['count'] != null) {
+        return result['count'] as int;
+      }
+
+      return 0;
+    } catch (e) {
+      Logger.error('Error loading unviewed expired count', e);
+      return 0;
+    }
+  }
+
+  /// Отметить все просроченные задачи как просмотренные
+  static Future<bool> markExpiredAsViewed() async {
+    try {
+      Logger.debug('Marking expired tasks as viewed...');
+
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_assignmentsEndpoint/mark-expired-viewed',
+        body: {},
+      );
+
+      return result != null && result['success'] == true;
+    } catch (e) {
+      Logger.error('Error marking expired tasks as viewed', e);
+      return false;
     }
   }
 }

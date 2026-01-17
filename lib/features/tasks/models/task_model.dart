@@ -111,6 +111,19 @@ extension TaskStatusExtension on TaskStatus {
   bool get isFailed => this == TaskStatus.rejected || this == TaskStatus.expired || this == TaskStatus.declined;
 }
 
+/// Парсит дату из строки как локальное время.
+DateTime? parseTaskDateTime(String? dateStr) {
+  if (dateStr == null || dateStr.isEmpty) return null;
+
+  // Убираем суффикс Z если есть - парсим как локальное время
+  String cleanStr = dateStr;
+  if (cleanStr.endsWith('Z')) {
+    cleanStr = cleanStr.substring(0, cleanStr.length - 1);
+  }
+
+  return DateTime.tryParse(cleanStr);
+}
+
 /// Задача (создается админом)
 class Task {
   final String id;
@@ -139,9 +152,9 @@ class Task {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       responseType: TaskResponseTypeExtension.fromCode(json['responseType'] ?? 'photo'),
-      deadline: DateTime.tryParse(json['deadline'] ?? '') ?? DateTime.now(),
+      deadline: parseTaskDateTime(json['deadline']) ?? DateTime.now(),
       createdBy: json['createdBy'] ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      createdAt: parseTaskDateTime(json['createdAt']) ?? DateTime.now(),
       attachments: (json['attachments'] as List<dynamic>?)?.cast<String>() ?? [],
     );
   }
@@ -212,17 +225,17 @@ class TaskAssignment {
       assigneeName: json['assigneeName'] ?? '',
       assigneeRole: json['assigneeRole'] ?? 'employee',
       status: TaskStatusExtension.fromCode(json['status'] ?? 'pending'),
-      deadline: DateTime.tryParse(json['deadline'] ?? '') ?? DateTime.now(),
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      deadline: parseTaskDateTime(json['deadline']) ?? DateTime.now(),
+      createdAt: parseTaskDateTime(json['createdAt']) ?? DateTime.now(),
       responseText: json['responseText'],
       responsePhotos: (json['responsePhotos'] as List<dynamic>?)?.cast<String>() ?? [],
-      respondedAt: json['respondedAt'] != null ? DateTime.tryParse(json['respondedAt']) : null,
+      respondedAt: parseTaskDateTime(json['respondedAt']),
       reviewedBy: json['reviewedBy'],
-      reviewedAt: json['reviewedAt'] != null ? DateTime.tryParse(json['reviewedAt']) : null,
+      reviewedAt: parseTaskDateTime(json['reviewedAt']),
       reviewComment: json['reviewComment'],
-      declinedAt: json['declinedAt'] != null ? DateTime.tryParse(json['declinedAt']) : null,
+      declinedAt: parseTaskDateTime(json['declinedAt']),
       declineReason: json['declineReason'],
-      expiredAt: json['expiredAt'] != null ? DateTime.tryParse(json['expiredAt']) : null,
+      expiredAt: parseTaskDateTime(json['expiredAt']),
       task: json['task'] != null ? Task.fromJson(json['task']) : null,
     );
   }

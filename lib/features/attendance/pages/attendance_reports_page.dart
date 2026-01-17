@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../models/attendance_model.dart';
-import '../services/attendance_service.dart';
+import '../models/shop_attendance_summary.dart';
+import '../services/attendance_report_service.dart';
 import '../../../core/services/report_notification_service.dart';
+import 'attendance_month_page.dart';
 
+/// Страница отчётов по приходам с группировкой по магазинам
 class AttendanceReportsPage extends StatefulWidget {
   const AttendanceReportsPage({super.key});
 
@@ -11,11 +13,10 @@ class AttendanceReportsPage extends StatefulWidget {
 }
 
 class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
-  List<AttendanceRecord> _records = [];
+  List<ShopAttendanceSummary> _shopsSummary = [];
   bool _isLoading = true;
-  String? _selectedEmployee;
-  String? _selectedShop;
-  DateTime? _selectedDate;
+  String? _error;
+  final Set<String> _expandedShops = {};
 
   @override
   void initState() {
@@ -28,29 +29,23 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
+      _error = null;
     });
 
     try {
-      final records = await AttendanceService.getAttendanceRecords(
-        employeeName: _selectedEmployee,
-        shopAddress: _selectedShop,
-        date: _selectedDate,
-      );
-      setState(() {
-        _records = records;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      final summary = await AttendanceReportService.getShopsSummary();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка загрузки: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _shopsSummary = summary;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
       }
     }
   }
@@ -61,216 +56,253 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
       appBar: AppBar(
         title: const Text('Отчеты по приходам'),
         backgroundColor: const Color(0xFF004D40),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Обновить',
+          ),
+        ],
       ),
-      body: Column(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF004D40), Color(0xFF00695C)],
+          ),
+        ),
+        child: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Ошибка загрузки',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Повторить'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_shopsSummary.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.store, color: Colors.white54, size: 64),
+            SizedBox(height: 16),
+            Text(
+              'Нет данных о магазинах',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _shopsSummary.length,
+        itemBuilder: (context, index) {
+          return _buildShopCard(_shopsSummary[index]);
+        },
+      ),
+    );
+  }
+
+  Widget _buildShopCard(ShopAttendanceSummary summary) {
+    final isExpanded = _expandedShops.contains(summary.shopAddress);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
         children: [
-          // Фильтры
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.grey[100],
-            child: Column(
-              children: [
-                // Фильтр по дате
-                InkWell(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) {
-                      setState(() {
-                        _selectedDate = date;
-                      });
-                      _loadData();
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
+          // Уровень 1: Заголовок магазина
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: summary.isTodayComplete
+                  ? Colors.green
+                  : summary.todayAttendanceCount > 0
+                      ? Colors.orange
+                      : Colors.red.shade300,
+              child: const Icon(Icons.store, color: Colors.white),
+            ),
+            title: Text(
+              summary.shopAddress,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      color: summary.isTodayComplete
+                          ? Colors.green.withOpacity(0.1)
+                          : summary.todayAttendanceCount > 0
+                              ? Colors.orange.withOpacity(0.1)
+                              : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: summary.isTodayComplete
+                            ? Colors.green
+                            : summary.todayAttendanceCount > 0
+                                ? Colors.orange
+                                : Colors.red.shade300,
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today),
-                        const SizedBox(width: 8),
-                        Text(
-                          _selectedDate != null
-                              ? '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}'
-                              : 'Выберите дату',
-                        ),
-                      ],
+                    child: Text(
+                      'Сегодня: ${summary.todayAttendanceCount} ${_getEnding(summary.todayAttendanceCount)}',
+                      style: TextStyle(
+                        color: summary.isTodayComplete
+                            ? Colors.green
+                            : summary.todayAttendanceCount > 0
+                                ? Colors.orange
+                                : Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedDate = null;
-                      _selectedEmployee = null;
-                      _selectedShop = null;
-                    });
-                    _loadData();
-                  },
-                  child: const Text('Сбросить фильтры'),
-                ),
-              ],
+                ],
+              ),
             ),
+            trailing: Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              color: const Color(0xFF004D40),
+            ),
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expandedShops.remove(summary.shopAddress);
+                } else {
+                  _expandedShops.add(summary.shopAddress);
+                }
+              });
+            },
           ),
-          // Список записей
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _records.isEmpty
-                    ? const Center(child: Text('Нет записей'))
-                    : ListView.builder(
-                        itemCount: _records.length,
-                        itemBuilder: (context, index) {
-                          final record = _records[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: ListTile(
-                              leading: _buildStatusIcon(record),
-                              title: Text(record.employeeName),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(record.shopAddress),
-                                  Text(
-                                    '${record.timestamp.day}.${record.timestamp.month}.${record.timestamp.year} '
-                                    '${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}',
-                                  ),
-                                  if (record.shiftType != null)
-                                    Text(
-                                      _getShiftTypeName(record.shiftType!),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.blue[700],
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  if (record.isOnTime == true)
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.check_circle, size: 16, color: Colors.green),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Вовремя',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  if (record.isOnTime == false && record.lateMinutes != null)
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.warning, size: 16, color: Colors.orange),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Опоздал на ${record.lateMinutes} мин',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.orange,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  if (record.isOnTime == null)
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.info, size: 16, color: Colors.grey),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Вне смены',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  if (record.distance != null)
-                                    Text(
-                                      'Расстояние: ${record.distance!.toStringAsFixed(0)} м',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                ],
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.location_on),
-                                onPressed: () {
-                                  // Показать координаты
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Координаты'),
-                                      content: Text(
-                                        'Широта: ${record.latitude}\n'
-                                        'Долгота: ${record.longitude}',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context),
-                                          child: const Text('OK'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-          ),
+
+          // Уровень 2: Месяцы (показываются при раскрытии)
+          if (isExpanded) ...[
+            const Divider(height: 1),
+            _buildMonthTile(
+              'Текущий месяц',
+              summary.currentMonth,
+              summary.shopAddress,
+            ),
+            const Divider(height: 1, indent: 56),
+            _buildMonthTile(
+              'Прошлый месяц',
+              summary.previousMonth,
+              summary.shopAddress,
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildStatusIcon(AttendanceRecord record) {
-    if (record.isOnTime == true) {
-      return const Icon(Icons.check_circle, color: Colors.green, size: 32);
-    } else if (record.isOnTime == false) {
-      return const Icon(Icons.warning, color: Colors.orange, size: 32);
-    } else {
-      return const Icon(Icons.info, color: Colors.grey, size: 32);
+  Widget _buildMonthTile(
+    String label,
+    MonthAttendanceSummary month,
+    String shopAddress,
+  ) {
+    final statusColor = _getStatusColor(month.status);
+    final percentage = (month.completionRate * 100).toStringAsFixed(0);
+
+    return ListTile(
+      contentPadding: const EdgeInsets.only(left: 56, right: 16),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: statusColor.withOpacity(0.1),
+          shape: BoxShape.circle,
+          border: Border.all(color: statusColor, width: 2),
+        ),
+        child: Center(
+          child: Text(
+            '$percentage%',
+            style: TextStyle(
+              color: statusColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+        ),
+      ),
+      title: Text(
+        '$label: ${month.actualCount}/${month.plannedCount}',
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        '${month.displayName} ${month.year}',
+        style: const TextStyle(fontSize: 12, color: Colors.grey),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AttendanceMonthPage(
+              shopAddress: shopAddress,
+              monthSummary: month,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'good':
+        return Colors.green;
+      case 'warning':
+        return Colors.orange;
+      default:
+        return Colors.red;
     }
   }
 
-  String _getShiftTypeName(String shiftType) {
-    switch (shiftType) {
-      case 'morning':
-        return 'Утренняя смена';
-      case 'day':
-        return 'Дневная смена';
-      case 'night':
-        return 'Ночная смена';
-      default:
-        return shiftType;
-    }
+  String _getEnding(int count) {
+    if (count == 1) return 'отметка';
+    if (count >= 2 && count <= 4) return 'отметки';
+    return 'отметок';
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-

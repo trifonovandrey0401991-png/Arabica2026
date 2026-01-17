@@ -43,6 +43,156 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
     }
   }
 
+  /// Диалог выбора смены (когда время вне интервала)
+  Future<String?> _showShiftSelectionDialog() {
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.schedule, color: Color(0xFF004D40)),
+            SizedBox(width: 8),
+            Expanded(child: Text('На какую смену вы заступили?')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Время отметки не попадает в интервал смен.\nВыберите вашу смену:',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            _buildShiftOption(
+              context: context,
+              icon: Icons.wb_sunny,
+              color: Colors.orange,
+              label: 'Утренняя смена',
+              value: 'morning',
+            ),
+            const SizedBox(height: 8),
+            _buildShiftOption(
+              context: context,
+              icon: Icons.wb_cloudy,
+              color: Colors.blue,
+              label: 'Дневная смена',
+              value: 'day',
+            ),
+            const SizedBox(height: 8),
+            _buildShiftOption(
+              context: context,
+              icon: Icons.nights_stay,
+              color: Colors.indigo,
+              label: 'Ночная смена',
+              value: 'night',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Отмена'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShiftOption({
+    required BuildContext context,
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String value,
+  }) {
+    return InkWell(
+      onTap: () => Navigator.pop(context, value),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(8),
+          color: color.withOpacity(0.1),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Показать диалог с результатом отметки
+  void _showAttendanceResultDialog(AttendanceResult result) {
+    String title;
+    String message;
+    Color backgroundColor;
+    IconData icon;
+
+    if (result.isOnTime == true) {
+      title = 'Вы пришли вовремя';
+      message = result.message ?? 'Отметка успешно сохранена';
+      backgroundColor = Colors.green;
+      icon = Icons.check_circle;
+    } else if (result.isOnTime == false && result.lateMinutes != null) {
+      title = 'Вы опоздали';
+      message = result.message ?? 'Вы опоздали на ${result.lateMinutes} минут';
+      if (result.penaltyCreated) {
+        message += '\nНачислен штраф.';
+      }
+      backgroundColor = Colors.orange;
+      icon = Icons.warning;
+    } else if (result.isOnTime == null) {
+      title = 'Отметка сохранена';
+      message = result.message ?? 'Отметка сделана';
+      backgroundColor = Colors.amber;
+      icon = Icons.info;
+    } else {
+      title = 'Отметка сохранена';
+      message = result.message ?? 'Отметка успешно сохранена';
+      backgroundColor = Colors.blue;
+      icon = Icons.check_circle;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(icon, color: backgroundColor),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title)),
+          ],
+        ),
+        content: Text(message),
+        backgroundColor: backgroundColor.withOpacity(0.1),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Закрываем диалог
+              Navigator.pop(context); // Закрываем страницу выбора магазина
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _markAttendance(Shop shop) async {
     if (shop.latitude == null || shop.longitude == null) {
       if (mounted) {
@@ -127,57 +277,31 @@ class _AttendanceShopSelectionPageState extends State<AttendanceShopSelectionPag
         });
 
         if (result.success) {
-          // Показываем диалог с информацией о статусе
-          String title;
-          String message;
-          Color backgroundColor;
-          IconData icon;
-          
-          if (result.isOnTime == true) {
-            title = 'Вы пришли вовремя';
-            message = result.message ?? 'Отметка успешно сохранена';
-            backgroundColor = Colors.green;
-            icon = Icons.check_circle;
-          } else if (result.isOnTime == false && result.lateMinutes != null) {
-            title = 'Вы опоздали';
-            message = result.message ?? 'Вы опоздали на ${result.lateMinutes} минут';
-            backgroundColor = Colors.orange;
-            icon = Icons.warning;
-          } else if (result.isOnTime == null) {
-            title = 'Отметка вне смены';
-            message = result.message ?? 'Отметка сделана вне интервалов смены';
-            backgroundColor = Colors.amber;
-            icon = Icons.info;
-          } else {
-            title = 'Отметка сохранена';
-            message = result.message ?? 'Отметка успешно сохранена';
-            backgroundColor = Colors.blue;
-            icon = Icons.check_circle;
+          // Проверяем, нужен ли выбор смены
+          if (result.needsShiftSelection && result.recordId != null) {
+            // Показываем диалог выбора смены
+            final selectedShift = await _showShiftSelectionDialog();
+            if (selectedShift != null && mounted) {
+              setState(() => _isMarking = true);
+
+              // Подтверждаем выбор смены
+              final confirmResult = await AttendanceService.confirmShift(
+                recordId: result.recordId!,
+                selectedShift: selectedShift,
+                employeeName: widget.employeeName,
+                shopAddress: shop.address,
+              );
+
+              if (mounted) {
+                setState(() => _isMarking = false);
+                _showAttendanceResultDialog(confirmResult);
+              }
+            }
+            return;
           }
-          
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Row(
-                children: [
-                  Icon(icon, color: backgroundColor),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(title)),
-                ],
-              ),
-              content: Text(message),
-              backgroundColor: backgroundColor.withOpacity(0.1),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Закрываем диалог
-                    Navigator.pop(context); // Закрываем страницу выбора магазина
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
+
+          // Показываем диалог с информацией о статусе
+          _showAttendanceResultDialog(result);
         } else {
           // Показываем ошибку
           showDialog(

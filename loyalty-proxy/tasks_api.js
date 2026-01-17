@@ -73,20 +73,27 @@ function getEmployeeNameByPhone(phone) {
 }
 
 // Save penalty to efficiency-penalties
+// Поддерживает два формата: массив [] и объект {penalties: []}
 function savePenalty(penalty) {
   try {
     ensureDir(EFFICIENCY_PENALTIES_DIR);
     const monthKey = penalty.date.substring(0, 7); // YYYY-MM
     const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
 
-    let data = { monthKey, penalties: [] };
+    let penalties = [];
     if (fs.existsSync(filePath)) {
-      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const fileContent = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      // Поддержка обоих форматов
+      if (Array.isArray(fileContent)) {
+        penalties = fileContent;
+      } else if (fileContent.penalties && Array.isArray(fileContent.penalties)) {
+        penalties = fileContent.penalties;
+      }
     }
 
-    data.penalties.push(penalty);
-    data.updatedAt = new Date().toISOString();
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    penalties.push(penalty);
+    // Сохраняем в формате массива (как используется в других частях системы)
+    fs.writeFileSync(filePath, JSON.stringify(penalties, null, 2), 'utf8');
 
     console.log(`✅ Penalty saved: ${penalty.employeeName}, ${penalty.points} points, reason: ${penalty.reason}`);
     return true;
@@ -180,6 +187,15 @@ function getAllAssignments(fromMonth, toMonth) {
   return allAssignments;
 }
 
+// Парсит дедлайн как московское время (UTC+3)
+function parseDeadlineAsMoscow(deadlineStr) {
+  if (!deadlineStr) return new Date();
+  if (deadlineStr.endsWith('Z')) return new Date(deadlineStr);
+  if (/[+-]\d{2}:\d{2}$/.test(deadlineStr)) return new Date(deadlineStr);
+  // Время без timezone = московское время (UTC+3)
+  return new Date(deadlineStr + '+03:00');
+}
+
 // Check and update expired tasks with penalties and push notifications
 async function checkExpiredTasks() {
   const now = new Date();
@@ -197,7 +213,7 @@ async function checkExpiredTasks() {
 
     for (const assignment of data.assignments) {
       if (assignment.status === 'pending') {
-        const deadline = new Date(assignment.deadline);
+        const deadline = parseDeadlineAsMoscow(assignment.deadline);
         if (deadline < now) {
           assignment.status = 'expired';
           assignment.expiredAt = now.toISOString();
@@ -679,6 +695,64 @@ function setupTasksAPI(app) {
       res.json({ success: true, stats });
     } catch (error) {
       console.error('Error getting task stats:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/task-assignments/unviewed-expired-count - Count unviewed expired tasks
+  app.get('/api/task-assignments/unviewed-expired-count', (req, res) => {
+    try {
+      console.log('GET /api/task-assignments/unviewed-expired-count');
+
+      // Check for expired tasks first
+      checkExpiredTasks();
+
+      const assignments = getAllAssignments();
+      // Непросмотренные - у которых viewedByAdmin !== true и статус expired, rejected или declined
+      const unviewedExpired = assignments.filter(a =>
+        (a.status === 'expired' || a.status === 'rejected' || a.status === 'declined') &&
+        a.viewedByAdmin !== true
+      );
+
+      res.json({ success: true, count: unviewedExpired.length });
+    } catch (error) {
+      console.error('Error getting unviewed expired count:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/task-assignments/mark-expired-viewed - Mark all expired tasks as viewed
+  app.post('/api/task-assignments/mark-expired-viewed', (req, res) => {
+    try {
+      console.log('POST /api/task-assignments/mark-expired-viewed');
+
+      const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+      let markedCount = 0;
+
+      for (const file of files) {
+        const monthKey = file.replace('.json', '');
+        const data = loadMonthAssignments(monthKey);
+        let updated = false;
+
+        for (const assignment of data.assignments) {
+          if ((assignment.status === 'expired' || assignment.status === 'rejected' || assignment.status === 'declined') &&
+              assignment.viewedByAdmin !== true) {
+            assignment.viewedByAdmin = true;
+            assignment.viewedByAdminAt = new Date().toISOString();
+            updated = true;
+            markedCount++;
+          }
+        }
+
+        if (updated) {
+          saveMonthAssignments(monthKey, data);
+        }
+      }
+
+      console.log(`Marked ${markedCount} expired tasks as viewed`);
+      res.json({ success: true, markedCount });
+    } catch (error) {
+      console.error('Error marking expired tasks as viewed:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

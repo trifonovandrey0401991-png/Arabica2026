@@ -27,6 +27,8 @@ import '../../efficiency/pages/my_efficiency_page.dart';
 import '../../tasks/pages/my_tasks_page.dart';
 import '../../fortune_wheel/pages/fortune_wheel_page.dart';
 import '../../fortune_wheel/services/fortune_wheel_service.dart';
+import '../../tasks/services/task_service.dart';
+import '../../tasks/models/task_model.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница панели работника
@@ -44,6 +46,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   int _availableSpins = 0;
   int _pendingOrdersCount = 0;
   int _unreadProductQuestionsCount = 0;
+  int _activeTasksCount = 0;
 
   @override
   void initState() {
@@ -52,6 +55,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     _loadAvailableSpins();
     _loadPendingOrdersCount();
     _loadUnreadProductQuestionsCount();
+    _loadActiveTasksCount();
   }
 
   Future<void> _loadUserData() async {
@@ -137,6 +141,27 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика вопросов о товарах', e);
+    }
+  }
+
+  Future<void> _loadActiveTasksCount() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final assignments = await TaskService.getMyAssignments(employeeId);
+        // Считаем активные задачи: pending и submitted
+        final activeCount = assignments.where((a) =>
+          a.status == TaskStatus.pending || a.status == TaskStatus.submitted
+        ).length;
+
+        if (mounted) {
+          setState(() {
+            _activeTasksCount = activeCount;
+          });
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика задач', e);
     }
   }
 
@@ -414,27 +439,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Мои Задачи',
-            icon: Icons.assignment,
-            onTap: () async {
-              final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-              final employeeId = await EmployeesPage.getCurrentEmployeeId();
-              final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
-
-              if (!context.mounted) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MyTasksPage(
-                    employeeId: employeeId ?? employeeName,
-                    employeeName: employeeName,
-                  ),
-                ),
-              );
-            },
-          ),
+          _buildMyTasksButton(context),
           const SizedBox(height: 8),
           _buildFortuneWheelButton(context),
           const SizedBox(height: 8),
@@ -599,6 +604,81 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
           );
           // Обновляем счётчик после возврата
           _loadUnreadProductQuestionsCount();
+        },
+      ),
+    );
+  }
+
+  Widget _buildMyTasksButton(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: ListTile(
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.assignment, color: Color(0xFF004D40)),
+            if (_activeTasksCount > 0)
+              Positioned(
+                right: -8,
+                top: -8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    '$_activeTasksCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: const Text('Мои Задачи'),
+        trailing: _activeTasksCount > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$_activeTasksCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              )
+            : const Icon(Icons.chevron_right),
+        onTap: () async {
+          final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+          final employeeId = await EmployeesPage.getCurrentEmployeeId();
+          final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+
+          if (!context.mounted) return;
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MyTasksPage(
+                employeeId: employeeId ?? employeeName,
+                employeeName: employeeName,
+              ),
+            ),
+          );
+          // Обновляем счётчик после возврата
+          _loadActiveTasksCount();
         },
       ),
     );

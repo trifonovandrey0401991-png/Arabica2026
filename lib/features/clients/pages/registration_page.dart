@@ -205,15 +205,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
         await FirebaseService.resaveToken();
 
         // Проверяем роль пользователя после регистрации
+        bool isEmployee = false;
         try {
           final roleData = await UserRoleService.getUserRole(loyaltyInfo.phone);
           await UserRoleService.saveUserRole(roleData);
           // Обновляем имя, если нужно (из столбца G для сотрудников/админов)
           await prefs.setString('user_name', roleData.displayName);
-          
+
           // Если это сотрудник или админ, не сохраняем как клиента
           if (roleData.role.name != 'client') {
             Logger.info('Пользователь является ${roleData.role.name}, не регистрируем как клиента');
+            isEmployee = true;
           }
         } catch (e) {
           Logger.warning('Ошибка проверки роли при регистрации: $e');
@@ -225,10 +227,27 @@ class _RegistrationPageState extends State<RegistrationPage> {
               await UserRoleService.saveUserRole(apiRole);
               await prefs.setString('user_name', apiRole.displayName);
               Logger.info('Пользователь является ${apiRole.role.name}, не регистрируем как клиента');
+              isEmployee = true;
             }
           } catch (apiError) {
             Logger.warning('Ошибка проверки через API сотрудников при регистрации: $apiError');
             // Продолжаем без роли (по умолчанию клиент)
+          }
+        }
+
+        // Сохраняем данные клиента на сервере (если это клиент, а не сотрудник)
+        if (!isEmployee) {
+          try {
+            final referralCode = _isReferralValid ? int.tryParse(_referralCodeController.text) : null;
+            await RegistrationService.saveClientToServer(
+              phone: loyaltyInfo.phone,
+              name: loyaltyInfo.name,
+              clientName: loyaltyInfo.name,
+              referredBy: referralCode,
+            );
+            Logger.success('Данные нового клиента сохранены на сервере${referralCode != null ? ' (referredBy: $referralCode)' : ''}');
+          } catch (e) {
+            Logger.warning('Не удалось сохранить данные нового клиента на сервере: $e');
           }
         }
 

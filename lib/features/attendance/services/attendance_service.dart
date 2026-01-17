@@ -112,13 +112,19 @@ class AttendanceService {
       );
 
       if (result != null) {
-        // Отправляем уведомление админу о новой отметке прихода
-        await ReportNotificationService.createNotification(
-          reportType: ReportType.attendance,
-          reportId: record.id,
-          employeeName: employeeName,
-          shopName: shopAddress,
-        );
+        // Проверяем, нужен ли выбор смены
+        final needsShiftSelection = result['needsShiftSelection'] == true;
+        final recordId = result['recordId'] as String?;
+
+        // Если не нужен выбор смены - отправляем уведомление
+        if (!needsShiftSelection) {
+          await ReportNotificationService.createNotification(
+            reportType: ReportType.attendance,
+            reportId: record.id,
+            employeeName: employeeName,
+            shopName: shopAddress,
+          );
+        }
 
         return AttendanceResult(
           success: true,
@@ -126,6 +132,8 @@ class AttendanceService {
           shiftType: result['shiftType'] as String?,
           lateMinutes: result['lateMinutes'] != null ? (result['lateMinutes'] as num).toInt() : null,
           message: result['message'] as String?,
+          needsShiftSelection: needsShiftSelection,
+          recordId: recordId,
         );
       } else {
         return AttendanceResult(
@@ -154,6 +162,58 @@ class AttendanceService {
     } catch (e) {
       Logger.error('Ошибка проверки отметки', e);
       return false;
+    }
+  }
+
+  /// Подтвердить выбор смены (если время вне интервала)
+  static Future<AttendanceResult> confirmShift({
+    required String recordId,
+    required String selectedShift,
+    String? employeeName,
+    String? shopAddress,
+  }) async {
+    try {
+      Logger.debug('Подтверждение смены: recordId=$recordId, shift=$selectedShift');
+
+      final result = await BaseHttpService.postRaw(
+        endpoint: '$_baseEndpoint/confirm-shift',
+        body: {
+          'recordId': recordId,
+          'selectedShift': selectedShift,
+        },
+      );
+
+      if (result != null && result['success'] == true) {
+        // Отправляем уведомление админу
+        if (employeeName != null && shopAddress != null) {
+          await ReportNotificationService.createNotification(
+            reportType: ReportType.attendance,
+            reportId: recordId,
+            employeeName: employeeName,
+            shopName: shopAddress,
+          );
+        }
+
+        return AttendanceResult(
+          success: true,
+          isOnTime: result['isOnTime'] as bool?,
+          shiftType: result['shiftType'] as String?,
+          lateMinutes: result['lateMinutes'] != null ? (result['lateMinutes'] as num).toInt() : null,
+          message: result['message'] as String?,
+          penaltyCreated: result['penaltyCreated'] == true,
+        );
+      } else {
+        return AttendanceResult(
+          success: false,
+          error: result?['error'] as String? ?? 'Не удалось подтвердить смену',
+        );
+      }
+    } catch (e) {
+      Logger.error('Ошибка подтверждения смены', e);
+      return AttendanceResult(
+        success: false,
+        error: e.toString(),
+      );
     }
   }
 
@@ -198,6 +258,9 @@ class AttendanceResult {
   final int? lateMinutes;
   final String? message;
   final String? error;
+  final bool needsShiftSelection; // Нужен ли выбор смены
+  final String? recordId; // ID записи для подтверждения смены
+  final bool penaltyCreated; // Был ли создан штраф
 
   AttendanceResult({
     required this.success,
@@ -206,5 +269,8 @@ class AttendanceResult {
     this.lateMinutes,
     this.message,
     this.error,
+    this.needsShiftSelection = false,
+    this.recordId,
+    this.penaltyCreated = false,
   });
 }

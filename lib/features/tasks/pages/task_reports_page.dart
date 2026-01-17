@@ -17,16 +17,45 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
   List<TaskAssignment> _allAssignments = [];
   bool _isLoading = true;
   String? _error;
+  int _unviewedExpiredCount = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadAssignments();
+    _loadUnviewedExpiredCount();
+  }
+
+  void _onTabChanged() {
+    // Если переключились на вкладку "Не в срок" (индекс 3) - отметить как просмотренные
+    if (_tabController.index == 3 && _unviewedExpiredCount > 0) {
+      _markExpiredAsViewed();
+    }
+  }
+
+  Future<void> _loadUnviewedExpiredCount() async {
+    final count = await TaskService.getUnviewedExpiredCount();
+    if (mounted) {
+      setState(() {
+        _unviewedExpiredCount = count;
+      });
+    }
+  }
+
+  Future<void> _markExpiredAsViewed() async {
+    final success = await TaskService.markExpiredAsViewed();
+    if (success && mounted) {
+      setState(() {
+        _unviewedExpiredCount = 0;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -72,11 +101,36 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: 'Ожидают'),
-            Tab(text: 'Выполнено'),
-            Tab(text: 'Отказано'),
-            Tab(text: 'Не в срок'),
+          tabs: [
+            const Tab(text: 'Ожидают'),
+            const Tab(text: 'Выполнено'),
+            const Tab(text: 'Отказано'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Не в срок'),
+                  if (_unviewedExpiredCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$_unviewedExpiredCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),

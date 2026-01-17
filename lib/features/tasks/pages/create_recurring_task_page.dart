@@ -95,6 +95,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     final time = await showTimePicker(
       context: context,
       initialTime: _reminderTimes[reminderIndex],
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
 
     if (time != null) {
@@ -108,6 +114,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     final time = await showTimePicker(
       context: context,
       initialTime: _startTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
 
     if (time != null) {
@@ -121,6 +133,12 @@ class _CreateRecurringTaskPageState extends State<CreateRecurringTaskPage> {
     final time = await showTimePicker(
       context: context,
       initialTime: _endTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
 
     if (time != null) {

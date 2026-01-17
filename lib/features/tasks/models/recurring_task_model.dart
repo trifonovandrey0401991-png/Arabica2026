@@ -94,10 +94,8 @@ class RecurringTask {
           [],
       isPaused: json['isPaused'] == true,
       createdBy: json['createdBy']?.toString() ?? 'admin',
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
-          DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ??
-          DateTime.now(),
+      createdAt: parseTaskDateTime(json['createdAt']?.toString()) ?? DateTime.now(),
+      updatedAt: parseTaskDateTime(json['updatedAt']?.toString()) ?? DateTime.now(),
       supplierId: json['supplierId']?.toString(),
       shopId: json['shopId']?.toString(),
       supplierName: json['supplierName']?.toString(),
@@ -225,8 +223,7 @@ class RecurringTaskInstance {
       assigneeName: json['assigneeName']?.toString() ?? '',
       assigneePhone: json['assigneePhone']?.toString() ?? '',
       date: json['date']?.toString() ?? '',
-      deadline: DateTime.tryParse(json['deadline']?.toString() ?? '') ??
-          DateTime.now(),
+      deadline: parseTaskDateTime(json['deadline']?.toString()) ?? DateTime.now(),
       reminderTimes: (json['reminderTimes'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -237,18 +234,13 @@ class RecurringTaskInstance {
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      completedAt: json['completedAt'] != null
-          ? DateTime.tryParse(json['completedAt'].toString())
-          : null,
-      expiredAt: json['expiredAt'] != null
-          ? DateTime.tryParse(json['expiredAt'].toString())
-          : null,
+      completedAt: parseTaskDateTime(json['completedAt']?.toString()),
+      expiredAt: parseTaskDateTime(json['expiredAt']?.toString()),
       isRecurring: json['isRecurring'] == true,
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       responseType: TaskResponseTypeExtension.fromCode(json['responseType']?.toString() ?? 'text'),
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
-          DateTime.now(),
+      createdAt: parseTaskDateTime(json['createdAt']?.toString()) ?? DateTime.now(),
     );
   }
 

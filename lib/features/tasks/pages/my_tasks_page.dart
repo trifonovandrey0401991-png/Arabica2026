@@ -9,7 +9,7 @@ import '../services/recurring_task_service.dart';
 import 'task_response_page.dart';
 import 'recurring_task_response_page.dart';
 
-/// Страница "Мои Задачи" для работника
+/// Страница "Мои Задачи" для работника с вкладками
 class MyTasksPage extends StatefulWidget {
   final String? employeeId;
   final String? employeeName;
@@ -24,7 +24,7 @@ class MyTasksPage extends StatefulWidget {
   State<MyTasksPage> createState() => _MyTasksPageState();
 }
 
-class _MyTasksPageState extends State<MyTasksPage> {
+class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStateMixin {
   List<TaskAssignment> _assignments = [];
   List<RecurringTaskInstance> _recurringInstances = [];
   bool _isLoading = true;
@@ -32,10 +32,19 @@ class _MyTasksPageState extends State<MyTasksPage> {
   String? _employeeId;
   String? _employeeName;
 
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -71,11 +80,7 @@ class _MyTasksPageState extends State<MyTasksPage> {
           recurringInstances = await RecurringTaskService.getInstancesForAssignee(
             assigneePhone: _userPhone!,
           );
-          // Фильтруем только pending задачи и сортируем по дедлайну
-          recurringInstances = recurringInstances
-              .where((i) => i.status == 'pending')
-              .toList()
-            ..sort((a, b) => a.deadline.compareTo(b.deadline));
+          recurringInstances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         } catch (e) {
           // Игнорируем ошибки загрузки циклических задач
           Logger.warning('Ошибка загрузки циклических задач: $e');
@@ -93,6 +98,32 @@ class _MyTasksPageState extends State<MyTasksPage> {
       });
     }
   }
+
+  // Фильтры для обычных задач
+  List<TaskAssignment> get _activeAssignments => _assignments
+      .where((a) => a.status == TaskStatus.pending || a.status == TaskStatus.submitted)
+      .toList();
+
+  List<TaskAssignment> get _completedAssignments => _assignments
+      .where((a) => a.status == TaskStatus.approved)
+      .toList();
+
+  List<TaskAssignment> get _expiredAssignments => _assignments
+      .where((a) => a.status == TaskStatus.expired || a.status == TaskStatus.rejected || a.status == TaskStatus.declined)
+      .toList();
+
+  // Фильтры для циклических задач
+  List<RecurringTaskInstance> get _activeRecurring => _recurringInstances
+      .where((i) => i.status == 'pending')
+      .toList();
+
+  List<RecurringTaskInstance> get _completedRecurring => _recurringInstances
+      .where((i) => i.status == 'completed')
+      .toList();
+
+  List<RecurringTaskInstance> get _expiredRecurring => _recurringInstances
+      .where((i) => i.status == 'expired')
+      .toList();
 
   Color _getStatusColor(TaskStatus status) {
     switch (status) {
@@ -130,6 +161,10 @@ class _MyTasksPageState extends State<MyTasksPage> {
 
   @override
   Widget build(BuildContext context) {
+    final activeCount = _activeAssignments.length + _activeRecurring.length;
+    final completedCount = _completedAssignments.length + _completedRecurring.length;
+    final expiredCount = _expiredAssignments.length + _expiredRecurring.length;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Мои Задачи'),
@@ -140,31 +175,62 @@ class _MyTasksPageState extends State<MyTasksPage> {
             onPressed: _loadAssignments,
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: [
+            Tab(text: 'Активные ($activeCount)'),
+            Tab(text: 'Выполненные ($completedCount)'),
+            Tab(text: 'Просроченные ($expiredCount)'),
+          ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : (_assignments.isEmpty && _recurringInstances.isEmpty)
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadAssignments,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      // Циклические задачи (показываем первыми)
-                      if (_recurringInstances.isNotEmpty) ...[
-                        _buildSectionHeader('Циклические задачи', Icons.repeat),
-                        ..._recurringInstances.map(_buildRecurringInstanceCard),
-                        const SizedBox(height: 16),
-                      ],
-                      // Обычные задачи
-                      if (_assignments.isNotEmpty) ...[
-                        if (_recurringInstances.isNotEmpty)
-                          _buildSectionHeader('Обычные задачи', Icons.assignment),
-                        ..._assignments.map(_buildAssignmentCard),
-                      ],
-                    ],
-                  ),
-                ),
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                // Вкладка "Активные"
+                _buildTaskList(_activeAssignments, _activeRecurring, 'Нет активных задач'),
+                // Вкладка "Выполненные"
+                _buildTaskList(_completedAssignments, _completedRecurring, 'Нет выполненных задач'),
+                // Вкладка "Просроченные"
+                _buildTaskList(_expiredAssignments, _expiredRecurring, 'Нет просроченных задач'),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildTaskList(
+    List<TaskAssignment> assignments,
+    List<RecurringTaskInstance> recurring,
+    String emptyMessage,
+  ) {
+    if (assignments.isEmpty && recurring.isEmpty) {
+      return _buildEmptyState(emptyMessage);
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAssignments,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Циклические задачи (показываем первыми)
+          if (recurring.isNotEmpty) ...[
+            _buildSectionHeader('Циклические задачи', Icons.repeat),
+            ...recurring.map(_buildRecurringInstanceCard),
+            const SizedBox(height: 16),
+          ],
+          // Обычные задачи
+          if (assignments.isNotEmpty) ...[
+            if (recurring.isNotEmpty)
+              _buildSectionHeader('Разовые задачи', Icons.assignment),
+            ...assignments.map(_buildAssignmentCard),
+          ],
+        ],
+      ),
     );
   }
 
@@ -188,7 +254,7 @@ class _MyTasksPageState extends State<MyTasksPage> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(String message) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -200,18 +266,10 @@ class _MyTasksPageState extends State<MyTasksPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Нет задач',
+            message,
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Новые задачи появятся здесь',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
             ),
           ),
         ],
@@ -221,15 +279,27 @@ class _MyTasksPageState extends State<MyTasksPage> {
 
   Widget _buildRecurringInstanceCard(RecurringTaskInstance instance) {
     final dateFormat = DateFormat('dd.MM HH:mm');
-    final isOverdue = instance.isExpired;
+    final isExpired = instance.status == 'expired';
+    final isCompleted = instance.status == 'completed';
+
+    Color borderColor;
+    Color iconColor;
+    if (isExpired) {
+      borderColor = Colors.red;
+      iconColor = Colors.red;
+    } else if (isCompleted) {
+      borderColor = Colors.green;
+      iconColor = Colors.green;
+    } else {
+      borderColor = Colors.blue;
+      iconColor = Colors.blue;
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: isOverdue
-            ? const BorderSide(color: Colors.red, width: 1)
-            : const BorderSide(color: Colors.blue, width: 0.5),
+        side: BorderSide(color: borderColor, width: 0.5),
       ),
       child: InkWell(
         onTap: () => _openRecurringTaskDetail(instance),
@@ -239,8 +309,8 @@ class _MyTasksPageState extends State<MyTasksPage> {
           child: Row(
             children: [
               Icon(
-                Icons.repeat,
-                color: isOverdue ? Colors.red : Colors.blue,
+                isCompleted ? Icons.check_circle : (isExpired ? Icons.timer_off : Icons.repeat),
+                color: iconColor,
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -258,33 +328,40 @@ class _MyTasksPageState extends State<MyTasksPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      'До: ${dateFormat.format(instance.deadline)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isOverdue ? Colors.red : Colors.grey[600],
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          isCompleted
+                              ? 'Выполнено'
+                              : (isExpired ? 'Просрочено' : 'До: ${dateFormat.format(instance.deadline)}'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isExpired ? Colors.red : (isCompleted ? Colors.green : Colors.grey[600]),
+                          ),
+                        ),
+                        if (isExpired) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '-3',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
               ),
-              if (isOverdue)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '-3',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.red[700],
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 4),
               Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
             ],
           ),
@@ -309,6 +386,9 @@ class _MyTasksPageState extends State<MyTasksPage> {
     final dateFormat = DateFormat('dd.MM HH:mm');
     final isOverdue = assignment.isOverdue && assignment.status == TaskStatus.pending;
     final statusColor = _getStatusColor(assignment.status);
+    final isExpired = assignment.status == TaskStatus.expired ||
+                      assignment.status == TaskStatus.rejected ||
+                      assignment.status == TaskStatus.declined;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
@@ -316,7 +396,7 @@ class _MyTasksPageState extends State<MyTasksPage> {
         borderRadius: BorderRadius.circular(8),
         side: isOverdue
             ? const BorderSide(color: Colors.red, width: 1)
-            : BorderSide.none,
+            : BorderSide(color: statusColor.withOpacity(0.3), width: 0.5),
       ),
       child: InkWell(
         onTap: () => _openTaskDetail(assignment),
@@ -369,6 +449,24 @@ class _MyTasksPageState extends State<MyTasksPage> {
                             ),
                           ),
                         ),
+                        if (isExpired) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              '-3',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -378,48 +476,6 @@ class _MyTasksPageState extends State<MyTasksPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildResponseTypeChip(TaskResponseType type) {
-    IconData icon;
-    String label;
-
-    switch (type) {
-      case TaskResponseType.photo:
-        icon = Icons.photo_camera;
-        label = 'Фото';
-        break;
-      case TaskResponseType.photoAndText:
-        icon = Icons.photo_camera;
-        label = 'Фото+Текст';
-        break;
-      case TaskResponseType.text:
-        icon = Icons.text_fields;
-        label = 'Текст';
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.grey[600]),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
       ),
     );
   }
