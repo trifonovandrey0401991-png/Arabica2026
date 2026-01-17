@@ -2202,10 +2202,10 @@ app.get('/api/withdrawals', (req, res) => {
     // Сортировать по дате (новые первые)
     withdrawals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    res.json({ withdrawals });
+    res.json({ success: true, withdrawals });
   } catch (err) {
     console.error('Ошибка получения выемок:', err);
-    res.status(500).json({ error: 'Ошибка получения выемок' });
+    res.status(500).json({ success: false, error: 'Ошибка получения выемок' });
   }
 });
 
@@ -2271,10 +2271,10 @@ app.post('/api/withdrawals', async (req, res) => {
     // Отправить push-уведомления админам
     await sendWithdrawalNotifications(withdrawal);
 
-    res.json({ withdrawal });
+    res.json({ success: true, withdrawal });
   } catch (err) {
     console.error('Ошибка создания выемки:', err);
-    res.status(500).json({ error: 'Ошибка создания выемки' });
+    res.status(500).json({ success: false, error: 'Ошибка создания выемки' });
   }
 });
 
@@ -2285,7 +2285,7 @@ app.delete('/api/withdrawals/:id', (req, res) => {
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'Выемка не найдена' });
+      return res.status(404).json({ success: false, error: 'Выемка не найдена' });
     }
 
     fs.unlinkSync(filePath);
@@ -2293,7 +2293,7 @@ app.delete('/api/withdrawals/:id', (req, res) => {
     res.json({ success: true, message: 'Выемка удалена' });
   } catch (err) {
     console.error('Ошибка удаления выемки:', err);
-    res.status(500).json({ error: 'Ошибка удаления выемки' });
+    res.status(500).json({ success: false, error: 'Ошибка удаления выемки' });
   }
 });
 
