@@ -11,6 +11,7 @@ import 'settings_tabs/reviews_points_settings_page.dart';
 import 'settings_tabs/product_search_points_settings_page.dart';
 import 'settings_tabs/orders_points_settings_page.dart';
 import 'settings_tabs/task_points_settings_page.dart';
+import 'settings_tabs/envelope_points_settings_page.dart';
 
 /// Page for configuring efficiency points settings
 class PointsSettingsPage extends StatefulWidget {
@@ -84,6 +85,12 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       title: 'Задачи',
       icon: Icons.assignment,
       description: 'Баллы за выполнение задач',
+    ),
+    _PointsCategory(
+      id: 'envelope',
+      title: 'Конверт',
+      icon: Icons.mail,
+      description: 'Баллы за сдачу конверта',
     ),
     _PointsCategory(
       id: 'fortune_wheel',
@@ -162,6 +169,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
         context,
         MaterialPageRoute(
           builder: (context) => const TaskPointsSettingsPage(),
+        ),
+      );
+    } else if (categoryId == 'envelope') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const EnvelopePointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'fortune_wheel') {

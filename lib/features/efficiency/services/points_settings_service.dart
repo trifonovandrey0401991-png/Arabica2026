@@ -374,4 +374,37 @@ class PointsSettingsService {
       itemKey: 'settings',
     );
   }
+
+  // ===== ENVELOPE POINTS (Конверт) =====
+
+  /// Get envelope points settings
+  static Future<EnvelopePointsSettings> getEnvelopePointsSettings() async {
+    Logger.debug('Fetching envelope points settings...');
+
+    final result = await BaseHttpService.get<EnvelopePointsSettings>(
+      endpoint: '$baseEndpoint/envelope',
+      fromJson: (json) => EnvelopePointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+
+    return result ?? EnvelopePointsSettings.defaults();
+  }
+
+  /// Save envelope points settings
+  static Future<EnvelopePointsSettings?> saveEnvelopePointsSettings({
+    required double submittedPoints,
+    required double notSubmittedPoints,
+  }) async {
+    Logger.debug('Saving envelope points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints');
+
+    return await BaseHttpService.post<EnvelopePointsSettings>(
+      endpoint: '$baseEndpoint/envelope',
+      body: {
+        'submittedPoints': submittedPoints,
+        'notSubmittedPoints': notSubmittedPoints,
+      },
+      fromJson: (json) => EnvelopePointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+  }
 }

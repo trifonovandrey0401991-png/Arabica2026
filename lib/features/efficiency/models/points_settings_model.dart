@@ -802,3 +802,73 @@ class RecurringTaskPointsSettings {
     };
   }
 }
+
+/// Model for envelope points settings (Конверт)
+class EnvelopePointsSettings {
+  final String id;
+  final String category;
+  final double submittedPoints;   // Баллы за сданный конверт
+  final double notSubmittedPoints; // Штраф за несданный конверт
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  EnvelopePointsSettings({
+    this.id = 'envelope_points',
+    this.category = 'envelope',
+    required this.submittedPoints,
+    required this.notSubmittedPoints,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory EnvelopePointsSettings.fromJson(Map<String, dynamic> json) {
+    return EnvelopePointsSettings(
+      id: json['id'] ?? 'envelope_points',
+      category: json['category'] ?? 'envelope',
+      submittedPoints: (json['submittedPoints'] ?? 1.0).toDouble(),
+      notSubmittedPoints: (json['notSubmittedPoints'] ?? -3.0).toDouble(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'category': category,
+    'submittedPoints': submittedPoints,
+    'notSubmittedPoints': notSubmittedPoints,
+    if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+    if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+  };
+
+  /// Default settings
+  factory EnvelopePointsSettings.defaults() {
+    return EnvelopePointsSettings(
+      submittedPoints: 1.0,
+      notSubmittedPoints: -3.0,
+    );
+  }
+
+  /// Calculate points based on envelope submission status
+  double calculatePoints(bool submitted) {
+    return submitted ? submittedPoints : notSubmittedPoints;
+  }
+
+  EnvelopePointsSettings copyWith({
+    double? submittedPoints,
+    double? notSubmittedPoints,
+  }) {
+    return EnvelopePointsSettings(
+      id: id,
+      category: category,
+      submittedPoints: submittedPoints ?? this.submittedPoints,
+      notSubmittedPoints: notSubmittedPoints ?? this.notSubmittedPoints,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
