@@ -9,21 +9,50 @@ import '../../tasks/models/task_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Сервис загрузки и агрегации данных эффективности
 class EfficiencyDataService {
   static const String _penaltiesEndpoint = ApiConstants.efficiencyPenaltiesEndpoint;
 
+  /// Префикс для ключей кэша
+  static const String _cacheKeyPrefix = 'efficiency_data';
+
+  /// Определить TTL для кэша на основе месяца
+  static Duration _getCacheDuration(int year, int month) {
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month);
+    final previousMonth = DateTime(now.year, now.month - 1);
+    final requestedMonth = DateTime(year, month);
+
+    // Текущий и предыдущий месяцы - короткий TTL (2 минуты)
+    if (requestedMonth.year == currentMonth.year && requestedMonth.month == currentMonth.month) {
+      return const Duration(minutes: 2);
+    }
+    if (requestedMonth.year == previousMonth.year && requestedMonth.month == previousMonth.month) {
+      return const Duration(minutes: 2);
+    }
+
+    // Старые месяцы - длинный TTL (30 минут)
+    return const Duration(minutes: 30);
+  }
+
+  /// Создать ключ кэша для месяца
+  static String _createCacheKey(int year, int month) {
+    return '${_cacheKeyPrefix}_${year}_${month.toString().padLeft(2, '0')}';
+  }
+
   /// Загрузить данные эффективности за период
   static Future<EfficiencyData> loadEfficiencyData({
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) async {
     final now = DateTime.now();
     final start = startDate ?? DateTime(now.year, now.month, 1);
     final end = endDate ?? DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
-    Logger.debug('Loading efficiency data from $start to $end');
+    Logger.debug('Loading efficiency data from $start to $end (forceRefresh: $forceRefresh)');
 
     // Загружаем настройки баллов
     await EfficiencyCalculationService.loadAllSettings();
@@ -274,26 +303,63 @@ class EfficiencyDataService {
     return summaries;
   }
 
-  /// Получить данные за предыдущий месяц
-  static Future<EfficiencyData> loadPreviousMonthData() async {
+  /// Получить данные за предыдущий месяц (с кэшированием)
+  static Future<EfficiencyData> loadPreviousMonthData({bool forceRefresh = false}) async {
     final now = DateTime.now();
     final previousMonth = DateTime(now.year, now.month - 1, 1);
-    final endOfPreviousMonth = DateTime(now.year, now.month, 0, 23, 59, 59);
 
-    return loadEfficiencyData(
-      startDate: previousMonth,
-      endDate: endOfPreviousMonth,
+    return loadMonthData(
+      previousMonth.year,
+      previousMonth.month,
+      forceRefresh: forceRefresh,
     );
   }
 
-  /// Получить данные за конкретный месяц
-  static Future<EfficiencyData> loadMonthData(int year, int month) async {
-    final start = DateTime(year, month, 1);
-    final end = DateTime(year, month + 1, 0, 23, 59, 59);
+  /// Очистить весь кэш эффективности
+  static void clearCache() {
+    CacheManager.clearByPattern(_cacheKeyPrefix);
+    Logger.debug('🗑️ Весь кэш эффективности очищен');
+  }
 
-    return loadEfficiencyData(
-      startDate: start,
-      endDate: end,
+  /// Очистить кэш для конкретного месяца
+  static void clearCacheForMonth(int year, int month) {
+    final cacheKey = _createCacheKey(year, month);
+    CacheManager.remove(cacheKey);
+    Logger.debug('🗑️ Кэш очищен для месяца $year-$month');
+  }
+
+  /// Получить данные за конкретный месяц (с кэшированием)
+  static Future<EfficiencyData> loadMonthData(
+    int year,
+    int month, {
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = _createCacheKey(year, month);
+
+    // Если forceRefresh - очищаем кэш
+    if (forceRefresh) {
+      CacheManager.remove(cacheKey);
+      Logger.debug('🗑️ Кэш очищен для месяца $year-$month (force refresh)');
+    }
+
+    // Пытаемся получить из кэша или загрузить
+    return await CacheManager.getOrFetch<EfficiencyData>(
+      cacheKey,
+      () async {
+        Logger.debug('📥 Загрузка данных эффективности за $year-$month с сервера...');
+        final start = DateTime(year, month, 1);
+        final end = DateTime(year, month + 1, 0, 23, 59, 59);
+
+        final data = await loadEfficiencyData(
+          startDate: start,
+          endDate: end,
+          forceRefresh: false, // Внутренний вызов без forceRefresh
+        );
+
+        Logger.debug('💾 Данные эффективности за $year-$month сохранены в кэш');
+        return data;
+      },
+      duration: _getCacheDuration(year, month),
     );
   }
 

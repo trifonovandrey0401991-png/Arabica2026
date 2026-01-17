@@ -41,7 +41,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -71,6 +71,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
       final data = await EfficiencyDataService.loadMonthData(
         _selectedYear,
         _selectedMonth,
+        forceRefresh: forceRefresh,
       );
 
       // Находим данные текущего сотрудника
@@ -362,7 +363,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () => _loadData(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),

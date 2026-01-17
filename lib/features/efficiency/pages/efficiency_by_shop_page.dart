@@ -24,7 +24,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -34,6 +34,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
       final data = await EfficiencyDataService.loadMonthData(
         _selectedYear,
         _selectedMonth,
+        forceRefresh: forceRefresh,
       );
       setState(() {
         _data = data;
@@ -207,7 +208,7 @@ class _EfficiencyByShopPageState extends State<EfficiencyByShopPage> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _data!.byShop.length + 1,
