@@ -2044,27 +2044,44 @@ function loadAllEmployeesForWithdrawals() {
 }
 
 // Получить FCM токены пользователей для уведомлений о выемках
-async function getFCMTokensForWithdrawalNotifications(phones) {
-  if (!fs.existsSync(FCM_TOKENS_FILE)) {
-    return [];
-  }
-
+// Получить FCM токен по телефону
+function getFCMTokenByPhoneForWithdrawals(phone) {
   try {
-    const data = fs.readFileSync(FCM_TOKENS_FILE, 'utf8');
-    const allTokens = JSON.parse(data);
+    const normalizedPhone = phone.replace(/[\s+]/g, "");
+    const FCM_TOKENS_DIR = "/var/www/fcm-tokens";
+    const path = require("path");
+    const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    const tokens = [];
-    for (const phone of phones) {
-      if (allTokens[phone]) {
-        tokens.push(allTokens[phone]);
-      }
+    if (!fs.existsSync(tokenFile)) {
+      return null;
     }
 
-    return tokens;
+    const tokenData = JSON.parse(fs.readFileSync(tokenFile, "utf8"));
+    return tokenData.token || null;
   } catch (err) {
-    console.error('Ошибка загрузки FCM токенов:', err);
+    console.error(`Ошибка получения токена для ${phone}:`, err.message);
+    return null;
+  }
+}
+
+// Получить FCM токены пользователей для уведомлений о выемках
+function getFCMTokensForWithdrawalNotifications(phones) {
+  const FCM_TOKENS_DIR = "/var/www/fcm-tokens";
+  
+  if (!fs.existsSync(FCM_TOKENS_DIR)) {
+    console.log("⚠️  Папка FCM токенов не существует");
     return [];
   }
+
+  const tokens = [];
+  for (const phone of phones) {
+    const token = getFCMTokenByPhoneForWithdrawals(phone);
+    if (token) {
+      tokens.push(token);
+    }
+  }
+
+  return tokens;
 }
 
 // Отправить push-уведомления о выемке всем админам
@@ -2083,7 +2100,7 @@ async function sendWithdrawalNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
+    const tokens = getFCMTokensForWithdrawalNotifications(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
@@ -2112,6 +2129,60 @@ async function sendWithdrawalNotifications(withdrawal) {
   } catch (err) {
     console.error('Ошибка отправки push-уведомлений о выемке:', err);
   }
+
+// Отправить push-уведомления о подтверждении выемки
+async function sendWithdrawalConfirmationNotifications(withdrawal) {
+  try {
+    // 1. Загрузить всех сотрудников
+    const employees = loadAllEmployeesForWithdrawals();
+
+    // 2. Отфильтровать админов
+    const admins = employees.filter(e => e.isAdmin === true);
+
+    if (admins.length === 0) {
+      console.log("Нет админов для отправки уведомлений о подтверждении");
+      return;
+    }
+
+    // 3. Получить FCM токены админов
+    const adminPhones = admins.map(a => a.phone).filter(p => p);
+    const tokens = getFCMTokensForWithdrawalNotifications(adminPhones);
+
+    if (tokens.length === 0) {
+      console.log("Нет FCM токенов для админов");
+      return;
+    }
+
+    // 4. Отправить уведомление
+    const message = {
+      notification: {
+        title: `Выемка подтверждена: ${withdrawal.shopAddress}`,
+        body: `Выемка от ${withdrawal.employeeName} на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()}) подтверждена`,
+      },
+      data: {
+        type: "withdrawal_confirmed",
+        withdrawalId: withdrawal.id,
+        shopAddress: withdrawal.shopAddress,
+      },
+      android: {
+        priority: "high",
+        notification: {
+          sound: "default",
+          channelId: "withdrawals_channel",
+        },
+      },
+    };
+
+    await admin.messaging().sendMulticast({
+      tokens: tokens,
+      ...message,
+    });
+
+    console.log(`✅ Отправлено уведомление о подтверждении выемки ${tokens.length} админам`);
+  } catch (err) {
+    console.error("❌ Ошибка отправки push-уведомлений о подтверждении:", err);
+  }
+}
 }
 
 // Обновить баланс главной кассы после выемки
@@ -2280,7 +2351,7 @@ app.post('/api/withdrawals', async (req, res) => {
 });
 
 // PATCH /api/withdrawals/:id/confirm - подтвердить выемку
-app.patch('/api/withdrawals/:id/confirm', (req, res) => {
+app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
   try {
     const { id } = req.params;
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
@@ -2294,9 +2365,13 @@ app.patch('/api/withdrawals/:id/confirm', (req, res) => {
 
     // Обновить статус
     withdrawal.confirmed = true;
+    withdrawal.confirmedAt = new Date().toISOString();
 
     // Сохранить обратно
     fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+
+    // Отправить push-уведомления о подтверждении
+    await sendWithdrawalConfirmationNotifications(withdrawal);
 
     res.json({ success: true, withdrawal });
   } catch (err) {
