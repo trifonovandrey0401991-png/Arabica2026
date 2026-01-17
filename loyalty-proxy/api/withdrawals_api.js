@@ -63,7 +63,7 @@ async function getFCMTokensForUsers(phones) {
   }
 }
 
-// Отправить push-уведомления о выемке
+// Отправить push-уведомления о новой выемке
 async function sendWithdrawalNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
@@ -73,7 +73,7 @@ async function sendWithdrawalNotifications(withdrawal) {
     const admins = employees.filter(e => e.isAdmin === true);
 
     if (admins.length === 0) {
-      console.log('Нет админов для отправки уведомлений');
+      console.log('Нет админов для отправки уведомлений о создании');
       return;
     }
 
@@ -89,13 +89,20 @@ async function sendWithdrawalNotifications(withdrawal) {
     // 4. Отправить уведомление
     const message = {
       notification: {
-        title: `Выемка: ${withdrawal.shopAddress}`,
+        title: `Новая выемка: ${withdrawal.shopAddress}`,
         body: `${withdrawal.employeeName} сделал выемку на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()})`,
       },
       data: {
-        type: 'withdrawal',
+        type: 'withdrawal_created',
         withdrawalId: withdrawal.id,
         shopAddress: withdrawal.shopAddress,
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'withdrawals_channel',
+        },
       },
     };
 
@@ -104,9 +111,63 @@ async function sendWithdrawalNotifications(withdrawal) {
       ...message,
     });
 
-    console.log(`Отправлено уведомление о выемке ${tokens.length} админам`);
+    console.log(`✅ Отправлено уведомление о создании выемки ${tokens.length} админам`);
   } catch (err) {
-    console.error('Ошибка отправки push-уведомлений:', err);
+    console.error('❌ Ошибка отправки push-уведомлений о создании:', err);
+  }
+}
+
+// Отправить push-уведомления о подтверждении выемки
+async function sendWithdrawalConfirmationNotifications(withdrawal) {
+  try {
+    // 1. Загрузить всех сотрудников
+    const employees = loadAllEmployees();
+
+    // 2. Отфильтровать админов
+    const admins = employees.filter(e => e.isAdmin === true);
+
+    if (admins.length === 0) {
+      console.log('Нет админов для отправки уведомлений о подтверждении');
+      return;
+    }
+
+    // 3. Получить FCM токены админов
+    const adminPhones = admins.map(a => a.phone).filter(p => p);
+    const tokens = await getFCMTokensForUsers(adminPhones);
+
+    if (tokens.length === 0) {
+      console.log('Нет FCM токенов для админов');
+      return;
+    }
+
+    // 4. Отправить уведомление
+    const message = {
+      notification: {
+        title: `Выемка подтверждена: ${withdrawal.shopAddress}`,
+        body: `Выемка от ${withdrawal.employeeName} на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()}) подтверждена`,
+      },
+      data: {
+        type: 'withdrawal_confirmed',
+        withdrawalId: withdrawal.id,
+        shopAddress: withdrawal.shopAddress,
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'withdrawals_channel',
+        },
+      },
+    };
+
+    await admin.messaging().sendMulticast({
+      tokens: tokens,
+      ...message,
+    });
+
+    console.log(`✅ Отправлено уведомление о подтверждении выемки ${tokens.length} админам`);
+  } catch (err) {
+    console.error('❌ Ошибка отправки push-уведомлений о подтверждении:', err);
   }
 }
 
@@ -199,10 +260,10 @@ function registerWithdrawalsAPI(app) {
       // Сортировать по дате (новые первые)
       withdrawals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      res.json({ withdrawals });
+      res.json({ success: true, withdrawals });
     } catch (err) {
       console.error('Ошибка получения выемок:', err);
-      res.status(500).json({ error: 'Ошибка получения выемок' });
+      res.status(500).json({ success: false, error: 'Ошибка получения выемок' });
     }
   });
 
@@ -220,25 +281,25 @@ function registerWithdrawalsAPI(app) {
 
       // Валидация
       if (!shopAddress || !employeeName || !employeeId || !type || !expenses || !Array.isArray(expenses)) {
-        return res.status(400).json({ error: 'Не все обязательные поля заполнены' });
+        return res.status(400).json({ success: false, error: 'Не все обязательные поля заполнены' });
       }
 
       if (type !== 'ooo' && type !== 'ip') {
-        return res.status(400).json({ error: 'Тип должен быть ooo или ip' });
+        return res.status(400).json({ success: false, error: 'Тип должен быть ooo или ip' });
       }
 
       if (expenses.length === 0) {
-        return res.status(400).json({ error: 'Добавьте хотя бы один расход' });
+        return res.status(400).json({ success: false, error: 'Добавьте хотя бы один расход' });
       }
 
       // Валидация расходов
       for (const expense of expenses) {
         if (!expense.amount || expense.amount <= 0) {
-          return res.status(400).json({ error: 'Все суммы расходов должны быть положительными' });
+          return res.status(400).json({ success: false, error: 'Все суммы расходов должны быть положительными' });
         }
 
         if (!expense.supplierId && !expense.comment) {
-          return res.status(400).json({ error: 'Для "Другого расхода" комментарий обязателен' });
+          return res.status(400).json({ success: false, error: 'Для "Другого расхода" комментарий обязателен' });
         }
       }
 
@@ -256,6 +317,7 @@ function registerWithdrawalsAPI(app) {
         expenses,
         adminName: adminName || null,
         createdAt: new Date().toISOString(),
+        confirmed: false, // По умолчанию не подтверждена
       };
 
       // Сохранить в файл
@@ -269,10 +331,46 @@ function registerWithdrawalsAPI(app) {
       // Отправить push-уведомления админам
       await sendWithdrawalNotifications(withdrawal);
 
-      res.json({ withdrawal });
+      res.json({ success: true, withdrawal });
     } catch (err) {
       console.error('Ошибка создания выемки:', err);
-      res.status(500).json({ error: 'Ошибка создания выемки' });
+      res.status(500).json({ success: false, error: 'Ошибка создания выемки' });
+    }
+  });
+
+  // PATCH /api/withdrawals/:id/confirm - подтвердить выемку
+  app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Выемка не найдена' });
+      }
+
+      // Загрузить выемку
+      const data = fs.readFileSync(filePath, 'utf8');
+      const withdrawal = JSON.parse(data);
+
+      // Проверить что уже не подтверждена
+      if (withdrawal.confirmed === true) {
+        return res.status(400).json({ success: false, error: 'Выемка уже подтверждена' });
+      }
+
+      // Обновить статус
+      withdrawal.confirmed = true;
+      withdrawal.confirmedAt = new Date().toISOString();
+
+      // Сохранить обновлённую выемку
+      fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+
+      // Отправить push-уведомления админам о подтверждении
+      await sendWithdrawalConfirmationNotifications(withdrawal);
+
+      res.json({ success: true, withdrawal });
+    } catch (err) {
+      console.error('Ошибка подтверждения выемки:', err);
+      res.status(500).json({ success: false, error: 'Ошибка подтверждения выемки' });
     }
   });
 
@@ -283,7 +381,7 @@ function registerWithdrawalsAPI(app) {
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
       if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: 'Выемка не найдена' });
+        return res.status(404).json({ success: false, error: 'Выемка не найдена' });
       }
 
       fs.unlinkSync(filePath);
@@ -291,7 +389,7 @@ function registerWithdrawalsAPI(app) {
       res.json({ success: true, message: 'Выемка удалена' });
     } catch (err) {
       console.error('Ошибка удаления выемки:', err);
-      res.status(500).json({ error: 'Ошибка удаления выемки' });
+      res.status(500).json({ success: false, error: 'Ошибка удаления выемки' });
     }
   });
 }
