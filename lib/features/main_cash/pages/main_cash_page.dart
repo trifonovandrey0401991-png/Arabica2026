@@ -347,123 +347,73 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   }
 
   Widget _buildExpandableBalanceRow(ShopCashBalance balance) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        backgroundColor: const Color(0xFF009688),
-        collapsedBackgroundColor: const Color(0xFF009688),
-        iconColor: Colors.white,
-        collapsedIconColor: Colors.white70,
-        title: Row(
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ShopBalanceDetailsPage(
+              shopAddress: balance.shopAddress,
+            ),
+          ),
+        ).then((_) => _loadData());
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: const BoxDecoration(
+          color: Color(0xFF009688),
+          border: Border(bottom: BorderSide(color: Color(0xFF00796B))),
+        ),
+        child: Row(
           children: [
             Expanded(
               child: Text(
                 balance.shopAddress,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  color: Colors.white,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.white),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              _formatAmount(balance.totalBalance),
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: balance.totalBalance < 0 ? Colors.red[200] : Colors.white,
+            SizedBox(
+              width: 60,
+              child: Text(
+                _formatAmount(balance.oooBalance),
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: balance.oooBalance < 0 ? Colors.red[200] : Colors.white,
+                ),
               ),
             ),
+            SizedBox(
+              width: 60,
+              child: Text(
+                _formatAmount(balance.ipBalance),
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: balance.ipBalance < 0 ? Colors.red[200] : Colors.white,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 80,
+              child: Text(
+                _formatAmount(balance.totalBalance),
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: balance.totalBalance < 0 ? Colors.red[200] : Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, size: 20, color: Colors.white70),
           ],
         ),
-        children: [
-          Container(
-            color: const Color(0xFF00796B),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            child: Column(
-              children: [
-                // ООО строка
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'ООО',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      _formatAmount(balance.oooBalance),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: balance.oooBalance < 0 ? Colors.red[200] : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // ИП строка
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'ИП',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      _formatAmount(balance.ipBalance),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: balance.ipBalance < 0 ? Colors.red[200] : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Divider(color: Colors.white24, height: 1),
-                const SizedBox(height: 8),
-                // Кнопка перехода к деталям
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ShopBalanceDetailsPage(
-                            shopAddress: balance.shopAddress,
-                          ),
-                        ),
-                      ).then((_) => _loadData());
-                    },
-                    icon: const Icon(Icons.info_outline, size: 16, color: Colors.white),
-                    label: const Text(
-                      'Детали',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white54),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
