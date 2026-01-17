@@ -5764,6 +5764,14 @@ app.get('/api/efficiency/reports-batch', async (req, res) => {
     // Парсим год и месяц
     const [year, monthNum] = month.split('-').map(Number);
 
+    // Дополнительная валидация месяца
+    if (monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный номер месяца. Используйте месяц от 01 до 12'
+      });
+    }
+
     // Создаём границы периода
     const startDate = new Date(year, monthNum - 1, 1, 0, 0, 0);
     const endDate = new Date(year, monthNum, 0, 23, 59, 59);
