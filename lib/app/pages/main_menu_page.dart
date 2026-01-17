@@ -25,6 +25,7 @@ import '../../features/rating/widgets/rating_badge_widget.dart';
 import '../../core/utils/logger.dart';
 import '../../core/widgets/shop_icon.dart';
 import '../../core/services/report_notification_service.dart';
+import '../../features/main_cash/services/withdrawal_service.dart';
 import 'my_dialogs_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
@@ -42,6 +43,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   String? _employeeId; // ID сотрудника для рейтинга
   bool _isLoadingRole = false; // Флаг для предотвращения параллельных запросов
   int _totalUnviewedReports = 0; // Счётчик непросмотренных отчётов
+  int _unconfirmedWithdrawalsCount = 0; // Счётчик неподтвержденных выемок
 
   @override
   void initState() {
@@ -56,6 +58,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _loadEmployeeId();
     // Загружаем счётчик непросмотренных отчётов
     _loadReportCounts();
+    // Загружаем счётчик неподтвержденных выемок
+    _loadUnconfirmedWithdrawalsCount();
   }
 
   Future<void> _loadReportCounts() async {
@@ -64,6 +68,20 @@ class _MainMenuPageState extends State<MainMenuPage> {
       setState(() {
         _totalUnviewedReports = counts.total;
       });
+    }
+  }
+
+  Future<void> _loadUnconfirmedWithdrawalsCount() async {
+    try {
+      final withdrawals = await WithdrawalService.getWithdrawals();
+      final unconfirmedCount = withdrawals.where((w) => !w.confirmed).length;
+      if (mounted) {
+        setState(() {
+          _unconfirmedWithdrawalsCount = unconfirmedCount;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счетчика неподтвержденных выемок', e);
     }
   }
 
@@ -422,13 +440,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Отчеты - только для админов
     if (role == UserRole.admin) {
-      items.add(_tileWithBadge(context, Icons.assessment, 'Отчеты', _totalUnviewedReports, () async {
+      items.add(_tileWithBadge(context, Icons.assessment, 'Отчеты', _totalUnviewedReports + _unconfirmedWithdrawalsCount, () async {
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ReportsPage()),
         );
-        // Обновляем счётчик после возврата
+        // Обновляем счётчики после возврата
         _loadReportCounts();
+        _loadUnconfirmedWithdrawalsCount();
       }));
     }
 

@@ -41,6 +41,7 @@ class _ReportsPageState extends State<ReportsPage> {
   int _jobApplicationsUnviewedCount = 0;
   int _unreadReviewsCount = 0;
   int _managementUnreadCount = 0;
+  int _unconfirmedWithdrawalsCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -51,6 +52,7 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadReportCounts();
     _loadUnreadReviewsCount();
     _loadManagementUnreadCount();
+    _loadUnconfirmedWithdrawalsCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -84,6 +86,28 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества непрочитанных сообщений руководству', e);
+    }
+  }
+
+  Future<void> _loadUnconfirmedWithdrawalsCount() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/withdrawals',
+        timeout: ApiConstants.longTimeout,
+      );
+
+      if (result != null && result['success'] == true) {
+        final withdrawals = result['withdrawals'] as List<dynamic>? ?? [];
+        final unconfirmedCount = withdrawals.where((w) => w['confirmed'] != true).length;
+
+        if (mounted) {
+          setState(() {
+            _unconfirmedWithdrawalsCount = unconfirmedCount;
+          });
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества неподтвержденных выемок', e);
     }
   }
 
@@ -324,15 +348,18 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчет (Главная Касса) - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет (Главная Касса)',
               icon: Icons.point_of_sale,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _unconfirmedWithdrawalsCount,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const MainCashPage()),
                 );
+                // Обновить счетчик после возврата
+                _loadUnconfirmedWithdrawalsCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
