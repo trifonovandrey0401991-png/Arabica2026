@@ -132,5 +132,37 @@ class OrderService {
       body: requestBody,
     );
   }
+
+  /// Получить количество непросмотренных заказов (rejected + unconfirmed)
+  static Future<Map<String, int>> getUnviewedCounts() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$baseEndpoint/unviewed-count',
+      );
+      if (result != null) {
+        return {
+          'rejected': result['rejected'] as int? ?? 0,
+          'unconfirmed': result['unconfirmed'] as int? ?? 0,
+          'total': result['total'] as int? ?? 0,
+        };
+      }
+      return {'rejected': 0, 'unconfirmed': 0, 'total': 0};
+    } catch (e) {
+      Logger.error('Ошибка получения непросмотренных заказов', e);
+      return {'rejected': 0, 'unconfirmed': 0, 'total': 0};
+    }
+  }
+
+  /// Отметить заказы как просмотренные
+  static Future<void> markAsViewed(String type) async {
+    try {
+      await BaseHttpService.simplePost(
+        endpoint: '$baseEndpoint/mark-viewed/$type',
+        body: {},
+      );
+    } catch (e) {
+      Logger.error('Ошибка отметки заказов как просмотренных', e);
+    }
+  }
 }
 

@@ -1,13 +1,19 @@
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
+const { sendPushNotification } = require('../report_notifications_api');
 
 const ORDERS_DIR = '/var/www/orders';
 const COUNTER_FILE = path.join(ORDERS_DIR, 'order-counter.json');
 const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
 const DIALOGS_DIR = '/var/www/client-dialogs';
 const EMPLOYEES_DIR = '/var/www/employees';
+
+// Файлы для отслеживания просмотров заказов
+const ORDERS_VIEWED_REJECTED_FILE = '/var/www/orders-viewed-rejected.json';
+const ORDERS_VIEWED_UNCONFIRMED_FILE = '/var/www/orders-viewed-unconfirmed.json';
 
 async function fileExists(filePath) {
   try {
@@ -16,6 +22,95 @@ async function fileExists(filePath) {
   } catch {
     return false;
   }
+}
+
+// =====================================================
+// ФУНКЦИИ ДЛЯ ОТСЛЕЖИВАНИЯ ПРОСМОТРОВ ЗАКАЗОВ
+// =====================================================
+
+// Получить дату последнего просмотра
+function getLastViewedAt(type) {
+  try {
+    const file = type === 'rejected' ? ORDERS_VIEWED_REJECTED_FILE : ORDERS_VIEWED_UNCONFIRMED_FILE;
+    if (fsSync.existsSync(file)) {
+      const data = JSON.parse(fsSync.readFileSync(file, 'utf8'));
+      return data.lastViewedAt ? new Date(data.lastViewedAt) : null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Ошибка чтения lastViewedAt для ' + type + ':', error);
+    return null;
+  }
+}
+
+// Сохранить дату последнего просмотра
+function saveLastViewedAt(type, date) {
+  try {
+    const file = type === 'rejected' ? ORDERS_VIEWED_REJECTED_FILE : ORDERS_VIEWED_UNCONFIRMED_FILE;
+    fsSync.writeFileSync(file, JSON.stringify({
+      lastViewedAt: date.toISOString()
+    }, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Ошибка записи lastViewedAt для ' + type + ':', error);
+    return false;
+  }
+}
+
+// Подсчёт непросмотренных заказов
+async function countUnviewedOrders(status, lastViewedAt) {
+  let count = 0;
+
+  try {
+    const files = await fs.readdir(ORDERS_DIR);
+
+    for (const file of files) {
+      if (!file.endsWith('.json') || file === 'order-counter.json') continue;
+
+      try {
+        const content = await fs.readFile(path.join(ORDERS_DIR, file), 'utf8');
+        const order = JSON.parse(content);
+
+        if (order.status !== status) continue;
+
+        // Для rejected проверяем rejectedAt, для unconfirmed - expiredAt
+        let orderTime = null;
+        if (status === 'rejected' && order.rejectedAt) {
+          orderTime = new Date(order.rejectedAt);
+        } else if (status === 'unconfirmed' && order.expiredAt) {
+          orderTime = new Date(order.expiredAt);
+        }
+
+        if (!orderTime) continue;
+
+        // Если lastViewedAt не задано - считаем все новыми
+        if (!lastViewedAt || orderTime > lastViewedAt) {
+          count++;
+        }
+      } catch (err) {
+        // Пропускаем битые файлы
+      }
+    }
+  } catch (err) {
+    console.error('Ошибка подсчёта непросмотренных заказов:', err);
+  }
+
+  return count;
+}
+
+// Получить количество непросмотренных заказов
+async function getUnviewedOrdersCounts() {
+  const rejectedLastViewed = getLastViewedAt('rejected');
+  const unconfirmedLastViewed = getLastViewedAt('unconfirmed');
+
+  const rejectedCount = await countUnviewedOrders('rejected', rejectedLastViewed);
+  const unconfirmedCount = await countUnviewedOrders('unconfirmed', unconfirmedLastViewed);
+
+  return {
+    rejected: rejectedCount,
+    unconfirmed: unconfirmedCount,
+    total: rejectedCount + unconfirmedCount
+  };
 }
 
 async function getNextOrderNumber() {
@@ -119,6 +214,11 @@ async function updateOrderStatus(orderId, updates) {
   Object.assign(order, updates);
   order.updatedAt = new Date().toISOString();
 
+  // Добавляем rejectedAt при отказе
+  if (updates.status === 'rejected') {
+    order.rejectedAt = new Date().toISOString();
+  }
+
   await fs.writeFile(orderFile, JSON.stringify(order, null, 2));
 
   if (updates.status === 'accepted') {
@@ -129,6 +229,20 @@ async function updateOrderStatus(orderId, updates) {
     await sendOrderNotification(order, 'rejected');
     await addResponseToDialog(order, 'rejected');
     console.log('✅ Заказ #' + order.orderNumber + ' отклонен сотрудником ' + order.rejectedBy + ': ' + order.rejectionReason);
+
+    // Push-уведомление админам об отказанном заказе
+    try {
+      const clientName = order.clientName || order.clientPhone || 'Клиент';
+      const reason = order.rejectionReason || 'Не указана';
+      await sendPushNotification(
+        'Отказанный заказ',
+        clientName + ': ' + reason,
+        { type: 'order_rejected', orderId: order.id }
+      );
+      console.log('✅ Push об отказанном заказе #' + order.orderNumber + ' отправлен админам');
+    } catch (pushErr) {
+      console.error('❌ Ошибка отправки push об отказанном заказе:', pushErr.message);
+    }
   }
 
   return order;
@@ -331,4 +445,10 @@ async function addResponseToDialog(order, responseType) {
   console.log('✅ Ответ сотрудника добавлен в диалог (заказ #' + order.orderNumber + ')');
 }
 
-module.exports = { createOrder, getOrders, updateOrderStatus };
+module.exports = {
+  createOrder,
+  getOrders,
+  updateOrderStatus,
+  getUnviewedOrdersCounts,
+  saveLastViewedAt
+};

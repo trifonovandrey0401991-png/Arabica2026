@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { sendPushNotification } = require('./report_notifications_api');
 
 // Директории
 const POINTS_SETTINGS_DIR = '/var/www/points-settings';
@@ -232,6 +233,19 @@ function checkExpiredOrders() {
       order.status = 'unconfirmed';
       order.expiredAt = now.toISOString();
       saveJsonFile(filePath, order);
+
+      // Push-уведомление админам о неподтверждённом заказе
+      try {
+        const clientName = order.clientName || order.clientPhone || 'Клиент';
+        sendPushNotification(
+          'Неподтверждённый заказ',
+          `Заказ от ${clientName} не был принят вовремя`,
+          { type: 'order_unconfirmed', orderId: order.id }
+        ).catch(err => console.error('Ошибка push о неподтверждённом заказе:', err.message));
+        console.log(`✅ Push о неподтверждённом заказе #${order.orderNumber} отправлен админам`);
+      } catch (pushErr) {
+        console.error('❌ Ошибка отправки push о неподтверждённом заказе:', pushErr.message);
+      }
 
       // Находим сотрудников на смене
       const employees = findEmployeesOnShift(order.shopAddress, createdAt);

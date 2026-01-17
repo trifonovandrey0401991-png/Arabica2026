@@ -25,11 +25,27 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadOrders();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      final index = _tabController.index;
+      // Вкладка 2 = Отказано, вкладка 3 = Не подтв.
+      if (index == 2) {
+        // Помечаем rejected как просмотренные
+        OrderService.markAsViewed('rejected');
+      } else if (index == 3) {
+        // Помечаем unconfirmed как просмотренные
+        OrderService.markAsViewed('unconfirmed');
+      }
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }

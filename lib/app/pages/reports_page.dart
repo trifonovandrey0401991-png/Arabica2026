@@ -22,6 +22,7 @@ import '../../features/referrals/services/referral_service.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
+import '../../features/orders/services/order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
@@ -48,6 +49,7 @@ class _ReportsPageState extends State<ReportsPage> {
   int _productQuestionsUnreadCount = 0;
   int _unviewedExpiredTasksCount = 0;
   int _referralsUnviewedCount = 0;
+  int _ordersUnviewedCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -62,6 +64,7 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadProductQuestionsUnreadCount();
     _loadUnviewedExpiredTasksCount();
     _loadReferralsUnviewedCount();
+    _loadOrdersUnviewedCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -157,6 +160,19 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества непросмотренных приглашений', e);
+    }
+  }
+
+  Future<void> _loadOrdersUnviewedCount() async {
+    try {
+      final counts = await OrderService.getUnviewedCounts();
+      if (mounted) {
+        setState(() {
+          _ordersUnviewedCount = counts['total'] ?? 0;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества непросмотренных заказов', e);
     }
   }
 
@@ -506,15 +522,18 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчёты (Заказы клиентов) - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчёты (Заказы клиентов)',
               icon: Icons.shopping_bag,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _ordersUnviewedCount,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const OrdersReportPage()),
                 );
+                // Обновляем счётчик после возврата
+                _loadOrdersUnviewedCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
