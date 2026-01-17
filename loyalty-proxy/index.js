@@ -5606,6 +5606,204 @@ app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
   }
 });
 
+// ========== BATCH API для данных эффективности ==========
+
+/**
+ * Helper функция для загрузки отчётов пересменки за период
+ */
+function loadShiftReportsForPeriod(startDate, endDate) {
+  const reports = [];
+
+  if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
+    return reports;
+  }
+
+  const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+      const report = JSON.parse(content);
+
+      // Проверяем период
+      const reportDate = new Date(report.createdAt || report.timestamp);
+      if (reportDate >= startDate && reportDate <= endDate) {
+        reports.push(report);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения shift report ${file}:`, e.message);
+    }
+  }
+
+  return reports;
+}
+
+/**
+ * Helper функция для загрузки отчётов пересчёта за период
+ */
+function loadRecountReportsForPeriod(startDate, endDate) {
+  const reports = [];
+  const reportsDir = '/var/www/recount-reports';
+
+  if (!fs.existsSync(reportsDir)) {
+    return reports;
+  }
+
+  const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(reportsDir, file), 'utf8');
+      const report = JSON.parse(content);
+
+      // Проверяем период
+      const reportDate = new Date(report.completedAt || report.createdAt);
+      if (reportDate >= startDate && reportDate <= endDate) {
+        reports.push(report);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения recount report ${file}:`, e.message);
+    }
+  }
+
+  return reports;
+}
+
+/**
+ * Helper функция для загрузки отчётов сдачи смены за период
+ */
+function loadShiftHandoverReportsForPeriod(startDate, endDate) {
+  const reports = [];
+
+  if (!fs.existsSync(SHIFT_HANDOVER_REPORTS_DIR)) {
+    return reports;
+  }
+
+  const files = fs.readdirSync(SHIFT_HANDOVER_REPORTS_DIR).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
+      const report = JSON.parse(content);
+
+      // Проверяем период
+      const reportDate = new Date(report.createdAt);
+      if (reportDate >= startDate && reportDate <= endDate) {
+        reports.push(report);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения shift handover report ${file}:`, e.message);
+    }
+  }
+
+  return reports;
+}
+
+/**
+ * Helper функция для загрузки записей посещаемости за период
+ */
+function loadAttendanceForPeriod(startDate, endDate) {
+  const records = [];
+  const attendanceDir = '/var/www/attendance';
+
+  if (!fs.existsSync(attendanceDir)) {
+    return records;
+  }
+
+  const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(path.join(attendanceDir, file), 'utf8');
+      const record = JSON.parse(content);
+
+      // Проверяем период
+      const recordDate = new Date(record.timestamp || record.createdAt);
+      if (recordDate >= startDate && recordDate <= endDate) {
+        records.push(record);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения attendance record ${file}:`, e.message);
+    }
+  }
+
+  return records;
+}
+
+/**
+ * GET /api/efficiency/reports-batch
+ * Batch endpoint для загрузки всех отчётов за месяц одним запросом
+ *
+ * Query параметры:
+ * - month (обязательный): формат YYYY-MM (например 2025-01)
+ *
+ * Возвращает:
+ * {
+ *   success: true,
+ *   month: "2025-01",
+ *   shifts: [...],
+ *   recounts: [...],
+ *   handovers: [...],
+ *   attendance: [...]
+ * }
+ */
+app.get('/api/efficiency/reports-batch', async (req, res) => {
+  try {
+    const { month } = req.query;
+
+    // Валидация формата месяца
+    if (!month || !month.match(/^\d{4}-\d{2}$/)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный формат месяца. Используйте YYYY-MM (например 2025-01)'
+      });
+    }
+
+    console.log(`📊 GET /api/efficiency/reports-batch?month=${month}`);
+
+    // Парсим год и месяц
+    const [year, monthNum] = month.split('-').map(Number);
+
+    // Создаём границы периода
+    const startDate = new Date(year, monthNum - 1, 1, 0, 0, 0);
+    const endDate = new Date(year, monthNum, 0, 23, 59, 59);
+
+    console.log(`  📅 Период: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+
+    // Загружаем все типы отчётов параллельно
+    const startTime = Date.now();
+
+    const shifts = loadShiftReportsForPeriod(startDate, endDate);
+    const recounts = loadRecountReportsForPeriod(startDate, endDate);
+    const handovers = loadShiftHandoverReportsForPeriod(startDate, endDate);
+    const attendance = loadAttendanceForPeriod(startDate, endDate);
+
+    const loadTime = Date.now() - startTime;
+
+    console.log(`  ✅ Загружено за ${loadTime}ms:`);
+    console.log(`     - shifts: ${shifts.length}`);
+    console.log(`     - recounts: ${recounts.length}`);
+    console.log(`     - handovers: ${handovers.length}`);
+    console.log(`     - attendance: ${attendance.length}`);
+    console.log(`     - ИТОГО: ${shifts.length + recounts.length + handovers.length + attendance.length} записей`);
+
+    res.json({
+      success: true,
+      month,
+      shifts,
+      recounts,
+      handovers,
+      attendance
+    });
+  } catch (error) {
+    console.error('❌ Ошибка загрузки batch отчётов:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Initialize Job Applications API
 setupJobApplicationsAPI(app);
 app.listen(3000, () => console.log("Proxy listening on port 3000"));
