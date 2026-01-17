@@ -3,6 +3,7 @@ import '../../fortune_wheel/pages/wheel_settings_page.dart';
 import 'settings_tabs/test_points_settings_page.dart';
 import 'settings_tabs/attendance_points_settings_page.dart';
 import 'settings_tabs/shift_points_settings_page.dart';
+import 'settings_tabs/shift_points_settings_page_v2.dart';
 import 'settings_tabs/recount_efficiency_points_settings_page.dart';
 import 'settings_tabs/rko_points_settings_page.dart';
 import 'settings_tabs/shift_handover_points_settings_page.dart';
@@ -111,7 +112,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ShiftPointsSettingsPage(),
+          builder: (context) => const ShiftPointsSettingsPageV2(),
         ),
       );
     } else if (categoryId == 'recount') {
