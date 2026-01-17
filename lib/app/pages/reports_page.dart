@@ -19,7 +19,6 @@ import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
-import '../../features/efficiency/pages/points_settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
@@ -375,21 +374,6 @@ class _ReportsPageState extends State<ReportsPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const EmployeesEfficiencyPage()),
-                );
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Настройки баллов - только админ
-          if (isAdmin)
-            _buildSection(
-              context,
-              title: 'Настройки баллов',
-              icon: Icons.settings,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const PointsSettingsPage()),
                 );
               },
             ),
