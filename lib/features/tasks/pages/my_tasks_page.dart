@@ -11,13 +11,13 @@ import 'recurring_task_response_page.dart';
 
 /// Страница "Мои Задачи" для работника
 class MyTasksPage extends StatefulWidget {
-  final String employeeId;
-  final String employeeName;
+  final String? employeeId;
+  final String? employeeName;
 
   const MyTasksPage({
     super.key,
-    required this.employeeId,
-    required this.employeeName,
+    this.employeeId,
+    this.employeeName,
   });
 
   @override
@@ -29,19 +29,26 @@ class _MyTasksPageState extends State<MyTasksPage> {
   List<RecurringTaskInstance> _recurringInstances = [];
   bool _isLoading = true;
   String? _userPhone;
+  String? _employeeId;
+  String? _employeeName;
 
   @override
   void initState() {
     super.initState();
-    _loadUserPhone();
+    _loadUserData();
   }
 
-  Future<void> _loadUserPhone() async {
+  Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
     if (phone != null) {
       _userPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
     }
+
+    // Используем переданные значения или загружаем из SharedPreferences
+    _employeeId = widget.employeeId ?? prefs.getString('user_phone') ?? _userPhone;
+    _employeeName = widget.employeeName ?? prefs.getString('userName') ?? prefs.getString('user_name');
+
     _loadAssignments();
   }
 
@@ -50,7 +57,11 @@ class _MyTasksPageState extends State<MyTasksPage> {
 
     try {
       // Загружаем обычные задачи
-      final assignments = await TaskService.getMyAssignments(widget.employeeId);
+      if (_employeeId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      final assignments = await TaskService.getMyAssignments(_employeeId!);
       assignments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       // Загружаем циклические задачи (если есть телефон)
