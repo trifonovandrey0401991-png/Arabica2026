@@ -63,6 +63,7 @@ class ApiConstants {
   // Endpoints - Efficiency & Points
   static const String pointsSettingsEndpoint = '/api/points-settings';
   static const String efficiencyPenaltiesEndpoint = '/api/efficiency-penalties';
+  static const String efficiencyReportsBatchEndpoint = '/api/efficiency/reports-batch';
   static const String bonusPenaltiesEndpoint = '/api/bonus-penalties';
 
   // Endpoints - Tasks
