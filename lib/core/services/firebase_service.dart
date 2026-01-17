@@ -16,6 +16,7 @@ import '../../features/orders/pages/employee_orders_page.dart';
 import '../../features/orders/pages/orders_page.dart';
 import '../../features/work_schedule/pages/my_schedule_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
+import '../../features/tasks/pages/my_tasks_page.dart';
 import '../constants/api_constants.dart';
 import '../utils/logger.dart';
 // Прямой импорт Firebase Core - доступен на мобильных платформах
@@ -425,6 +426,19 @@ class FirebaseService {
         priority: Priority.high,
         showWhen: true,
       );
+    } else if (type != null && (type.startsWith('new_task') ||
+               type.startsWith('task_') ||
+               type.startsWith('new_recurring_task') ||
+               type.startsWith('recurring_task_'))) {
+      // Канал для задач
+      androidDetails = const AndroidNotificationDetails(
+        'tasks_channel',
+        'Задачи',
+        channelDescription: 'Уведомления о задачах',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
     } else {
       androidDetails = const AndroidNotificationDetails(
         'reviews_channel',
@@ -560,6 +574,29 @@ class FirebaseService {
         );
         return;
       }
+    }
+
+    // Обработка уведомлений о задачах (обычных и циклических)
+    if (type == 'new_task' || type == 'new_recurring_task' ||
+        type == 'task_expired' || type == 'recurring_task_expired' ||
+        type == 'task_reminder') {
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const MyTasksPage(),
+        ),
+      );
+      return;
+    }
+
+    // Обработка уведомлений о просроченных задачах для админа
+    if (type == 'task_expired_admin' || type == 'recurring_task_expired_admin') {
+      // Админ тоже переходит на страницу задач (или можно сделать отдельную страницу отчётов)
+      Navigator.of(_globalContext!).push(
+        MaterialPageRoute(
+          builder: (context) => const MyTasksPage(), // TODO: можно добавить TaskReportsPage для админов
+        ),
+      );
+      return;
     }
 
     // Обработка уведомлений о заменах смены

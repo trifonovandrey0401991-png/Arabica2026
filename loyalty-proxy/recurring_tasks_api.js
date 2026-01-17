@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getTaskPointsConfig } = require('./api/task_points_settings_api');
+const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 
 // Директории хранения
 const RECURRING_TASKS_DIR = '/var/www/recurring-tasks';
@@ -149,6 +150,7 @@ async function generateDailyTasks(date) {
   let instances = loadInstances(yearMonth);
 
   let generatedCount = 0;
+  const newInstances = []; // Для отправки push после сохранения
 
   for (const template of templates) {
     // Пропускаем приостановленные
@@ -190,12 +192,27 @@ async function generateDailyTasks(date) {
       };
 
       instances.push(newInstance);
+      newInstances.push(newInstance);
       generatedCount++;
     }
   }
 
   saveInstances(yearMonth, instances);
   console.log('Generated', generatedCount, 'recurring task instances for', date);
+
+  // Отправляем push-уведомления для новых задач
+  for (const instance of newInstances) {
+    if (instance.assigneePhone) {
+      await sendPushToPhone(
+        instance.assigneePhone,
+        'У Вас Новая Задача',
+        instance.title,
+        { type: 'new_recurring_task', instanceId: instance.id, recurringTaskId: instance.recurringTaskId }
+      );
+      console.log(`  Push sent for recurring task to ${instance.assigneeName}`);
+    }
+  }
+
   return generatedCount;
 }
 
@@ -207,6 +224,7 @@ async function checkExpiredTasks() {
 
   let expiredCount = 0;
   const penalties = [];
+  const expiredInstances = []; // Для отправки push после сохранения
 
   // Получаем настройки баллов
   const config = getTaskPointsConfig();
@@ -220,6 +238,7 @@ async function checkExpiredTasks() {
       instance.status = 'expired';
       instance.expiredAt = now.toISOString();
       expiredCount++;
+      expiredInstances.push(instance);
 
       // Создаем штраф с настраиваемыми баллами
       penalties.push({
@@ -231,7 +250,7 @@ async function checkExpiredTasks() {
         categoryName: 'Штраф за циклическую задачу',
         date: instance.date,
         points: penaltyPoints,
-        reason: 'expired',
+        reason: `Задача "${instance.title}" не выполнена в срок`,
         sourceId: instance.id,
         createdAt: now.toISOString()
       });
@@ -248,6 +267,27 @@ async function checkExpiredTasks() {
     saveJsonFile(penaltiesFile, existingPenalties);
 
     console.log('Expired', expiredCount, 'recurring task instances, created', penalties.length, 'penalties');
+
+    // Отправляем push-уведомления
+    for (const instance of expiredInstances) {
+      // Push сотруднику
+      if (instance.assigneePhone) {
+        await sendPushToPhone(
+          instance.assigneePhone,
+          'Задача просрочена',
+          `Вы не выполнили задачу "${instance.title}" в срок. Начислен штраф ${penaltyPoints} баллов.`,
+          { type: 'recurring_task_expired', instanceId: instance.id }
+        );
+        console.log(`  Push sent to employee ${instance.assigneeName} for expired recurring task`);
+      }
+
+      // Push админам
+      await sendPushNotification(
+        'Задача не выполнена',
+        `${instance.assigneeName} не выполнил циклическую задачу "${instance.title}"`,
+        { type: 'recurring_task_expired_admin', instanceId: instance.id }
+      );
+    }
   }
 
   return expiredCount;

@@ -1,8 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
+const { getTaskPointsConfig } = require('./api/task_points_settings_api');
 
 const TASKS_DIR = '/var/www/tasks';
 const TASK_ASSIGNMENTS_DIR = '/var/www/task-assignments';
+const EMPLOYEES_DIR = '/var/www/employees';
+const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
 
 // Ensure directories exist
 function ensureDir(dir) {
@@ -26,6 +30,70 @@ function getMonthKey(date) {
 // Generate unique ID
 function generateId(prefix = 'task') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Get employee phone by ID
+function getEmployeePhoneById(employeeId) {
+  try {
+    const filePath = path.join(EMPLOYEES_DIR, `${employeeId}.json`);
+    if (fs.existsSync(filePath)) {
+      const employee = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return employee.phone || null;
+    }
+    // Попробуем найти по имени (если id - это имя)
+    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      const emp = JSON.parse(fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8'));
+      if (emp.name === employeeId || emp.id === employeeId) {
+        return emp.phone || null;
+      }
+    }
+  } catch (e) {
+    console.error('Error getting employee phone:', e);
+  }
+  return null;
+}
+
+// Get employee name by phone
+function getEmployeeNameByPhone(phone) {
+  try {
+    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      const emp = JSON.parse(fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8'));
+      const empPhone = (emp.phone || '').replace(/[\s\+]/g, '');
+      if (empPhone === normalizedPhone) {
+        return emp.name || null;
+      }
+    }
+  } catch (e) {
+    console.error('Error getting employee name:', e);
+  }
+  return null;
+}
+
+// Save penalty to efficiency-penalties
+function savePenalty(penalty) {
+  try {
+    ensureDir(EFFICIENCY_PENALTIES_DIR);
+    const monthKey = penalty.date.substring(0, 7); // YYYY-MM
+    const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
+
+    let data = { monthKey, penalties: [] };
+    if (fs.existsSync(filePath)) {
+      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+
+    data.penalties.push(penalty);
+    data.updatedAt = new Date().toISOString();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+
+    console.log(`✅ Penalty saved: ${penalty.employeeName}, ${penalty.points} points, reason: ${penalty.reason}`);
+    return true;
+  } catch (e) {
+    console.error('Error saving penalty:', e);
+    return false;
+  }
 }
 
 // Load tasks for a month
@@ -112,30 +180,124 @@ function getAllAssignments(fromMonth, toMonth) {
   return allAssignments;
 }
 
-// Check and update expired tasks
-function checkExpiredTasks() {
+// Check and update expired tasks with penalties and push notifications
+async function checkExpiredTasks() {
   const now = new Date();
-  const monthKey = getMonthKey();
-  const data = loadMonthAssignments(monthKey);
-  let updated = false;
+  const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+  const tasks = getAllTasks();
+  const tasksMap = {};
+  for (const t of tasks) {
+    tasksMap[t.id] = t;
+  }
 
-  for (const assignment of data.assignments) {
-    if (assignment.status === 'pending') {
-      const deadline = new Date(assignment.deadline);
-      if (deadline < now) {
-        assignment.status = 'expired';
-        assignment.expiredAt = now.toISOString();
-        updated = true;
-        console.log(`Task assignment ${assignment.id} expired`);
+  for (const file of files) {
+    const monthKey = file.replace('.json', '');
+    const data = loadMonthAssignments(monthKey);
+    let updated = false;
+
+    for (const assignment of data.assignments) {
+      if (assignment.status === 'pending') {
+        const deadline = new Date(assignment.deadline);
+        if (deadline < now) {
+          assignment.status = 'expired';
+          assignment.expiredAt = now.toISOString();
+          updated = true;
+
+          const task = tasksMap[assignment.taskId];
+          const taskTitle = task ? task.title : 'Неизвестная задача';
+
+          console.log(`❌ Task assignment ${assignment.id} expired: ${taskTitle}`);
+
+          // 1. Создаём штраф
+          const config = getTaskPointsConfig();
+          const penalty = {
+            id: `task_expired_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            employeeName: assignment.assigneeName,
+            category: 'regular_task_penalty',
+            categoryName: 'Просроченная задача',
+            points: config.regularTasks.penaltyPoints,
+            reason: `Задача "${taskTitle}" не выполнена в срок`,
+            date: now.toISOString().split('T')[0],
+            createdAt: now.toISOString(),
+            taskId: assignment.taskId,
+            assignmentId: assignment.id
+          };
+          savePenalty(penalty);
+
+          // 2. Push сотруднику
+          const employeePhone = getEmployeePhoneById(assignment.assigneeId);
+          if (employeePhone) {
+            await sendPushToPhone(
+              employeePhone,
+              'Задача просрочена',
+              `Вы не выполнили задачу "${taskTitle}" в срок. Начислен штраф ${config.regularTasks.penaltyPoints} баллов.`,
+              { type: 'task_expired', assignmentId: assignment.id, taskId: assignment.taskId }
+            );
+          }
+
+          // 3. Push админам
+          await sendPushNotification(
+            'Задача не выполнена',
+            `${assignment.assigneeName} не выполнил задачу "${taskTitle}"`,
+            { type: 'task_expired_admin', assignmentId: assignment.id, taskId: assignment.taskId }
+          );
+        }
       }
     }
+
+    if (updated) {
+      saveMonthAssignments(monthKey, data);
+    }
+  }
+}
+
+// Check for reminders (1 hour before deadline)
+async function checkTaskReminders() {
+  const now = new Date();
+  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+  const files = fs.readdirSync(TASK_ASSIGNMENTS_DIR).filter(f => f.endsWith('.json'));
+  const tasks = getAllTasks();
+  const tasksMap = {};
+  for (const t of tasks) {
+    tasksMap[t.id] = t;
   }
 
-  if (updated) {
-    saveMonthAssignments(monthKey, data);
-  }
+  for (const file of files) {
+    const monthKey = file.replace('.json', '');
+    const data = loadMonthAssignments(monthKey);
+    let updated = false;
 
-  return updated;
+    for (const assignment of data.assignments) {
+      // Только pending задачи без отправленного напоминания
+      if (assignment.status === 'pending' && !assignment.reminderSent) {
+        const deadline = new Date(assignment.deadline);
+        // Напоминание за 1 час до дедлайна
+        if (deadline > now && deadline <= oneHourLater) {
+          const task = tasksMap[assignment.taskId];
+          const taskTitle = task ? task.title : 'Задача';
+
+          // Отправляем напоминание
+          const employeePhone = getEmployeePhoneById(assignment.assigneeId);
+          if (employeePhone) {
+            await sendPushToPhone(
+              employeePhone,
+              'Напоминание о задаче',
+              `До дедлайна задачи "${taskTitle}" осталось менее 1 часа!`,
+              { type: 'task_reminder', assignmentId: assignment.id, taskId: assignment.taskId }
+            );
+            assignment.reminderSent = true;
+            assignment.reminderSentAt = now.toISOString();
+            updated = true;
+            console.log(`⏰ Reminder sent for task ${assignment.id}: ${taskTitle}`);
+          }
+        }
+      }
+    }
+
+    if (updated) {
+      saveMonthAssignments(monthKey, data);
+    }
+  }
 }
 
 function setupTasksAPI(app) {
@@ -203,6 +365,22 @@ function setupTasksAPI(app) {
       saveMonthAssignments(monthKey, assignmentsData);
 
       console.log(`  Created task ${taskId} with ${newAssignments.length} assignments`);
+
+      // Отправляем push-уведомления всем исполнителям
+      for (const assignment of newAssignments) {
+        const employeePhone = getEmployeePhoneById(assignment.assigneeId);
+        if (employeePhone) {
+          await sendPushToPhone(
+            employeePhone,
+            'У Вас Новая Задача',
+            newTask.title,
+            { type: 'new_task', taskId: taskId, assignmentId: assignment.id }
+          );
+          console.log(`  Push sent to ${assignment.assigneeName} (${employeePhone})`);
+        } else {
+          console.log(`  No phone found for ${assignment.assigneeName} (${assignment.assigneeId})`);
+        }
+      }
 
       res.json({
         success: true,
@@ -505,7 +683,22 @@ function setupTasksAPI(app) {
     }
   });
 
+  // Запускаем планировщик проверки просроченных задач и напоминаний
+  console.log('Starting task scheduler (every 5 minutes)...');
+
+  // Проверка при старте
+  setTimeout(() => {
+    checkExpiredTasks();
+    checkTaskReminders();
+  }, 10000); // Через 10 секунд после старта
+
+  // Каждые 5 минут
+  setInterval(() => {
+    checkExpiredTasks();
+    checkTaskReminders();
+  }, 5 * 60 * 1000);
+
   console.log('Tasks API initialized');
 }
 
-module.exports = { setupTasksAPI, checkExpiredTasks };
+module.exports = { setupTasksAPI, checkExpiredTasks, checkTaskReminders };
