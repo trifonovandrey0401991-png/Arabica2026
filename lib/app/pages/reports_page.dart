@@ -12,11 +12,13 @@ import '../../features/product_questions/services/product_question_service.dart'
 import '../../features/tests/pages/test_report_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
 import '../../features/tasks/pages/task_reports_page.dart';
+import '../../features/tasks/services/task_service.dart';
 import '../../features/main_cash/pages/main_cash_page.dart';
 import '../../features/employees/services/user_role_service.dart';
 import '../../features/job_application/pages/job_applications_list_page.dart';
 import '../../features/job_application/services/job_application_service.dart';
 import '../../features/referrals/pages/referrals_report_page.dart';
+import '../../features/referrals/services/referral_service.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
@@ -44,6 +46,8 @@ class _ReportsPageState extends State<ReportsPage> {
   int _managementUnreadCount = 0;
   int _unconfirmedWithdrawalsCount = 0;
   int _productQuestionsUnreadCount = 0;
+  int _unviewedExpiredTasksCount = 0;
+  int _referralsUnviewedCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -56,6 +60,8 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadManagementUnreadCount();
     _loadUnconfirmedWithdrawalsCount();
     _loadProductQuestionsUnreadCount();
+    _loadUnviewedExpiredTasksCount();
+    _loadReferralsUnviewedCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -125,6 +131,32 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества непрочитанных вопросов о товарах', e);
+    }
+  }
+
+  Future<void> _loadUnviewedExpiredTasksCount() async {
+    try {
+      final count = await TaskService.getUnviewedExpiredCount();
+      if (mounted) {
+        setState(() {
+          _unviewedExpiredTasksCount = count;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества непросмотренных просроченных задач', e);
+    }
+  }
+
+  Future<void> _loadReferralsUnviewedCount() async {
+    try {
+      final count = await ReferralService.getUnviewedCount();
+      if (mounted) {
+        setState(() {
+          _referralsUnviewedCount = count;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества непросмотренных приглашений', e);
     }
   }
 
@@ -401,15 +433,20 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчет по задачам - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет по задачам',
               icon: Icons.assignment,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _unviewedExpiredTasksCount,
+              onTap: () async {
+                // Помечаем просроченные задачи как просмотренные
+                await TaskService.markExpiredAsViewed();
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const TaskReportsPage()),
                 );
+                // Обновляем счётчик после возврата
+                _loadUnviewedExpiredTasksCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
@@ -434,15 +471,20 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчет (Приглашения) - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет (Приглашения)',
               icon: Icons.person_add,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _referralsUnviewedCount,
+              onTap: () async {
+                // Помечаем как просмотренные при открытии
+                await ReferralService.markAsViewed();
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ReferralsReportPage()),
                 );
+                // Обновляем счётчик после возврата
+                _loadReferralsUnviewedCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),

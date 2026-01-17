@@ -16,27 +16,37 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
   int _totalClients = 0;
   int _unassignedCount = 0;
   List<EmployeeReferralStats> _employeeStats = [];
+  Map<String, int> _unviewedByEmployee = {};
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _loadData();
   }
 
-  Future<void> _loadStats() async {
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final result = await ReferralService.getAllStats();
-      if (result != null) {
+      // Загружаем статистику и непросмотренные параллельно
+      final results = await Future.wait([
+        ReferralService.getAllStats(),
+        ReferralService.getUnviewedByEmployee(),
+      ]);
+
+      final statsResult = results[0] as Map<String, dynamic>?;
+      final unviewedResult = results[1] as Map<String, int>;
+
+      if (statsResult != null) {
         setState(() {
-          _totalClients = result['totalClients'] ?? 0;
-          _unassignedCount = result['unassignedCount'] ?? 0;
-          _employeeStats = result['employeeStats'] ?? [];
+          _totalClients = statsResult['totalClients'] ?? 0;
+          _unassignedCount = statsResult['unassignedCount'] ?? 0;
+          _employeeStats = statsResult['employeeStats'] ?? [];
+          _unviewedByEmployee = unviewedResult;
           _isLoading = false;
         });
       } else {
@@ -62,7 +72,7 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadStats,
+            onPressed: _loadData,
           ),
         ],
       ),
@@ -78,14 +88,14 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
                       Text(_error!, style: const TextStyle(color: Colors.red)),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: _loadStats,
+                        onPressed: _loadData,
                         child: const Text('Повторить'),
                       ),
                     ],
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _loadStats,
+                  onRefresh: _loadData,
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
@@ -188,6 +198,8 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
   }
 
   Widget _buildEmployeeCard(EmployeeReferralStats stats) {
+    final unviewedCount = _unviewedByEmployee[stats.employeeId] ?? 0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -215,7 +227,29 @@ class _ReferralsReportPageState extends State<ReferralsReportPage> {
             color: Color(0xFF004D40),
           ),
         ),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (unviewedCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$unviewedCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            if (unviewedCount > 0) const SizedBox(width: 8),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
         onTap: () {
           Navigator.push(
             context,

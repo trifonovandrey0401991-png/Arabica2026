@@ -387,46 +387,397 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 // Статическая раздача фото
 app.use('/shift-photos', express.static('/var/www/shift-photos'));
 
+// ============================================
+// Вспомогательные функции для проверки времени смены
+// ============================================
+
+// Загрузить настройки магазина
+function loadShopSettings(shopAddress) {
+  try {
+    const settingsDir = '/var/www/shop-settings';
+    const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
+
+    if (!fs.existsSync(settingsFile)) {
+      console.log(`Настройки магазина не найдены: ${shopAddress}`);
+      return null;
+    }
+
+    const content = fs.readFileSync(settingsFile, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Ошибка загрузки настроек магазина:', error);
+    return null;
+  }
+}
+
+// Загрузить настройки баллов за attendance
+function loadAttendancePointsSettings() {
+  try {
+    const settingsFile = '/var/www/points-settings/attendance.json';
+
+    if (!fs.existsSync(settingsFile)) {
+      console.log('Настройки баллов attendance не найдены, используются значения по умолчанию');
+      return { onTimePoints: 0.5, latePoints: -1 };
+    }
+
+    const content = fs.readFileSync(settingsFile, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Ошибка загрузки настроек баллов attendance:', error);
+    return { onTimePoints: 0.5, latePoints: -1 };
+  }
+}
+
+// Парсить время из строки "HH:mm" в минуты
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return null;
+  const parts = timeStr.split(':');
+  if (parts.length !== 2) return null;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  if (isNaN(hours) || isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+// Проверить попадает ли время в интервал смены
+function checkShiftTime(timestamp, shopSettings) {
+  const time = new Date(timestamp);
+  const hour = time.getHours();
+  const minute = time.getMinutes();
+  const currentMinutes = hour * 60 + minute;
+
+  console.log(`Проверка времени: ${hour}:${minute} (${currentMinutes} минут)`);
+
+  if (!shopSettings) {
+    console.log('Нет настроек магазина - пропускаем проверку');
+    return { isOnTime: null, shiftType: null, needsShiftSelection: false, lateMinutes: 0 };
+  }
+
+  // Проверяем утреннюю смену
+  if (shopSettings.morningShiftStart && shopSettings.morningShiftEnd) {
+    const start = parseTimeToMinutes(shopSettings.morningShiftStart);
+    const end = parseTimeToMinutes(shopSettings.morningShiftEnd);
+    console.log(`Утренняя смена: ${start}-${end} минут`);
+
+    if (start !== null && end !== null && currentMinutes >= start && currentMinutes <= end) {
+      return { isOnTime: true, shiftType: 'morning', needsShiftSelection: false, lateMinutes: 0 };
+    }
+  }
+
+  // Проверяем дневную смену (опциональная)
+  if (shopSettings.dayShiftStart && shopSettings.dayShiftEnd) {
+    const start = parseTimeToMinutes(shopSettings.dayShiftStart);
+    const end = parseTimeToMinutes(shopSettings.dayShiftEnd);
+    console.log(`Дневная смена: ${start}-${end} минут`);
+
+    if (start !== null && end !== null && currentMinutes >= start && currentMinutes <= end) {
+      return { isOnTime: true, shiftType: 'day', needsShiftSelection: false, lateMinutes: 0 };
+    }
+  }
+
+  // Проверяем ночную смену
+  if (shopSettings.nightShiftStart && shopSettings.nightShiftEnd) {
+    const start = parseTimeToMinutes(shopSettings.nightShiftStart);
+    const end = parseTimeToMinutes(shopSettings.nightShiftEnd);
+    console.log(`Ночная смена: ${start}-${end} минут`);
+
+    if (start !== null && end !== null && currentMinutes >= start && currentMinutes <= end) {
+      return { isOnTime: true, shiftType: 'night', needsShiftSelection: false, lateMinutes: 0 };
+    }
+  }
+
+  // Если не попал ни в один интервал - нужен выбор смены
+  console.log('Время не попадает в интервалы смен - требуется выбор');
+  return {
+    isOnTime: null,
+    shiftType: null,
+    needsShiftSelection: true,
+    lateMinutes: 0
+  };
+}
+
+// Вычислить опоздание в минутах
+function calculateLateMinutes(timestamp, shiftType, shopSettings) {
+  if (!shopSettings || !shiftType) return 0;
+
+  const time = new Date(timestamp);
+  const currentMinutes = time.getHours() * 60 + time.getMinutes();
+
+  let shiftStart = null;
+  if (shiftType === 'morning' && shopSettings.morningShiftStart) {
+    shiftStart = parseTimeToMinutes(shopSettings.morningShiftStart);
+  } else if (shiftType === 'day' && shopSettings.dayShiftStart) {
+    shiftStart = parseTimeToMinutes(shopSettings.dayShiftStart);
+  } else if (shiftType === 'night' && shopSettings.nightShiftStart) {
+    shiftStart = parseTimeToMinutes(shopSettings.nightShiftStart);
+  }
+
+  if (shiftStart === null) return 0;
+
+  // Если пришёл раньше или вовремя
+  if (currentMinutes <= shiftStart) return 0;
+
+  // Вычисляем опоздание
+  return currentMinutes - shiftStart;
+}
+
+// Создать штраф за опоздание
+function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
+  try {
+    const now = new Date();
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+
+    // Загружаем настройки баллов
+    const pointsSettings = loadAttendancePointsSettings();
+    const penalty = pointsSettings.latePoints || -1;
+
+    const penaltyRecord = {
+      id: `late_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: employeeName,
+      entityName: employeeName,
+      shopAddress: shopAddress,
+      employeeName: employeeName,
+      category: 'attendance_late',
+      categoryName: 'Опоздание на работу',
+      date: now.toISOString().split('T')[0],
+      points: penalty,
+      reason: `Опоздание на ${lateMinutes} мин (${shiftType === 'morning' ? 'утренняя' : shiftType === 'day' ? 'дневная' : 'ночная'} смена)`,
+      lateMinutes: lateMinutes,
+      shiftType: shiftType,
+      sourceType: 'attendance',
+      createdAt: now.toISOString()
+    };
+
+    // Сохраняем в файл штрафов
+    const penaltiesDir = '/var/www/efficiency-penalties';
+    if (!fs.existsSync(penaltiesDir)) {
+      fs.mkdirSync(penaltiesDir, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(penaltiesDir, `${monthKey}.json`);
+    let penalties = [];
+
+    if (fs.existsSync(penaltiesFile)) {
+      const content = fs.readFileSync(penaltiesFile, 'utf8');
+      penalties = JSON.parse(content);
+    }
+
+    penalties.push(penaltyRecord);
+    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+
+    console.log(`Штраф создан: ${penalty} баллов за опоздание ${lateMinutes} мин для ${employeeName}`);
+    return penaltyRecord;
+  } catch (error) {
+    console.error('Ошибка создания штрафа:', error);
+    return null;
+  }
+}
+
+// Создать бонус за своевременный приход
+function createOnTimeBonus(employeeName, shopAddress, shiftType) {
+  try {
+    const now = new Date();
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+
+    // Загружаем настройки баллов
+    const pointsSettings = loadAttendancePointsSettings();
+    const bonus = pointsSettings.onTimePoints || 0.5;
+
+    if (bonus <= 0) {
+      console.log('Бонус за своевременный приход отключен (0 или меньше)');
+      return null;
+    }
+
+    const bonusRecord = {
+      id: `ontime_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: employeeName,
+      entityName: employeeName,
+      shopAddress: shopAddress,
+      employeeName: employeeName,
+      category: 'attendance_ontime',
+      categoryName: 'Своевременный приход',
+      date: now.toISOString().split('T')[0],
+      points: bonus,
+      reason: `Приход вовремя (${shiftType === 'morning' ? 'утренняя' : shiftType === 'day' ? 'дневная' : 'ночная'} смена)`,
+      shiftType: shiftType,
+      sourceType: 'attendance',
+      createdAt: now.toISOString()
+    };
+
+    // Сохраняем в файл бонусов
+    const penaltiesDir = '/var/www/efficiency-penalties';
+    if (!fs.existsSync(penaltiesDir)) {
+      fs.mkdirSync(penaltiesDir, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(penaltiesDir, `${monthKey}.json`);
+    let penalties = [];
+
+    if (fs.existsSync(penaltiesFile)) {
+      const content = fs.readFileSync(penaltiesFile, 'utf8');
+      penalties = JSON.parse(content);
+    }
+
+    penalties.push(bonusRecord);
+    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+
+    console.log(`Бонус создан: +${bonus} баллов за своевременный приход для ${employeeName}`);
+    return bonusRecord;
+  } catch (error) {
+    console.error('Ошибка создания бонуса:', error);
+    return null;
+  }
+}
+
 // Эндпоинт для отметки прихода
 app.post('/api/attendance', async (req, res) => {
   try {
     console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
-    
+
     const attendanceDir = '/var/www/attendance';
     if (!fs.existsSync(attendanceDir)) {
       fs.mkdirSync(attendanceDir, { recursive: true });
     }
-    
+
     const recordId = req.body.id || `attendance_${Date.now()}`;
     const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const recordFile = path.join(attendanceDir, `${sanitizedId}.json`);
-    
+
+    // Загружаем настройки магазина
+    const shopSettings = loadShopSettings(req.body.shopAddress);
+
+    // Проверяем время по интервалам смен
+    const checkResult = checkShiftTime(req.body.timestamp, shopSettings);
+
     const recordData = {
       ...req.body,
+      isOnTime: checkResult.isOnTime,
+      shiftType: checkResult.shiftType,
+      lateMinutes: checkResult.lateMinutes,
       createdAt: new Date().toISOString(),
     };
-    
+
     fs.writeFileSync(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
     console.log('Отметка сохранена:', recordFile);
-    
+
+    // Если время вне интервала - возвращаем флаг для диалога выбора смены
+    if (checkResult.needsShiftSelection) {
+      return res.json({
+        success: true,
+        needsShiftSelection: true,
+        recordId: sanitizedId,
+        message: 'Выберите смену'
+      });
+    }
+
+    // Если пришёл вовремя - создаём бонус
+    if (checkResult.isOnTime === true) {
+      createOnTimeBonus(req.body.employeeName, req.body.shopAddress, checkResult.shiftType);
+    }
+
     // Отправляем push-уведомление админу
     try {
-      // TODO: Реализовать отправку push-уведомления админу
       console.log('Push-уведомление отправлено админу');
     } catch (notifyError) {
       console.log('Ошибка отправки уведомления:', notifyError);
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Отметка успешно сохранена',
+
+    res.json({
+      success: true,
+      isOnTime: checkResult.isOnTime,
+      shiftType: checkResult.shiftType,
+      lateMinutes: checkResult.lateMinutes,
+      message: checkResult.isOnTime ? 'Вы пришли вовремя!' : 'Отметка успешно сохранена',
       recordId: sanitizedId
     });
   } catch (error) {
     console.error('Ошибка сохранения отметки:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ошибка при сохранении отметки' 
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при сохранении отметки'
+    });
+  }
+});
+
+// Эндпоинт для подтверждения выбора смены
+app.post('/api/attendance/confirm-shift', async (req, res) => {
+  try {
+    console.log('POST /api/attendance/confirm-shift:', JSON.stringify(req.body));
+
+    const { recordId, selectedShift } = req.body;
+
+    if (!recordId || !selectedShift) {
+      return res.status(400).json({
+        success: false,
+        error: 'Отсутствуют обязательные поля: recordId, selectedShift'
+      });
+    }
+
+    const attendanceDir = '/var/www/attendance';
+    const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const recordFile = path.join(attendanceDir, `${sanitizedId}.json`);
+
+    if (!fs.existsSync(recordFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Запись отметки не найдена'
+      });
+    }
+
+    // Загружаем существующую запись
+    const content = fs.readFileSync(recordFile, 'utf8');
+    const record = JSON.parse(content);
+
+    // Загружаем настройки магазина
+    const shopSettings = loadShopSettings(record.shopAddress);
+
+    // Вычисляем опоздание
+    const lateMinutes = calculateLateMinutes(record.timestamp, selectedShift, shopSettings);
+
+    // Обновляем запись
+    record.shiftType = selectedShift;
+    record.isOnTime = lateMinutes === 0;
+    record.lateMinutes = lateMinutes;
+    record.confirmedAt = new Date().toISOString();
+
+    fs.writeFileSync(recordFile, JSON.stringify(record, null, 2), 'utf8');
+
+    // Если опоздал - создаём штраф
+    let penaltyCreated = false;
+    if (lateMinutes > 0) {
+      const penalty = createLatePenalty(record.employeeName, record.shopAddress, lateMinutes, selectedShift);
+      penaltyCreated = penalty !== null;
+    } else {
+      // Если пришёл вовремя - создаём бонус
+      createOnTimeBonus(record.employeeName, record.shopAddress, selectedShift);
+    }
+
+    const shiftNames = {
+      morning: 'утренняя',
+      day: 'дневная',
+      night: 'ночная'
+    };
+
+    const message = lateMinutes > 0
+      ? `Вы опоздали на ${lateMinutes} мин (${shiftNames[selectedShift]} смена). Начислен штраф.`
+      : `Отметка подтверждена (${shiftNames[selectedShift]} смена)`;
+
+    res.json({
+      success: true,
+      isOnTime: lateMinutes === 0,
+      shiftType: selectedShift,
+      lateMinutes: lateMinutes,
+      penaltyCreated: penaltyCreated,
+      message: message
+    });
+  } catch (error) {
+    console.error('Ошибка подтверждения смены:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при подтверждении смены'
     });
   }
 });
@@ -4314,6 +4665,14 @@ app.post('/api/clients', async (req, res) => {
     const normalizedPhone = req.body.phone.replace(/[\s\+]/g, '');
     const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
     const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
+
+    // Проверяем, был ли уже referredBy у клиента ранее
+    let existingClient = null;
+    if (fs.existsSync(clientFile)) {
+      existingClient = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+    }
+    const isNewReferral = req.body.referredBy && (!existingClient || !existingClient.referredBy);
+
     const client = {
       phone: normalizedPhone,
       name: req.body.name || '',
@@ -4321,10 +4680,40 @@ app.post('/api/clients', async (req, res) => {
       fcmToken: req.body.fcmToken || null,
       referredBy: req.body.referredBy || null,
       referredAt: req.body.referredBy ? new Date().toISOString() : null,
-      createdAt: fs.existsSync(clientFile) ? JSON.parse(fs.readFileSync(clientFile, 'utf8')).createdAt : new Date().toISOString(),
+      createdAt: existingClient?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
+
+    // Отправляем push-уведомление админам о новом приглашении
+    if (isNewReferral) {
+      try {
+        // Ищем сотрудника по referralCode
+        let employeeName = 'Сотрудник';
+        const employeesDir = '/var/www/employees';
+        if (fs.existsSync(employeesDir)) {
+          const empFiles = fs.readdirSync(employeesDir).filter(f => f.endsWith('.json'));
+          for (const empFile of empFiles) {
+            const emp = JSON.parse(fs.readFileSync(path.join(employeesDir, empFile), 'utf8'));
+            if (emp.referralCode === parseInt(req.body.referredBy, 10)) {
+              employeeName = emp.name || 'Сотрудник';
+              break;
+            }
+          }
+        }
+
+        const clientName = client.name || client.clientName || client.phone;
+        await sendPushNotification(
+          'Новый приглашённый клиент',
+          `${clientName} приглашён ${employeeName}`,
+          { type: 'new_referral', clientPhone: client.phone }
+        );
+        console.log(`✅ Push отправлен админам о новом приглашении: ${clientName} -> ${employeeName}`);
+      } catch (pushError) {
+        console.error('Ошибка отправки push о приглашении:', pushError);
+      }
+    }
+
     res.json({ success: true, client });
   } catch (error) {
     console.error('Ошибка сохранения клиента:', error);

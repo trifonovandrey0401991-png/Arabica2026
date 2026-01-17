@@ -189,4 +189,43 @@ class ReferralService {
       return null;
     }
   }
+
+  /// Получить количество непросмотренных приглашений
+  static Future<int> getUnviewedCount() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/unviewed-count',
+      );
+      return result?['count'] as int? ?? 0;
+    } catch (e) {
+      Logger.error('Ошибка получения непросмотренных приглашений', e);
+      return 0;
+    }
+  }
+
+  /// Получить непросмотренные приглашения по сотрудникам
+  static Future<Map<String, int>> getUnviewedByEmployee() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/unviewed-count',
+      );
+      final byEmployee = result?['byEmployee'] as Map<String, dynamic>? ?? {};
+      return byEmployee.map((k, v) => MapEntry(k, v as int));
+    } catch (e) {
+      Logger.error('Ошибка получения непросмотренных по сотрудникам', e);
+      return {};
+    }
+  }
+
+  /// Отметить приглашения как просмотренные
+  static Future<void> markAsViewed() async {
+    try {
+      await BaseHttpService.simplePost(
+        endpoint: '$_baseEndpoint/mark-as-viewed',
+        body: {},
+      );
+    } catch (e) {
+      Logger.error('Ошибка отметки как просмотренные', e);
+    }
+  }
 }

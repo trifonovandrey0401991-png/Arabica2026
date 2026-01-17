@@ -8,6 +8,7 @@ const path = require('path');
 const EMPLOYEES_DIR = '/var/www/employees';
 const CLIENTS_DIR = '/var/www/clients';
 const POINTS_SETTINGS_DIR = '/var/www/points-settings';
+const REFERRALS_VIEWED_FILE = '/var/www/referrals-viewed.json';
 
 // Создаем директорию для настроек если нет
 if (!fs.existsSync(POINTS_SETTINGS_DIR)) {
@@ -200,11 +201,108 @@ function calculateReferralStats(referralCode, clients) {
   };
 }
 
+// Получить дату последнего просмотра приглашений
+function getLastViewedAt() {
+  try {
+    if (fs.existsSync(REFERRALS_VIEWED_FILE)) {
+      const data = JSON.parse(fs.readFileSync(REFERRALS_VIEWED_FILE, 'utf8'));
+      return data.lastViewedAt ? new Date(data.lastViewedAt) : null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Ошибка чтения lastViewedAt:', error);
+    return null;
+  }
+}
+
+// Сохранить дату последнего просмотра
+function saveLastViewedAt(date) {
+  try {
+    fs.writeFileSync(REFERRALS_VIEWED_FILE, JSON.stringify({
+      lastViewedAt: date.toISOString()
+    }, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Ошибка записи lastViewedAt:', error);
+    return false;
+  }
+}
+
+// Подсчёт непросмотренных приглашений
+function countUnviewedReferrals(clients, employees, lastViewedAt) {
+  let totalCount = 0;
+  const byEmployee = {};
+
+  // Создаём карту referralCode -> employeeId
+  const codeToEmployeeId = {};
+  for (const employee of employees) {
+    if (employee.referralCode) {
+      codeToEmployeeId[employee.referralCode] = employee.id;
+    }
+  }
+
+  for (const client of clients) {
+    if (!client.referredBy) continue;
+
+    const referredAt = client.referredAt ? new Date(client.referredAt) : null;
+    if (!referredAt) continue;
+
+    // Если lastViewedAt не задано - считаем все новыми
+    // Если задано - считаем только те, что после lastViewedAt
+    if (!lastViewedAt || referredAt > lastViewedAt) {
+      totalCount++;
+
+      const employeeId = codeToEmployeeId[client.referredBy];
+      if (employeeId) {
+        byEmployee[employeeId] = (byEmployee[employeeId] || 0) + 1;
+      }
+    }
+  }
+
+  return { count: totalCount, byEmployee };
+}
+
 // =====================================================
 // ЭКСПОРТ ФУНКЦИИ НАСТРОЙКИ API
 // =====================================================
 
 module.exports = function setupReferralsAPI(app) {
+
+  // GET /api/referrals/unviewed-count - количество непросмотренных приглашений
+  app.get('/api/referrals/unviewed-count', (req, res) => {
+    try {
+      console.log('GET /api/referrals/unviewed-count');
+
+      const clients = getAllClients();
+      const employees = getAllEmployees();
+      const lastViewedAt = getLastViewedAt();
+
+      const result = countUnviewedReferrals(clients, employees, lastViewedAt);
+
+      res.json({
+        success: true,
+        count: result.count,
+        byEmployee: result.byEmployee
+      });
+    } catch (error) {
+      console.error('Ошибка получения непросмотренных:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/referrals/mark-as-viewed - отметить приглашения как просмотренные
+  app.post('/api/referrals/mark-as-viewed', (req, res) => {
+    try {
+      console.log('POST /api/referrals/mark-as-viewed');
+
+      const success = saveLastViewedAt(new Date());
+
+      res.json({ success });
+    } catch (error) {
+      console.error('Ошибка отметки как просмотренные:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 
   // GET /api/referrals/next-code - получить следующий свободный код
   app.get('/api/referrals/next-code', (req, res) => {
