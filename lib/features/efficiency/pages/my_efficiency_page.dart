@@ -3,16 +3,18 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/efficiency_data_model.dart';
 import '../services/efficiency_data_service.dart';
+import '../utils/efficiency_utils.dart';
+import '../widgets/my_efficiency_widgets.dart';
+import '../widgets/efficiency_common_widgets.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../bonuses/models/bonus_penalty_model.dart';
 import '../../bonuses/services/bonus_penalty_service.dart';
 import '../../bonuses/pages/bonus_penalty_history_page.dart';
-import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
+import '../../referrals/services/referral_service.dart';
 import '../../rating/pages/my_rating_page.dart';
 import '../../tests/services/test_result_service.dart';
-import '../../tests/models/test_result_model.dart';
 
 /// Страница "Моя эффективность" для сотрудника
 class MyEfficiencyPage extends StatefulWidget {
@@ -133,99 +135,24 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
     }
   }
 
-  void _showMonthPicker() async {
-    final now = DateTime.now();
-    final List<Map<String, dynamic>> months = [];
-
-    // Генерируем последние 12 месяцев
-    for (int i = 0; i < 12; i++) {
-      final date = DateTime(now.year, now.month - i, 1);
-      months.add({
-        'year': date.year,
-        'month': date.month,
-        'name': _getMonthName(date.month, date.year),
-      });
-    }
-
-    await showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'Выберите месяц',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const Divider(),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: months.length,
-                itemBuilder: (context, index) {
-                  final month = months[index];
-                  final isSelected = month['year'] == _selectedYear &&
-                      month['month'] == _selectedMonth;
-                  return ListTile(
-                    title: Text(
-                      month['name'],
-                      style: TextStyle(
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color:
-                            isSelected ? const Color(0xFF004D40) : Colors.black,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check, color: Color(0xFF004D40))
-                        : null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _selectedYear = month['year'];
-                        _selectedMonth = month['month'];
-                      });
-                      _loadData();
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getMonthName(int month, int year) {
-    const months = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-    ];
-    return '${months[month - 1]} $year';
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Моя эффективность'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: EfficiencyUtils.primaryColor,
         actions: [
-          TextButton.icon(
-            onPressed: _showMonthPicker,
-            icon: const Icon(Icons.calendar_today, color: Colors.white, size: 18),
-            label: Text(
-              _getMonthName(_selectedMonth, _selectedYear),
-              style: const TextStyle(color: Colors.white),
-            ),
+          MonthPickerButton(
+            selectedMonth: _selectedMonth,
+            selectedYear: _selectedYear,
+            onMonthSelected: (selection) {
+              setState(() {
+                _selectedYear = selection['year']!;
+                _selectedMonth = selection['month']!;
+              });
+              _loadData();
+            },
           ),
         ],
       ),
@@ -281,7 +208,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
             Icon(Icons.trending_up, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Нет данных за ${_getMonthName(_selectedMonth, _selectedYear)}',
+              'Нет данных за ${EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear)}',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -328,7 +255,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
                   child: Column(
                     children: [
                       Text(
-                        _getMonthName(_selectedMonth, _selectedYear),
+                        EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
@@ -554,7 +481,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
         child: Column(
           children: [
             Text(
-              _getMonthName(_selectedMonth, _selectedYear),
+              EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
