@@ -5675,6 +5675,46 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
+// GET /api/orders/unviewed-count - получить количество непросмотренных заказов
+// ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
+app.get('/api/orders/unviewed-count', async (req, res) => {
+  try {
+    console.log('GET /api/orders/unviewed-count');
+    const counts = await ordersModule.getUnviewedOrdersCounts();
+    res.json({
+      success: true,
+      rejected: counts.rejected,
+      unconfirmed: counts.unconfirmed,
+      total: counts.total
+    });
+  } catch (error) {
+    console.error('Ошибка получения непросмотренных заказов:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/orders/mark-viewed/:type - отметить заказы как просмотренные
+// ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
+app.post('/api/orders/mark-viewed/:type', (req, res) => {
+  try {
+    const { type } = req.params;
+    console.log('POST /api/orders/mark-viewed/' + type);
+
+    if (type !== 'rejected' && type !== 'unconfirmed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный тип: должен быть rejected или unconfirmed'
+      });
+    }
+
+    const success = ordersModule.saveLastViewedAt(type, new Date());
+    res.json({ success });
+  } catch (error) {
+    console.error('Ошибка отметки заказов как просмотренных:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/orders/:id - получить заказ по ID
 app.get('/api/orders/:id', async (req, res) => {
   try {
@@ -5740,44 +5780,6 @@ app.delete('/api/orders/:id', async (req, res) => {
     res.json({ success: true, message: 'Заказ удален' });
   } catch (error) {
     console.error('Ошибка удаления заказа:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/orders/unviewed-count - получить количество непросмотренных заказов
-app.get('/api/orders/unviewed-count', async (req, res) => {
-  try {
-    console.log('GET /api/orders/unviewed-count');
-    const counts = await ordersModule.getUnviewedOrdersCounts();
-    res.json({
-      success: true,
-      rejected: counts.rejected,
-      unconfirmed: counts.unconfirmed,
-      total: counts.total
-    });
-  } catch (error) {
-    console.error('Ошибка получения непросмотренных заказов:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// POST /api/orders/mark-viewed/:type - отметить заказы как просмотренные
-app.post('/api/orders/mark-viewed/:type', (req, res) => {
-  try {
-    const { type } = req.params;
-    console.log('POST /api/orders/mark-viewed/' + type);
-
-    if (type !== 'rejected' && type !== 'unconfirmed') {
-      return res.status(400).json({
-        success: false,
-        error: 'Неверный тип: должен быть rejected или unconfirmed'
-      });
-    }
-
-    const success = ordersModule.saveLastViewedAt(type, new Date());
-    res.json({ success });
-  } catch (error) {
-    console.error('Ошибка отметки заказов как просмотренных:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
