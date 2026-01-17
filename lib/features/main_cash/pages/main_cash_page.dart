@@ -165,24 +165,59 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             tooltip: 'Обновить',
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFF004D40),
-          labelColor: const Color(0xFF004D40),
-          unselectedLabelColor: Colors.grey,
-          indicator: const BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              bottom: BorderSide(
-                color: Color(0xFF004D40),
-                width: 3,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: const Color(0xFF004D40),
+              indicatorWeight: 3,
+              labelColor: const Color(0xFF004D40),
+              unselectedLabelColor: Colors.grey[500],
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
               ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              tabs: [
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.account_balance_wallet, size: 20),
+                      SizedBox(width: 8),
+                      Text('Касса'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.upload, size: 20),
+                      SizedBox(width: 8),
+                      Text('Выемки'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          tabs: const [
-            Tab(text: 'Касса', icon: Icon(Icons.account_balance_wallet)),
-            Tab(text: 'Выемки', icon: Icon(Icons.upload)),
-          ],
         ),
       ),
       body: _isLoading
@@ -423,57 +458,115 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
       children: [
         // Подвкладки: Все / Подтвержденные
         Container(
-          color: Colors.grey[100],
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Row(
             children: [
               Expanded(
                 child: InkWell(
                   onTap: () => setState(() => _withdrawalTabIndex = 0),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: _withdrawalTabIndex == 0 ? Colors.white : Colors.transparent,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: _withdrawalTabIndex == 0 ? const Color(0xFF004D40) : Colors.transparent,
-                          width: 3,
-                        ),
+                      color: _withdrawalTabIndex == 0 ? const Color(0xFF004D40) : Colors.transparent,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        bottomLeft: Radius.circular(12),
                       ),
+                      boxShadow: _withdrawalTabIndex == 0
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF004D40).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [],
                     ),
-                    child: Text(
-                      'Все',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: _withdrawalTabIndex == 0 ? FontWeight.bold : FontWeight.normal,
-                        color: _withdrawalTabIndex == 0 ? const Color(0xFF004D40) : Colors.grey,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.list_alt,
+                          size: 18,
+                          color: _withdrawalTabIndex == 0 ? Colors.white : Colors.grey[600],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Все',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: _withdrawalTabIndex == 0 ? FontWeight.bold : FontWeight.w500,
+                            color: _withdrawalTabIndex == 0 ? Colors.white : Colors.grey[600],
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
+              const SizedBox(width: 2),
               Expanded(
                 child: InkWell(
                   onTap: () => setState(() => _withdrawalTabIndex = 1),
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: _withdrawalTabIndex == 1 ? Colors.white : Colors.transparent,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: _withdrawalTabIndex == 1 ? const Color(0xFF004D40) : Colors.transparent,
-                          width: 3,
-                        ),
+                      color: _withdrawalTabIndex == 1 ? const Color(0xFF004D40) : Colors.transparent,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
                       ),
+                      boxShadow: _withdrawalTabIndex == 1
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF004D40).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [],
                     ),
-                    child: Text(
-                      'Подтвержденные',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: _withdrawalTabIndex == 1 ? FontWeight.bold : FontWeight.normal,
-                        color: _withdrawalTabIndex == 1 ? const Color(0xFF004D40) : Colors.grey,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 18,
+                          color: _withdrawalTabIndex == 1 ? Colors.white : Colors.grey[600],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Подтверждённые',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: _withdrawalTabIndex == 1 ? FontWeight.bold : FontWeight.w500,
+                            color: _withdrawalTabIndex == 1 ? Colors.white : Colors.grey[600],
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -483,7 +576,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         ),
         // Фильтр по магазину + кнопка обновления
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Row(
             children: [
               Expanded(
