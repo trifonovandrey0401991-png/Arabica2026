@@ -69,6 +69,52 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
+  // GET /api/product-questions/unanswered-count - Получить количество неотвеченных вопросов для сотрудников
+  // Считает вопросы, на которые ещё не ответили (isAnswered = false)
+  app.get('/api/product-questions/unanswered-count', (req, res) => {
+    try {
+      console.log('GET /api/product-questions/unanswered-count');
+
+      let unansweredCount = 0;
+      const EXPIRED_MINUTES = 30;
+      const now = new Date();
+
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            // Проверяем, истёк ли срок ответа (более 30 минут)
+            const questionTime = new Date(question.timestamp);
+            const diffMinutes = (now - questionTime) / (1000 * 60);
+            const isExpired = diffMinutes >= EXPIRED_MINUTES;
+
+            // Считаем только неотвеченные и не просроченные вопросы
+            // (просроченные показываются на другой вкладке)
+            if (!isExpired) {
+              // Проверяем, есть ли хотя бы один неотвеченный магазин
+              const hasUnansweredShop = question.shops && question.shops.some(s => !s.isAnswered);
+              if (hasUnansweredShop) {
+                unansweredCount++;
+              }
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      console.log('✅ Unanswered questions count:', unansweredCount);
+      res.json({ success: true, count: unansweredCount });
+    } catch (error) {
+      console.error('Error getting unanswered count:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   app.post('/api/product-questions', async (req, res) => {
     try {
       console.log('POST /api/product-questions - req.body:', JSON.stringify(req.body));
@@ -256,6 +302,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         question.shops[shopIndex].answeredBy = senderPhone;
         question.shops[shopIndex].answeredByName = senderName || 'Сотрудник';
         question.shops[shopIndex].lastAnswerTime = timestamp;
+        question.shops[shopIndex].viewedByAdmin = false; // Админ ещё не просмотрел этот ответ
       } else {
         // Магазина нет в списке - добавляем его (для случая когда сотрудник отвечает из другого магазина)
         question.shops.push({
@@ -264,7 +311,8 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
           isAnswered: true,
           answeredBy: senderPhone,
           answeredByName: senderName || 'Сотрудник',
-          lastAnswerTime: timestamp
+          lastAnswerTime: timestamp,
+          viewedByAdmin: false // Админ ещё не просмотрел этот ответ
         });
       }
 
@@ -586,6 +634,69 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     }
   });
 
+  // 3.6. GET /api/product-question-dialogs/unviewed-counts - Получить количество непросмотренных отвеченных диалогов и вопросов по магазинам
+  // ВАЖНО: этот маршрут должен быть ПЕРЕД маршрутом /:dialogId, иначе "unviewed-counts" воспринимается как dialogId
+  app.get('/api/product-question-dialogs/unviewed-counts', (req, res) => {
+    try {
+      console.log('GET /api/product-question-dialogs/unviewed-counts');
+
+      const counts = {};
+      let totalUnviewed = 0;
+
+      // 1. Считаем непросмотренные персональные диалоги
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTION_DIALOGS_DIR, file), 'utf8');
+            const dialog = JSON.parse(data);
+
+            // Считаем только отвеченные и непросмотренные админом диалоги
+            if (dialog.isAnswered && !dialog.viewedByAdmin) {
+              const shop = dialog.shopAddress;
+              counts[shop] = (counts[shop] || 0) + 1;
+              totalUnviewed++;
+            }
+          } catch (e) {
+            console.error(`Error reading dialog ${file}:`, e);
+          }
+        }
+      }
+
+      // 2. Считаем непросмотренные общие вопросы (ProductQuestion)
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const data = fs.readFileSync(path.join(PRODUCT_QUESTIONS_DIR, file), 'utf8');
+            const question = JSON.parse(data);
+
+            // Проверяем каждый магазин в вопросе
+            if (question.shops && Array.isArray(question.shops)) {
+              for (const shop of question.shops) {
+                // Если магазин ответил и админ не просмотрел
+                if (shop.isAnswered && shop.viewedByAdmin === false) {
+                  counts[shop.shopAddress] = (counts[shop.shopAddress] || 0) + 1;
+                  totalUnviewed++;
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`Error reading question ${file}:`, e);
+          }
+        }
+      }
+
+      console.log('✅ Unviewed counts:', totalUnviewed, 'total (dialogs + questions)');
+      res.json({ success: true, counts, totalUnviewed });
+    } catch (error) {
+      console.error('Error getting unviewed counts:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // 4. GET /api/product-question-dialogs/:dialogId - Получить конкретный диалог
   app.get('/api/product-question-dialogs/:dialogId', (req, res) => {
     try {
@@ -646,6 +757,10 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         dialog.hasUnreadFromClient = true;
       } else {
         dialog.hasUnreadFromEmployee = true;
+        // Когда сотрудник отвечает, диалог становится "отвеченным" и должен попасть в отчёт
+        dialog.isAnswered = true;
+        dialog.viewedByAdmin = false; // Админ ещё не просмотрел этот ответ
+        dialog.answeredAt = timestamp;
       }
 
       fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
@@ -709,6 +824,113 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       res.json({ success: true, dialog });
     } catch (error) {
       console.error('Error marking dialog as read:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 7. POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin - Пометить диалог как просмотренный админом
+  app.post('/api/product-question-dialogs/:dialogId/mark-viewed-by-admin', (req, res) => {
+    try {
+      const { dialogId } = req.params;
+      console.log('POST /api/product-question-dialogs/:dialogId/mark-viewed-by-admin', dialogId);
+
+      const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, `${dialogId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Dialog not found' });
+      }
+
+      const data = fs.readFileSync(filePath, 'utf8');
+      const dialog = JSON.parse(data);
+
+      dialog.viewedByAdmin = true;
+      dialog.viewedByAdminAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+
+      console.log('✅ Dialog marked as viewed by admin:', dialogId);
+      res.json({ success: true, dialog });
+    } catch (error) {
+      console.error('Error marking dialog as viewed by admin:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 8. POST /api/product-question-dialogs/mark-shop-viewed-by-admin - Пометить все диалоги и вопросы магазина как просмотренные
+  app.post('/api/product-question-dialogs/mark-shop-viewed-by-admin', (req, res) => {
+    try {
+      const { shopAddress } = req.body;
+      console.log('POST /api/product-question-dialogs/mark-shop-viewed-by-admin', shopAddress);
+
+      if (!shopAddress) {
+        return res.status(400).json({ success: false, error: 'shopAddress is required' });
+      }
+
+      let markedDialogsCount = 0;
+      let markedQuestionsCount = 0;
+      const timestamp = new Date().toISOString();
+
+      // 1. Маркируем персональные диалоги
+      if (fs.existsSync(PRODUCT_QUESTION_DIALOGS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTION_DIALOGS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const filePath = path.join(PRODUCT_QUESTION_DIALOGS_DIR, file);
+            const data = fs.readFileSync(filePath, 'utf8');
+            const dialog = JSON.parse(data);
+
+            if (dialog.shopAddress === shopAddress && dialog.isAnswered && !dialog.viewedByAdmin) {
+              dialog.viewedByAdmin = true;
+              dialog.viewedByAdminAt = timestamp;
+              fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
+              markedDialogsCount++;
+            }
+          } catch (e) {
+            console.error(`Error processing dialog ${file}:`, e);
+          }
+        }
+      }
+
+      // 2. Маркируем общие вопросы (ProductQuestion)
+      if (fs.existsSync(PRODUCT_QUESTIONS_DIR)) {
+        const files = fs.readdirSync(PRODUCT_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+          try {
+            const filePath = path.join(PRODUCT_QUESTIONS_DIR, file);
+            const data = fs.readFileSync(filePath, 'utf8');
+            const question = JSON.parse(data);
+
+            let questionModified = false;
+
+            // Проверяем каждый магазин в вопросе
+            if (question.shops && Array.isArray(question.shops)) {
+              for (const shop of question.shops) {
+                if (shop.shopAddress === shopAddress && shop.isAnswered && shop.viewedByAdmin === false) {
+                  shop.viewedByAdmin = true;
+                  shop.viewedByAdminAt = timestamp;
+                  questionModified = true;
+                  markedQuestionsCount++;
+                }
+              }
+            }
+
+            if (questionModified) {
+              fs.writeFileSync(filePath, JSON.stringify(question, null, 2));
+            }
+          } catch (e) {
+            console.error(`Error processing question ${file}:`, e);
+          }
+        }
+      }
+
+      const totalMarked = markedDialogsCount + markedQuestionsCount;
+      console.log('✅ Marked', totalMarked, 'items as viewed by admin for shop:', shopAddress,
+                  '(dialogs:', markedDialogsCount, ', questions:', markedQuestionsCount, ')');
+      res.json({ success: true, markedCount: totalMarked, markedDialogsCount, markedQuestionsCount });
+    } catch (error) {
+      console.error('Error marking shop dialogs as viewed:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

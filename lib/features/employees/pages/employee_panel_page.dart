@@ -120,15 +120,19 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
 
   Future<void> _loadUnreadProductQuestionsCount() async {
     try {
-      // Загружаем все персональные диалоги
+      // 1. Загружаем персональные диалоги с непрочитанными сообщениями от клиента
       final dialogs = await ProductQuestionService.getAllPersonalDialogs();
+      final unreadDialogsCount = dialogs.where((d) => d.hasUnreadFromClient).length;
 
-      // Считаем непрочитанные диалоги (где hasUnreadFromClient = true)
-      final unreadCount = dialogs.where((d) => d.hasUnreadFromClient).length;
+      // 2. Загружаем количество неотвеченных общих вопросов (ProductQuestion)
+      final unansweredQuestionsCount = await ProductQuestionService.getUnansweredQuestionsCount();
+
+      // Суммируем оба счётчика
+      final totalCount = unreadDialogsCount + unansweredQuestionsCount;
 
       if (mounted) {
         setState(() {
-          _unreadProductQuestionsCount = unreadCount;
+          _unreadProductQuestionsCount = totalCount;
         });
       }
     } catch (e) {

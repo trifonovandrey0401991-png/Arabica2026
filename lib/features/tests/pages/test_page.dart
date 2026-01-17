@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
+import '../../employees/services/user_role_service.dart';
 import '../models/test_model.dart';
 import '../services/test_result_service.dart';
 
@@ -14,7 +15,7 @@ class TestPage extends StatefulWidget {
   State<TestPage> createState() => _TestPageState();
 }
 
-class _TestPageState extends State<TestPage> {
+class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   List<TestQuestion> _questions = [];
   int _currentQuestionIndex = 0;
   int _score = 0;
@@ -25,15 +26,32 @@ class _TestPageState extends State<TestPage> {
   bool _testStarted = false;
   bool _testFinished = false;
 
+  late AnimationController _progressController;
+  late AnimationController _questionAnimController;
+  late Animation<double> _questionFadeAnimation;
+
   @override
   void initState() {
     super.initState();
     _loadQuestions();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _questionAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _questionFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _questionAnimController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _progressController.dispose();
+    _questionAnimController.dispose();
     super.dispose();
   }
 
@@ -51,8 +69,9 @@ class _TestPageState extends State<TestPage> {
       _testStarted = true;
       _currentQuestionIndex = 0;
       _selectedAnswer = null;
-      _timeRemaining = 420; // Сбрасываем таймер
+      _timeRemaining = 420;
     });
+    _questionAnimController.forward();
     _startTimer();
   }
 
@@ -78,39 +97,35 @@ class _TestPageState extends State<TestPage> {
 
   void _selectAnswer(String answer) {
     if (_testFinished) return;
-    if (_selectedAnswer != null) return; // Предотвращаем повторный выбор
-    
+    if (_selectedAnswer != null) return;
+
     final question = _questions[_currentQuestionIndex];
-    // Сравниваем ответы с учетом пробелов и регистра
     final isCorrect = answer.trim() == question.correctAnswer.trim();
-    
+
     setState(() {
       _selectedAnswer = answer;
       _userAnswers[_currentQuestionIndex] = answer;
     });
 
-    // Автоматически переходим к следующему вопросу после задержки
-    // Для правильного ответа - 1.5 секунды, для неправильного - 2 секунды (чтобы увидеть правильный ответ)
     final delay = isCorrect ? 1500 : 2000;
-    
+
     Future.delayed(Duration(milliseconds: delay), () {
       if (mounted && !_testFinished && _selectedAnswer == answer) {
-        // Дополнительная проверка: убеждаемся, что мы все еще на том же вопросе
         _nextQuestion();
       }
     });
   }
 
-  void _nextQuestion() {
+  void _nextQuestion() async {
     if (_currentQuestionIndex < _questions.length - 1) {
+      await _questionAnimController.reverse();
       setState(() {
         _currentQuestionIndex++;
-        // Сбрасываем выбранный ответ для нового вопроса
-        // Если на этот вопрос уже был дан ответ, показываем его, иначе null
-        _selectedAnswer = _userAnswers.containsKey(_currentQuestionIndex) 
-            ? _userAnswers[_currentQuestionIndex] 
+        _selectedAnswer = _userAnswers.containsKey(_currentQuestionIndex)
+            ? _userAnswers[_currentQuestionIndex]
             : null;
       });
+      _questionAnimController.forward();
     } else {
       _finishTest();
     }
@@ -125,7 +140,6 @@ class _TestPageState extends State<TestPage> {
       });
       _showTimeExpiredDialog();
     } else {
-      // Подсчитываем баллы
       int score = 0;
       for (int i = 0; i < _questions.length; i++) {
         final userAnswer = _userAnswers[i];
@@ -139,9 +153,7 @@ class _TestPageState extends State<TestPage> {
         _testFinished = true;
       });
 
-      // Сохраняем результат на сервер
       await _saveTestResult(score);
-
       _showResultsDialog();
     }
   }
@@ -149,10 +161,30 @@ class _TestPageState extends State<TestPage> {
   Future<void> _saveTestResult(int score) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final employeeName = prefs.getString('userName') ?? 'Неизвестный сотрудник';
-      final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+      final employeePhone = prefs.getString('user_phone') ?? '';
 
-      final timeSpent = 420 - _timeRemaining; // Сколько времени потрачено
+      String employeeName = prefs.getString('currentEmployeeName') ??
+                            prefs.getString('user_employee_name') ??
+                            prefs.getString('user_display_name') ??
+                            prefs.getString('user_name') ??
+                            '';
+
+      if (employeeName.isEmpty && employeePhone.isNotEmpty) {
+        try {
+          final roleData = await UserRoleService.checkEmployeeViaAPI(employeePhone);
+          if (roleData != null && roleData.employeeName != null && roleData.employeeName!.isNotEmpty) {
+            employeeName = roleData.employeeName!;
+          }
+        } catch (e) {
+          Logger.warning('Не удалось загрузить имя сотрудника: $e');
+        }
+      }
+
+      if (employeeName.isEmpty) {
+        employeeName = 'Неизвестный сотрудник';
+      }
+
+      final timeSpent = 420 - _timeRemaining;
 
       await TestResultService.saveResult(
         employeeName: employeeName,
@@ -162,7 +194,6 @@ class _TestPageState extends State<TestPage> {
         timeSpent: timeSpent,
       );
 
-      // Отправляем уведомление админу о новом результате теста
       await ReportNotificationService.createNotification(
         reportType: ReportType.test,
         reportId: 'test_${DateTime.now().millisecondsSinceEpoch}',
@@ -180,44 +211,182 @@ class _TestPageState extends State<TestPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Время закончено'),
-        content: const Text('К сожалению, время закончено.'),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-            ),
-            child: const Text('Вернуться назад'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.timer_off,
+                  size: 48,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Время закончено',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'К сожалению, время для теста истекло',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF004D40),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Понятно',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   void _showResultsDialog() {
+    final percentage = (_score / _questions.length * 100).round();
+    Color resultColor;
+    String resultMessage;
+    IconData resultIcon;
+
+    if (percentage >= 80) {
+      resultColor = Colors.green;
+      resultMessage = 'Отличный результат!';
+      resultIcon = Icons.emoji_events;
+    } else if (percentage >= 60) {
+      resultColor = Colors.orange;
+      resultMessage = 'Хороший результат!';
+      resultIcon = Icons.thumb_up;
+    } else {
+      resultColor = Colors.red;
+      resultMessage = 'Нужно подучить материал';
+      resultIcon = Icons.school;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Результаты теста'),
-        content: Text('Вы набрали: $_score баллов'),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-            ),
-            child: const Text('Вернуться назад'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: resultColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  resultIcon,
+                  size: 48,
+                  color: resultColor,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Тест завершён',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                decoration: BoxDecoration(
+                  color: resultColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '$_score / ${_questions.length}',
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                        color: resultColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$percentage%',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: resultColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                resultMessage,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF004D40),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Готово',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -225,87 +394,7 @@ class _TestPageState extends State<TestPage> {
   @override
   Widget build(BuildContext context) {
     if (!_testStarted) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Тестирование'),
-          backgroundColor: const Color(0xFF004D40),
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
-            image: DecorationImage(
-              image: AssetImage('assets/images/arabica_background.png'),
-              fit: BoxFit.cover,
-              opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
-            ),
-          ),
-          child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.quiz,
-                  size: 80,
-                  color: Color(0xFF004D40),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Вы готовы приступить к тесту?',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 48),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_questions.isNotEmpty) {
-                        _startTest();
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Вопросы не загружены'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text(
-                      'Поехали',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text(
-                      'Назад',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-          ),
-      );
+      return _buildStartScreen();
     }
 
     if (_testFinished) {
@@ -320,132 +409,488 @@ class _TestPageState extends State<TestPage> {
       );
     }
 
-    final question = _questions[_currentQuestionIndex];
-    final isCorrect = _selectedAnswer == question.correctAnswer;
-    final hasSelected = _selectedAnswer != null;
-    final isWrongAnswer = hasSelected && !isCorrect;
+    return _buildQuestionScreen();
+  }
 
+  Widget _buildStartScreen() {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Вопрос ${_currentQuestionIndex + 1} из ${_questions.length}'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Text(
-                _formatTime(_timeRemaining),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF004D40),
+              Color(0xFF00695C),
+            ],
           ),
         ),
-        child: Column(
-          children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    question.question,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  ...question.options.map((option) {
-                    final isSelected = _selectedAnswer == option;
-                    final isCorrectOption = option == question.correctAnswer;
-                    Color? backgroundColor;
-                    Color? textColor;
-
-                    if (hasSelected) {
-                      if (isSelected) {
-                        backgroundColor = isCorrect ? Colors.green : Colors.red;
-                        textColor = Colors.white;
-                      } else if (isCorrectOption) {
-                        backgroundColor = Colors.green.withOpacity(0.3);
-                        textColor = Colors.green[900];
-                      }
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: ElevatedButton(
-                        onPressed: () => _selectAnswer(option),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: backgroundColor ?? Colors.grey[200],
-                          foregroundColor: textColor ?? Colors.black,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                            horizontal: 16,
-                          ),
-                          alignment: Alignment.centerLeft,
+                    const Expanded(
+                      child: Text(
+                        'Тестирование',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        child: Text(
-                          option,
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    );
-                  }),
-                ],
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
               ),
-            ),
-          ),
-          if (isWrongAnswer)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _nextQuestion,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text(
-                    _currentQuestionIndex < _questions.length - 1
-                        ? 'Следующий вопрос'
-                        : 'Завершить тест',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+              // Content
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Icon
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.quiz_outlined,
+                              size: 64,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        // Title
+                        const Text(
+                          'Готовы к тесту?',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '20 вопросов • 7 минут',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        // Info cards
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildInfoCard(
+                                icon: Icons.help_outline,
+                                title: '20',
+                                subtitle: 'вопросов',
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildInfoCard(
+                                icon: Icons.timer_outlined,
+                                title: '7',
+                                subtitle: 'минут',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 48),
+                        // Start button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _questions.isNotEmpty ? _startTest : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF004D40),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.play_arrow, size: 28),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _questions.isNotEmpty ? 'Начать тест' : 'Загрузка...',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionScreen() {
+    final question = _questions[_currentQuestionIndex];
+    final isCorrect = _selectedAnswer == question.correctAnswer;
+    final hasSelected = _selectedAnswer != null;
+    final progress = (_currentQuestionIndex + 1) / _questions.length;
+    final isTimeWarning = _timeRemaining <= 60;
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF004D40),
+              Color(0xFF00695C),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _showExitConfirmation(),
+                      icon: const Icon(Icons.close, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Вопрос ${_currentQuestionIndex + 1} из ${_questions.length}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isTimeWarning
+                            ? Colors.red.withOpacity(0.2)
+                            : Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.timer,
+                            size: 18,
+                            color: isTimeWarning ? Colors.red[300] : Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatTime(_timeRemaining),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isTimeWarning ? Colors.red[300] : Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Progress bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    minHeight: 6,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Question card
+              Expanded(
+                child: FadeTransition(
+                  opacity: _questionFadeAnimation,
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Question
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF004D40).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Вопрос ${_currentQuestionIndex + 1}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF004D40),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  question.question,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Options
+                                ...question.options.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final option = entry.value;
+                                  return _buildOptionButton(
+                                    option: option,
+                                    index: index,
+                                    isSelected: _selectedAnswer == option,
+                                    isCorrectOption: option == question.correctAnswer,
+                                    hasSelected: hasSelected,
+                                    isCorrect: isCorrect,
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionButton({
+    required String option,
+    required int index,
+    required bool isSelected,
+    required bool isCorrectOption,
+    required bool hasSelected,
+    required bool isCorrect,
+  }) {
+    Color backgroundColor = Colors.grey[100]!;
+    Color borderColor = Colors.grey[300]!;
+    Color textColor = Colors.black87;
+    IconData? trailingIcon;
+    Color? iconColor;
+
+    if (hasSelected) {
+      if (isSelected) {
+        if (isCorrect) {
+          backgroundColor = Colors.green.withOpacity(0.1);
+          borderColor = Colors.green;
+          textColor = Colors.green[800]!;
+          trailingIcon = Icons.check_circle;
+          iconColor = Colors.green;
+        } else {
+          backgroundColor = Colors.red.withOpacity(0.1);
+          borderColor = Colors.red;
+          textColor = Colors.red[800]!;
+          trailingIcon = Icons.cancel;
+          iconColor = Colors.red;
+        }
+      } else if (isCorrectOption) {
+        backgroundColor = Colors.green.withOpacity(0.1);
+        borderColor = Colors.green;
+        textColor = Colors.green[800]!;
+        trailingIcon = Icons.check_circle;
+        iconColor = Colors.green;
+      }
+    }
+
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    final letter = index < letters.length ? letters[index] : '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: hasSelected ? null : () => _selectAnswer(option),
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 2),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: hasSelected && (isSelected || isCorrectOption)
+                      ? borderColor.withOpacity(0.2)
+                      : const Color(0xFF004D40).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: hasSelected && (isSelected || isCorrectOption)
+                          ? borderColor
+                          : const Color(0xFF004D40),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  option,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: textColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (trailingIcon != null)
+                Icon(trailingIcon, color: iconColor, size: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showExitConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Выйти из теста?'),
+        content: const Text('Прогресс не будет сохранён'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+  }
+}

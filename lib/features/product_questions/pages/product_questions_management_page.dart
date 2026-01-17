@@ -636,9 +636,18 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             return;
           }
 
-          // Показать диалог выбора магазина
-          final selectedShop = await _showShopSelectionDialog(question);
-          if (selectedShop == null) return; // Пользователь отменил
+          String shopAddressForAnswer;
+
+          // Если вопрос задан конкретному магазину (не "Вся сеть") - сразу переходим к ответу
+          if (!question.isNetworkWide) {
+            // Берём адрес магазина из вопроса
+            shopAddressForAnswer = question.shopAddress;
+          } else {
+            // Для вопросов "Вся сеть" - показываем диалог выбора магазина
+            final selectedShop = await _showShopSelectionDialog(question);
+            if (selectedShop == null) return; // Пользователь отменил
+            shopAddressForAnswer = selectedShop.address;
+          }
 
           // Перейти на страницу ответа с выбранным магазином
           await Navigator.push(
@@ -646,7 +655,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
             MaterialPageRoute(
               builder: (context) => ProductQuestionAnswerPage(
                 questionId: question.id,
-                shopAddress: selectedShop.address,
+                shopAddress: shopAddressForAnswer,
                 canAnswer: canAnswer,
               ),
             ),

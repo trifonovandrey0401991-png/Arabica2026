@@ -323,6 +323,25 @@ class ProductQuestionService {
     );
   }
 
+  /// Пометить все диалоги магазина как прочитанные (для сотрудников)
+  static Future<void> markShopDialogsAsRead(String shopAddress) async {
+    Logger.debug('📤 Пометка всех диалогов магазина как прочитанных: $shopAddress');
+    try {
+      final dialogs = await getShopPersonalDialogs(shopAddress);
+      for (final dialog in dialogs) {
+        if (dialog.hasUnreadFromClient) {
+          await markPersonalDialogRead(
+            dialogId: dialog.id,
+            readerType: 'employee',
+          );
+        }
+      }
+      Logger.debug('✅ Помечено ${dialogs.where((d) => d.hasUnreadFromClient).length} диалогов');
+    } catch (e) {
+      Logger.error('❌ Ошибка пометки диалогов магазина как прочитанных', e);
+    }
+  }
+
   /// Проверить, есть ли персональные диалоги у клиента
   static Future<bool> hasPersonalDialogs(String clientPhone) async {
     final dialogs = await getClientPersonalDialogs(clientPhone);
@@ -349,5 +368,106 @@ class ProductQuestionService {
       endpoint: '$baseEndpoint/client/$normalizedPhone/mark-all-read',
       body: {},
     );
+  }
+
+  /// Получить количество непрочитанных диалогов (с группировкой по магазинам)
+  /// Это для сотрудников - диалоги с непрочитанными сообщениями от клиентов
+  static Future<Map<String, int>> getUnreadDialogsCounts() async {
+    Logger.debug('📥 Загрузка количества непрочитанных диалогов');
+    try {
+      final dialogs = await getAllPersonalDialogs();
+      final counts = <String, int>{};
+
+      for (final dialog in dialogs) {
+        if (dialog.hasUnreadFromClient) {
+          final shop = dialog.shopAddress;
+          counts[shop] = (counts[shop] ?? 0) + 1;
+        }
+      }
+
+      Logger.debug('✅ Непрочитанные диалоги: ${counts.values.fold(0, (a, b) => a + b)} всего');
+      return counts;
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки непрочитанных диалогов', e);
+      return {};
+    }
+  }
+
+  /// Получить общее количество непрочитанных диалогов (для сотрудников)
+  static Future<int> getTotalUnreadCount() async {
+    final counts = await getUnreadDialogsCounts();
+    return counts.values.fold<int>(0, (int a, int b) => a + b);
+  }
+
+  /// Получить количество непросмотренных отвеченных диалогов (для админа в отчётах)
+  /// Это диалоги, на которые сотрудник ответил, но админ ещё не просмотрел
+  static Future<Map<String, int>> getUnviewedByAdminCounts() async {
+    Logger.debug('📥 Загрузка количества непросмотренных админом диалогов');
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_dialogsEndpoint/unviewed-counts',
+      );
+
+      if (result != null && result['success'] == true) {
+        final countsRaw = result['counts'] as Map<String, dynamic>? ?? {};
+        final counts = <String, int>{};
+        countsRaw.forEach((key, value) {
+          counts[key] = value as int;
+        });
+        Logger.debug('✅ Непросмотренные админом: ${result['totalUnviewed']} всего');
+        return counts;
+      }
+      return {};
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки непросмотренных админом диалогов', e);
+      return {};
+    }
+  }
+
+  /// Получить общее количество непросмотренных админом диалогов
+  static Future<int> getTotalUnviewedByAdminCount() async {
+    Logger.debug('📥 Загрузка общего количества непросмотренных админом');
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_dialogsEndpoint/unviewed-counts',
+      );
+
+      if (result != null && result['success'] == true) {
+        final total = result['totalUnviewed'] as int? ?? 0;
+        Logger.debug('✅ Всего непросмотренных админом: $total');
+        return total;
+      }
+      return 0;
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки количества непросмотренных админом', e);
+      return 0;
+    }
+  }
+
+  /// Пометить все диалоги магазина как просмотренные админом
+  static Future<bool> markShopViewedByAdmin(String shopAddress) async {
+    Logger.debug('📤 Пометка диалогов магазина как просмотренных админом: $shopAddress');
+    return await BaseHttpService.simplePost(
+      endpoint: '$_dialogsEndpoint/mark-shop-viewed-by-admin',
+      body: {'shopAddress': shopAddress},
+    );
+  }
+
+  /// Получить количество неотвеченных вопросов для сотрудников
+  /// (вопросы, на которые ещё не ответили, и срок не истёк)
+  static Future<int> getUnansweredQuestionsCount() async {
+    Logger.debug('📥 Загрузка количества неотвеченных вопросов');
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: '$_baseEndpoint/unanswered-count',
+      );
+      if (result != null && result['success'] == true) {
+        return result['count'] as int? ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки количества неотвеченных вопросов', e);
+      return 0;
+    }
   }
 }

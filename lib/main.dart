@@ -253,7 +253,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
     try {
       final loyaltyInfo = await LoyaltyService.fetchByPhone(phone);
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Обновляем данные в фоне
       await prefs.setBool('is_registered', true);
       await prefs.setString('user_name', loyaltyInfo.name);
@@ -262,6 +262,9 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
 
       // Сохраняем FCM токен (теперь когда phone известен)
       await FirebaseService.resaveToken();
+
+      // Проверяем роль пользователя в фоне (важно для установки currentEmployeeName)
+      await _checkUserRole(phone);
     } catch (e) {
       // Игнорируем ошибки в фоновой проверке
       Logger.warning('Фоновая проверка регистрации не удалась: $e');

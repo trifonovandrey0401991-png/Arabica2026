@@ -14,6 +14,7 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
   bool _isLoading = true;
   List<ProductQuestion> _allQuestions = [];
   Map<String, ShopQuestionStats> _shopStats = {};
+  Map<String, int> _unreadByShop = {};
   String? _expandedShop;
 
   @override
@@ -31,6 +32,10 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
       // Загружаем все вопросы (общие, не персональные диалоги)
       final questions = await ProductQuestionService.getQuestions();
 
+      // Загружаем количество непросмотренных админом диалогов по магазинам
+      // (диалоги, на которые сотрудник ответил, но админ ещё не просмотрел)
+      final unviewedCounts = await ProductQuestionService.getUnviewedByAdminCounts();
+
       // Группируем по магазинам и считаем статистику
       final stats = <String, ShopQuestionStats>{};
 
@@ -44,9 +49,17 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
         stats[shopAddress]!.addQuestion(question);
       }
 
+      // Добавляем магазины из непросмотренных диалогов, которых нет в stats
+      for (final shopAddress in unviewedCounts.keys) {
+        if (!stats.containsKey(shopAddress)) {
+          stats[shopAddress] = ShopQuestionStats(shopAddress: shopAddress);
+        }
+      }
+
       setState(() {
         _allQuestions = questions;
         _shopStats = stats;
+        _unreadByShop = unviewedCounts;
         _isLoading = false;
       });
     } catch (e) {
@@ -95,15 +108,47 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                     final stats = _shopStats[shopAddress]!;
                     final isExpanded = _expandedShop == shopAddress;
 
+                    final unreadCount = _unreadByShop[shopAddress] ?? 0;
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: Column(
                         children: [
                           // Основная строка магазина
                           ListTile(
-                            leading: const Icon(
-                              Icons.store,
-                              color: Color(0xFF004D40),
+                            leading: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const Icon(
+                                  Icons.store,
+                                  color: Color(0xFF004D40),
+                                ),
+                                if (unreadCount > 0)
+                                  Positioned(
+                                    right: -6,
+                                    top: -6,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        unreadCount.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                             title: Text(
                               shopAddress,
@@ -125,10 +170,21 @@ class _ProductQuestionsReportPageState extends State<ProductQuestionsReportPage>
                                 ),
                               ],
                             ),
-                            onTap: () {
-                              setState(() {
-                                _expandedShop = isExpanded ? null : shopAddress;
-                              });
+                            onTap: () async {
+                              if (!isExpanded) {
+                                // При раскрытии магазина помечаем его диалоги как просмотренные админом
+                                await ProductQuestionService.markShopViewedByAdmin(shopAddress);
+                                // Обновляем счётчики непросмотренных админом диалогов
+                                final unviewedCounts = await ProductQuestionService.getUnviewedByAdminCounts();
+                                setState(() {
+                                  _expandedShop = shopAddress;
+                                  _unreadByShop = unviewedCounts;
+                                });
+                              } else {
+                                setState(() {
+                                  _expandedShop = null;
+                                });
+                              }
                             },
                           ),
                           // Развёрнутая информация - статистика за текущий месяц

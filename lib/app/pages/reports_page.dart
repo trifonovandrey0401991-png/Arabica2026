@@ -8,6 +8,7 @@ import '../../features/kpi/pages/kpi_type_selection_page.dart';
 import '../../features/reviews/pages/reviews_list_page.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/product_questions/pages/product_questions_report_page.dart';
+import '../../features/product_questions/services/product_question_service.dart';
 import '../../features/tests/pages/test_report_page.dart';
 import '../../features/efficiency/pages/employees_efficiency_page.dart';
 import '../../features/tasks/pages/task_reports_page.dart';
@@ -42,6 +43,7 @@ class _ReportsPageState extends State<ReportsPage> {
   int _unreadReviewsCount = 0;
   int _managementUnreadCount = 0;
   int _unconfirmedWithdrawalsCount = 0;
+  int _productQuestionsUnreadCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -53,6 +55,7 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadUnreadReviewsCount();
     _loadManagementUnreadCount();
     _loadUnconfirmedWithdrawalsCount();
+    _loadProductQuestionsUnreadCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -108,6 +111,20 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества неподтвержденных выемок', e);
+    }
+  }
+
+  Future<void> _loadProductQuestionsUnreadCount() async {
+    try {
+      // Для отчётов - считаем непросмотренные админом отвеченные диалоги
+      final count = await ProductQuestionService.getTotalUnviewedByAdminCount();
+      if (mounted) {
+        setState(() {
+          _productQuestionsUnreadCount = count;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества непрочитанных вопросов о товарах', e);
     }
   }
 
@@ -316,15 +333,18 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчет (Поиск товаров) - только админ
           if (isAdmin)
-            _buildSection(
+            _buildSectionWithBadge(
               context,
               title: 'Отчет (Поиск товаров)',
               icon: Icons.search,
-              onTap: () {
-                Navigator.push(
+              badgeCount: _productQuestionsUnreadCount,
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ProductQuestionsReportPage()),
                 );
+                // Перезагрузить счетчик после возврата
+                _loadProductQuestionsUnreadCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
