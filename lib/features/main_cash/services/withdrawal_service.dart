@@ -21,12 +21,32 @@ class WithdrawalService {
     if (fromDate != null) queryParams['fromDate'] = fromDate.toIso8601String();
     if (toDate != null) queryParams['toDate'] = toDate.toIso8601String();
 
-    return await BaseHttpService.getList<Withdrawal>(
-      endpoint: baseEndpoint,
-      fromJson: (json) => Withdrawal.fromJson(json),
-      listKey: 'withdrawals',
-      queryParams: queryParams.isNotEmpty ? queryParams : null,
-    );
+    try {
+      final result = await BaseHttpService.getList<Withdrawal>(
+        endpoint: baseEndpoint,
+        fromJson: (json) {
+          Logger.debug('Парсинг выемки: ${json['id']}');
+          try {
+            final withdrawal = Withdrawal.fromJson(json);
+            Logger.debug('✅ Выемка распарсена: ${withdrawal.id}, магазин: ${withdrawal.shopAddress}');
+            return withdrawal;
+          } catch (e, stackTrace) {
+            Logger.error('❌ Ошибка парсинга выемки ${json['id']}', e);
+            Logger.debug('JSON выемки: $json');
+            Logger.debug('Stack trace: $stackTrace');
+            rethrow;
+          }
+        },
+        listKey: 'withdrawals',
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+      );
+      Logger.debug('✅ Всего загружено выемок: ${result.length}');
+      return result;
+    } catch (e, stackTrace) {
+      Logger.error('❌ КРИТИЧЕСКАЯ ОШИБКА загрузки выемок', e);
+      Logger.debug('Stack trace: $stackTrace');
+      return []; // Вернуть пустой список вместо исключения
+    }
   }
 
   /// Создать новую выемку
@@ -70,5 +90,14 @@ class WithdrawalService {
       Logger.error('Ошибка расчета сумм выемок', e);
       return {'ooo': 0, 'ip': 0};
     }
+  }
+
+  /// Подтвердить выемку
+  static Future<bool> confirmWithdrawal(String id) async {
+    Logger.debug('Подтверждение выемки: $id');
+    return await BaseHttpService.simplePatch(
+      endpoint: '$baseEndpoint/$id/confirm',
+      body: {'confirmed': true},
+    );
   }
 }

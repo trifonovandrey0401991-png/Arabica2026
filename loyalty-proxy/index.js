@@ -2259,6 +2259,7 @@ app.post('/api/withdrawals', async (req, res) => {
       expenses,
       adminName: adminName || null,
       createdAt: new Date().toISOString(),
+      confirmed: false,
     };
 
     // Сохранить в файл
@@ -2275,6 +2276,32 @@ app.post('/api/withdrawals', async (req, res) => {
   } catch (err) {
     console.error('Ошибка создания выемки:', err);
     res.status(500).json({ success: false, error: 'Ошибка создания выемки' });
+  }
+});
+
+// PATCH /api/withdrawals/:id/confirm - подтвердить выемку
+app.patch('/api/withdrawals/:id/confirm', (req, res) => {
+  try {
+    const { id } = req.params;
+    const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Выемка не найдена' });
+    }
+
+    // Прочитать выемку
+    const withdrawal = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+    // Обновить статус
+    withdrawal.confirmed = true;
+
+    // Сохранить обратно
+    fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+
+    res.json({ success: true, withdrawal });
+  } catch (err) {
+    console.error('Ошибка подтверждения выемки:', err);
+    res.status(500).json({ success: false, error: 'Ошибка подтверждения выемки' });
   }
 });
 

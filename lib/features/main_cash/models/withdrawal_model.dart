@@ -12,6 +12,7 @@ class Withdrawal {
   final List<WithdrawalExpense> expenses; // Список расходов
   final String? adminName;
   final DateTime createdAt;
+  final bool confirmed; // Подтверждена ли выемка
 
   Withdrawal({
     String? id,
@@ -23,6 +24,7 @@ class Withdrawal {
     required this.expenses,
     this.adminName,
     DateTime? createdAt,
+    this.confirmed = false,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
 
@@ -52,6 +54,7 @@ class Withdrawal {
       expenses: expenses,
       adminName: json['adminName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      confirmed: json['confirmed'] as bool? ?? false,
     );
   }
 
@@ -66,6 +69,7 @@ class Withdrawal {
       'expenses': expenses.map((e) => e.toJson()).toList(),
       'adminName': adminName,
       'createdAt': createdAt.toIso8601String(),
+      'confirmed': confirmed,
     };
   }
 
@@ -79,6 +83,7 @@ class Withdrawal {
     List<WithdrawalExpense>? expenses,
     String? adminName,
     DateTime? createdAt,
+    bool? confirmed,
   }) {
     return Withdrawal(
       id: id ?? this.id,
@@ -90,6 +95,7 @@ class Withdrawal {
       expenses: expenses ?? this.expenses,
       adminName: adminName ?? this.adminName,
       createdAt: createdAt ?? this.createdAt,
+      confirmed: confirmed ?? this.confirmed,
     );
   }
 
