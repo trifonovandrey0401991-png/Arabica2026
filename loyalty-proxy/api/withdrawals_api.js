@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 const WITHDRAWALS_DIR = '/var/www/withdrawals';
 const MAIN_CASH_DIR = '/var/www/main_cash';
 const EMPLOYEES_DIR = '/var/www/employees';
-const FCM_TOKENS_FILE = '/var/www/fcm_tokens.json';
+const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
 
 // Убедиться что директория существует
 function ensureDirectoryExists(dir) {
@@ -39,28 +39,40 @@ function loadAllEmployees() {
   return employees;
 }
 
-// Получить FCM токены пользователей
-async function getFCMTokensForUsers(phones) {
-  if (!fs.existsSync(FCM_TOKENS_FILE)) {
-    return [];
-  }
-
+// Получить FCM токен пользователя по телефону
+function getFCMTokenByPhone(phone) {
   try {
-    const data = fs.readFileSync(FCM_TOKENS_FILE, 'utf8');
-    const allTokens = JSON.parse(data);
+    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    const tokens = [];
-    for (const phone of phones) {
-      if (allTokens[phone]) {
-        tokens.push(allTokens[phone]);
-      }
+    if (!fs.existsSync(tokenFile)) {
+      return null;
     }
 
-    return tokens;
+    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    return tokenData.token || null;
   } catch (err) {
-    console.error('Ошибка загрузки FCM токенов:', err);
+    console.error(`Ошибка получения токена для ${phone}:`, err.message);
+    return null;
+  }
+}
+
+// Получить FCM токены пользователей
+function getFCMTokensForUsers(phones) {
+  if (!fs.existsSync(FCM_TOKENS_DIR)) {
+    console.log('⚠️  Папка FCM токенов не существует');
     return [];
   }
+
+  const tokens = [];
+  for (const phone of phones) {
+    const token = getFCMTokenByPhone(phone);
+    if (token) {
+      tokens.push(token);
+    }
+  }
+
+  return tokens;
 }
 
 // Отправить push-уведомления о новой выемке
@@ -79,7 +91,7 @@ async function sendWithdrawalNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForUsers(adminPhones);
+    const tokens = getFCMTokensForUsers(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
@@ -133,7 +145,7 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForUsers(adminPhones);
+    const tokens = getFCMTokensForUsers(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
