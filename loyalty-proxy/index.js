@@ -21,6 +21,7 @@ const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = r
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
+const { setupPointsSettingsAPI } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
 app.use(bodyParser.json({ limit: "50mb" }));
@@ -5824,6 +5825,7 @@ setupReportNotificationsAPI(app);
 setupClientsAPI(app);
 setupShiftTransfersAPI(app);
 setupTaskPointsSettingsAPI(app);
+setupPointsSettingsAPI(app);
 setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
 
 // Start product questions penalty scheduler
