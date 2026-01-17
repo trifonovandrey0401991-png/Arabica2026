@@ -580,43 +580,106 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           child: Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedShopFilter,
-                  decoration: const InputDecoration(
-                    labelText: 'Фильтр по магазину',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('Все магазины'),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedShopFilter,
+                    decoration: InputDecoration(
+                      labelText: 'Фильтр по магазину',
+                      labelStyle: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.store,
+                        color: const Color(0xFF004D40),
+                        size: 20,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
-                    ..._shopAddresses.map((address) => DropdownMenuItem(
-                          value: address,
-                          child: Text(
-                            address,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedShopFilter = value);
-                  },
+                    icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                    dropdownColor: Colors.white,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                    items: [
+                      DropdownMenuItem<String>(
+                        value: null,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.select_all,
+                              size: 18,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Все магазины'),
+                          ],
+                        ),
+                      ),
+                      ..._shopAddresses.map((address) => DropdownMenuItem(
+                            value: address,
+                            child: Text(
+                              address,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedShopFilter = value);
+                    },
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _isLoading ? null : _loadData,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh),
-                tooltip: 'Обновить',
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF004D40)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF004D40).withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  onPressed: _isLoading ? null : _loadData,
+                  icon: _isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: const Color(0xFF004D40),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.refresh,
+                          color: Color(0xFF004D40),
+                        ),
+                  tooltip: 'Обновить',
+                  padding: const EdgeInsets.all(12),
+                  constraints: const BoxConstraints(),
+                ),
               ),
             ],
           ),
@@ -665,86 +728,100 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
 
   Widget _buildWithdrawalCard(Withdrawal withdrawal) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Row(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    withdrawal.formattedDateTime,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: withdrawal.type == 'ooo'
-                              ? Colors.blue.withOpacity(0.1)
-                              : Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
+              // Левая часть: иконка типа
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: withdrawal.type == 'ooo'
+                      ? Colors.blue.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  withdrawal.type == 'ooo' ? Icons.business : Icons.store,
+                  size: 20,
+                  color: withdrawal.type == 'ooo' ? Colors.blue : Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Средняя часть: информация
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
                           withdrawal.typeDisplayName,
                           style: TextStyle(
                             color: withdrawal.type == 'ooo' ? Colors.blue : Colors.orange,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
-                      ),
-                      if (withdrawal.confirmed) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            '✓',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
+                        const SizedBox(width: 6),
+                        Text(
+                          withdrawal.formattedDateTime,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 10,
                           ),
                         ),
+                        if (withdrawal.confirmed) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: Colors.green[600],
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      withdrawal.shopAddress,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${withdrawal.employeeName} • ${withdrawal.expenses.length} расход${_getExpenseEnding(withdrawal.expenses.length)}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                withdrawal.shopAddress,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                withdrawal.employeeName,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Правая часть: сумма
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '${withdrawal.expenses.length} расход${_getExpenseEnding(withdrawal.expenses.length)}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
                   Text(
                     '${withdrawal.totalAmount.toStringAsFixed(0)} ₽',
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF004D40),
                     ),
@@ -754,101 +831,138 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             ],
           ),
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
                     'Детализация расходов:',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Colors.black87,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  ...withdrawal.expenses.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final expense = entry.value;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${index + 1}. ${expense.displayName}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                ),
+                const SizedBox(height: 8),
+                ...withdrawal.expenses.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final expense = entry.value;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        // Номер
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF004D40).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                color: Color(0xFF004D40),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        ),
+                        const SizedBox(width: 10),
+                        // Информация
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Сумма:',
-                                style: TextStyle(color: Colors.grey, fontSize: 12),
-                              ),
                               Text(
-                                '${expense.amount.toStringAsFixed(0)} ₽',
+                                expense.displayName,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
                                 ),
                               ),
+                              if (expense.comment.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  expense.comment,
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 10,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ],
                           ),
-                          if (expense.comment.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Комментарий: ${expense.comment}',
-                              style: TextStyle(color: Colors.grey[700], fontSize: 11),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  if (withdrawal.adminName != null && withdrawal.adminName!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
+                        ),
+                        // Сумма
+                        Text(
+                          '${expense.amount.toStringAsFixed(0)} ₽',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF004D40),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                if (withdrawal.adminName != null && withdrawal.adminName!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
                       'Создал: ${withdrawal.adminName}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[600],
                         fontStyle: FontStyle.italic,
                       ),
                     ),
-                  ],
-                  // Кнопка подтверждения
-                  if (!withdrawal.confirmed) ...[
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _confirmWithdrawal(withdrawal),
-                        icon: const Icon(Icons.check_circle, color: Colors.white),
-                        label: const Text(
-                          'Подтвердить выемку',
-                          style: TextStyle(color: Colors.white),
+                  ),
+                ],
+                // Кнопка подтверждения
+                if (!withdrawal.confirmed) ...[
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _confirmWithdrawal(withdrawal),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text(
+                        'Подтвердить выемку',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                        elevation: 0,
                       ),
                     ),
-                  ],
+                  ),
                 ],
-              ),
+                const SizedBox(height: 4),
+              ],
             ),
           ],
         ),
