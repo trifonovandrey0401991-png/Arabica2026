@@ -30,6 +30,7 @@ import '../../fortune_wheel/services/fortune_wheel_service.dart';
 import '../../tasks/services/task_service.dart';
 import '../../tasks/models/task_model.dart';
 import '../../../core/utils/logger.dart';
+import '../../ai_training/pages/ai_training_page.dart';
 
 /// Страница панели работника
 class EmployeePanelPage extends StatefulWidget {
@@ -448,9 +449,11 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
             title: 'Обучение ИИ',
             icon: Icons.psychology,
             onTap: () {
-              // TODO: Логика будет добавлена позже
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Функционал в разработке')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AITrainingPage(),
+                ),
               );
             },
           ),

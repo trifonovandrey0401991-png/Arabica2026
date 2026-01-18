@@ -18,7 +18,7 @@ const STATS_FILE = path.join(DATA_DIR, 'cigarette-training-stats.json');
 const IMAGES_DIR = path.join(DATA_DIR, 'cigarette-training-images');
 
 // Минимальное количество фото для обучения
-const REQUIRED_PHOTOS_COUNT = 50;
+const REQUIRED_PHOTOS_COUNT = 20;
 
 /**
  * Инициализация модуля - создание необходимых директорий и файлов

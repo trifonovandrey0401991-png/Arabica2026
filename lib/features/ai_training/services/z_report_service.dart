@@ -130,6 +130,7 @@ class ZReportService {
     required double totalSum,
     required double cashSum,
     required int ofdNotSent,
+    int? resourceKeys,
     String? shopAddress,
     String? employeeName,
   }) async {
@@ -143,6 +144,7 @@ class ZReportService {
             'totalSum': totalSum,
             'cashSum': cashSum,
             'ofdNotSent': ofdNotSent,
+            'resourceKeys': resourceKeys,
           },
           'shopAddress': shopAddress,
           'employeeName': employeeName,

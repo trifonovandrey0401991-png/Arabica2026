@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'z_report_training_page.dart';
+import 'cigarette_training_page.dart';
 
 /// Главная страница обучения ИИ
 class AITrainingPage extends StatelessWidget {
@@ -70,11 +71,17 @@ class AITrainingPage extends StatelessWidget {
             const SizedBox(height: 16),
             _buildTrainingCard(
               context,
-              title: 'Скоро',
-              description: 'Другие типы документов будут добавлены позже',
-              icon: Icons.more_horiz,
-              enabled: false,
-              onTap: () {},
+              title: 'Подсчёт сигарет',
+              description: 'Обучение ИИ распознаванию и подсчёту пачек сигарет',
+              icon: Icons.smoking_rooms,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CigaretteTrainingPage(),
+                  ),
+                );
+              },
             ),
           ],
         ),

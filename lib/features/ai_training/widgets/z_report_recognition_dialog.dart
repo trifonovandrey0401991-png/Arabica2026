@@ -7,12 +7,14 @@ class ZReportRecognitionResult {
   final double revenue;
   final double cash;
   final int ofdNotSent;
+  final int resourceKeys;
   final bool wasEdited;
 
   ZReportRecognitionResult({
     required this.revenue,
     required this.cash,
     required this.ofdNotSent,
+    required this.resourceKeys,
     this.wasEdited = false,
   });
 }
@@ -62,6 +64,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
   final _revenueController = TextEditingController();
   final _cashController = TextEditingController();
   final _ofdNotSentController = TextEditingController();
+  final _resourceKeysController = TextEditingController();
 
   bool _isEditing = false;
   bool _isSaving = false;
@@ -84,6 +87,9 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
       if (data.ofdNotSent != null) {
         _ofdNotSentController.text = data.ofdNotSent.toString();
       }
+      if (data.resourceKeys != null) {
+        _resourceKeysController.text = data.resourceKeys.toString();
+      }
     }
   }
 
@@ -92,6 +98,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     _revenueController.dispose();
     _cashController.dispose();
     _ofdNotSentController.dispose();
+    _resourceKeysController.dispose();
     super.dispose();
   }
 
@@ -99,6 +106,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     final revenue = double.tryParse(_revenueController.text) ?? 0;
     final cash = double.tryParse(_cashController.text) ?? 0;
     final ofdNotSent = int.tryParse(_ofdNotSentController.text) ?? 0;
+    final resourceKeys = int.tryParse(_resourceKeysController.text) ?? 0;
 
     // Если данные были отредактированы - сохраняем как образец для обучения
     if (_isEditing) {
@@ -109,6 +117,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         totalSum: revenue,
         cashSum: cash,
         ofdNotSent: ofdNotSent,
+        resourceKeys: resourceKeys,
         shopAddress: widget.shopAddress,
         employeeName: widget.employeeName,
       );
@@ -121,6 +130,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
         revenue: revenue,
         cash: cash,
         ofdNotSent: ofdNotSent,
+        resourceKeys: resourceKeys,
         wasEdited: _isEditing,
       ));
     }
@@ -173,9 +183,10 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
             _buildField(
               controller: _revenueController,
               label: 'Выручка (общая сумма)',
-              icon: Icons.attach_money,
+              icon: Icons.currency_ruble,
               confidence: data?.confidence['totalSum'],
               enabled: _isEditing || !hasData,
+              isMoney: true,
             ),
             const SizedBox(height: 12),
 
@@ -183,9 +194,10 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
             _buildField(
               controller: _cashController,
               label: 'Наличные',
-              icon: Icons.money,
+              icon: Icons.payments_outlined,
               confidence: data?.confidence['cashSum'],
               enabled: _isEditing || !hasData,
+              isMoney: true,
             ),
             const SizedBox(height: 12),
 
@@ -193,8 +205,19 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
             _buildField(
               controller: _ofdNotSentController,
               label: 'Не переданы в ОФД',
-              icon: Icons.warning_amber,
+              icon: Icons.cloud_off,
               confidence: data?.confidence['ofdNotSent'],
+              enabled: _isEditing || !hasData,
+              isInteger: true,
+            ),
+            const SizedBox(height: 12),
+
+            // Ресурс ключей
+            _buildField(
+              controller: _resourceKeysController,
+              label: 'Ресурс ключей',
+              icon: Icons.key,
+              confidence: data?.confidence['resourceKeys'],
               enabled: _isEditing || !hasData,
               isInteger: true,
             ),
@@ -274,30 +297,77 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
     String? confidence,
     bool enabled = true,
     bool isInteger = false,
+    bool isMoney = false,
   }) {
     final isFound = confidence == 'high';
 
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      keyboardType: isInteger
-          ? TextInputType.number
-          : const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        suffixIcon: confidence != null
-            ? Icon(
-                isFound ? Icons.check : Icons.help_outline,
-                color: isFound ? Colors.green : Colors.orange,
-                size: 20,
-              )
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: isInteger
+            ? TextInputType.number
+            : const TextInputType.numberWithOptions(decimal: true),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.grey.shade600),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isMoney ? Colors.teal.shade50 : Colors.blueGrey.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
+              size: 20,
+            ),
+          ),
+          suffixText: isMoney ? '₽' : null,
+          suffixStyle: TextStyle(
+            color: Colors.teal.shade700,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+          suffixIcon: confidence != null
+              ? Icon(
+                  isFound ? Icons.check_circle : Icons.help_outline,
+                  color: isFound ? Colors.green : Colors.orange,
+                  size: 20,
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          filled: true,
+          fillColor: enabled ? Colors.white : Colors.grey.shade50,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        filled: !enabled,
-        fillColor: enabled ? null : Colors.grey[100],
       ),
     );
   }

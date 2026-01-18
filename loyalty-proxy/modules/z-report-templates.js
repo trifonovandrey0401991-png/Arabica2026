@@ -211,6 +211,80 @@ async function saveTrainingSamples(data) {
   await fs.writeFile(SAMPLES_FILE, JSON.stringify(data, null, 2));
 }
 
+// Максимальное количество образцов для хранения
+const MAX_TRAINING_SAMPLES = 150;
+// Минимальное количество образцов на магазин при ротации
+const MIN_SAMPLES_PER_SHOP = 5;
+
+/**
+ * Удалить файл изображения образца
+ */
+async function deleteSampleImage(sampleId) {
+  try {
+    const imagePath = path.join(__dirname, '../data/training-images', `${sampleId}.jpg`);
+    await fs.unlink(imagePath);
+  } catch (e) {
+    // Файл может не существовать - это нормально
+  }
+}
+
+/**
+ * Ротация образцов - удаляет старые при превышении лимита
+ * Сохраняет минимум MIN_SAMPLES_PER_SHOP образцов на каждый магазин
+ */
+async function rotateSamples(samples) {
+  if (samples.length <= MAX_TRAINING_SAMPLES) {
+    return { samples, deleted: 0 };
+  }
+
+  console.log(`[Training] Ротация образцов: ${samples.length} > ${MAX_TRAINING_SAMPLES}`);
+
+  // Группируем по магазинам
+  const byShop = {};
+  for (const sample of samples) {
+    const key = sample.shopId || '_no_shop_';
+    if (!byShop[key]) byShop[key] = [];
+    byShop[key].push(sample);
+  }
+
+  // Сортируем образцы в каждой группе по дате (новые первые)
+  for (const key of Object.keys(byShop)) {
+    byShop[key].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  // Собираем образцы для сохранения
+  const toKeep = [];
+  const toDelete = [];
+
+  // Сначала берём минимум от каждого магазина
+  for (const key of Object.keys(byShop)) {
+    const shopSamples = byShop[key];
+    const keep = shopSamples.slice(0, MIN_SAMPLES_PER_SHOP);
+    const rest = shopSamples.slice(MIN_SAMPLES_PER_SHOP);
+    toKeep.push(...keep);
+    toDelete.push(...rest);
+  }
+
+  // Если ещё есть место - добавляем остальные по дате
+  if (toKeep.length < MAX_TRAINING_SAMPLES) {
+    // Сортируем оставшиеся по дате (новые первые)
+    toDelete.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const available = MAX_TRAINING_SAMPLES - toKeep.length;
+    const additional = toDelete.splice(0, available);
+    toKeep.push(...additional);
+  }
+
+  // Удаляем изображения удалённых образцов
+  for (const sample of toDelete) {
+    await deleteSampleImage(sample.id);
+  }
+
+  console.log(`[Training] Удалено ${toDelete.length} старых образцов, осталось ${toKeep.length}`);
+
+  return { samples: toKeep, deleted: toDelete.length };
+}
+
 /**
  * Добавить образец для обучения
  */
@@ -223,7 +297,7 @@ async function addTrainingSample({
   templateId
 }) {
   const data = await loadTrainingSamples();
-  const samples = data.samples || [];
+  let samples = data.samples || [];
 
   const sample = {
     id: uuidv4(),
@@ -240,6 +314,10 @@ async function addTrainingSample({
   };
 
   samples.push(sample);
+
+  // Автоматическая ротация при превышении лимита
+  const rotationResult = await rotateSamples(samples);
+  samples = rotationResult.samples;
 
   // Сохраняем изображение
   if (imageBase64) {

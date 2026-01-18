@@ -28,6 +28,7 @@ import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
 import '../../core/services/report_notification_service.dart';
 import '../../core/services/base_http_service.dart';
+import '../../features/ai_training/pages/ai_training_page.dart';
 import '../../core/constants/api_constants.dart';
 
 /// Страница отчетов (только для администраторов и верифицированных сотрудников)
@@ -540,17 +541,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
           // Отчет Обучения ИИ - только админ
           if (isAdmin)
-            _buildSection(
-              context,
-              title: 'Отчет Обучения ИИ',
-              icon: Icons.psychology,
-              onTap: () {
-                // TODO: Логика будет добавлена позже
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Функционал в разработке')),
-                );
-              },
-            ),
+            _buildAITrainingButton(context),
         ],
       ),
     );
@@ -609,6 +600,49 @@ class _ReportsPageState extends State<ReportsPage> {
           ],
         ),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildAITrainingButton(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF004D40), Color(0xFF00796B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/ai_training.png',
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
+            ),
+          ),
+          title: const Text(
+            'Обучение ИИ',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          trailing: const Icon(Icons.chevron_right, color: Colors.white),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AITrainingPage(),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

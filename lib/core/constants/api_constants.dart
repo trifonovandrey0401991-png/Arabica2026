@@ -91,4 +91,11 @@ class ApiConstants {
   static const String shopSettingsEndpoint = '/api/shop-settings';
   static const String fcmTokensEndpoint = '/api/fcm-tokens';
   static const String loyaltyPromoEndpoint = '/api/loyalty-promo';
+
+  // Endpoints - Cigarette Vision (AI Training)
+  static const String cigaretteProductsEndpoint = '/api/cigarette-vision/products';
+  static const String cigaretteTrainingSamplesEndpoint = '/api/cigarette-vision/samples';
+  static const String cigaretteStatsEndpoint = '/api/cigarette-vision/stats';
+  static const String cigaretteDetectEndpoint = '/api/cigarette-vision/detect';
+  static const String cigaretteDisplayCheckEndpoint = '/api/cigarette-vision/display-check';
 }

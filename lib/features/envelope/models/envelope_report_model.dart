@@ -58,12 +58,18 @@ class EnvelopeReport {
   final List<ExpenseItem> oooExpenses;
   final String? oooEnvelopePhotoUrl;
 
+  // ООО - чеки не переданные в ОФД
+  final int oooOfdNotSent;
+
   // ИП данные
   final String? ipZReportPhotoUrl;
   final double ipRevenue;
   final double ipCash;
   final List<ExpenseItem> expenses;
   final String? ipEnvelopePhotoUrl;
+
+  // ИП - чеки не переданные в ОФД
+  final int ipOfdNotSent;
 
   // Статус
   final String status; // 'pending' | 'confirmed'
@@ -82,11 +88,13 @@ class EnvelopeReport {
     this.oooCash = 0,
     this.oooExpenses = const [],
     this.oooEnvelopePhotoUrl,
+    this.oooOfdNotSent = 0,
     this.ipZReportPhotoUrl,
     this.ipRevenue = 0,
     this.ipCash = 0,
     this.expenses = const [],
     this.ipEnvelopePhotoUrl,
+    this.ipOfdNotSent = 0,
     this.status = 'pending',
     this.confirmedAt,
     this.confirmedByAdmin,
@@ -130,11 +138,13 @@ class EnvelopeReport {
       oooCash: (json['oooCash'] ?? 0).toDouble(),
       oooExpenses: oooExpenses,
       oooEnvelopePhotoUrl: json['oooEnvelopePhotoUrl'],
+      oooOfdNotSent: json['oooOfdNotSent'] ?? 0,
       ipZReportPhotoUrl: json['ipZReportPhotoUrl'],
       ipRevenue: (json['ipRevenue'] ?? 0).toDouble(),
       ipCash: (json['ipCash'] ?? 0).toDouble(),
       expenses: expenses,
       ipEnvelopePhotoUrl: json['ipEnvelopePhotoUrl'],
+      ipOfdNotSent: json['ipOfdNotSent'] ?? 0,
       status: json['status'] ?? 'pending',
       confirmedAt: json['confirmedAt'] != null
           ? _parseDateTime(json['confirmedAt'])
@@ -155,11 +165,13 @@ class EnvelopeReport {
     'oooCash': oooCash,
     'oooExpenses': oooExpenses.map((e) => e.toJson()).toList(),
     'oooEnvelopePhotoUrl': oooEnvelopePhotoUrl,
+    'oooOfdNotSent': oooOfdNotSent,
     'ipZReportPhotoUrl': ipZReportPhotoUrl,
     'ipRevenue': ipRevenue,
     'ipCash': ipCash,
     'expenses': expenses.map((e) => e.toJson()).toList(),
     'ipEnvelopePhotoUrl': ipEnvelopePhotoUrl,
+    'ipOfdNotSent': ipOfdNotSent,
     'status': status,
     'confirmedAt': confirmedAt?.toUtc().toIso8601String(),
     'confirmedByAdmin': confirmedByAdmin,
@@ -177,11 +189,13 @@ class EnvelopeReport {
     double? oooCash,
     List<ExpenseItem>? oooExpenses,
     String? oooEnvelopePhotoUrl,
+    int? oooOfdNotSent,
     String? ipZReportPhotoUrl,
     double? ipRevenue,
     double? ipCash,
     List<ExpenseItem>? expenses,
     String? ipEnvelopePhotoUrl,
+    int? ipOfdNotSent,
     String? status,
     DateTime? confirmedAt,
     String? confirmedByAdmin,
@@ -198,11 +212,13 @@ class EnvelopeReport {
       oooCash: oooCash ?? this.oooCash,
       oooExpenses: oooExpenses ?? this.oooExpenses,
       oooEnvelopePhotoUrl: oooEnvelopePhotoUrl ?? this.oooEnvelopePhotoUrl,
+      oooOfdNotSent: oooOfdNotSent ?? this.oooOfdNotSent,
       ipZReportPhotoUrl: ipZReportPhotoUrl ?? this.ipZReportPhotoUrl,
       ipRevenue: ipRevenue ?? this.ipRevenue,
       ipCash: ipCash ?? this.ipCash,
       expenses: expenses ?? this.expenses,
       ipEnvelopePhotoUrl: ipEnvelopePhotoUrl ?? this.ipEnvelopePhotoUrl,
+      ipOfdNotSent: ipOfdNotSent ?? this.ipOfdNotSent,
       status: status ?? this.status,
       confirmedAt: confirmedAt ?? this.confirmedAt,
       confirmedByAdmin: confirmedByAdmin ?? this.confirmedByAdmin,

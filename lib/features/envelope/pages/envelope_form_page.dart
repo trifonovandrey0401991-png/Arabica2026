@@ -9,6 +9,8 @@ import '../services/envelope_question_service.dart';
 import '../widgets/add_expense_dialog.dart';
 import '../../suppliers/services/supplier_service.dart';
 import '../../suppliers/models/supplier_model.dart';
+import '../../ai_training/services/z_report_service.dart';
+import '../../ai_training/widgets/z_report_recognition_dialog.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
 
@@ -50,6 +52,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   // ООО расходы
   List<ExpenseItem> _oooExpenses = [];
 
+  // ООО - чеки не переданные в ОФД
+  final _oooOfdNotSentController = TextEditingController();
+  // ООО - ресурс ключей
+  final _oooResourceKeysController = TextEditingController();
+
   // ИП
   File? _ipZReportPhoto;
   String? _ipZReportPhotoUrl;
@@ -58,6 +65,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   List<ExpenseItem> _expenses = [];
   File? _ipEnvelopePhoto;
   String? _ipEnvelopePhotoUrl;
+
+  // ИП - чеки не переданные в ОФД
+  final _ipOfdNotSentController = TextEditingController();
+  // ИП - ресурс ключей
+  final _ipResourceKeysController = TextEditingController();
 
   static const _primaryColor = Color(0xFF004D40);
 
@@ -93,8 +105,12 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   void dispose() {
     _oooRevenueController.dispose();
     _oooCashController.dispose();
+    _oooOfdNotSentController.dispose();
+    _oooResourceKeysController.dispose();
     _ipRevenueController.dispose();
     _ipCashController.dispose();
+    _ipOfdNotSentController.dispose();
+    _ipResourceKeysController.dispose();
     super.dispose();
   }
 
@@ -154,6 +170,86 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка камеры: $e')),
+        );
+      }
+    }
+  }
+
+  /// Сфотографировать и распознать Z-отчёт
+  Future<void> _pickAndRecognizeZReport({
+    required bool isOoo,
+    required Function(File) onPhotoPicked,
+  }) async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (picked == null || !mounted) return;
+
+      final file = File(picked.path);
+      onPhotoPicked(file);
+
+      // Показываем индикатор загрузки
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Распознавание Z-отчёта...'),
+            ],
+          ),
+        ),
+      );
+
+      // Конвертируем в base64 со сжатием и отправляем на распознавание
+      final bytes = await file.readAsBytes();
+      Logger.debug('📸 Размер оригинала: ${(bytes.length / 1024).toStringAsFixed(0)} KB');
+      final compressedBase64 = await ZReportService.compressImage(bytes);
+      Logger.debug('📦 Размер сжатого base64: ${(compressedBase64.length / 1024).toStringAsFixed(0)} KB');
+      final result = await ZReportService.parseZReport(compressedBase64);
+
+      // Закрываем индикатор загрузки
+      if (mounted) Navigator.of(context).pop();
+
+      if (!mounted) return;
+
+      // Показываем диалог с результатами распознавания
+      final dialogResult = await ZReportRecognitionDialog.show(
+        context,
+        imageBase64: compressedBase64,
+        recognizedData: result.success ? result.data : null,
+        shopAddress: widget.shopAddress,
+        employeeName: widget.employeeName,
+      );
+
+      if (dialogResult != null) {
+        // Заполняем поля распознанными/исправленными данными
+        setState(() {
+          if (isOoo) {
+            _oooRevenueController.text = dialogResult.revenue.toStringAsFixed(0);
+            _oooCashController.text = dialogResult.cash.toStringAsFixed(0);
+            _oooOfdNotSentController.text = dialogResult.ofdNotSent.toString();
+            _oooResourceKeysController.text = dialogResult.resourceKeys.toString();
+          } else {
+            _ipRevenueController.text = dialogResult.revenue.toStringAsFixed(0);
+            _ipCashController.text = dialogResult.cash.toStringAsFixed(0);
+            _ipOfdNotSentController.text = dialogResult.ofdNotSent.toString();
+            _ipResourceKeysController.text = dialogResult.resourceKeys.toString();
+          }
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка распознавания Z-отчёта', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
         );
       }
     }
@@ -325,11 +421,13 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
         oooCash: _oooCash,
         oooExpenses: _oooExpenses,
         oooEnvelopePhotoUrl: _oooEnvelopePhotoUrl,
+        oooOfdNotSent: int.tryParse(_oooOfdNotSentController.text) ?? 0,
         ipZReportPhotoUrl: _ipZReportPhotoUrl,
         ipRevenue: _ipRevenue,
         ipCash: _ipCash,
         expenses: _expenses,
         ipEnvelopePhotoUrl: _ipEnvelopePhotoUrl,
+        ipOfdNotSent: int.tryParse(_ipOfdNotSentController.text) ?? 0,
       );
 
       final created = await EnvelopeReportService.createReport(report);
@@ -401,10 +499,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
       case 0:
         return _buildShiftTypeStep();
       case 1:
-        return _buildPhotoStep(
+        return _buildZReportPhotoStep(
           title: 'Сфотографируйте Z-отчет ООО',
           photo: _oooZReportPhoto,
           photoUrl: _oooZReportPhotoUrl,
+          isOoo: true,
           onPick: (file) => setState(() => _oooZReportPhoto = file),
           referencePhotoUrl: _getReferencePhotoForStep(1),
         );
@@ -413,6 +512,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           title: 'ООО',
           revenueController: _oooRevenueController,
           cashController: _oooCashController,
+          ofdNotSentController: _oooOfdNotSentController,
+          resourceKeysController: _oooResourceKeysController,
         );
       case 3:
         return _buildOooExpensesStep();
@@ -425,10 +526,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           referencePhotoUrl: _getReferencePhotoForStep(4),
         );
       case 5:
-        return _buildPhotoStep(
+        return _buildZReportPhotoStep(
           title: 'Сфотографируйте Z-отчет ИП',
           photo: _ipZReportPhoto,
           photoUrl: _ipZReportPhotoUrl,
+          isOoo: false,
           onPick: (file) => setState(() => _ipZReportPhoto = file),
           referencePhotoUrl: _getReferencePhotoForStep(5),
         );
@@ -437,6 +539,8 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           title: 'ИП',
           revenueController: _ipRevenueController,
           cashController: _ipCashController,
+          ofdNotSentController: _ipOfdNotSentController,
+          resourceKeysController: _ipResourceKeysController,
         );
       case 7:
         return _buildExpensesStep();
@@ -519,6 +623,152 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Шаг с фото Z-отчёта (с распознаванием)
+  Widget _buildZReportPhotoStep({
+    required String title,
+    required File? photo,
+    required String? photoUrl,
+    required bool isOoo,
+    required Function(File) onPick,
+    String? referencePhotoUrl,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+
+        // Подсказка о распознавании
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green[200]!),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.green[700], size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'ИИ автоматически распознает данные с фото',
+                  style: TextStyle(fontSize: 13, color: Colors.green[700]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Эталонное фото (если есть)
+        if (referencePhotoUrl != null && referencePhotoUrl.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Образец фото:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    referencePhotoUrl,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) {
+                      return Container(
+                        height: 80,
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: Text(
+                            'Не удалось загрузить образец',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Ваше фото
+        if (photo != null || photoUrl != null) ...[
+          Text(
+            'Ваше фото:',
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        if (photo != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(photo, height: 300, fit: BoxFit.cover),
+          )
+        else if (photoUrl != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(photoUrl, height: 300, fit: BoxFit.cover),
+          )
+        else
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Icon(Icons.camera_alt, size: 64, color: Colors.grey),
+            ),
+          ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: () => _pickAndRecognizeZReport(
+            isOoo: isOoo,
+            onPhotoPicked: onPick,
+          ),
+          icon: const Icon(Icons.camera_alt),
+          label: Text(photo != null ? 'Переснять и распознать' : 'Сфотографировать'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+      ],
     );
   }
 
@@ -654,39 +904,76 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     required String title,
     required TextEditingController revenueController,
     required TextEditingController cashController,
+    required TextEditingController ofdNotSentController,
+    required TextEditingController resourceKeysController,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Введите данные $title:',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 24),
-        TextFormField(
-          controller: revenueController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: 'Сумма выручки',
-            prefixIcon: Icon(Icons.attach_money),
-            suffixText: '₽',
-            border: OutlineInputBorder(),
+        // Заголовок с градиентом
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.teal.shade50, Colors.blue.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.teal.shade200, width: 1),
           ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: cashController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: 'Сумма наличных',
-            prefixIcon: Icon(Icons.payments),
-            suffixText: '₽',
-            border: OutlineInputBorder(),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.edit_note, color: Colors.teal.shade700, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Введите данные $title:',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 20),
+
+        // Поля ввода
+        _buildEnvelopeTextField(
+          revenueController,
+          'Сумма выручки *',
+          Icons.currency_ruble,
+          true,
+        ),
+        const SizedBox(height: 12),
+        _buildEnvelopeTextField(
+          cashController,
+          'Сумма наличных *',
+          Icons.payments_outlined,
+          true,
+        ),
+        const SizedBox(height: 12),
+        _buildEnvelopeTextField(
+          ofdNotSentController,
+          'Не передано в ОФД',
+          Icons.cloud_off,
+          false,
+        ),
+        const SizedBox(height: 12),
+        _buildEnvelopeTextField(
+          resourceKeysController,
+          'Ресурс ключей',
+          Icons.key,
+          false,
         ),
       ],
     );
@@ -870,6 +1157,63 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEnvelopeTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+    bool isMoney, {
+    String? helperText,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: Icon(
+            icon,
+            color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
+          ),
+          suffixText: isMoney ? '₽' : null,
+          suffixStyle: TextStyle(
+            color: Colors.teal.shade700,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        onChanged: (_) => setState(() {}),
       ),
     );
   }
