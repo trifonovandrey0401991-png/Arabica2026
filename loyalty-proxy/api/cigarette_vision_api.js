@@ -8,22 +8,44 @@ const path = require('path');
 
 const cigaretteVision = require('../modules/cigarette-vision');
 
-// Загрузка вопросов пересчёта (нужен доступ к основным данным)
+// Директория с вопросами пересчёта (та же что в index.js)
+const RECOUNT_QUESTIONS_DIR = '/var/www/recount-questions';
+
+// Кэш вопросов пересчёта
 let recountQuestionsCache = [];
 
 /**
- * Загрузить вопросы пересчёта из файла
+ * Загрузить вопросы пересчёта из директории
  */
 function loadRecountQuestions() {
   try {
-    const questionsFile = path.join(__dirname, '../data/recount-questions.json');
-    if (fs.existsSync(questionsFile)) {
-      const data = JSON.parse(fs.readFileSync(questionsFile, 'utf8'));
-      recountQuestionsCache = data.questions || data || [];
-      console.log(`[Cigarette Vision API] Загружено ${recountQuestionsCache.length} вопросов пересчёта`);
+    if (!fs.existsSync(RECOUNT_QUESTIONS_DIR)) {
+      console.log('[Cigarette Vision API] Директория вопросов пересчёта не существует');
+      recountQuestionsCache = [];
+      return;
     }
+
+    const files = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    const questions = [];
+
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          const filePath = path.join(RECOUNT_QUESTIONS_DIR, file);
+          const data = fs.readFileSync(filePath, 'utf8');
+          const question = JSON.parse(data);
+          questions.push(question);
+        } catch (error) {
+          console.error(`[Cigarette Vision API] Ошибка чтения вопроса ${file}:`, error);
+        }
+      }
+    }
+
+    recountQuestionsCache = questions;
+    console.log(`[Cigarette Vision API] Загружено ${recountQuestionsCache.length} вопросов пересчёта`);
   } catch (error) {
     console.error('[Cigarette Vision API] Ошибка загрузки вопросов пересчёта:', error);
+    recountQuestionsCache = [];
   }
 }
 
