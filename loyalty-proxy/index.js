@@ -24,6 +24,8 @@ const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api")
 const { setupPointsSettingsAPI } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
+const { setupZReportAPI } = require("./api/z_report_api");
+const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cors());
 
@@ -6256,6 +6258,8 @@ setupShiftTransfersAPI(app);
 setupTaskPointsSettingsAPI(app);
 setupPointsSettingsAPI(app);
 setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
+setupZReportAPI(app);
+setupCigaretteVisionAPI(app);
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();
