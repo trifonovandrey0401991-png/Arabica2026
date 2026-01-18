@@ -23,6 +23,26 @@ async function ensureDataDir() {
 }
 
 /**
+ * Нормализация типичных OCR-ошибок в Z-отчётах
+ * Исправляет частые ошибки распознавания: М↔Н, Ф↔О, и т.д.
+ * @param {string} text - Текст для нормализации
+ * @returns {string} - Нормализованный текст
+ */
+function normalizeOcrErrors(text) {
+  if (!text) return text;
+
+  return text
+    // СУННА/СУМНА/СУНМА → СУММА (любые комбинации Н↔М)
+    .replace(/СУ[НМM][НМM]А/gi, 'СУММА')
+    // ОД → ФД, ОА → ФА (О вместо Ф) - для "НЕПЕРЕДАННЫХ ФД"
+    // \b не работает с кириллицей, используем пробел/границу
+    .replace(/(\s)ОД(\s|:|$)/g, '$1ФД$2')
+    .replace(/(\s)ОА(\s|:|$)/g, '$1ФА$2')
+    // СНЕНУ → СМЕНУ (Н вместо М)
+    .replace(/СНЕНУ/gi, 'СМЕНУ');
+}
+
+/**
  * Загрузить шаблоны из файла
  */
 async function loadTemplates() {
@@ -238,9 +258,13 @@ async function addTrainingSample({
   await saveTrainingSamples({ samples });
 
   // Анализируем образцы для улучшения паттернов
-  await analyzeAndImprovePatterns(samples);
+  const learningResult = await analyzeAndImprovePatterns(samples);
 
-  return sample;
+  // Возвращаем образец вместе с результатом обучения
+  return {
+    sample,
+    learningResult
+  };
 }
 
 /**
@@ -277,12 +301,23 @@ async function saveLearnedPatterns(data) {
  * Извлекает паттерн из текста для заданного значения
  * @param {string} rawText - Полный текст чека
  * @param {number|string} value - Правильное значение
- * @param {string} fieldType - Тип поля (totalSum, cashSum, ofdNotSent)
+ * @param {string} fieldType - Тип поля (totalSum, cashSum, ofdNotSent, resourceKeys)
  * @returns {Object|null} - Найденный паттерн или null
  */
 function extractPatternFromText(rawText, value, fieldType) {
-  if (!rawText || rawText.trim().length < 50) return null; // Слишком короткий текст
-  if (value === null || value === undefined) return null;
+  // Функция логирования причин неудачи
+  const logReason = (reason) => {
+    console.log(`[Training] ${fieldType}: паттерн не найден - ${reason}`);
+  };
+
+  if (!rawText || rawText.trim().length < 50) {
+    logReason('текст слишком короткий');
+    return null;
+  }
+  if (value === null || value === undefined) {
+    logReason('значение пустое');
+    return null;
+  }
 
   const valueStr = String(value);
   const lines = rawText.split('\n');
@@ -302,7 +337,7 @@ function extractPatternFromText(rawText, value, fieldType) {
           if (upperLine.includes(keyword) && line.includes('0')) {
             // Нашли строку с ключевым словом и 0
             const cleanPrefix = line.replace(/[:\s]*0.*$/, '').trim();
-            if (cleanPrefix.length >= 10) {
+            if (cleanPrefix.length >= 5) {  // Снижено с 10 до 5
               const escapedPrefix = cleanPrefix
                 .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
                 .replace(/\s+/g, '\\s*');
@@ -438,72 +473,111 @@ function extractPatternFromText(rawText, value, fieldType) {
   // Метки идут в одном блоке, значения в другом, порядок совпадает
   // Ищем строку с ключевым словом, вычисляем её позицию в блоке меток
   // Затем ищем блок значений и берём значение на той же позиции
-  if (fieldType === 'resourceKeys' || fieldType === 'ofdNotSent') {
-    // Ищем метку поля
-    let labelLineIdx = -1;
-    let firstLabelIdx = -1;
 
-    for (let i = 0; i < lines.length; i++) {
-      const upperLine = lines[i].toUpperCase();
+  // Общий паттерн для суффиксов (AH., ОД., дн., дней, шт.)
+  const suffixPattern = /\s*([АA][НH]|[ОO]Д|дн|дней|шт)\.?\s*$/i;
+  // Паттерн для числа с возможным суффиксом
+  const numberWithSuffixPattern = /^=?\d+([.,]\d+)?(\s*([АA][НH]|[ОO]Д|дн|дней|шт)\.?)?\s*$/i;
 
-      // Первая метка блока (ЧЕКОВ ЗА СМЕНУ обычно первая)
-      if (firstLabelIdx === -1 && (upperLine.includes('ЧЕКОВ ЗА СМЕНУ') || upperLine.includes('ЧЕКОВ ЗА СНЕНУ'))) {
-        firstLabelIdx = i;
-      }
+  // АТОЛ блочный алгоритм работает для ВСЕХ полей
+  // Для счётчиков (resourceKeys, ofdNotSent) - блок после "ЧЕКОВ ЗА СМЕНУ"
+  // Для сумм (totalSum, cashSum) - блок после "СУММА ПРИХ. ВСЕГО"
 
-      // Метка нашего поля
-      if (labelLineIdx === -1 && keywords.some(kw => upperLine.includes(kw))) {
-        labelLineIdx = i;
-      }
+  // Определяем маркеры блока для разных типов полей
+  const blockMarkers = {
+    // Для счётчиков
+    resourceKeys: ['ЧЕКОВ ЗА СМЕНУ', 'ЧЕКОВ ЗА СНЕНУ'],
+    ofdNotSent: ['ЧЕКОВ ЗА СМЕНУ', 'ЧЕКОВ ЗА СНЕНУ'],
+    // Для сумм - начало блока сумм
+    totalSum: ['СУММА ПРИХ', 'СУМНА ПРИХ', 'СУННА ПРИХ', 'ПРИХОД'],
+    cashSum: ['СУММА ПРИХ', 'СУМНА ПРИХ', 'СУННА ПРИХ', 'ПРИХОД']
+  };
 
-      if (firstLabelIdx !== -1 && labelLineIdx !== -1) break;
-    }
+  const markers = blockMarkers[fieldType] || [];
 
-    if (labelLineIdx !== -1 && firstLabelIdx !== -1) {
-      const labelOffset = labelLineIdx - firstLabelIdx;
-      console.log(`[Training] АТОЛ блок: firstLabel=${firstLabelIdx}, fieldLabel=${labelLineIdx}, offset=${labelOffset}`);
+  // Ищем метку поля и первую метку блока
+  let labelLineIdx = -1;
+  let firstLabelIdx = -1;
 
-      // Ищем блок значений (после "СЧЕТЧИКИ ИТОГОВ" или просто числа после меток)
-      let valuesStartIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const upperLine = lines[i].toUpperCase();
 
-      // Ищем начало блока значений - это первое число после последней метки в блоке
-      for (let i = labelLineIdx + 1; i < Math.min(labelLineIdx + 15, lines.length); i++) {
-        const line = lines[i].trim();
-        // Число (возможно с суффиксом AH., ОД и т.п.)
-        if (line.match(/^\d+(\s*[АA][НH]\.?)?$/i)) {
-          valuesStartIdx = i;
+    // Первая метка блока
+    if (firstLabelIdx === -1) {
+      for (const marker of markers) {
+        if (upperLine.includes(marker)) {
+          firstLabelIdx = i;
           break;
         }
       }
+    }
 
-      if (valuesStartIdx !== -1) {
-        // Ищем значение на позиции offset от начала блока значений
-        const valueLineIdx = valuesStartIdx + labelOffset;
-        if (valueLineIdx < lines.length) {
-          let valueLine = lines[valueLineIdx].trim();
-          // Убираем суффикс AH., ОД и т.п.
-          const cleanValue = valueLine.replace(/\s*[АA][НH]\.?$/i, '').trim();
+    // Метка нашего поля
+    if (labelLineIdx === -1 && keywords.some(kw => upperLine.includes(kw))) {
+      // Для cashSum проверяем что это именно НАЛИЧНЫЕ, не БЕЗНАЛИЧНЫЕ
+      if (fieldType === 'cashSum') {
+        if (upperLine.includes('БЕЗНАЛИЧ')) continue;
+      }
+      // Для totalSum проверяем что это ВСЕГО, не НАЛИЧНЫЕ/БЕЗНАЛИЧНЫЕ
+      if (fieldType === 'totalSum') {
+        if (upperLine.includes('НАЛИЧН') || upperLine.includes('БЕЗНАЛИЧ')) continue;
+      }
+      labelLineIdx = i;
+    }
 
-          for (const format of searchFormats) {
-            if (cleanValue === format || valueLine.startsWith(format)) {
-              const labelLine = lines[labelLineIdx].trim();
-              const cleanPrefix = labelLine.replace(/[:\s=]*$/, '').trim();
+    if (firstLabelIdx !== -1 && labelLineIdx !== -1) break;
+  }
 
-              if (cleanPrefix.length >= 5) {
-                const escapedPrefix = cleanPrefix
-                  .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                  .replace(/\s+/g, '\\s*');
+  if (labelLineIdx !== -1 && firstLabelIdx !== -1) {
+    const labelOffset = labelLineIdx - firstLabelIdx;
+    console.log(`[Training] АТОЛ блок для ${fieldType}: firstLabel=${firstLabelIdx}, fieldLabel=${labelLineIdx}, offset=${labelOffset}`);
 
-                console.log(`[Training] Найден АТОЛ паттерн для ${fieldType}: "${cleanPrefix}" -> ${cleanValue}`);
+    // Ищем блок значений
+    // ВАЖНО: блок значений может быть далеко от меток, ищем от первой метки блока
+    let valuesStartIdx = -1;
 
-                return {
-                  context: cleanPrefix,
-                  lineExample: labelLine + ' ... ' + valueLine,
-                  pattern: escapedPrefix,
-                  foundValue: cleanValue,
-                  confidence: 'high'
-                };
-              }
+    // Ищем начало блока значений - это первое число после первой метки блока
+    // Увеличиваем диапазон поиска до 30 строк
+    for (let i = firstLabelIdx + 1; i < Math.min(firstLabelIdx + 30, lines.length); i++) {
+      const line = lines[i].trim();
+      // Число (возможно с суффиксом или знаком =)
+      if (line.match(numberWithSuffixPattern)) {
+        valuesStartIdx = i;
+        break;
+      }
+    }
+
+    if (valuesStartIdx !== -1) {
+      // Ищем значение на позиции offset от начала блока значений
+      const valueLineIdx = valuesStartIdx + labelOffset;
+      console.log(`[Training] АТОЛ блок: valuesStart=${valuesStartIdx}, valueLineIdx=${valueLineIdx}`);
+
+      if (valueLineIdx < lines.length) {
+        let valueLine = lines[valueLineIdx].trim();
+        // Убираем суффикс и знак =
+        let cleanValue = valueLine.replace(suffixPattern, '').replace(/^=/, '').trim();
+
+        for (const format of searchFormats) {
+          // Сравниваем без = для АТОЛ формата
+          const formatNoEquals = format.replace(/^=/, '');
+          if (cleanValue === format || cleanValue === formatNoEquals || valueLine.startsWith(format)) {
+            const labelLine = lines[labelLineIdx].trim();
+            const cleanPrefix = labelLine.replace(/[:\s=]*$/, '').trim();
+
+            if (cleanPrefix.length >= 5) {
+              const escapedPrefix = cleanPrefix
+                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                .replace(/\s+/g, '\\s*');
+
+              console.log(`[Training] Найден АТОЛ паттерн для ${fieldType}: "${cleanPrefix}" -> ${cleanValue}`);
+
+              return {
+                context: cleanPrefix,
+                lineExample: labelLine + ' ... ' + valueLine,
+                pattern: escapedPrefix,
+                foundValue: cleanValue,
+                confidence: 'high'
+              };
             }
           }
         }
@@ -511,6 +585,7 @@ function extractPatternFromText(rawText, value, fieldType) {
     }
   }
 
+  logReason('ни один из 3 проходов не нашёл совпадение');
   return null;
 }
 
@@ -546,39 +621,51 @@ async function analyzeAndImprovePatterns(samples) {
       const extracted = extractPatternFromText(sample.rawText, correctValue, field);
 
       if (extracted) {
-        // Проверяем что такого паттерна ещё нет
-        const exists = patterns[field]?.some(p =>
-          p.pattern === extracted.pattern ||
-          p.context === extracted.context
-        );
+        // Нормализуем OCR-ошибки в контексте (СУННА→СУММА, ОД→ФД)
+        const normalizedContext = normalizeOcrErrors(extracted.context);
+        const normalizedPattern = normalizeOcrErrors(extracted.pattern);
+
+        // Проверяем что такого паттерна ещё нет (с учётом нормализации)
+        const exists = patterns[field]?.some(p => {
+          const pNormContext = normalizeOcrErrors(p.context);
+          const pNormPattern = normalizeOcrErrors(p.pattern);
+          return pNormPattern === normalizedPattern || pNormContext === normalizedContext;
+        });
 
         if (!exists && patterns[field]) {
           patterns[field].push({
-            pattern: extracted.pattern,
-            context: extracted.context,
+            pattern: normalizedPattern,
+            context: normalizedContext,
             lineExample: extracted.lineExample,
             confidence: extracted.confidence,
             learnedAt: new Date().toISOString(),
             sampleId: sample.id
           });
           newPatternsCount++;
-          console.log(`[Training] Новый паттерн для ${field}:`, extracted.context);
+          console.log(`[Training] Новый паттерн для ${field}:`, normalizedContext);
         }
       }
     }
   }
 
   // Ограничиваем количество паттернов (макс 50 на поле)
+  // ВАЖНО: защищённые паттерны (protected: true) никогда не удаляются
   for (const field of Object.keys(patterns)) {
     if (patterns[field].length > 50) {
-      // Оставляем только паттерны с высокой уверенностью или недавние
-      patterns[field] = patterns[field]
-        .sort((a, b) => {
-          if (a.confidence === 'high' && b.confidence !== 'high') return -1;
-          if (b.confidence === 'high' && a.confidence !== 'high') return 1;
-          return new Date(b.learnedAt) - new Date(a.learnedAt);
-        })
-        .slice(0, 50);
+      // Разделяем защищённые и обычные паттерны
+      const protectedPatterns = patterns[field].filter(p => p.protected);
+      const normalPatterns = patterns[field].filter(p => !p.protected);
+
+      // Сортируем обычные по уверенности и дате
+      normalPatterns.sort((a, b) => {
+        if (a.confidence === 'high' && b.confidence !== 'high') return -1;
+        if (b.confidence === 'high' && a.confidence !== 'high') return 1;
+        return new Date(b.learnedAt) - new Date(a.learnedAt);
+      });
+
+      // Оставляем все защищённые + столько обычных сколько влезет
+      const maxNormal = 50 - protectedPatterns.length;
+      patterns[field] = [...protectedPatterns, ...normalPatterns.slice(0, maxNormal)];
     }
   }
 
