@@ -55,7 +55,60 @@ class CigaretteProduct {
       : 0;
 }
 
-/// Образец для обучения (фото + метаданные)
+/// Аннотация bounding box для обучения YOLO (нормализованные координаты 0-1)
+class AnnotationBox {
+  final double xCenter;   // Центр X (0.0-1.0)
+  final double yCenter;   // Центр Y (0.0-1.0)
+  final double width;     // Ширина (0.0-1.0)
+  final double height;    // Высота (0.0-1.0)
+
+  AnnotationBox({
+    required this.xCenter,
+    required this.yCenter,
+    required this.width,
+    required this.height,
+  });
+
+  /// Создать из координат левого верхнего угла и размеров (пиксели → нормализованные)
+  factory AnnotationBox.fromRect({
+    required double left,
+    required double top,
+    required double rectWidth,
+    required double rectHeight,
+    required double imageWidth,
+    required double imageHeight,
+  }) {
+    return AnnotationBox(
+      xCenter: (left + rectWidth / 2) / imageWidth,
+      yCenter: (top + rectHeight / 2) / imageHeight,
+      width: rectWidth / imageWidth,
+      height: rectHeight / imageHeight,
+    );
+  }
+
+  factory AnnotationBox.fromJson(Map<String, dynamic> json) {
+    return AnnotationBox(
+      xCenter: (json['xCenter'] ?? json['x_center'] ?? 0).toDouble(),
+      yCenter: (json['yCenter'] ?? json['y_center'] ?? 0).toDouble(),
+      width: (json['width'] ?? 0).toDouble(),
+      height: (json['height'] ?? 0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'xCenter': xCenter,
+    'yCenter': yCenter,
+    'width': width,
+    'height': height,
+  };
+
+  /// Конвертировать в строку YOLO формата: "class_id x_center y_center width height"
+  String toYoloFormat(int classId) {
+    return '$classId ${xCenter.toStringAsFixed(6)} ${yCenter.toStringAsFixed(6)} ${width.toStringAsFixed(6)} ${height.toStringAsFixed(6)}';
+  }
+}
+
+/// Образец для обучения (фото + метаданные + аннотации)
 class TrainingSample {
   final String id;
   final String productId;
@@ -65,7 +118,8 @@ class TrainingSample {
   final String? shopAddress;
   final String? employeeName;
   final DateTime createdAt;
-  final TrainingSampleType type; // Для пересчёта или для выкладки
+  final TrainingSampleType type;
+  final List<AnnotationBox> boundingBoxes; // Аннотации для обучения
 
   TrainingSample({
     required this.id,
@@ -77,6 +131,7 @@ class TrainingSample {
     this.employeeName,
     required this.createdAt,
     required this.type,
+    this.boundingBoxes = const [],
   });
 
   factory TrainingSample.fromJson(Map<String, dynamic> json) {
@@ -92,6 +147,9 @@ class TrainingSample {
         ? DateTime.parse(json['createdAt'])
         : DateTime.now(),
       type: TrainingSampleType.fromString(json['type']),
+      boundingBoxes: (json['boundingBoxes'] as List?)
+          ?.map((b) => AnnotationBox.fromJson(b))
+          .toList() ?? [],
     );
   }
 
@@ -105,7 +163,14 @@ class TrainingSample {
     'employeeName': employeeName,
     'createdAt': createdAt.toIso8601String(),
     'type': type.value,
+    'boundingBoxes': boundingBoxes.map((b) => b.toJson()).toList(),
   };
+
+  /// Количество аннотаций
+  int get annotationCount => boundingBoxes.length;
+
+  /// Есть ли аннотации
+  bool get hasAnnotations => boundingBoxes.isNotEmpty;
 }
 
 /// Тип образца для обучения

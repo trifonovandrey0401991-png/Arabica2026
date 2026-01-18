@@ -111,7 +111,7 @@ function setupCigaretteVisionAPI(app) {
 
   // ============ ОБРАЗЦЫ ДЛЯ ОБУЧЕНИЯ ============
 
-  // Загрузить образец для обучения
+  // Загрузить образец для обучения (с аннотациями bounding boxes)
   app.post('/api/cigarette-vision/samples', async (req, res) => {
     try {
       const {
@@ -122,6 +122,7 @@ function setupCigaretteVisionAPI(app) {
         type,
         shopAddress,
         employeeName,
+        boundingBoxes,
       } = req.body;
 
       if (!imageBase64) {
@@ -140,6 +141,7 @@ function setupCigaretteVisionAPI(app) {
         type: type || 'recount',
         shopAddress,
         employeeName,
+        boundingBoxes: boundingBoxes || [],
       });
 
       if (result.success) {

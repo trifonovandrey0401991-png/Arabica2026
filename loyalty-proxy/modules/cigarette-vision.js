@@ -151,6 +151,9 @@ function getTrainingStats(recountQuestions) {
   };
 }
 
+// Директория для YOLO аннотаций
+const LABELS_DIR = path.join(DATA_DIR, 'cigarette-training-labels');
+
 /**
  * Сохранить образец для обучения
  */
@@ -162,9 +165,15 @@ async function saveTrainingSample({
   type = 'recount',
   shopAddress,
   employeeName,
+  boundingBoxes = [],
 }) {
   try {
     init();
+
+    // Создаём директорию для labels если не существует
+    if (!fs.existsSync(LABELS_DIR)) {
+      fs.mkdirSync(LABELS_DIR, { recursive: true });
+    }
 
     const id = uuidv4();
     const timestamp = new Date().toISOString();
@@ -174,6 +183,26 @@ async function saveTrainingSample({
     const imageFileName = `${id}.jpg`;
     const imagePath = path.join(IMAGES_DIR, imageFileName);
     fs.writeFileSync(imagePath, imageBuffer);
+
+    // Сохраняем YOLO аннотации если есть
+    if (boundingBoxes && boundingBoxes.length > 0) {
+      const labelFileName = `${id}.txt`;
+      const labelPath = path.join(LABELS_DIR, labelFileName);
+
+      // Формат YOLO: class_id x_center y_center width height
+      // Используем productId как classId (нужно будет создать маппинг)
+      const classId = getClassIdForProduct(productId);
+      const yoloLines = boundingBoxes.map(box => {
+        const xCenter = box.xCenter || box.x_center || 0;
+        const yCenter = box.yCenter || box.y_center || 0;
+        const width = box.width || 0;
+        const height = box.height || 0;
+        return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+      }).join('\n');
+
+      fs.writeFileSync(labelPath, yoloLines);
+      console.log(`[Cigarette Vision] YOLO аннотация сохранена: ${labelFileName} (${boundingBoxes.length} boxes)`);
+    }
 
     // Создаём запись об образце
     const sample = {
@@ -186,6 +215,8 @@ async function saveTrainingSample({
       employeeName,
       imageFileName,
       imageUrl: `/api/cigarette-vision/images/${imageFileName}`,
+      boundingBoxes: boundingBoxes || [],
+      annotationCount: boundingBoxes ? boundingBoxes.length : 0,
       createdAt: timestamp,
     };
 
@@ -194,13 +225,69 @@ async function saveTrainingSample({
     samples.push(sample);
     saveSamples(samples);
 
-    console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type})`);
+    console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type}, ${boundingBoxes ? boundingBoxes.length : 0} аннотаций)`);
 
     return { success: true, sample };
   } catch (error) {
     console.error('Ошибка сохранения образца:', error);
     return { success: false, error: error.message };
   }
+}
+
+// Кэш маппинга productId -> classId
+let classMapping = null;
+const CLASS_MAPPING_FILE = path.join(DATA_DIR, 'class-mapping.json');
+
+/**
+ * Получить classId для товара (создаёт новый если не существует)
+ */
+function getClassIdForProduct(productId) {
+  // Загружаем маппинг если не загружен
+  if (classMapping === null) {
+    if (fs.existsSync(CLASS_MAPPING_FILE)) {
+      try {
+        classMapping = JSON.parse(fs.readFileSync(CLASS_MAPPING_FILE, 'utf8'));
+      } catch (e) {
+        classMapping = {};
+      }
+    } else {
+      classMapping = {};
+    }
+  }
+
+  // Если товар уже есть — возвращаем его classId
+  if (classMapping[productId] !== undefined) {
+    return classMapping[productId];
+  }
+
+  // Создаём новый classId
+  const maxId = Object.values(classMapping).reduce((max, id) => Math.max(max, id), -1);
+  const newId = maxId + 1;
+  classMapping[productId] = newId;
+
+  // Сохраняем маппинг
+  fs.writeFileSync(CLASS_MAPPING_FILE, JSON.stringify(classMapping, null, 2));
+  console.log(`[Cigarette Vision] Новый classId для ${productId}: ${newId}`);
+
+  return newId;
+}
+
+/**
+ * Получить маппинг всех товаров -> classId
+ */
+function getClassMapping() {
+  if (classMapping === null) {
+    if (fs.existsSync(CLASS_MAPPING_FILE)) {
+      try {
+        classMapping = JSON.parse(fs.readFileSync(CLASS_MAPPING_FILE, 'utf8'));
+      } catch (e) {
+        classMapping = {};
+      }
+    } else {
+      classMapping = {};
+    }
+  }
+  return classMapping;
 }
 
 /**
@@ -290,5 +377,7 @@ module.exports = {
   getImagePath,
   detectAndCount,
   checkDisplay,
+  getClassMapping,
+  getClassIdForProduct,
   REQUIRED_PHOTOS_COUNT,
 };

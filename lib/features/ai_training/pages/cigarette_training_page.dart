@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../employees/pages/employees_page.dart';
+import 'cigarette_annotation_page.dart';
 
 /// Страница обучения ИИ распознаванию сигарет
 class CigaretteTrainingPage extends StatefulWidget {
@@ -610,7 +611,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     );
   }
 
-  /// Сделать фото и загрузить
+  /// Сделать фото и открыть экран разметки
   Future<void> _takePhoto(CigaretteProduct product, TrainingSampleType type) async {
     final picker = ImagePicker();
     final image = await picker.pickImage(
@@ -619,22 +620,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     );
 
     if (image == null) return;
-
-    // Показываем индикатор загрузки
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Загрузка фото...'),
-          ],
-        ),
-      ),
-    );
 
     try {
       final imageBytes = await File(image.path).readAsBytes();
@@ -644,39 +630,26 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       final prefs = await SharedPreferences.getInstance();
       final shopAddress = prefs.getString('selectedShopAddress');
 
-      final success = await CigaretteVisionService.uploadTrainingSample(
-        imageBytes: imageBytes,
-        productId: product.id,
-        barcode: product.barcode,
-        productName: product.productName,
-        type: type,
-        shopAddress: shopAddress,
-        employeeName: employeeName,
+      // Открываем экран разметки
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CigaretteAnnotationPage(
+            imageBytes: imageBytes,
+            product: product,
+            type: type,
+            shopAddress: shopAddress,
+            employeeName: employeeName,
+          ),
+        ),
       );
 
-      if (!mounted) return;
-      Navigator.pop(context); // Закрываем диалог загрузки
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Фото добавлено: ${product.productName}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Обновляем данные
+      // Если успешно сохранено — обновляем данные
+      if (result == true && mounted) {
         _loadData();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ошибка загрузки фото'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Ошибка: $e'),

@@ -74,13 +74,36 @@ class CigaretteVisionService {
     }
   }
 
-  /// Загрузить образец для обучения
+  /// Загрузить образец для обучения (без аннотаций)
   static Future<bool> uploadTrainingSample({
     required Uint8List imageBytes,
     required String productId,
     required String barcode,
     required String productName,
     required TrainingSampleType type,
+    String? shopAddress,
+    String? employeeName,
+  }) async {
+    return uploadAnnotatedSample(
+      imageBytes: imageBytes,
+      productId: productId,
+      barcode: barcode,
+      productName: productName,
+      type: type,
+      boundingBoxes: [],
+      shopAddress: shopAddress,
+      employeeName: employeeName,
+    );
+  }
+
+  /// Загрузить образец с аннотациями bounding boxes
+  static Future<bool> uploadAnnotatedSample({
+    required Uint8List imageBytes,
+    required String productId,
+    required String barcode,
+    required String productName,
+    required TrainingSampleType type,
+    required List<AnnotationBox> boundingBoxes,
     String? shopAddress,
     String? employeeName,
   }) async {
@@ -100,11 +123,12 @@ class CigaretteVisionService {
           'type': type.value,
           'shopAddress': shopAddress,
           'employeeName': employeeName,
+          'boundingBoxes': boundingBoxes.map((b) => b.toJson()).toList(),
         }),
       ).timeout(ApiConstants.uploadTimeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Logger.info('Образец для обучения загружен: $productName');
+        Logger.info('Образец с ${boundingBoxes.length} аннотациями загружен: $productName');
         return true;
       } else {
         Logger.error('Ошибка загрузки образца: ${response.statusCode}');
