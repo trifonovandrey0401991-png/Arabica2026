@@ -26,7 +26,7 @@ class CigaretteAnnotationPage extends StatefulWidget {
 }
 
 class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
-  final GlobalKey<_BoundingBoxPainterState> _painterKey = GlobalKey();
+  final GlobalKey<BoundingBoxPainterState> _painterKey = GlobalKey();
   List<Rect> _boxes = [];
   bool _isUploading = false;
   bool _showInstructions = true;
@@ -321,6 +321,3 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
     );
   }
 }
-
-// Тип состояния для доступа к методам виджета
-typedef _BoundingBoxPainterState = State<BoundingBoxPainter>;

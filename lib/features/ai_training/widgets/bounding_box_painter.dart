@@ -20,10 +20,10 @@ class BoundingBoxPainter extends StatefulWidget {
   });
 
   @override
-  State<BoundingBoxPainter> createState() => _BoundingBoxPainterState();
+  BoundingBoxPainterState createState() => BoundingBoxPainterState();
 }
 
-class _BoundingBoxPainterState extends State<BoundingBoxPainter> {
+class BoundingBoxPainterState extends State<BoundingBoxPainter> {
   ui.Image? _image;
   Size? _imageSize;
   List<Rect> _boxes = [];
