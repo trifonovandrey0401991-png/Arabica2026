@@ -104,6 +104,7 @@ class CigaretteVisionService {
     required String productName,
     required TrainingSampleType type,
     required List<AnnotationBox> boundingBoxes,
+    int? templateId,
     String? shopAddress,
     String? employeeName,
   }) async {
@@ -112,19 +113,26 @@ class CigaretteVisionService {
       final compressedImage = await compressImage(imageBytes);
       final base64Image = base64Encode(compressedImage);
 
+      final body = {
+        'imageBase64': base64Image,
+        'productId': productId,
+        'barcode': barcode,
+        'productName': productName,
+        'type': type.value,
+        'shopAddress': shopAddress,
+        'employeeName': employeeName,
+        'boundingBoxes': boundingBoxes.map((b) => b.toJson()).toList(),
+      };
+
+      // Добавляем templateId если указан
+      if (templateId != null) {
+        body['templateId'] = templateId;
+      }
+
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}${ApiConstants.cigaretteTrainingSamplesEndpoint}'),
         headers: ApiConstants.jsonHeaders,
-        body: jsonEncode({
-          'imageBase64': base64Image,
-          'productId': productId,
-          'barcode': barcode,
-          'productName': productName,
-          'type': type.value,
-          'shopAddress': shopAddress,
-          'employeeName': employeeName,
-          'boundingBoxes': boundingBoxes.map((b) => b.toJson()).toList(),
-        }),
+        body: jsonEncode(body),
       ).timeout(ApiConstants.uploadTimeout);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -273,4 +281,140 @@ class CigaretteVisionService {
       return imageBytes;
     }
   }
+
+  // ============ НАСТРОЙКИ ============
+
+  /// Получить настройки обучения
+  static Future<TrainingSettings?> getSettings() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/settings'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return TrainingSettings.fromJson(data['settings']);
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка получения настроек', e);
+      return null;
+    }
+  }
+
+  /// Обновить настройки обучения
+  static Future<TrainingSettings?> updateSettings({
+    int? requiredRecountPhotos,
+    int? requiredDisplayPhotos,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (requiredRecountPhotos != null) {
+        body['requiredRecountPhotos'] = requiredRecountPhotos;
+      }
+      if (requiredDisplayPhotos != null) {
+        body['requiredDisplayPhotos'] = requiredDisplayPhotos;
+      }
+
+      final response = await http.put(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/settings'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(body),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return TrainingSettings.fromJson(data['settings']);
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка обновления настроек', e);
+      return null;
+    }
+  }
+
+  // ============ ВСЕ ОБРАЗЦЫ (для админки) ============
+
+  /// Получить все образцы с фильтрацией
+  static Future<SamplesResponse> getAllSamples({
+    String? productId,
+    String? type,
+    int? limit,
+    int? offset,
+  }) async {
+    try {
+      var url = '${ApiConstants.serverUrl}/api/cigarette-vision/samples/all?';
+      final params = <String>[];
+      if (productId != null) params.add('productId=$productId');
+      if (type != null) params.add('type=$type');
+      if (limit != null) params.add('limit=$limit');
+      if (offset != null) params.add('offset=$offset');
+      url += params.join('&');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        return SamplesResponse.fromJson(jsonDecode(response.body));
+      }
+      return SamplesResponse.empty();
+    } catch (e) {
+      Logger.error('Ошибка получения всех образцов', e);
+      return SamplesResponse.empty();
+    }
+  }
+}
+
+/// Настройки обучения
+class TrainingSettings {
+  final int requiredRecountPhotos;
+  final int requiredDisplayPhotos;
+
+  TrainingSettings({
+    required this.requiredRecountPhotos,
+    required this.requiredDisplayPhotos,
+  });
+
+  factory TrainingSettings.fromJson(Map<String, dynamic> json) {
+    return TrainingSettings(
+      requiredRecountPhotos: json['requiredRecountPhotos'] ?? 10,
+      requiredDisplayPhotos: json['requiredDisplayPhotos'] ?? 10,
+    );
+  }
+}
+
+/// Ответ с образцами
+class SamplesResponse {
+  final List<TrainingSample> samples;
+  final int total;
+  final int offset;
+  final int limit;
+
+  SamplesResponse({
+    required this.samples,
+    required this.total,
+    required this.offset,
+    required this.limit,
+  });
+
+  factory SamplesResponse.fromJson(Map<String, dynamic> json) {
+    return SamplesResponse(
+      samples: (json['samples'] as List?)
+          ?.map((s) => TrainingSample.fromJson(s))
+          .toList() ?? [],
+      total: json['total'] ?? 0,
+      offset: json['offset'] ?? 0,
+      limit: json['limit'] ?? 50,
+    );
+  }
+
+  factory SamplesResponse.empty() => SamplesResponse(
+    samples: [],
+    total: 0,
+    offset: 0,
+    limit: 50,
+  );
 }

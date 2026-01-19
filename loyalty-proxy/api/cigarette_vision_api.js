@@ -120,6 +120,7 @@ function setupCigaretteVisionAPI(app) {
         barcode,
         productName,
         type,
+        templateId,
         shopAddress,
         employeeName,
         boundingBoxes,
@@ -139,6 +140,7 @@ function setupCigaretteVisionAPI(app) {
         barcode: barcode || productId,
         productName: productName || '',
         type: type || 'recount',
+        templateId: templateId || null,
         shopAddress,
         employeeName,
         boundingBoxes: boundingBoxes || [],
@@ -242,6 +244,85 @@ function setupCigaretteVisionAPI(app) {
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка проверки выкладки:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ НАСТРОЙКИ ============
+
+  // Получить настройки
+  app.get('/api/cigarette-vision/settings', (req, res) => {
+    try {
+      const settings = cigaretteVision.getSettings();
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения настроек:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Обновить настройки
+  app.put('/api/cigarette-vision/settings', (req, res) => {
+    try {
+      const { requiredRecountPhotos, requiredDisplayPhotos } = req.body;
+
+      const newSettings = {};
+      if (requiredRecountPhotos !== undefined) {
+        newSettings.requiredRecountPhotos = Math.max(1, Math.min(50, parseInt(requiredRecountPhotos) || 10));
+      }
+      if (requiredDisplayPhotos !== undefined) {
+        newSettings.requiredDisplayPhotos = Math.max(1, Math.min(50, parseInt(requiredDisplayPhotos) || 10));
+      }
+
+      const updated = cigaretteVision.updateSettings(newSettings);
+      if (updated) {
+        res.json({ success: true, settings: updated });
+      } else {
+        res.status(500).json({ success: false, error: 'Ошибка сохранения настроек' });
+      }
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка обновления настроек:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ ВСЕ ОБРАЗЦЫ (для админки) ============
+
+  // Получить все образцы с фильтрацией
+  app.get('/api/cigarette-vision/samples/all', (req, res) => {
+    try {
+      const { productId, type, limit, offset } = req.query;
+      let samples = cigaretteVision.loadSamples();
+
+      // Фильтрация по productId
+      if (productId) {
+        samples = samples.filter(s => s.productId === productId || s.barcode === productId);
+      }
+
+      // Фильтрация по типу
+      if (type) {
+        samples = samples.filter(s => s.type === type);
+      }
+
+      // Сортировка по дате (новые первые)
+      samples.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const total = samples.length;
+
+      // Пагинация
+      const offsetNum = parseInt(offset) || 0;
+      const limitNum = parseInt(limit) || 50;
+      samples = samples.slice(offsetNum, offsetNum + limitNum);
+
+      res.json({
+        success: true,
+        samples,
+        total,
+        offset: offsetNum,
+        limit: limitNum,
+      });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения всех образцов:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

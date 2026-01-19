@@ -9,6 +9,7 @@ class CigaretteAnnotationPage extends StatefulWidget {
   final Uint8List imageBytes;
   final CigaretteProduct product;
   final TrainingSampleType type;
+  final int? templateId;
   final String? shopAddress;
   final String? employeeName;
 
@@ -17,6 +18,7 @@ class CigaretteAnnotationPage extends StatefulWidget {
     required this.imageBytes,
     required this.product,
     required this.type,
+    this.templateId,
     this.shopAddress,
     this.employeeName,
   });
@@ -235,6 +237,7 @@ class _CigaretteAnnotationPageState extends State<CigaretteAnnotationPage> {
         productName: widget.product.productName,
         type: widget.type,
         boundingBoxes: annotations,
+        templateId: widget.templateId,
         shopAddress: widget.shopAddress,
         employeeName: widget.employeeName,
       );

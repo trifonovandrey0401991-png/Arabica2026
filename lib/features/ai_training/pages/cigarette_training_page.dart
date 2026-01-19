@@ -6,6 +6,8 @@ import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../employees/pages/employees_page.dart';
 import 'cigarette_annotation_page.dart';
+import 'photo_templates_page.dart';
+import 'training_settings_page.dart';
 
 /// Страница обучения ИИ распознаванию сигарет
 class CigaretteTrainingPage extends StatefulWidget {
@@ -30,7 +32,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadData();
   }
 
@@ -80,10 +82,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Добавить фото', icon: Icon(Icons.add_a_photo)),
             Tab(text: 'Товары', icon: Icon(Icons.inventory_2)),
             Tab(text: 'Статистика', icon: Icon(Icons.bar_chart)),
+            Tab(text: 'Настройки', icon: Icon(Icons.settings)),
           ],
         ),
       ),
@@ -97,6 +101,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                     _buildAddPhotoTab(),
                     _buildProductsTab(),
                     _buildStatsTab(),
+                    _buildSettingsTab(),
                   ],
                 ),
     );
@@ -414,10 +419,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '• Фотографируйте товар с разных ракурсов\n'
-                    '• Делайте фото при разном освещении\n'
-                    '• Фотографируйте разное количество пачек\n'
-                    '• Минимум 50 фото на каждый товар',
+                    '• Крупный план: 10 фото с 1-3 пачками вблизи\n'
+                    '• Выкладка: 10 фото витрины с 5-15 пачками\n'
+                    '• Фотографируйте с разных ракурсов\n'
+                    '• Делайте фото при разном освещении',
                     style: TextStyle(fontSize: 14),
                   ),
                 ],
@@ -426,6 +431,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           ),
         ],
       ),
+    );
+  }
+
+  /// Вкладка настроек
+  Widget _buildSettingsTab() {
+    return TrainingSettingsPage(
+      products: _products,
+      onSettingsChanged: _loadData,
     );
   }
 
@@ -458,6 +471,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   Widget _buildProductCard(CigaretteProduct product, {bool forUpload = false}) {
     final progressColor = _getProgressColor(product.trainingProgress);
+    final recountColor = _getProgressColor(product.recountProgress);
+    final displayColor = _getProgressColor(product.displayProgress);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -508,27 +523,65 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                           color: Colors.grey[600],
                         ),
                       ),
-                    const SizedBox(height: 4),
-                    // Прогресс
+                    const SizedBox(height: 6),
+                    // Раздельный прогресс: крупный план
                     Row(
                       children: [
+                        Icon(
+                          Icons.crop_free,
+                          size: 14,
+                          color: product.isRecountComplete ? Colors.green : Colors.blue,
+                        ),
+                        const SizedBox(width: 4),
                         Expanded(
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3),
                             child: LinearProgressIndicator(
-                              value: product.trainingProgress / 100,
+                              value: product.recountProgress / 100,
                               backgroundColor: Colors.grey[300],
-                              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                              minHeight: 6,
+                              valueColor: AlwaysStoppedAnimation<Color>(recountColor),
+                              minHeight: 4,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                         Text(
-                          '${product.trainingPhotosCount}/${product.requiredPhotosCount}',
+                          '${product.recountPhotosCount}/${product.requiredRecountPhotos}',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: progressColor,
+                            fontSize: 10,
+                            color: recountColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    // Раздельный прогресс: выкладка
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.grid_view,
+                          size: 14,
+                          color: product.isDisplayComplete ? Colors.green : Colors.orange,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: product.displayProgress / 100,
+                              backgroundColor: Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(displayColor),
+                              minHeight: 4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.displayPhotosCount}/${product.requiredDisplayPhotos}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: displayColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -561,54 +614,201 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Диалог выбора типа фото
   void _showPhotoTypeDialog(CigaretteProduct product) {
+    final recountColor = _getProgressColor(product.recountProgress);
+    final displayColor = _getProgressColor(product.displayProgress);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
           product.productName,
           style: const TextStyle(fontSize: 16),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
-        content: const Text('Выберите тип фото для обучения:'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Выберите тип фото для обучения:'),
+            const SizedBox(height: 16),
+            // Кнопка: Крупный план (10 шаблонов)
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _openPhotoTemplates(product);
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: product.isRecountComplete ? Colors.green : Colors.blue,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.crop_free,
+                      size: 36,
+                      color: product.isRecountComplete ? Colors.green : Colors.blue,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Крупный план',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '10 шаблонов: ${product.completedTemplates.length}/10',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(2),
+                                  child: LinearProgressIndicator(
+                                    value: product.completedTemplates.length / 10,
+                                    backgroundColor: Colors.grey[300],
+                                    valueColor: AlwaysStoppedAnimation<Color>(recountColor),
+                                    minHeight: 4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${product.completedTemplates.length}/10',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: recountColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (product.isRecountComplete)
+                      const Icon(Icons.check_circle, color: Colors.green),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Кнопка: Выкладка
+            InkWell(
+              onTap: () {
+                Navigator.pop(context);
+                _takePhoto(product, TrainingSampleType.display);
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: product.isDisplayComplete ? Colors.green : Colors.orange,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.grid_view,
+                      size: 36,
+                      color: product.isDisplayComplete ? Colors.green : Colors.orange,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Выкладка',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Text(
+                            'Фото витрины с 5-15 пачками',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(2),
+                                  child: LinearProgressIndicator(
+                                    value: product.displayProgress / 100,
+                                    backgroundColor: Colors.grey[300],
+                                    valueColor: AlwaysStoppedAnimation<Color>(displayColor),
+                                    minHeight: 4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${product.displayPhotosCount}/${product.requiredDisplayPhotos}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: displayColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (product.isDisplayComplete)
+                      const Icon(Icons.check_circle, color: Colors.green),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _takePhoto(product, TrainingSampleType.recount);
-            },
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.calculate, size: 32),
-                SizedBox(height: 4),
-                Text('Для пересчёта'),
-                Text(
-                  'Фото пачек на полке',
-                  style: TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _takePhoto(product, TrainingSampleType.display);
-            },
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.grid_view, size: 32),
-                SizedBox(height: 4),
-                Text('Для выкладки'),
-                Text(
-                  'Фото всей витрины',
-                  style: TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-              ],
-            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
           ),
         ],
       ),
     );
+  }
+
+  /// Открыть страницу шаблонов для "Крупного плана"
+  Future<void> _openPhotoTemplates(CigaretteProduct product) async {
+    // Получаем данные сотрудника
+    final employeeName = await EmployeesPage.getCurrentEmployeeName();
+    final prefs = await SharedPreferences.getInstance();
+    final shopAddress = prefs.getString('selectedShopAddress');
+
+    if (!mounted) return;
+
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PhotoTemplatesPage(
+          product: product,
+          completedTemplates: product.completedTemplates,
+          shopAddress: shopAddress,
+          employeeName: employeeName,
+        ),
+      ),
+    );
+
+    // Если были изменения — обновляем данные
+    if (result == true && mounted) {
+      _loadData();
+    }
   }
 
   /// Сделать фото и открыть экран разметки
@@ -724,34 +924,95 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         'Прогресс обучения',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: product.trainingProgress / 100,
-                        backgroundColor: Colors.grey[300],
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          _getProgressColor(product.trainingProgress),
-                        ),
-                        minHeight: 10,
-                      ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
+                      // Крупный план
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '${product.trainingPhotosCount} фото',
-                            style: const TextStyle(fontSize: 16),
+                          Icon(
+                            Icons.crop_free,
+                            size: 20,
+                            color: product.isRecountComplete ? Colors.green : Colors.blue,
                           ),
+                          const SizedBox(width: 8),
+                          const Text('Крупный план:'),
+                          const Spacer(),
                           Text(
-                            product.isTrainingComplete
-                                ? 'Готово!'
-                                : 'Нужно ещё ${product.requiredPhotosCount - product.trainingPhotosCount}',
+                            '${product.recountPhotosCount}/${product.requiredRecountPhotos}',
                             style: TextStyle(
-                              fontSize: 16,
-                              color: _getProgressColor(product.trainingProgress),
                               fontWeight: FontWeight.bold,
+                              color: _getProgressColor(product.recountProgress),
                             ),
                           ),
+                          if (product.isRecountComplete)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.check_circle, color: Colors.green, size: 18),
+                            ),
                         ],
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: product.recountProgress / 100,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _getProgressColor(product.recountProgress),
+                          ),
+                          minHeight: 8,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Выкладка
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.grid_view,
+                            size: 20,
+                            color: product.isDisplayComplete ? Colors.green : Colors.orange,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Выкладка:'),
+                          const Spacer(),
+                          Text(
+                            '${product.displayPhotosCount}/${product.requiredDisplayPhotos}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _getProgressColor(product.displayProgress),
+                            ),
+                          ),
+                          if (product.isDisplayComplete)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.check_circle, color: Colors.green, size: 18),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: product.displayProgress / 100,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _getProgressColor(product.displayProgress),
+                          ),
+                          minHeight: 8,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Общий статус
+                      Center(
+                        child: Text(
+                          product.isTrainingComplete
+                              ? '✅ Обучение завершено!'
+                              : 'Всего: ${product.trainingPhotosCount}/${product.requiredPhotosCount} фото',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: _getProgressColor(product.trainingProgress),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),

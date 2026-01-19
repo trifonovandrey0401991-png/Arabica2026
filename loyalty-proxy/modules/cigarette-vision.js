@@ -15,9 +15,69 @@ const { v4: uuidv4 } = require('uuid');
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const SAMPLES_FILE = path.join(DATA_DIR, 'cigarette-training-samples.json');
 const STATS_FILE = path.join(DATA_DIR, 'cigarette-training-stats.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'cigarette-training-settings.json');
 const IMAGES_DIR = path.join(DATA_DIR, 'cigarette-training-images');
 
-// Минимальное количество фото для обучения
+// Дефолтные настройки (можно изменить через API)
+const DEFAULT_SETTINGS = {
+  requiredRecountPhotos: 10,  // Крупный план пачки (10 шаблонов)
+  requiredDisplayPhotos: 10,  // Фото выкладки
+};
+
+// Кэш настроек
+let settingsCache = null;
+
+/**
+ * Загрузить настройки
+ */
+function loadSettings() {
+  if (settingsCache) return settingsCache;
+
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      settingsCache = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    } else {
+      settingsCache = { ...DEFAULT_SETTINGS };
+      saveSettings(settingsCache);
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки настроек:', e);
+    settingsCache = { ...DEFAULT_SETTINGS };
+  }
+  return settingsCache;
+}
+
+/**
+ * Сохранить настройки
+ */
+function saveSettings(settings) {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    settingsCache = settings;
+    return true;
+  } catch (e) {
+    console.error('Ошибка сохранения настроек:', e);
+    return false;
+  }
+}
+
+/**
+ * Получить настройки
+ */
+function getSettings() {
+  return loadSettings();
+}
+
+/**
+ * Обновить настройки
+ */
+function updateSettings(newSettings) {
+  const current = loadSettings();
+  const updated = { ...current, ...newSettings };
+  return saveSettings(updated) ? updated : null;
+}
+
+// Для обратной совместимости
 const REQUIRED_PHOTOS_COUNT = 20;
 
 /**
@@ -76,26 +136,66 @@ function saveSamples(samples) {
  */
 function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
   const samples = loadSamples();
+  const settings = loadSettings();
 
-  // Подсчитываем количество фото для каждого товара
-  const photoCountByProduct = {};
+  const requiredRecount = settings.requiredRecountPhotos || 10;
+  const requiredDisplay = settings.requiredDisplayPhotos || 10;
+
+  // Подсчитываем количество фото для каждого товара (раздельно по типам)
+  const recountPhotosByProduct = {};
+  const displayPhotosByProduct = {};
+  const completedTemplatesByProduct = {};  // Выполненные шаблоны (1-10)
+
   samples.forEach(sample => {
     const key = sample.productId || sample.barcode;
-    photoCountByProduct[key] = (photoCountByProduct[key] || 0) + 1;
+    if (sample.type === 'display') {
+      displayPhotosByProduct[key] = (displayPhotosByProduct[key] || 0) + 1;
+    } else {
+      // recount или без типа
+      recountPhotosByProduct[key] = (recountPhotosByProduct[key] || 0) + 1;
+
+      // Собираем выполненные шаблоны (только для recount)
+      if (sample.templateId) {
+        if (!completedTemplatesByProduct[key]) {
+          completedTemplatesByProduct[key] = new Set();
+        }
+        completedTemplatesByProduct[key].add(sample.templateId);
+      }
+    }
   });
 
   // Фильтруем и обогащаем данные
   let products = recountQuestions.map(q => {
-    const photosCount = photoCountByProduct[q.id] || photoCountByProduct[q.barcode] || 0;
+    const recountPhotos = recountPhotosByProduct[q.id] || recountPhotosByProduct[q.barcode] || 0;
+    const displayPhotos = displayPhotosByProduct[q.id] || displayPhotosByProduct[q.barcode] || 0;
+    const totalPhotos = recountPhotos + displayPhotos;
+
+    // Получаем выполненные шаблоны (Set -> Array)
+    const completedTemplatesSet = completedTemplatesByProduct[q.id] || completedTemplatesByProduct[q.barcode] || new Set();
+    const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
+
+    // Обучение завершено когда все шаблоны выполнены + нужное кол-во фото выкладки
+    const isRecountComplete = completedTemplates.length >= requiredRecount;
+    const isDisplayComplete = displayPhotos >= requiredDisplay;
+
     return {
       id: q.id,
       barcode: q.barcode || q.id,
       productGroup: q.productGroup || '',
       productName: q.productName || q.question || '',
       grade: q.grade || 1,
-      trainingPhotosCount: photosCount,
-      requiredPhotosCount: REQUIRED_PHOTOS_COUNT,
-      isTrainingComplete: photosCount >= REQUIRED_PHOTOS_COUNT,
+      // Общая статистика
+      trainingPhotosCount: totalPhotos,
+      requiredPhotosCount: requiredRecount + requiredDisplay,
+      isTrainingComplete: isRecountComplete && isDisplayComplete,
+      // Раздельная статистика
+      recountPhotosCount: recountPhotos,
+      requiredRecountPhotos: requiredRecount,
+      isRecountComplete: isRecountComplete,
+      completedTemplates: completedTemplates,  // Массив выполненных шаблонов [1, 3, 5...]
+      displayPhotosCount: displayPhotos,
+      requiredDisplayPhotos: requiredDisplay,
+      isDisplayComplete: isDisplayComplete,
     };
   });
 
@@ -163,6 +263,7 @@ async function saveTrainingSample({
   barcode,
   productName,
   type = 'recount',
+  templateId = null,
   shopAddress,
   employeeName,
   boundingBoxes = [],
@@ -211,6 +312,7 @@ async function saveTrainingSample({
       barcode,
       productName,
       type,
+      templateId,
       shopAddress,
       employeeName,
       imageFileName,
@@ -225,7 +327,7 @@ async function saveTrainingSample({
     samples.push(sample);
     saveSamples(samples);
 
-    console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type}, ${boundingBoxes ? boundingBoxes.length : 0} аннотаций)`);
+    console.log(`[Cigarette Vision] Образец сохранён: ${productName} (${type}, template=${templateId}, ${boundingBoxes ? boundingBoxes.length : 0} аннотаций)`);
 
     return { success: true, sample };
   } catch (error) {
@@ -379,5 +481,8 @@ module.exports = {
   checkDisplay,
   getClassMapping,
   getClassIdForProduct,
+  getSettings,
+  updateSettings,
+  loadSamples,
   REQUIRED_PHOTOS_COUNT,
 };

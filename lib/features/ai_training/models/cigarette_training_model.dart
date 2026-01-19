@@ -7,9 +7,22 @@ class CigaretteProduct {
   final String productGroup;
   final String productName;
   final int grade;
-  final int trainingPhotosCount; // Сколько фото для обучения загружено
-  final int requiredPhotosCount; // Сколько нужно для обучения (минимум)
-  final bool isTrainingComplete; // Достаточно ли фото
+
+  // Общая статистика
+  final int trainingPhotosCount;
+  final int requiredPhotosCount;
+  final bool isTrainingComplete;
+
+  // Раздельная статистика: крупный план (recount)
+  final int recountPhotosCount;
+  final int requiredRecountPhotos;
+  final bool isRecountComplete;
+  final List<int> completedTemplates; // Выполненные шаблоны (1-10)
+
+  // Раздельная статистика: выкладка (display)
+  final int displayPhotosCount;
+  final int requiredDisplayPhotos;
+  final bool isDisplayComplete;
 
   CigaretteProduct({
     required this.id,
@@ -18,22 +31,42 @@ class CigaretteProduct {
     required this.productName,
     required this.grade,
     this.trainingPhotosCount = 0,
-    this.requiredPhotosCount = 20, // Минимум 20 фото для начала обучения
+    this.requiredPhotosCount = 20,
     this.isTrainingComplete = false,
+    this.recountPhotosCount = 0,
+    this.requiredRecountPhotos = 10,
+    this.isRecountComplete = false,
+    this.completedTemplates = const [],
+    this.displayPhotosCount = 0,
+    this.requiredDisplayPhotos = 10,
+    this.isDisplayComplete = false,
   });
 
   factory CigaretteProduct.fromJson(Map<String, dynamic> json) {
-    final photosCount = json['trainingPhotosCount'] ?? 0;
-    final required = json['requiredPhotosCount'] ?? 50;
+    final recountPhotos = json['recountPhotosCount'] ?? 0;
+    final displayPhotos = json['displayPhotosCount'] ?? 0;
+    final requiredRecount = json['requiredRecountPhotos'] ?? 10;
+    final requiredDisplay = json['requiredDisplayPhotos'] ?? 10;
+    final completedTemplatesList = (json['completedTemplates'] as List?)
+        ?.map((e) => e is int ? e : int.tryParse(e.toString()) ?? 0)
+        .toList() ?? [];
+
     return CigaretteProduct(
       id: json['id'] ?? '',
       barcode: json['barcode']?.toString() ?? '',
       productGroup: json['productGroup']?.toString() ?? '',
       productName: json['productName']?.toString() ?? json['question']?.toString() ?? '',
       grade: json['grade'] is int ? json['grade'] : int.tryParse(json['grade'].toString()) ?? 1,
-      trainingPhotosCount: photosCount,
-      requiredPhotosCount: required,
-      isTrainingComplete: photosCount >= required,
+      trainingPhotosCount: json['trainingPhotosCount'] ?? (recountPhotos + displayPhotos),
+      requiredPhotosCount: json['requiredPhotosCount'] ?? 20,
+      isTrainingComplete: json['isTrainingComplete'] ?? false,
+      recountPhotosCount: recountPhotos,
+      requiredRecountPhotos: requiredRecount,
+      isRecountComplete: json['isRecountComplete'] ?? (completedTemplatesList.length >= 10),
+      completedTemplates: completedTemplatesList,
+      displayPhotosCount: displayPhotos,
+      requiredDisplayPhotos: requiredDisplay,
+      isDisplayComplete: json['isDisplayComplete'] ?? (displayPhotos >= requiredDisplay),
     );
   }
 
@@ -46,12 +79,31 @@ class CigaretteProduct {
     'trainingPhotosCount': trainingPhotosCount,
     'requiredPhotosCount': requiredPhotosCount,
     'isTrainingComplete': isTrainingComplete,
+    'recountPhotosCount': recountPhotosCount,
+    'requiredRecountPhotos': requiredRecountPhotos,
+    'isRecountComplete': isRecountComplete,
+    'completedTemplates': completedTemplates,
+    'displayPhotosCount': displayPhotosCount,
+    'requiredDisplayPhotos': requiredDisplayPhotos,
+    'isDisplayComplete': isDisplayComplete,
   };
 
   /// Процент завершённости обучения (0-100)
   double get trainingProgress =>
     requiredPhotosCount > 0
       ? (trainingPhotosCount / requiredPhotosCount * 100).clamp(0, 100)
+      : 0;
+
+  /// Процент фото крупного плана
+  double get recountProgress =>
+    requiredRecountPhotos > 0
+      ? (recountPhotosCount / requiredRecountPhotos * 100).clamp(0, 100)
+      : 0;
+
+  /// Процент фото выкладки
+  double get displayProgress =>
+    requiredDisplayPhotos > 0
+      ? (displayPhotosCount / requiredDisplayPhotos * 100).clamp(0, 100)
       : 0;
 }
 
@@ -119,6 +171,7 @@ class TrainingSample {
   final String? employeeName;
   final DateTime createdAt;
   final TrainingSampleType type;
+  final int? templateId; // ID шаблона (1-10) для крупного плана
   final List<AnnotationBox> boundingBoxes; // Аннотации для обучения
 
   TrainingSample({
@@ -131,6 +184,7 @@ class TrainingSample {
     this.employeeName,
     required this.createdAt,
     required this.type,
+    this.templateId,
     this.boundingBoxes = const [],
   });
 
@@ -147,6 +201,7 @@ class TrainingSample {
         ? DateTime.parse(json['createdAt'])
         : DateTime.now(),
       type: TrainingSampleType.fromString(json['type']),
+      templateId: json['templateId'] is int ? json['templateId'] : null,
       boundingBoxes: (json['boundingBoxes'] as List?)
           ?.map((b) => AnnotationBox.fromJson(b))
           .toList() ?? [],
@@ -163,6 +218,7 @@ class TrainingSample {
     'employeeName': employeeName,
     'createdAt': createdAt.toIso8601String(),
     'type': type.value,
+    'templateId': templateId,
     'boundingBoxes': boundingBoxes.map((b) => b.toJson()).toList(),
   };
 
