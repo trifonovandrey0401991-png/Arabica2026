@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Категории данных, которые можно очищать
 // Разделены на группы: отчёты, фото, история операций
@@ -356,7 +357,59 @@ function removeEmptyDirectories(dirPath) {
   }
 }
 
+// Получить информацию о дисковом пространстве
+function getDiskInfo() {
+  try {
+    // Для Linux используем df команду
+    const output = execSync('df -B1 /var/www', { encoding: 'utf8' });
+    const lines = output.trim().split('\n');
+
+    if (lines.length >= 2) {
+      // Парсим вторую строку (данные)
+      const parts = lines[1].split(/\s+/);
+      // Формат: Filesystem 1B-blocks Used Available Use% Mounted
+      const totalBytes = parseInt(parts[1], 10);
+      const usedBytes = parseInt(parts[2], 10);
+      const availableBytes = parseInt(parts[3], 10);
+
+      return {
+        totalBytes,
+        usedBytes,
+        availableBytes,
+        usedPercent: Math.round((usedBytes / totalBytes) * 100)
+      };
+    }
+  } catch (err) {
+    console.error('Error getting disk info:', err.message);
+  }
+
+  // Fallback значения если не удалось получить
+  return {
+    totalBytes: 10 * 1024 * 1024 * 1024, // 10 GB
+    usedBytes: 0,
+    availableBytes: 10 * 1024 * 1024 * 1024,
+    usedPercent: 0
+  };
+}
+
 function setupDataCleanupAPI(app) {
+  // GET /api/admin/disk-info - информация о дисковом пространстве
+  app.get('/api/admin/disk-info', (req, res) => {
+    try {
+      const diskInfo = getDiskInfo();
+      res.json({
+        success: true,
+        ...diskInfo
+      });
+    } catch (error) {
+      console.error('Error getting disk info:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Ошибка получения информации о диске'
+      });
+    }
+  });
+
   // GET /api/admin/data-stats - статистика по категориям данных
   app.get('/api/admin/data-stats', (req, res) => {
     try {
