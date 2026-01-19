@@ -2,25 +2,106 @@ const fs = require('fs');
 const path = require('path');
 
 // Категории данных, которые можно очищать
+// Разделены на группы: отчёты, фото, история операций
 const CLEANUP_CATEGORIES = [
+  // === ОТЧЁТЫ ===
   {
-    id: 'shifts',
-    name: 'История смен',
-    directory: '/var/www/shifts',
+    id: 'recount-reports',
+    name: 'Отчёты пересчётов',
+    directory: '/var/www/recount-reports',
     dateField: 'date',
     isDirectory: true
   },
   {
-    id: 'recount-history',
-    name: 'История пересчётов',
-    directory: '/var/www/recount-history',
+    id: 'shift-reports',
+    name: 'Отчёты смен',
+    directory: '/var/www/shift-reports',
     dateField: 'date',
     isDirectory: true
   },
   {
-    id: 'shift-handovers',
-    name: 'Пересменки',
-    directory: '/var/www/shift-handovers',
+    id: 'shift-handover-reports',
+    name: 'Отчёты пересменок',
+    directory: '/var/www/shift-handover-reports',
+    dateField: 'date',
+    isDirectory: true
+  },
+  {
+    id: 'envelope-reports',
+    name: 'Отчёты конвертов',
+    directory: '/var/www/envelope-reports',
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'rko-reports',
+    name: 'РКО отчёты',
+    directory: '/var/www/rko-reports',
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+
+  // === ФОТО ===
+  {
+    id: 'shift-photos',
+    name: 'Фото смен',
+    directory: '/var/www/shift-photos',
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'shift-handover-question-photos',
+    name: 'Фото вопросов пересменок',
+    directory: '/var/www/shift-handover-question-photos',
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'product-question-photos',
+    name: 'Фото вопросов товаров',
+    directory: '/var/www/product-question-photos',
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'employee-photos',
+    name: 'Фото сотрудников',
+    directory: '/var/www/employee-photos',
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+  {
+    id: 'recipe-photos',
+    name: 'Фото рецептов',
+    directory: '/var/www/recipe-photos',
+    dateField: 'mtime',
+    isDirectory: true,
+    isPhotos: true
+  },
+
+  // === ИСТОРИЯ ОПЕРАЦИЙ ===
+  {
+    id: 'orders',
+    name: 'Заказы',
+    directory: '/var/www/orders',
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'withdrawals',
+    name: 'Выемки',
+    directory: '/var/www/withdrawals',
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+  {
+    id: 'attendance',
+    name: 'Посещаемость',
+    directory: '/var/www/attendance',
     dateField: 'date',
     isDirectory: true
   },
@@ -32,12 +113,35 @@ const CLEANUP_CATEGORIES = [
     isDirectory: true
   },
   {
-    id: 'orders',
-    name: 'Заказы',
-    directory: '/var/www/orders',
+    id: 'reviews',
+    name: 'Отзывы',
+    directory: '/var/www/reviews',
     dateField: 'createdAt',
     isDirectory: true
   },
+  {
+    id: 'efficiency-penalties',
+    name: 'Штрафы эффективности',
+    directory: '/var/www/efficiency-penalties',
+    dateField: 'date',
+    isDirectory: true
+  },
+  {
+    id: 'bonus-penalties',
+    name: 'Премии/Штрафы',
+    directory: '/var/www/bonus-penalties',
+    dateField: 'date',
+    isDirectory: true
+  },
+  {
+    id: 'employee-registrations',
+    name: 'Заявки на регистрацию',
+    directory: '/var/www/employee-registrations',
+    dateField: 'createdAt',
+    isDirectory: true
+  },
+
+  // === ЛОГИ ===
   {
     id: 'app-logs',
     name: 'Логи приложения',
@@ -46,12 +150,12 @@ const CLEANUP_CATEGORIES = [
     isDirectory: true
   },
   {
-    id: 'recount-questions-photos',
-    name: 'Фото вопросов пересчёта',
-    directory: '/var/www/recount-questions',
+    id: 'fcm-tokens',
+    name: 'FCM токены',
+    directory: '/var/www/fcm-tokens',
     dateField: 'mtime',
     isDirectory: true,
-    isPhotos: true
+    isPhotos: true  // Используем mtime для файлов
   }
 ];
 
