@@ -386,7 +386,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     Logger.debug('_getMenuItems() вызван, роль: ${role.name}');
 
     // Меню - видно всем
-    items.add(_tile(context, Icons.local_cafe, 'Меню', () async {
+    items.add(_tileMenu(context, 'Меню', () async {
       final shop = await _showShopSelectionDialog(context);
       if (!mounted || shop == null) return;
       final categories = await _loadCategoriesForShop(context, shop.address);
@@ -405,7 +405,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }));
 
     // Корзина - видно всем
-    items.add(_tile(context, Icons.shopping_cart, 'Корзина', () {
+    items.add(_tileCart(context, 'Корзина', () {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const CartPage()),
@@ -413,7 +413,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }));
 
     // Мои заказы - видно всем
-    items.add(_tile(context, Icons.receipt_long, 'Мои заказы', () {
+    items.add(_tileMyOrders(context, 'Мои заказы', () {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const OrdersPage()),
@@ -421,7 +421,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }));
 
     // Магазины на карте - видно всем
-    items.add(_tile(context, Icons.map, 'Магазины на карте', () {
+    items.add(_tileShopsOnMap(context, 'Магазины на карте', () {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ShopsOnMapPage()),
@@ -430,7 +430,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Управление данными - только админ (включает управление сотрудниками)
     if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.settings_applications, 'Управление данными', () {
+      items.add(_tileDataManagement(context, 'Управление данными', () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const DataManagementPage()),
@@ -440,7 +440,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Отчеты - только для админов
     if (role == UserRole.admin) {
-      items.add(_tileWithBadge(context, Icons.assessment, 'Отчеты', _totalUnviewedReports + _unconfirmedWithdrawalsCount, () async {
+      items.add(_tileReports(context, 'Отчеты', _totalUnviewedReports + _unconfirmedWithdrawalsCount, () async {
         await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ReportsPage()),
@@ -454,7 +454,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
 
     // Карта лояльности - видно всем
-    items.add(_tile(context, Icons.qr_code, 'Карта лояльности', () {
+    items.add(_tileLoyalty(context, 'Карта лояльности', () {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const LoyaltyPage()),
@@ -462,7 +462,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }));
 
     // Отзывы - видно всем
-    items.add(_tile(context, Icons.rate_review, 'Отзывы', () {
+    items.add(_tileReviews(context, 'Отзывы', () {
       Logger.debug('Нажата кнопка "Отзывы"');
       if (!context.mounted) {
         Logger.warning('Context не mounted');
@@ -477,7 +477,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }));
 
     // Мои диалоги - видно всем (клиентам, сотрудникам и админам)
-    items.add(_tile(context, Icons.chat, 'Мои диалоги', () {
+    items.add(_tileMyDialogs(context, 'Мои диалоги', () {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MyDialogsPage()),
@@ -486,7 +486,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
 
     // Поиск товара - видно всем
-    items.add(_tile(context, Icons.search, 'Поиск товара', () {
+    items.add(_tileProductSearch(context, 'Поиск товара', () {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -497,7 +497,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Устроиться на работу - только для клиентов
     if (role == UserRole.client) {
-      items.add(_tile(context, Icons.work_outline, 'Устроиться на работу', () {
+      items.add(_tileJobApplication(context, 'Устроиться на работу', () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const JobApplicationWelcomePage()),
@@ -507,7 +507,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // Панель работника - только сотрудник и админ
     if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tile(context, Icons.work, 'Панель работника', () {
+      items.add(_tileEmployeePanel(context, 'Панель работника', () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const EmployeePanelPage()),
@@ -517,7 +517,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
     // График работы - только админ (управление графиком сотрудников)
     if (role == UserRole.admin) {
-      items.add(_tile(context, Icons.calendar_today, 'График работы', () {
+      items.add(_tileSchedule(context, 'График работы', () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const WorkSchedulePage()),
@@ -551,6 +551,188 @@ class _MainMenuPageState extends State<MainMenuPage> {
         children: [
           Icon(icon, size: 48, color: Colors.white),
           const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Кнопка с кастомной иконкой чата
+  Widget _tileChat(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/chat_icon.png',
+              width: 48,
+              height: 48,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Кнопка с кастомной иконкой корзины
+  Widget _tileCart(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/cart_icon.png',
+              width: 48,
+              height: 48,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Кастомная иконка меню в стиле логотипа (как на картинке)
+  Widget _buildMenuIcon() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.asset(
+        'assets/images/main_menu_icon.png',
+        width: 80,
+        height: 80,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  /// Кастомная иконка карты лояльности
+  Widget _buildLoyaltyIcon() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.asset(
+        'assets/images/loyalty_card_icon.png',
+        width: 80,
+        height: 80,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  /// Плитка карты лояльности с кастомной иконкой
+  Widget _tileLoyalty(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildLoyaltyIcon(),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка меню с кастомной иконкой
+  Widget _tileMenu(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildMenuIcon(),
+          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -735,26 +917,686 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  Future<List<String>> _loadCategories(BuildContext context) async {
-    try {
-      final jsonString = await rootBundle.loadString('assets/menu.json');
-      final List<dynamic> jsonData = json.decode(jsonString);
-      final Set<String> categories = {};
+  /// Плитка поиска товара с кастомной иконкой
+  Widget _tileProductSearch(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/search_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 
-      for (var item in jsonData) {
-        final category = (item['category'] ?? '').toString().trim();
-        if (category.isNotEmpty) {
-          categories.add(category);
-        }
-      }
+  /// Плитка "График работы" с кастомной иконкой
+  Widget _tileSchedule(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/schedule_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 
-      final categoriesList = categories.toList()..sort();
-      Logger.debug('Загружено категорий из menu.json: ${categoriesList.length}');
-      return categoriesList;
-    } catch (e) {
-      Logger.error('Ошибка загрузки категорий из menu.json', e);
-      return [];
-    }
+  /// Плитка "Отчеты" с кастомной иконкой и бейджем
+  Widget _tileReports(BuildContext ctx, String label, int badgeCount, Future<void> Function() onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/images/reports_icon.png',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          if (badgeCount > 0)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 24,
+                  minHeight: 24,
+                ),
+                child: Text(
+                  badgeCount > 99 ? '99+' : '$badgeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Управление данными" с кастомной иконкой
+  Widget _tileDataManagement(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/data_management_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Панель работника" с кастомной иконкой
+  Widget _tileEmployeePanel(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/employee_panel_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Мои заказы" с кастомной иконкой
+  Widget _tileMyOrders(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/my_orders_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Магазины на карте" с кастомной иконкой
+  Widget _tileShopsOnMap(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/map_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Мои диалоги" с кастомной иконкой чата
+  Widget _tileMyDialogs(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/chat_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Отзывы" с кастомной иконкой
+  Widget _tileReviews(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/images/reviews_icon.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Плитка "Устроиться на работу" с кастомной иконкой
+  Widget _tileJobApplication(BuildContext ctx, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        elevation: 4,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/job_application_icon.png',
+              width: 48,
+              height: 48,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 
 }
+
+/// Painter для рисования стакана с напитком (как на оригинальной картинке)
+class _DrinkIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+
+    // Стакан - трапеция
+    final glassPath = Path();
+    glassPath.moveTo(centerX - 10, centerY - 10); // Верх левый
+    glassPath.lineTo(centerX + 10, centerY - 10); // Верх правый
+    glassPath.lineTo(centerX + 8, centerY + 12); // Низ правый
+    glassPath.lineTo(centerX - 8, centerY + 12); // Низ левый
+    glassPath.close();
+    canvas.drawPath(glassPath, paint);
+
+    // Трубочка
+    canvas.drawLine(
+      Offset(centerX + 4, centerY - 10),
+      Offset(centerX + 10, centerY - 18),
+      paint,
+    );
+
+    // Кубики льда (маленькие квадраты)
+    paint.style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTWH(centerX - 6, centerY - 4, 5, 5),
+      paint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(centerX + 1, centerY + 2, 5, 5),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Painter для иконки карты лояльности (QR-код со стрелкой на телефон)
+class _LoyaltyQRIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 2;
+
+    // Белый фон круга
+    final bgPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Тёмно-синяя рамка круга (как на картинке)
+    final borderPaint = Paint()
+      ..color = const Color(0xFF1A365D) // Тёмно-синий
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    canvas.drawCircle(center, radius - 1.5, borderPaint);
+
+    // QR-код - чёрные квадраты
+    final qrPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+
+    // Размер QR-кода - крупнее, занимает большую часть
+    final qrSize = size.width * 0.65;
+    final qrLeft = center.dx - qrSize / 2 - 8; // Сдвиг влево
+    final qrTop = center.dy - qrSize / 2 + 3;
+    final cellSize = qrSize / 21; // 21x21 для более детального QR
+
+    // Функция для рисования угловых маркеров QR (7x7)
+    void drawCornerMarker(double left, double top) {
+      // Внешний квадрат
+      for (int i = 0; i < 7; i++) {
+        canvas.drawRect(Rect.fromLTWH(left + i * cellSize, top, cellSize, cellSize), qrPaint);
+        canvas.drawRect(Rect.fromLTWH(left + i * cellSize, top + 6 * cellSize, cellSize, cellSize), qrPaint);
+        canvas.drawRect(Rect.fromLTWH(left, top + i * cellSize, cellSize, cellSize), qrPaint);
+        canvas.drawRect(Rect.fromLTWH(left + 6 * cellSize, top + i * cellSize, cellSize, cellSize), qrPaint);
+      }
+      // Внутренний квадрат 3x3
+      for (int row = 2; row < 5; row++) {
+        for (int col = 2; col < 5; col++) {
+          canvas.drawRect(Rect.fromLTWH(left + col * cellSize, top + row * cellSize, cellSize, cellSize), qrPaint);
+        }
+      }
+    }
+
+    // Три угловых маркера
+    drawCornerMarker(qrLeft, qrTop); // Верхний левый
+    drawCornerMarker(qrLeft, qrTop + 14 * cellSize); // Нижний левый
+    drawCornerMarker(qrLeft + 14 * cellSize, qrTop); // Верхний правый
+
+    // Дополнительные данные QR (случайный паттерн)
+    final dataPoints = [
+      // Горизонтальная линия тайминга
+      [8, 6], [10, 6], [12, 6],
+      // Вертикальная линия тайминга
+      [6, 8], [6, 10], [6, 12],
+      // Данные
+      [8, 8], [9, 8], [11, 8], [12, 9],
+      [8, 10], [10, 10], [12, 10],
+      [9, 11], [11, 11],
+      [8, 12], [10, 12], [12, 12],
+      [8, 14], [9, 14], [11, 14], [12, 14],
+      [14, 8], [15, 9], [14, 10], [16, 10],
+      [14, 12], [15, 12], [16, 12],
+      [8, 16], [10, 16], [12, 16],
+      [14, 14], [15, 15], [16, 14], [17, 15],
+      [14, 16], [16, 16], [17, 17], [18, 16],
+      [17, 8], [18, 9], [19, 8],
+      [17, 11], [18, 10], [19, 11],
+    ];
+
+    for (final point in dataPoints) {
+      canvas.drawRect(
+        Rect.fromLTWH(qrLeft + point[0] * cellSize, qrTop + point[1] * cellSize, cellSize, cellSize),
+        qrPaint,
+      );
+    }
+
+    // Зелёная изогнутая стрелка (как на картинке - сверху вниз)
+    final arrowPaint = Paint()
+      ..color = const Color(0xFF4CAF50) // Яркий зелёный
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+
+    final arrowPath = Path();
+    // Начало сверху
+    arrowPath.moveTo(center.dx + 10, center.dy - 38);
+    // Изгиб вправо и вниз к телефону
+    arrowPath.quadraticBezierTo(
+      center.dx + 42, center.dy - 25, // Контрольная точка (вправо)
+      center.dx + 35, center.dy + 5, // Конечная точка (вниз к телефону)
+    );
+    canvas.drawPath(arrowPath, arrowPaint);
+
+    // Наконечник стрелки (треугольник)
+    final arrowHeadPaint = Paint()
+      ..color = const Color(0xFF4CAF50)
+      ..style = PaintingStyle.fill;
+
+    final arrowHeadPath = Path();
+    arrowHeadPath.moveTo(center.dx + 35, center.dy + 12); // Кончик
+    arrowHeadPath.lineTo(center.dx + 28, center.dy + 2);
+    arrowHeadPath.lineTo(center.dx + 40, center.dy + 2);
+    arrowHeadPath.close();
+    canvas.drawPath(arrowHeadPath, arrowHeadPaint);
+
+    // Телефон справа внизу
+    final phonePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final phoneBorderPaint = Paint()
+      ..color = const Color(0xFF1A365D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Корпус телефона
+    final phoneLeft = center.dx + 22;
+    final phoneTop = center.dy + 8;
+    final phoneWidth = 20.0;
+    final phoneHeight = 32.0;
+
+    final phoneRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(phoneLeft, phoneTop, phoneWidth, phoneHeight),
+      const Radius.circular(3),
+    );
+    canvas.drawRRect(phoneRect, phonePaint);
+    canvas.drawRRect(phoneRect, phoneBorderPaint);
+
+    // Мини QR на экране телефона
+    final screenPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+
+    final miniCell = 2.5;
+    final screenLeft = phoneLeft + 3;
+    final screenTop = phoneTop + 5;
+
+    // Маленький QR на экране (5x5)
+    final miniQrPattern = [
+      [1,1,1,0,1],
+      [1,0,1,0,1],
+      [1,1,1,0,0],
+      [0,0,0,1,0],
+      [1,1,0,0,1],
+    ];
+
+    for (int row = 0; row < 5; row++) {
+      for (int col = 0; col < 5; col++) {
+        if (miniQrPattern[row][col] == 1) {
+          canvas.drawRect(
+            Rect.fromLTWH(screenLeft + col * miniCell, screenTop + row * miniCell, miniCell, miniCell),
+            screenPaint,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

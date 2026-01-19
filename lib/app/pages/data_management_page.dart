@@ -27,10 +27,9 @@ class DataManagementPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSection(
+          _buildShopsSection(
             context,
             title: 'Магазины',
-            icon: Icons.store,
             onTap: () {
               Navigator.push(
                 context,
@@ -41,10 +40,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildEmployeesSection(
             context,
             title: 'Сотрудники',
-            icon: Icons.people,
             onTap: () async {
               await Navigator.push(
                 context,
@@ -57,10 +55,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildShiftHandoverSection(
             context,
             title: 'Вопросы пересменки',
-            icon: Icons.question_answer,
             onTap: () {
               Navigator.push(
                 context,
@@ -71,10 +68,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildRecountSection(
             context,
             title: 'Вопросы пересчета',
-            icon: Icons.help_outline,
             onTap: () {
               Navigator.push(
                 context,
@@ -85,10 +81,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildTestQuestionsSection(
             context,
             title: 'Вопросы тестирования',
-            icon: Icons.quiz,
             onTap: () {
               Navigator.push(
                 context,
@@ -99,10 +94,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildShiftCompleteSection(
             context,
             title: 'Вопросы (Сдать Смену)',
-            icon: Icons.assignment_turned_in,
             onTap: () {
               Navigator.push(
                 context,
@@ -113,10 +107,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildTrainingSection(
             context,
             title: 'Статьи обучения',
-            icon: Icons.article,
             onTap: () {
               Navigator.push(
                 context,
@@ -127,10 +120,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildClientsSection(
             context,
             title: 'Клиенты',
-            icon: Icons.people,
             onTap: () {
               Navigator.push(
                 context,
@@ -141,10 +133,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildSuppliersSection(
             context,
             title: 'Поставщики',
-            icon: Icons.local_shipping,
             onTap: () {
               Navigator.push(
                 context,
@@ -155,10 +146,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildPointsSection(
             context,
             title: 'Установка баллов',
-            icon: Icons.star,
             onTap: () {
               Navigator.push(
                 context,
@@ -169,10 +159,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildTaskSection(
             context,
             title: 'Установить Задачи',
-            icon: Icons.assignment_add,
             onTap: () {
               Navigator.push(
                 context,
@@ -197,10 +186,9 @@ class DataManagementPage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          _buildSection(
+          _buildAITrainingSection(
             context,
             title: 'Вопросы Для Обучения ИИ',
-            icon: Icons.psychology_alt,
             onTap: () {
               // TODO: Логика будет добавлена позже
               ScaffoldMessenger.of(context).showSnackBar(
@@ -243,5 +231,531 @@ class DataManagementPage extends StatelessWidget {
       ),
     );
   }
-}
 
+  /// Кнопка сдачи смены с кастомной иконкой
+  Widget _buildShiftCompleteSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/shift_complete_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка пересменки с кастомной иконкой
+  Widget _buildShiftHandoverSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/shift_handover_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка обучения ИИ с кастомной иконкой
+  Widget _buildAITrainingSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/ai_training_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка "Статьи обучения" с кастомной иконкой
+  Widget _buildTrainingSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/training_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка задач с кастомной иконкой чеклиста
+  Widget _buildTaskSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/tasks_checklist_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка магазинов с кастомной иконкой
+  Widget _buildShopsSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/shops_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка вопросов тестирования с кастомной иконкой
+  Widget _buildTestQuestionsSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/testing_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка установки баллов с кастомной иконкой
+  Widget _buildPointsSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/points_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка пересчета с кастомной иконкой
+  Widget _buildRecountSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/recount_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка клиентов с кастомной иконкой
+  Widget _buildClientsSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/clients_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка сотрудников с кастомной иконкой
+  Widget _buildEmployeesSection(
+    BuildContext context, {
+    required String title,
+    required Future<void> Function() onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/employees_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка поставщиков с кастомной иконкой
+  Widget _buildSuppliersSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/supplier_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
