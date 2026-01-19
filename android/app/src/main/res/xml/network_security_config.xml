@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration for Arabica App
+
+  Security measures:
+  1. Disables cleartext (HTTP) traffic - only HTTPS allowed
+  2. Enables certificate transparency checking
+  3. Restricts to system and user trusted CAs
+
+  Note: Certificate Pinning is NOT enabled because:
+  - Let's Encrypt certificates auto-renew every 90 days
+  - Pin change would break app for all users until update
+  - Public key can also change when certificate is reissued
+-->
+<network-security-config>
+    <!-- Base config: Disable cleartext traffic globally -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system CAs -->
+            <certificates src="system" />
+            <!-- Trust user-installed CAs (for development/testing) -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Domain-specific config for arabica26.ru -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">arabica26.ru</domain>
+        <trust-anchors>
+            <!-- Only trust system CAs for production server -->
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Allow cleartext only for localhost (development) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

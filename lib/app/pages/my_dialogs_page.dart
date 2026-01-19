@@ -31,6 +31,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   List<PersonalProductDialog> _personalDialogs = [];
   List<Review> _clientReviews = [];
   int _reviewsUnreadCount = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -39,10 +40,13 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   }
 
   Future<void> _loadDialogs() async {
+    setState(() => _isLoading = true);
+
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('user_phone') ?? '';
 
     if (phone.isEmpty) {
+      setState(() => _isLoading = false);
       return;
     }
 
@@ -87,15 +91,12 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
       });
     }
 
-    // Загружаем общий чат "Поиск Товара" (всегда, независимо от персональных диалогов)
+    // Загружаем общий чат "Поиск Товара"
     final productQuestionData = await ProductQuestionService.getClientDialog(phone);
-    print('🔍 DEBUG: productQuestionData = $productQuestionData');
-    print('🔍 DEBUG: hasQuestions = ${productQuestionData?.hasQuestions}');
-    print('🔍 DEBUG: messages count = ${productQuestionData?.messages.length}');
-    print('🔍 DEBUG: unreadCount = ${productQuestionData?.unreadCount}');
     if (mounted) {
       setState(() {
         _productQuestionData = productQuestionData;
+        _isLoading = false;
       });
     }
   }
@@ -121,9 +122,14 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF004D40),
       appBar: AppBar(
-        title: const Text('Мои диалоги'),
+        title: const Text(
+          'Мои диалоги',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: const Color(0xFF004D40),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -132,540 +138,455 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ManagementDialogPage(),
-            ),
-          );
-          _loadDialogs();
-        },
-        backgroundColor: const Color(0xFF004D40),
-        icon: const Icon(Icons.business),
-        label: const Text('Связаться с Руководством'),
-      ),
+      floatingActionButton: _buildFloatingActionButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF004D40),
+              const Color(0xFF00695C),
+              const Color(0xFF00796B),
+            ],
           ),
         ),
-        child: Builder(
-          builder: (context) {
-            // Показываем сетевые сообщения даже если нет обычных диалогов
-            final hasNetworkMessages = _networkData?.hasMessages ?? false;
-            final hasManagementMessages = _managementData?.hasMessages ?? false;
-            final hasReviews = _clientReviews.isNotEmpty;
-            final hasProductQuestions = _productQuestionData?.hasQuestions ?? false;
-            final hasPersonalDialogs = _personalDialogs.isNotEmpty;
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : _buildContent(),
+      ),
+    );
+  }
 
-            if (!hasNetworkMessages && !hasManagementMessages && !hasReviews && !hasProductQuestions && !hasPersonalDialogs) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.chat_bubble_outline,
-                      size: 64,
-                      color: Colors.white54,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'У вас пока нет диалогов',
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Оставьте отзыв, задайте вопрос или сделайте заказ',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Считаем элементы: сеть + руководство + отзывы + поиск товара (общий + персональные)
-            final productDialogsCount = (hasProductQuestions ? 1 : 0) + _personalDialogs.length;
-            final totalItems = (hasNetworkMessages ? 1 : 0) + (hasManagementMessages ? 1 : 0) + (hasReviews ? 1 : 0) + productDialogsCount;
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: totalItems,
-              itemBuilder: (context, index) {
-                // Первый элемент - "Сообщение от Всей Сети" (если есть сообщения)
-                if (hasNetworkMessages && index == 0) {
-                  final networkUnread = _networkData!.unreadCount;
-                  final lastNetworkMessage = _networkData!.messages.isNotEmpty
-                      ? _networkData!.messages.last
-                      : null;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: networkUnread > 0 ? Colors.orange[50] : null,
-                    child: ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: networkUnread > 0
-                                ? Colors.orange
-                                : const Color(0xFF004D40),
-                            child: const Icon(
-                              Icons.language,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (networkUnread > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    networkUnread > 9 ? '9+' : networkUnread.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        'Сообщение от Всей Сети',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: networkUnread > 0 ? Colors.orange[800] : null,
-                        ),
-                      ),
-                      subtitle: lastNetworkMessage != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _formatTimestamp(lastNetworkMessage.timestamp),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  lastNetworkMessage.text.length > 50
-                                      ? '${lastNetworkMessage.text.substring(0, 50)}...'
-                                      : lastNetworkMessage.text,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: networkUnread > 0 ? Colors.blue : Colors.grey,
-                                    fontWeight: networkUnread > 0 ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Text('Нажмите, чтобы открыть'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NetworkDialogPage(),
-                          ),
-                        );
-                        _loadDialogs();
-                      },
-                    ),
-                  );
-                }
-
-                // Второй элемент - "Связь с Руководством" (если есть сообщения)
-                final managementIndex = hasNetworkMessages ? 1 : 0;
-                if (hasManagementMessages && index == managementIndex) {
-                  final managementUnread = _managementData!.unreadCount;
-                  final lastManagementMessage = _managementData!.messages.isNotEmpty
-                      ? _managementData!.messages.last
-                      : null;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: managementUnread > 0 ? Colors.blue[50] : null,
-                    child: ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: managementUnread > 0
-                                ? Colors.blue
-                                : const Color(0xFF004D40),
-                            child: const Icon(
-                              Icons.business,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (managementUnread > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    managementUnread > 9 ? '9+' : managementUnread.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        'Связь с Руководством',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: managementUnread > 0 ? Colors.blue[800] : null,
-                        ),
-                      ),
-                      subtitle: lastManagementMessage != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _formatTimestamp(lastManagementMessage.timestamp),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  lastManagementMessage.text.length > 50
-                                      ? '${lastManagementMessage.text.substring(0, 50)}...'
-                                      : lastManagementMessage.text,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: managementUnread > 0 ? Colors.blue : Colors.grey,
-                                    fontWeight: managementUnread > 0 ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const Text('Нажмите, чтобы открыть'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ManagementDialogPage(),
-                          ),
-                        );
-                        _loadDialogs();
-                      },
-                    ),
-                  );
-                }
-
-                // Третий элемент - "Отзывы" (если есть)
-                final reviewsIndex = (hasNetworkMessages ? 1 : 0) + (hasManagementMessages ? 1 : 0);
-                if (hasReviews && index == reviewsIndex) {
-                  final lastReview = _clientReviews.isNotEmpty ? _clientReviews.first : null;
-                  final lastMessage = lastReview?.getLastMessage();
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: _reviewsUnreadCount > 0 ? Colors.amber[50] : null,
-                    child: ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: _reviewsUnreadCount > 0
-                                ? Colors.amber
-                                : const Color(0xFF004D40),
-                            child: const Icon(
-                              Icons.rate_review,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (_reviewsUnreadCount > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _reviewsUnreadCount > 9 ? '9+' : _reviewsUnreadCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        'Отзывы',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _reviewsUnreadCount > 0 ? Colors.amber[800] : null,
-                        ),
-                      ),
-                      subtitle: lastReview != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  lastReview.shopAddress,
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  lastMessage != null
-                                      ? '${lastMessage.sender == 'admin' ? 'Ответ: ' : ''}${lastMessage.text}'
-                                      : lastReview.reviewText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: _reviewsUnreadCount > 0 ? Colors.amber[800] : Colors.grey,
-                                    fontWeight: _reviewsUnreadCount > 0 ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Text('Всего отзывов: ${_clientReviews.length}'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ClientReviewsListPage(),
-                          ),
-                        );
-                        _loadDialogs();
-                      },
-                    ),
-                  );
-                }
-
-                // Четвёртый элемент (или несколько) - сначала общая строка "Поиск Товара", затем персональные диалоги
-                final productQuestionStartIndex = (hasNetworkMessages ? 1 : 0) + (hasManagementMessages ? 1 : 0) + (hasReviews ? 1 : 0);
-
-                // Показываем общую строку "Поиск Товара" (если есть вопросы)
-                if (hasProductQuestions && index == productQuestionStartIndex) {
-                  final productUnread = _productQuestionData!.unreadCount;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: productUnread > 0 ? Colors.purple[50] : null,
-                    child: ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: productUnread > 0
-                                ? Colors.purple
-                                : const Color(0xFF004D40),
-                            child: const Icon(
-                              Icons.search,
-                              color: Colors.white,
-                            ),
-                          ),
-                          if (productUnread > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    productUnread > 9 ? '9+' : productUnread.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      title: Text(
-                        'Поиск Товара',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: productUnread > 0 ? Colors.purple[800] : null,
-                        ),
-                      ),
-                      subtitle: const Text('Нажмите, чтобы открыть список магазинов'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ProductQuestionShopsListPage(),
-                          ),
-                        );
-                        _loadDialogs();
-                      },
-                    ),
-                  );
-                }
-
-                // Если есть персональные диалоги - показываем их после общей строки
-                if (hasPersonalDialogs) {
-                  final personalDialogStartIndex = productQuestionStartIndex + (hasProductQuestions ? 1 : 0);
-                  final personalDialogIndex = index - personalDialogStartIndex;
-                  if (personalDialogIndex >= 0 && personalDialogIndex < _personalDialogs.length) {
-                    final personalDialog = _personalDialogs[personalDialogIndex];
-                    final hasUnread = personalDialog.hasUnreadFromEmployee;
-                    final lastMessage = personalDialog.getLastMessage();
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      color: hasUnread ? Colors.purple[50] : null,
-                      child: ListTile(
-                        leading: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: hasUnread
-                                  ? Colors.purple
-                                  : const Color(0xFF004D40),
-                              child: const Icon(
-                                Icons.search,
-                                color: Colors.white,
-                              ),
-                            ),
-                            if (hasUnread)
-                              Positioned(
-                                right: -4,
-                                top: -4,
-                                child: Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      '!',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        title: Text(
-                          'Поиск товара - ${personalDialog.shopAddress}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: hasUnread ? Colors.purple[800] : null,
-                          ),
-                        ),
-                        subtitle: lastMessage != null
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _formatTimestamp(lastMessage.timestamp),
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    lastMessage.text.length > 50
-                                        ? '${lastMessage.text.substring(0, 50)}...'
-                                        : lastMessage.text,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: hasUnread ? Colors.purple : Colors.grey,
-                                      fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const Text('Нажмите, чтобы открыть'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProductQuestionPersonalDialogPage(
-                                dialogId: personalDialog.id,
-                                shopAddress: personalDialog.shopAddress,
-                              ),
-                            ),
-                          );
-                          _loadDialogs();
-                        },
-                      ),
-                    );
-                  }
-                }
-
-                // Возвращаем пустой контейнер для остальных индексов (старые диалоги удалены)
-                return const SizedBox.shrink();
-              },
+  Widget _buildFloatingActionButton() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ManagementDialogPage(),
+              ),
             );
+            _loadDialogs();
           },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.business, color: Colors.white, size: 22),
+                SizedBox(width: 10),
+                Text(
+                  'Связаться с Руководством',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildContent() {
+    final hasNetworkMessages = _networkData?.hasMessages ?? false;
+    final hasManagementMessages = _managementData?.hasMessages ?? false;
+    final hasReviews = _clientReviews.isNotEmpty;
+    final hasProductQuestions = _productQuestionData?.hasQuestions ?? false;
+    final hasPersonalDialogs = _personalDialogs.isNotEmpty;
+
+    if (!hasNetworkMessages && !hasManagementMessages && !hasReviews && !hasProductQuestions && !hasPersonalDialogs) {
+      return _buildEmptyState();
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      children: [
+        // Сообщение от Всей Сети
+        if (hasNetworkMessages) ...[
+          _buildNetworkCard(),
+          const SizedBox(height: 12),
+        ],
+        // Связь с Руководством
+        if (hasManagementMessages) ...[
+          _buildManagementCard(),
+          const SizedBox(height: 12),
+        ],
+        // Отзывы
+        if (hasReviews) ...[
+          _buildReviewsCard(),
+          const SizedBox(height: 12),
+        ],
+        // Поиск Товара (общий)
+        if (hasProductQuestions) ...[
+          _buildProductSearchCard(),
+          const SizedBox(height: 12),
+        ],
+        // Персональные диалоги
+        ..._personalDialogs.map((dialog) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildPersonalDialogCard(dialog),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: Colors.white54,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'У вас пока нет диалогов',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Оставьте отзыв, задайте вопрос или сделайте заказ',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 15,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogCard({
+    required String title,
+    required String? subtitle,
+    required String? timestamp,
+    required IconData icon,
+    required Color accentColor,
+    required List<Color> gradientColors,
+    required int unreadCount,
+    required VoidCallback onTap,
+  }) {
+    final hasUnread = unreadCount > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withOpacity(hasUnread ? 0.4 : 0.2),
+            blurRadius: hasUnread ? 16 : 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Иконка с градиентом
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: gradientColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradientColors.first.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Center(
+                        child: Icon(icon, color: Colors.white, size: 28),
+                      ),
+                      if (hasUnread)
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 22,
+                              minHeight: 22,
+                            ),
+                            child: Text(
+                              unreadCount > 9 ? '9+' : unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Контент
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: hasUnread ? accentColor : const Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      if (timestamp != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          timestamp,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: hasUnread ? accentColor.withOpacity(0.8) : Colors.grey[600],
+                            fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Стрелка
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: accentColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetworkCard() {
+    final unread = _networkData!.unreadCount;
+    final lastMessage = _networkData!.messages.isNotEmpty
+        ? _networkData!.messages.last
+        : null;
+
+    return _buildDialogCard(
+      title: 'Сообщение от Всей Сети',
+      subtitle: lastMessage != null
+          ? lastMessage.text.length > 60
+              ? '${lastMessage.text.substring(0, 60)}...'
+              : lastMessage.text
+          : 'Нажмите, чтобы открыть',
+      timestamp: lastMessage != null ? _formatTimestamp(lastMessage.timestamp) : null,
+      icon: Icons.language,
+      accentColor: Colors.orange[700]!,
+      gradientColors: [Colors.orange[400]!, Colors.deepOrange[400]!],
+      unreadCount: unread,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NetworkDialogPage()),
+        );
+        _loadDialogs();
+      },
+    );
+  }
+
+  Widget _buildManagementCard() {
+    final unread = _managementData!.unreadCount;
+    final lastMessage = _managementData!.messages.isNotEmpty
+        ? _managementData!.messages.last
+        : null;
+
+    return _buildDialogCard(
+      title: 'Связь с Руководством',
+      subtitle: lastMessage != null
+          ? lastMessage.text.length > 60
+              ? '${lastMessage.text.substring(0, 60)}...'
+              : lastMessage.text
+          : 'Нажмите, чтобы открыть',
+      timestamp: lastMessage != null ? _formatTimestamp(lastMessage.timestamp) : null,
+      icon: Icons.business,
+      accentColor: Colors.blue[700]!,
+      gradientColors: [Colors.blue[400]!, Colors.indigo[400]!],
+      unreadCount: unread,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ManagementDialogPage()),
+        );
+        _loadDialogs();
+      },
+    );
+  }
+
+  Widget _buildReviewsCard() {
+    final lastReview = _clientReviews.isNotEmpty ? _clientReviews.first : null;
+    final lastMessage = lastReview?.getLastMessage();
+
+    return _buildDialogCard(
+      title: 'Отзывы',
+      subtitle: lastReview != null
+          ? lastMessage != null
+              ? '${lastMessage.sender == 'admin' ? 'Ответ: ' : ''}${lastMessage.text}'
+              : lastReview.reviewText
+          : 'Всего отзывов: ${_clientReviews.length}',
+      timestamp: lastReview != null ? lastReview.shopAddress : null,
+      icon: Icons.rate_review,
+      accentColor: Colors.amber[700]!,
+      gradientColors: [Colors.amber[400]!, Colors.orange[400]!],
+      unreadCount: _reviewsUnreadCount,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ClientReviewsListPage()),
+        );
+        _loadDialogs();
+      },
+    );
+  }
+
+  Widget _buildProductSearchCard() {
+    final unread = _productQuestionData!.unreadCount;
+
+    return _buildDialogCard(
+      title: 'Поиск Товара',
+      subtitle: 'Нажмите, чтобы открыть список магазинов',
+      timestamp: null,
+      icon: Icons.search,
+      accentColor: Colors.purple[700]!,
+      gradientColors: [Colors.purple[400]!, Colors.deepPurple[400]!],
+      unreadCount: unread,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProductQuestionShopsListPage()),
+        );
+        _loadDialogs();
+      },
+    );
+  }
+
+  Widget _buildPersonalDialogCard(PersonalProductDialog dialog) {
+    final hasUnread = dialog.hasUnreadFromEmployee;
+    final lastMessage = dialog.getLastMessage();
+
+    return _buildDialogCard(
+      title: 'Поиск товара',
+      subtitle: lastMessage != null
+          ? lastMessage.text.length > 60
+              ? '${lastMessage.text.substring(0, 60)}...'
+              : lastMessage.text
+          : 'Нажмите, чтобы открыть',
+      timestamp: dialog.shopAddress,
+      icon: Icons.storefront,
+      accentColor: Colors.teal[700]!,
+      gradientColors: [Colors.teal[400]!, Colors.cyan[400]!],
+      unreadCount: hasUnread ? 1 : 0,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductQuestionPersonalDialogPage(
+              dialogId: dialog.id,
+              shopAddress: dialog.shopAddress,
+            ),
+          ),
+        );
+        _loadDialogs();
+      },
+    );
+  }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -535,7 +535,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -547,10 +547,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 48, color: Colors.white),
-          const SizedBox(height: 10),
+          Expanded(
+            child: Center(
+              child: Icon(icon, size: 64, color: Colors.white),
+            ),
+          ),
           Text(
             label,
             style: const TextStyle(
@@ -570,7 +572,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -582,18 +584,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/chat_icon.png',
-              width: 48,
-              height: 48,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/chat_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
           Text(
             label,
             style: const TextStyle(
@@ -613,7 +615,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -625,18 +627,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/cart_icon.png',
-              width: 48,
-              height: 48,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/cart_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
           Text(
             label,
             style: const TextStyle(
@@ -682,7 +684,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -694,10 +696,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildLoyaltyIcon(),
-          const SizedBox(height: 8),
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/loyalty_card_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
           Text(
             label,
             style: const TextStyle(
@@ -717,7 +727,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -729,10 +739,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildMenuIcon(),
-          const SizedBox(height: 8),
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/main_menu_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
           Text(
             label,
             style: const TextStyle(
@@ -755,7 +773,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         ElevatedButton(
           onPressed: onTap,
           style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.zero,
+            padding: const EdgeInsets.all(12),
             backgroundColor: Colors.white.withOpacity(0.2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -767,10 +785,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
             elevation: 4,
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 48, color: Colors.white),
-              const SizedBox(height: 10),
+              Expanded(
+                child: Center(
+                  child: Icon(icon, size: 64, color: Colors.white),
+                ),
+              ),
               Text(
                 label,
                 style: const TextStyle(
@@ -922,7 +942,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -934,18 +954,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/search_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/search_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -965,7 +985,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -977,18 +997,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/schedule_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/schedule_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1008,7 +1028,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1021,36 +1041,34 @@ class _MainMenuPageState extends State<MainMenuPage> {
       ),
       child: Stack(
         children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    'assets/images/reports_icon.png',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.contain,
+          Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/images/reports_icon.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
           if (badgeCount > 0)
             Positioned(
-              top: 8,
-              right: 8,
+              top: 0,
+              right: 0,
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
@@ -1090,7 +1108,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1102,18 +1120,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/data_management_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/data_management_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1133,7 +1151,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1145,18 +1163,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/employee_panel_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/employee_panel_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1176,7 +1194,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1188,18 +1206,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/my_orders_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/my_orders_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1219,7 +1237,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1231,18 +1249,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/map_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/map_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1262,7 +1280,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1274,18 +1292,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/chat_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/chat_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1305,7 +1323,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1317,18 +1335,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              'assets/images/reviews_icon.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/reviews_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
@@ -1348,7 +1366,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1360,18 +1378,18 @@ class _MainMenuPageState extends State<MainMenuPage> {
         elevation: 4,
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/job_application_icon.png',
-              width: 48,
-              height: 48,
-              fit: BoxFit.contain,
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/job_application_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
           Text(
             label,
             style: const TextStyle(

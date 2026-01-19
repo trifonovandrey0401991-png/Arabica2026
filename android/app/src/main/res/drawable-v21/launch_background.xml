@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Splash screen for Arabica app (API 21+) - solid color background -->
+<!-- Splash screen for Arabica app (API 21+) with centered logo -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background color -->
     <item android:drawable="@color/splash_background" />
+
+    <!-- Centered logo -->
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/splash_logo" />
+    </item>
 </layer-list>
