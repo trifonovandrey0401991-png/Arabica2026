@@ -5,10 +5,37 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const util = require('util');
 const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
+
+// Безопасная функция для запуска Python скриптов (защита от Command Injection)
+function spawnPython(args) {
+  return new Promise((resolve, reject) => {
+    const process = spawn('python3', args, {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    process.stdout.on('data', (data) => { stdout += data.toString(); });
+    process.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    process.on('close', (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`Python script exited with code ${code}: ${stderr}`));
+      }
+    });
+
+    process.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
 const setupJobApplicationsAPI = require('./job_applications_api');
 
 const setupRecountPointsAPI = require("./recount_points_api");
@@ -24,10 +51,105 @@ const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api")
 const { setupPointsSettingsAPI } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
+const { setupOrderTimeoutAPI } = require("./order_timeout_api");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
+const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
+
+// Rate Limiting - защита от DDoS и brute-force атак
+let rateLimit;
+try {
+  rateLimit = require('express-rate-limit');
+} catch (e) {
+  console.warn('⚠️ express-rate-limit не установлен. Rate limiting отключён.');
+  rateLimit = null;
+}
+
+// Security Headers (helmet) - защита от XSS, clickjacking и др.
+let helmet;
+try {
+  helmet = require('helmet');
+} catch (e) {
+  console.warn('⚠️ helmet не установлен. Security headers отключены.');
+  helmet = null;
+}
+
 app.use(bodyParser.json({ limit: "50mb" }));
-app.use(cors());
+
+// Применяем Security Headers если helmet установлен
+if (helmet) {
+  app.use(helmet({
+    contentSecurityPolicy: false, // Отключаем CSP для API (нет HTML)
+    crossOriginEmbedderPolicy: false, // Для совместимости с мобильными приложениями
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Разрешаем загрузку ресурсов
+  }));
+  console.log('✅ Security Headers (helmet) активированы');
+}
+
+// CORS - ограничиваем разрешённые источники
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Разрешаем запросы без origin (мобильные приложения, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    // Разрешённые домены
+    const allowedOrigins = [
+      'https://arabica26.ru',
+      'http://arabica26.ru',
+      'http://localhost:3000',
+      'http://localhost:8080',
+      'http://127.0.0.1:3000',
+    ];
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
+      callback(null, true); // Пока разрешаем, но логируем (для отладки)
+      // callback(new Error('Not allowed by CORS')); // Раскомментировать для строгого режима
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+app.use(cors(corsOptions));
+
+// Trust proxy для корректной работы за nginx/reverse proxy
+app.set('trust proxy', 1);
+
+// Применяем Rate Limiting если пакет установлен
+if (rateLimit) {
+  // Общий лимит: 100 запросов в минуту с одного IP
+  const generalLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: 100,
+    message: { success: false, error: 'Слишком много запросов. Попробуйте позже.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false }, // Отключаем валидацию т.к. trust proxy включен
+  });
+
+  // Строгий лимит для чувствительных endpoints: 10 запросов в минуту
+  const strictLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'Превышен лимит запросов. Подождите минуту.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
+  });
+
+  // Применяем общий лимит ко всем /api/* маршрутам
+  app.use('/api/', generalLimiter);
+
+  // Строгий лимит для финансовых операций
+  app.use('/api/withdrawals', strictLimiter);
+  app.use('/api/bonus-penalties', strictLimiter);
+  app.use('/api/rko', strictLimiter);
+
+  console.log('✅ Rate Limiting активирован: 100 req/min (общий), 10 req/min (финансовые операции)');
+}
 
 // Статические файлы для редактора координат
 app.use('/static', express.static('/var/www/html'));
@@ -2191,14 +2313,14 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     
     // Вызываем Python скрипт для обработки Word шаблона
     const scriptPath = path.join(__dirname, 'rko_docx_processor.py');
-    const dataJson = JSON.stringify(data).replace(/'/g, "\\'");
-    
+    const dataJson = JSON.stringify(data); // Без экранирования - spawn передаёт аргументы безопасно
+
     try {
-      // Обработка Word шаблона через python-docx
-      console.log(`Выполняем обработку Word шаблона: python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`);
-      const { stdout: processOutput } = await execPromise(
-        `python3 "${scriptPath}" process "${templateDocxPath}" "${tempDocxPath}" '${dataJson}'`
-      );
+      // Обработка Word шаблона через python-docx (используем spawn для защиты от Command Injection)
+      console.log(`Выполняем обработку Word шаблона: ${scriptPath} process`);
+      const { stdout: processOutput } = await spawnPython([
+        scriptPath, 'process', templateDocxPath, tempDocxPath, dataJson
+      ]);
       
       const processResult = JSON.parse(processOutput);
       if (!processResult.success) {
@@ -2212,9 +2334,10 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       console.log(`Конвертируем DOCX в PDF: ${tempDocxPath} -> ${tempPdfPath}`);
       
       try {
-        const { stdout: convertOutput } = await execPromise(
-          `python3 "${scriptPath}" convert "${tempDocxPath}" "${tempPdfPath}"`
-        );
+        // Конвертация DOCX в PDF (используем spawn для защиты от Command Injection)
+        const { stdout: convertOutput } = await spawnPython([
+          scriptPath, 'convert', tempDocxPath, tempPdfPath
+        ]);
         
         const convertResult = JSON.parse(convertOutput);
         if (!convertResult.success) {
@@ -6260,6 +6383,10 @@ setupPointsSettingsAPI(app);
 setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
 setupZReportAPI(app);
 setupCigaretteVisionAPI(app);
+setupDataCleanupAPI(app);
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();
+
+// Start order timeout scheduler (auto-expire orders and create penalties)
+setupOrderTimeoutAPI(app);

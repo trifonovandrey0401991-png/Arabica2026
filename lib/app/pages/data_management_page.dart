@@ -11,6 +11,7 @@ import '../../features/suppliers/pages/suppliers_management_page.dart';
 import '../../features/efficiency/pages/points_settings_page.dart';
 import '../../features/tasks/pages/task_management_page.dart';
 import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
+import '../../features/data_cleanup/pages/data_cleanup_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -204,6 +205,20 @@ class DataManagementPage extends StatelessWidget {
               // TODO: Логика будет добавлена позже
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Функционал в разработке')),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildSection(
+            context,
+            title: 'Очистка Историй',
+            icon: Icons.cleaning_services,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DataCleanupPage(),
+                ),
               );
             },
           ),
