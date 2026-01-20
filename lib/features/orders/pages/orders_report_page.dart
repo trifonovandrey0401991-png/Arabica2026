@@ -200,7 +200,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
                           ),
                         ),
                         Text(
-                          '${_formatPrice(totalPrice)} ₽',
+                          '${_formatPrice(totalPrice)} руб.',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,

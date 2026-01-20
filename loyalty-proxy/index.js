@@ -4846,6 +4846,211 @@ app.post('/api/clients', async (req, res) => {
   }
 });
 
+// POST /api/clients/:phone/free-drink - увеличить счётчик бесплатных напитков
+app.post('/api/clients/:phone/free-drink', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { count = 1 } = req.body;
+
+    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
+    const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
+
+    if (!fs.existsSync(clientFile)) {
+      return res.status(404).json({ success: false, error: 'Клиент не найден' });
+    }
+
+    const client = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+    client.freeDrinksGiven = (client.freeDrinksGiven || 0) + count;
+    client.updatedAt = new Date().toISOString();
+
+    fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
+
+    console.log(`🍹 Выдан бесплатный напиток клиенту ${client.name || phone}. Всего: ${client.freeDrinksGiven}`);
+    res.json({ success: true, client });
+  } catch (error) {
+    console.error('Ошибка обновления счётчика напитков:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== API для сообщений клиентам (network messages) ==========
+const NETWORK_MESSAGES_DIR = '/var/www/network-messages';
+if (!fs.existsSync(NETWORK_MESSAGES_DIR)) {
+  fs.mkdirSync(NETWORK_MESSAGES_DIR, { recursive: true });
+}
+
+// POST /api/clients/:phone/messages - отправить сообщение одному клиенту
+app.post('/api/clients/:phone/messages', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { text, imageUrl, senderPhone } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ success: false, error: 'Текст сообщения обязателен' });
+    }
+
+    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
+
+    // Создаём сообщение
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const message = {
+      id: messageId,
+      clientPhone: normalizedPhone,
+      senderPhone: senderPhone || 'admin',
+      text: text,
+      imageUrl: imageUrl || null,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+      source: 'network' // сетевое сообщение от админа
+    };
+
+    // Сохраняем сообщение в файл клиента
+    const messagesFile = path.join(NETWORK_MESSAGES_DIR, `${sanitizedPhone}.json`);
+    let messages = [];
+    if (fs.existsSync(messagesFile)) {
+      messages = JSON.parse(fs.readFileSync(messagesFile, 'utf8'));
+    }
+    messages.push(message);
+    fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2), 'utf8');
+
+    // Отправляем push-уведомление клиенту
+    try {
+      const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
+      if (fs.existsSync(clientFile)) {
+        const client = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+        if (client.fcmToken) {
+          await sendPushToPhone(
+            normalizedPhone,
+            'Новое сообщение',
+            text.length > 100 ? text.substring(0, 100) + '...' : text,
+            { type: 'network_message', messageId }
+          );
+          console.log(`📨 Push отправлен клиенту ${normalizedPhone}`);
+        }
+      }
+    } catch (pushError) {
+      console.error('Ошибка отправки push клиенту:', pushError);
+    }
+
+    console.log(`📨 Сообщение отправлено клиенту ${normalizedPhone}`);
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Ошибка отправки сообщения клиенту:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/clients/messages/broadcast - отправить сообщение всем клиентам
+app.post('/api/clients/messages/broadcast', async (req, res) => {
+  try {
+    const { text, imageUrl, senderPhone } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ success: false, error: 'Текст сообщения обязателен' });
+    }
+
+    console.log(`📢 Рассылка сообщения всем клиентам: ${text.substring(0, 50)}...`);
+
+    // Получаем всех клиентов
+    const clients = [];
+    if (fs.existsSync(CLIENTS_DIR)) {
+      const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(CLIENTS_DIR, file), 'utf8');
+          clients.push(JSON.parse(content));
+        } catch (e) {
+          console.error(`Ошибка чтения ${file}:`, e);
+        }
+      }
+    }
+
+    let sentCount = 0;
+    const broadcastId = `broadcast_${Date.now()}`;
+
+    for (const client of clients) {
+      try {
+        const normalizedPhone = client.phone.replace(/[\s\+]/g, '');
+        const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
+
+        // Создаём сообщение для этого клиента
+        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const message = {
+          id: messageId,
+          broadcastId: broadcastId,
+          clientPhone: normalizedPhone,
+          senderPhone: senderPhone || 'admin',
+          text: text,
+          imageUrl: imageUrl || null,
+          timestamp: new Date().toISOString(),
+          isRead: false,
+          source: 'broadcast'
+        };
+
+        // Сохраняем сообщение
+        const messagesFile = path.join(NETWORK_MESSAGES_DIR, `${sanitizedPhone}.json`);
+        let messages = [];
+        if (fs.existsSync(messagesFile)) {
+          messages = JSON.parse(fs.readFileSync(messagesFile, 'utf8'));
+        }
+        messages.push(message);
+        fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2), 'utf8');
+
+        // Отправляем push если есть токен
+        if (client.fcmToken) {
+          try {
+            await sendPushToPhone(
+              normalizedPhone,
+              'Новое сообщение от Arabica',
+              text.length > 100 ? text.substring(0, 100) + '...' : text,
+              { type: 'broadcast_message', messageId, broadcastId }
+            );
+          } catch (pushError) {
+            // Игнорируем ошибки push для отдельных клиентов
+          }
+        }
+
+        sentCount++;
+      } catch (clientError) {
+        console.error(`Ошибка отправки клиенту ${client.phone}:`, clientError);
+      }
+    }
+
+    console.log(`📢 Рассылка завершена: ${sentCount}/${clients.length} клиентов`);
+    res.json({
+      success: true,
+      sentCount,
+      totalClients: clients.length,
+      broadcastId
+    });
+  } catch (error) {
+    console.error('Ошибка рассылки:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/clients/:phone/messages - получить сообщения клиента
+app.get('/api/clients/:phone/messages', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const normalizedPhone = phone.replace(/[\s\+]/g, '');
+    const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
+
+    const messagesFile = path.join(NETWORK_MESSAGES_DIR, `${sanitizedPhone}.json`);
+    let messages = [];
+    if (fs.existsSync(messagesFile)) {
+      messages = JSON.parse(fs.readFileSync(messagesFile, 'utf8'));
+    }
+
+    res.json({ success: true, messages });
+  } catch (error) {
+    console.error('Ошибка получения сообщений:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ========== API для отчетов пересменки ==========
 const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
 if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
@@ -4932,11 +5137,16 @@ app.post('/api/training-articles', async (req, res) => {
       group: req.body.group,
       title: req.body.title,
       content: req.body.content || '',  // Контент статьи
+      visibility: req.body.visibility || 'all',  // Видимость: 'all' или 'managers'
       createdAt: new Date().toISOString(),
     };
     // URL опционален (для обратной совместимости)
     if (req.body.url) {
       article.url = req.body.url;
+    }
+    // Блоки контента (текст + изображения)
+    if (req.body.contentBlocks && Array.isArray(req.body.contentBlocks)) {
+      article.contentBlocks = req.body.contentBlocks;
     }
     const articleFile = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
     fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
@@ -4958,6 +5168,11 @@ app.put('/api/training-articles/:id', async (req, res) => {
     if (req.body.title !== undefined) article.title = req.body.title;
     if (req.body.content !== undefined) article.content = req.body.content;
     if (req.body.url !== undefined) article.url = req.body.url;
+    if (req.body.visibility !== undefined) article.visibility = req.body.visibility;
+    // Блоки контента (текст + изображения)
+    if (req.body.contentBlocks !== undefined) {
+      article.contentBlocks = req.body.contentBlocks;
+    }
     article.updatedAt = new Date().toISOString();
     fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
     res.json({ success: true, article });

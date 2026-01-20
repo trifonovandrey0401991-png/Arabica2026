@@ -25,6 +25,7 @@ class OrderService {
         'quantity': item.quantity,
         'total': item.totalPrice,
         'photoId': item.menuItem.photoId,
+        'imageUrl': item.menuItem.imageUrl,
       }).toList();
 
       final requestBody = {

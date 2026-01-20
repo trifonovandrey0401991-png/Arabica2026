@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import '../models/training_model.dart';
 import '../models/content_block.dart';
@@ -28,8 +29,10 @@ class TrainingArticleService {
     required String content,
     String? url,
     List<ContentBlock>? contentBlocks,
+    String? visibility,
   }) async {
     Logger.debug('📤 Создание статьи обучения: $title');
+    Logger.debug('📤 contentBlocks count: ${contentBlocks?.length ?? 0}');
 
     final body = <String, dynamic>{
       'group': group,
@@ -41,6 +44,10 @@ class TrainingArticleService {
     }
     if (contentBlocks != null && contentBlocks.isNotEmpty) {
       body['contentBlocks'] = contentBlocks.map((b) => b.toJson()).toList();
+      Logger.debug('📤 contentBlocks JSON: ${body['contentBlocks']}');
+    }
+    if (visibility != null && visibility.isNotEmpty) {
+      body['visibility'] = visibility;
     }
 
     return await BaseHttpService.post<TrainingArticle>(
@@ -59,6 +66,7 @@ class TrainingArticleService {
     String? content,
     String? url,
     List<ContentBlock>? contentBlocks,
+    String? visibility,
   }) async {
     Logger.debug('📤 Обновление статьи обучения: $id');
 
@@ -70,6 +78,7 @@ class TrainingArticleService {
     if (contentBlocks != null) {
       body['contentBlocks'] = contentBlocks.map((b) => b.toJson()).toList();
     }
+    if (visibility != null) body['visibility'] = visibility;
 
     return await BaseHttpService.put<TrainingArticle>(
       endpoint: '$baseEndpoint/$id',
@@ -93,12 +102,34 @@ class TrainingArticleService {
     Logger.debug('📤 Загрузка изображения для статьи обучения...');
 
     try {
-      final uri = Uri.parse('${ApiConstants.serverBaseUrl}$baseEndpoint/upload-image');
+      final uri = Uri.parse('${ApiConstants.serverUrl}$baseEndpoint/upload-image');
       final request = http.MultipartRequest('POST', uri);
+
+      // Определяем MIME-тип по расширению файла
+      final extension = imageFile.path.split('.').last.toLowerCase();
+      String contentType;
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        default:
+          contentType = 'image/jpeg'; // По умолчанию JPEG
+      }
 
       request.files.add(await http.MultipartFile.fromPath(
         'image',
         imageFile.path,
+        contentType: MediaType.parse(contentType),
       ));
 
       final streamedResponse = await request.send();

@@ -18,6 +18,9 @@ class RecipeFormPage extends StatefulWidget {
 }
 
 class _RecipeFormPageState extends State<RecipeFormPage> {
+  static const _primaryColor = Color(0xFF004D40);
+  static const _primaryColorLight = Color(0xFF00695C);
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
@@ -83,34 +86,140 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   }
 
   Future<void> _showImageSourceDialog() async {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Выберите источник фото'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Галерея'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Индикатор
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Заголовок
+                  Row(
+                    children: [
+                      Icon(Icons.add_photo_alternate_rounded, color: _primaryColor, size: 28),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Выберите источник фото',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Галерея
+                  _buildImageSourceOption(
+                    icon: Icons.photo_library_rounded,
+                    title: 'Галерея',
+                    subtitle: 'Выбрать из фотографий',
+                    color: Colors.purple,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Камера
+                  _buildImageSourceOption(
+                    icon: Icons.camera_alt_rounded,
+                    title: 'Камера',
+                    subtitle: 'Сделать новое фото',
+                    color: Colors.blue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Камера'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-            ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(color: color.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: color, size: 24),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -212,18 +321,23 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.recipe != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.recipe == null ? 'Добавить рецепт' : 'Редактировать рецепт'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text(isEditing ? 'Редактировать рецепт' : 'Новый рецепт'),
+        backgroundColor: _primaryColor,
+        elevation: 0,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _primaryColor,
+              _primaryColor.withOpacity(0.85),
+            ],
           ),
         ),
         child: Form(
@@ -233,75 +347,32 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Фото
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Фото напитка',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_selectedPhoto != null || _photoUrl != null)
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: _selectedPhoto != null
-                                  ? Image.file(
-                                      _selectedPhoto!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : _photoUrl != null
-                                      ? Image.network(
-                                          _photoUrl!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(
-                                            Icons.broken_image,
-                                            size: 64,
-                                          ),
-                                        )
-                                      : const SizedBox(),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _isSaving ? null : _showImageSourceDialog,
-                          icon: const Icon(Icons.add_photo_alternate),
-                          label: Text(_selectedPhoto != null || _photoUrl != null
-                              ? 'Изменить фото'
-                              : 'Добавить фото'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF004D40),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                // Заголовок секции с фото
+                _buildSectionHeader(
+                  icon: Icons.photo_camera_rounded,
+                  title: 'Фото напитка',
+                  subtitle: 'Добавьте красивое фото',
                 ),
-                const SizedBox(height: 16),
-                // Название напитка
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextFormField(
+                const SizedBox(height: 12),
+                // Карточка фото
+                _buildPhotoCard(),
+                const SizedBox(height: 20),
+
+                // Основная информация
+                _buildSectionHeader(
+                  icon: Icons.info_outline_rounded,
+                  title: 'Основная информация',
+                  subtitle: 'Название, категория и цена',
+                ),
+                const SizedBox(height: 12),
+                _buildFormCard(
+                  children: [
+                    _buildTextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Название напитка *',
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Название напитка',
+                      hint: 'Введите название',
+                      icon: Icons.local_cafe_rounded,
+                      isRequired: true,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Название напитка обязательно';
@@ -309,97 +380,412 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                         return null;
                       },
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Категория напитка
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextFormField(
+                    const Divider(height: 24),
+                    _buildTextField(
                       controller: _categoryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Категория напитка',
-                        border: OutlineInputBorder(),
-                        hintText: 'Например: Кофе, Чай, Десерты',
-                      ),
+                      label: 'Категория',
+                      hint: 'Например: Кофе, Чай, Десерты',
+                      icon: Icons.category_rounded,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Цена напитка
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextFormField(
+                    const Divider(height: 24),
+                    _buildTextField(
                       controller: _priceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Цена напитка',
-                        border: OutlineInputBorder(),
-                        hintText: 'Например: 150',
-                        prefixText: '₽ ',
-                      ),
+                      label: 'Цена',
+                      hint: 'Например: 150',
+                      icon: Icons.payments_rounded,
                       keyboardType: TextInputType.number,
+                      suffix: 'руб.',
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+
                 // Ингредиенты
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextFormField(
+                _buildSectionHeader(
+                  icon: Icons.restaurant_menu_rounded,
+                  title: 'Ингредиенты',
+                  subtitle: 'Список компонентов',
+                ),
+                const SizedBox(height: 12),
+                _buildFormCard(
+                  children: [
+                    _buildMultilineTextField(
                       controller: _ingredientsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Ингредиенты',
-                        border: OutlineInputBorder(),
-                        hintText: 'Введите список ингредиентов',
-                      ),
-                      maxLines: 5,
-                      minLines: 3,
+                      label: 'Список ингредиентов',
+                      hint: 'Молоко - 200 мл\nЭспрессо - 30 мл\nСахар - по вкусу',
+                      minLines: 4,
+                      maxLines: 8,
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                // Последовательность приготовления
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextFormField(
+                const SizedBox(height: 20),
+
+                // Приготовление
+                _buildSectionHeader(
+                  icon: Icons.menu_book_rounded,
+                  title: 'Приготовление',
+                  subtitle: 'Пошаговая инструкция',
+                ),
+                const SizedBox(height: 12),
+                _buildFormCard(
+                  children: [
+                    _buildMultilineTextField(
                       controller: _stepsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Последовательность приготовления',
-                        border: OutlineInputBorder(),
-                        hintText: 'Опишите шаги приготовления',
+                      label: 'Шаги приготовления',
+                      hint: '1. Взбейте молоко\n2. Приготовьте эспрессо\n3. Соедините и украсьте',
+                      minLines: 6,
+                      maxLines: 15,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+
+                // Кнопка сохранения
+                _buildSaveButton(),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Заголовок секции
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Карточка с фото
+  Widget _buildPhotoCard() {
+    final hasPhoto = _selectedPhoto != null || _photoUrl != null;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Область для фото
+          GestureDetector(
+            onTap: _isSaving ? null : _showImageSourceDialog,
+            child: Container(
+              height: hasPhoto ? 220 : 160,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.08),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: hasPhoto
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
                       ),
-                      maxLines: 10,
-                      minLines: 5,
+                      child: _selectedPhoto != null
+                          ? Image.file(
+                              _selectedPhoto!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            )
+                          : _photoUrl != null
+                              ? Image.network(
+                                  _photoUrl!,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder: (_, __, ___) => _buildPhotoPlaceholder(),
+                                )
+                              : _buildPhotoPlaceholder(),
+                    )
+                  : _buildPhotoPlaceholder(),
+            ),
+          ),
+          // Кнопка выбора фото
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Material(
+              color: _primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: _isSaving ? null : _showImageSourceDialog,
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        hasPhoto ? Icons.edit_rounded : Icons.add_photo_alternate_rounded,
+                        color: _primaryColor,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        hasPhoto ? 'Изменить фото' : 'Добавить фото',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Заглушка для фото
+  Widget _buildPhotoPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.add_a_photo_rounded,
+            size: 48,
+            color: _primaryColor.withOpacity(0.3),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Нажмите, чтобы добавить фото',
+            style: TextStyle(
+              fontSize: 14,
+              color: _primaryColor.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Карточка формы
+  Widget _buildFormCard({required List<Widget> children}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  /// Текстовое поле
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    required IconData icon,
+    bool isRequired = false,
+    String? suffix,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: _primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: _primaryColor, size: 22),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              labelText: isRequired ? '$label *' : label,
+              labelStyle: TextStyle(color: _primaryColor.withOpacity(0.7)),
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              suffixText: suffix,
+              suffixStyle: TextStyle(
+                color: _primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _primaryColor, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            validator: validator,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Многострочное текстовое поле
+  Widget _buildMultilineTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    int minLines = 3,
+    int maxLines = 5,
+  }) {
+    return TextFormField(
+      controller: controller,
+      minLines: minLines,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: _primaryColor.withOpacity(0.7)),
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400]),
+        alignLabelWithHint: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: _primaryColor, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        contentPadding: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  /// Кнопка сохранения
+  Widget _buildSaveButton() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white, Colors.white.withOpacity(0.95)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isSaving ? null : _saveRecipe,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isSaving) ...[
+                  SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                // Кнопка сохранения
-                ElevatedButton(
-                  onPressed: _isSaving ? null : _saveRecipe,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  const SizedBox(width: 14),
+                  Text(
+                    'Сохранение...',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: _primaryColor,
+                    ),
                   ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          'Сохранить',
-                          style: TextStyle(fontSize: 18),
-                        ),
-                ),
+                ] else ...[
+                  Icon(Icons.check_circle_rounded, color: _primaryColor, size: 26),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.recipe == null ? 'Создать рецепт' : 'Сохранить изменения',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: _primaryColor,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

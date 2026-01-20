@@ -7,6 +7,7 @@ class Client {
   final bool hasUnreadManagement;
   final String? lastClientMessageTime;
   final String? lastManagementMessageTime;
+  final int freeDrinksGiven;  // Количество выданных бесплатных напитков
 
   Client({
     required this.phone,
@@ -16,6 +17,7 @@ class Client {
     this.hasUnreadManagement = false,
     this.lastClientMessageTime,
     this.lastManagementMessageTime,
+    this.freeDrinksGiven = 0,
   });
 
   /// Создать Client из JSON
@@ -28,6 +30,7 @@ class Client {
       hasUnreadManagement: json['hasUnreadManagement'] ?? false,
       lastClientMessageTime: json['lastClientMessageTime'],
       lastManagementMessageTime: json['lastManagementMessageTime'],
+      freeDrinksGiven: json['freeDrinksGiven'] ?? 0,
     );
   }
 
@@ -41,6 +44,7 @@ class Client {
       'hasUnreadManagement': hasUnreadManagement,
       if (lastClientMessageTime != null) 'lastClientMessageTime': lastClientMessageTime,
       if (lastManagementMessageTime != null) 'lastManagementMessageTime': lastManagementMessageTime,
+      'freeDrinksGiven': freeDrinksGiven,
     };
   }
 }

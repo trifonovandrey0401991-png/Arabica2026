@@ -122,7 +122,7 @@ class CartPage extends StatelessWidget {
                             ),
                           ),
                           subtitle: Text(
-                            '${cartItem.menuItem.price} ₽ × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} ₽',
+                            '${cartItem.menuItem.price} руб. × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -188,7 +188,7 @@ class CartPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${cart.totalPrice.toStringAsFixed(0)} ₽',
+                            '${cart.totalPrice.toStringAsFixed(0)} руб.',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,

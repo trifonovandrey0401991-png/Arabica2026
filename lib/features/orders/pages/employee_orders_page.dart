@@ -122,7 +122,7 @@ class _EmployeeOrdersPageState extends State<EmployeeOrdersPage> {
                           ),
                         ),
                         Text(
-                          '${_formatPrice(totalPrice)} ₽',
+                          '${_formatPrice(totalPrice)} руб.',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,

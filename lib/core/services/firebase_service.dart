@@ -328,6 +328,27 @@ class FirebaseService {
     _globalContext = context;
   }
 
+  /// Проверить, разрешены ли уведомления
+  static Future<bool> areNotificationsEnabled() async {
+    try {
+      if (_messaging == null) {
+        // Если Firebase не инициализирован, пробуем получить instance
+        try {
+          _messaging = FirebaseMessaging.instance;
+        } catch (e) {
+          Logger.debug('Не удалось получить FirebaseMessaging: $e');
+          return false;
+        }
+      }
+
+      final settings = await _messaging!.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (e) {
+      Logger.error('Ошибка проверки разрешений уведомлений', e);
+      return false;
+    }
+  }
+
   /// Публичный метод для повторного сохранения токена после входа пользователя
   /// Вызывается когда user_phone становится доступным в SharedPreferences
   static Future<void> resaveToken() async {

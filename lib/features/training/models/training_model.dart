@@ -10,6 +10,7 @@ class TrainingArticle {
   final String content;  // Контент статьи (для обратной совместимости - простой текст)
   final String? url;     // Опциональная внешняя ссылка (для обратной совместимости)
   final List<ContentBlock> contentBlocks;  // Блоки контента (текст + изображения)
+  final String visibility;  // Видимость статьи: 'all' (все) или 'managers' (только заведующие)
 
   TrainingArticle({
     required this.id,
@@ -18,6 +19,7 @@ class TrainingArticle {
     this.content = '',
     this.url,
     this.contentBlocks = const [],
+    this.visibility = 'all',  // По умолчанию видно всем
   });
 
   /// Проверить, есть ли контент у статьи (простой текст или блоки)
@@ -34,9 +36,12 @@ class TrainingArticle {
     // Парсим блоки контента если есть
     List<ContentBlock> blocks = [];
     if (json['contentBlocks'] != null && json['contentBlocks'] is List) {
+      Logger.debug('📦 Парсинг contentBlocks для статьи ${json['id']}: ${(json['contentBlocks'] as List).length} блоков');
       blocks = (json['contentBlocks'] as List)
           .map((b) => ContentBlock.fromJson(b as Map<String, dynamic>))
           .toList();
+    } else {
+      Logger.debug('📦 Нет contentBlocks для статьи ${json['id']}');
     }
 
     return TrainingArticle(
@@ -46,6 +51,7 @@ class TrainingArticle {
       content: json['content'] ?? '',
       url: json['url'] as String?,
       contentBlocks: blocks,
+      visibility: json['visibility'] as String? ?? 'all',
     );
   }
 
@@ -59,6 +65,7 @@ class TrainingArticle {
       if (url != null && url!.isNotEmpty) 'url': url,
       if (contentBlocks.isNotEmpty)
         'contentBlocks': contentBlocks.map((b) => b.toJson()).toList(),
+      'visibility': visibility,
     };
   }
 
@@ -70,6 +77,7 @@ class TrainingArticle {
     String? content,
     String? url,
     List<ContentBlock>? contentBlocks,
+    String? visibility,
   }) {
     return TrainingArticle(
       id: id ?? this.id,
@@ -78,6 +86,7 @@ class TrainingArticle {
       content: content ?? this.content,
       url: url ?? this.url,
       contentBlocks: contentBlocks ?? this.contentBlocks,
+      visibility: visibility ?? this.visibility,
     );
   }
 

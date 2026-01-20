@@ -204,155 +204,415 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.client != null
-        ? 'Отправить сообщение'
-        : 'Отправить сообщение всем'),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.9,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              if (widget.client != null) ...[
-                Text(
-                  'Клиент: ${widget.client!.name.isNotEmpty ? widget.client!.name : widget.client!.phone}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+    final isBroadcast = widget.client == null;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Шапка диалога
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isBroadcast
+                      ? [Colors.orange[400]!, Colors.deepOrange[600]!]
+                      : [const Color(0xFF00897B), const Color(0xFF004D40)],
                 ),
-                const SizedBox(height: 16),
-              ],
-              TextFormField(
-                controller: _textController,
-                decoration: const InputDecoration(
-                  labelText: 'Текст сообщения',
-                  border: OutlineInputBorder(),
-                  hintText: 'Введите текст сообщения',
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
                 ),
-                maxLines: 5,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Пожалуйста, введите текст сообщения';
-                  }
-                  return null;
-                },
               ),
-              const SizedBox(height: 16),
-              if (_selectedMedia != null) ...[
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: _isVideo
-                          ? Container(
-                              height: 150,
-                              width: double.infinity,
-                              color: Colors.black87,
-                              child: const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.videocam, color: Colors.white, size: 48),
-                                    SizedBox(height: 8),
-                                    Text('Видео выбрано', style: TextStyle(color: Colors.white)),
-                                  ],
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      isBroadcast ? Icons.campaign_rounded : Icons.send_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isBroadcast ? 'Рассылка всем' : 'Новое сообщение',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (!isBroadcast)
+                          Text(
+                            widget.client!.name.isNotEmpty
+                                ? widget.client!.name
+                                : widget.client!.phone,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else
+                          Text(
+                            'Сообщение получат все клиенты',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withOpacity(0.85),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                    color: Colors.white,
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Контент
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Информационный баннер для рассылки
+                      if (isBroadcast)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50],
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.orange[200]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[100],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(Icons.info_outline, color: Colors.orange[700], size: 22),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Это сообщение будет отправлено всем зарегистрированным клиентам',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.orange[900],
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
-                            )
-                          : Image.file(
-                              _selectedMedia!,
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                Logger.error('❌ Ошибка загрузки изображения: $error');
-                                return Container(
-                                  height: 150,
-                                  width: double.infinity,
-                                  color: Colors.grey[300],
-                                  child: const Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.broken_image, color: Colors.grey, size: 48),
-                                        SizedBox(height: 8),
-                                        Text('Ошибка загрузки', style: TextStyle(color: Colors.grey)),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
+                            ],
+                          ),
+                        ),
+
+                      // Поле ввода текста
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: TextFormField(
+                          controller: _textController,
+                          decoration: InputDecoration(
+                            labelText: 'Текст сообщения',
+                            labelStyle: TextStyle(color: Colors.grey[600]),
+                            hintText: 'Введите текст сообщения...',
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(16),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.only(left: 12, right: 8),
+                              child: Icon(Icons.message_rounded, color: Colors.grey[400], size: 22),
                             ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: _clearMedia,
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black54,
+                          ),
+                          maxLines: 5,
+                          minLines: 3,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Пожалуйста, введите текст сообщения';
+                            }
+                            return null;
+                          },
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-              if (_isUploading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+
+                      const SizedBox(height: 20),
+
+                      // Превью медиа
+                      if (_selectedMedia != null) ...[
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: _isVideo
+                                    ? Container(
+                                        height: 160,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [Colors.grey[800]!, Colors.grey[900]!],
+                                          ),
+                                        ),
+                                        child: const Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.videocam_rounded, color: Colors.white, size: 48),
+                                            SizedBox(height: 8),
+                                            Text('Видео выбрано', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                                          ],
+                                        ),
+                                      )
+                                    : Image.file(
+                                        _selectedMedia!,
+                                        height: 160,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          Logger.error('❌ Ошибка загрузки изображения: $error');
+                                          return Container(
+                                            height: 160,
+                                            width: double.infinity,
+                                            color: Colors.grey[200],
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 48),
+                                                const SizedBox(height: 8),
+                                                Text('Ошибка загрузки', style: TextStyle(color: Colors.grey[500])),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Material(
+                                  color: Colors.black.withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(20),
+                                    onTap: _clearMedia,
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 8,
+                                left: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _isVideo ? Icons.videocam_rounded : Icons.photo_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _isVideo ? 'Видео' : 'Фото',
+                                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Индикатор загрузки
+                      if (_isUploading)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.blue[600],
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Text(
+                                'Загрузка медиа...',
+                                style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Кнопка добавления медиа
+                      OutlinedButton.icon(
+                        onPressed: _isSending || _isUploading ? null : _showMediaPicker,
+                        icon: Icon(
+                          _selectedMedia != null ? Icons.refresh_rounded : Icons.attach_file_rounded,
+                          size: 20,
+                        ),
+                        label: Text(
+                          _selectedMedia != null
+                              ? (_isVideo ? 'Заменить видео' : 'Заменить фото')
+                              : 'Прикрепить фото/видео',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF004D40),
+                          side: BorderSide(color: Colors.grey[300]!),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 12),
-                      Text('Загрузка...'),
                     ],
                   ),
                 ),
-              ElevatedButton.icon(
-                onPressed: _isSending || _isUploading ? null : _showMediaPicker,
-                icon: const Icon(Icons.attach_file),
-                label: Text(_selectedMedia != null
-                    ? (_isVideo ? 'Изменить видео' : 'Изменить фото')
-                    : 'Прикрепить фото/видео'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                ),
               ),
-              ],
             ),
-          ),
+
+            // Кнопки действий
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isSending ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        side: BorderSide(color: Colors.grey[300]!),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Отмена', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSending ? null : _sendMessage,
+                      icon: _isSending
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(isBroadcast ? Icons.campaign_rounded : Icons.send_rounded, size: 20),
+                      label: Text(
+                        _isSending
+                            ? 'Отправка...'
+                            : (isBroadcast ? 'Отправить всем' : 'Отправить'),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isBroadcast ? Colors.deepOrange : const Color(0xFF004D40),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSending ? null : () => Navigator.pop(context),
-          child: const Text('Отмена'),
-        ),
-        ElevatedButton(
-          onPressed: _isSending ? null : _sendMessage,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004D40),
-          ),
-          child: _isSending
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : const Text('Отправить'),
-        ),
-      ],
     );
   }
 }

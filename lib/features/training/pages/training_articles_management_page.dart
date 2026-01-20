@@ -957,14 +957,21 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
   }
 
   Widget _buildArticleCard(TrainingArticle article, int index) {
+    final isManagersOnly = article.visibility == 'managers';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isManagersOnly ? Colors.orange[50] : Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: isManagersOnly
+            ? Border.all(color: Colors.orange[300]!, width: 1.5)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: _primaryColor.withOpacity(0.06),
+            color: isManagersOnly
+                ? Colors.orange.withOpacity(0.12)
+                : _primaryColor.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -987,15 +994,17 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                   height: 36,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [_gradientStart, _gradientEnd],
+                      colors: isManagersOnly
+                          ? [Colors.orange[400]!, Colors.orange[600]!]
+                          : [_gradientStart, _gradientEnd],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
-                      Icons.article_rounded,
+                      isManagersOnly ? Icons.supervisor_account_rounded : Icons.article_rounded,
                       color: Colors.white,
                       size: 18,
                     ),
@@ -1004,15 +1013,39 @@ class _TrainingArticlesManagementPageState extends State<TrainingArticlesManagem
                 const SizedBox(width: 12),
                 // Контент
                 Expanded(
-                  child: Text(
-                    article.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        article.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (isManagersOnly)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Только заведующие',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),

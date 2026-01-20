@@ -537,7 +537,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         ],
       ),
       child: Text(
-        '${order.totalPrice.toStringAsFixed(0)} ₽',
+        '${order.totalPrice.toStringAsFixed(0)} руб.',
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
@@ -632,7 +632,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       ),
                     ),
                     Text(
-                      '${_formatPrice(item['total'] ?? item['price'] ?? 0)} ₽',
+                      '${_formatPrice(item['total'] ?? item['price'] ?? 0)} руб.',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

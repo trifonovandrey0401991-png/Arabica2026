@@ -309,7 +309,31 @@ class LoyaltyService {
 
     // Загружаем настройки акции
     final settings = await fetchPromoSettings();
-    return LoyaltyInfo.fromJson(result['client'], settings: settings);
+    final loyaltyInfo = LoyaltyInfo.fromJson(result['client'], settings: settings);
+
+    // Обновляем счётчик бесплатных напитков в нашей базе клиентов
+    try {
+      await incrementFreeDrinksGiven(loyaltyInfo.phone, count: settings.drinksToGive);
+    } catch (e) {
+      Logger.error('Ошибка обновления счётчика бесплатных напитков', e);
+    }
+
+    return loyaltyInfo;
+  }
+
+  /// Увеличить счётчик выданных бесплатных напитков для клиента
+  static Future<void> incrementFreeDrinksGiven(String phone, {int count = 1}) async {
+    try {
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      await BaseHttpService.postRaw(
+        endpoint: '/api/clients/$normalizedPhone/free-drink',
+        body: {'count': count},
+      );
+      Logger.debug('🍹 Счётчик бесплатных напитков обновлён: +$count для $normalizedPhone');
+    } catch (e) {
+      Logger.error('Ошибка обновления счётчика бесплатных напитков', e);
+      rethrow;
+    }
   }
 }
 

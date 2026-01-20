@@ -25,7 +25,9 @@ import '../../features/rating/widgets/rating_badge_widget.dart';
 import '../../core/utils/logger.dart';
 import '../../core/widgets/shop_icon.dart';
 import '../../core/services/report_notification_service.dart';
+import '../../core/services/firebase_service.dart';
 import '../../features/main_cash/services/withdrawal_service.dart';
+import '../../shared/dialogs/notification_required_dialog.dart';
 import 'my_dialogs_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
@@ -453,8 +455,28 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
 
 
-    // Карта лояльности - видно всем
-    items.add(_tileLoyalty(context, 'Карта лояльности', () {
+    // Карта лояльности - видно всем (с проверкой уведомлений)
+    items.add(_tileLoyalty(context, 'Карта лояльности', () async {
+      // Проверяем, включены ли уведомления
+      final enabled = await FirebaseService.areNotificationsEnabled();
+      if (!enabled) {
+        if (context.mounted) {
+          final result = await NotificationRequiredDialog.show(context);
+          // Если пользователь нажал "Включить", проверяем снова после возврата из настроек
+          if (result == true) {
+            // Даём время на переключение в настройках и обратно
+            await Future.delayed(const Duration(milliseconds: 500));
+            final enabledNow = await FirebaseService.areNotificationsEnabled();
+            if (enabledNow && context.mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoyaltyPage()),
+              );
+            }
+          }
+        }
+        return;
+      }
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const LoyaltyPage()),
@@ -680,9 +702,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   /// Плитка карты лояльности с кастомной иконкой
-  Widget _tileLoyalty(BuildContext ctx, String label, VoidCallback onTap) {
+  Widget _tileLoyalty(BuildContext ctx, String label, Function() onTap) {
     return ElevatedButton(
-      onPressed: onTap,
+      onPressed: () => onTap(),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.all(12),
         backgroundColor: Colors.white.withOpacity(0.2),

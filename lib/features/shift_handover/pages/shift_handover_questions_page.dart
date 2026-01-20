@@ -41,6 +41,11 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   String? _selectedYesNo; // 'Да' или 'Нет'
   bool _isSubmitting = false;
 
+  // Основные цвета
+  static const _primaryColor = Color(0xFF004D40);
+  static const _primaryColorLight = Color(0xFF00695C);
+  static const _backgroundColor = Color(0xFFF5F5F5);
+
   /// Нормализовать адрес магазина для сравнения
   String _normalizeShopAddress(String address) {
     return address.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -185,17 +190,18 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           source = await showDialog<ImageSource>(
             context: context,
             builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('Выберите источник'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.camera_alt),
+                    leading: const Icon(Icons.camera_alt, color: _primaryColor),
                     title: const Text('Камера'),
                     onTap: () => Navigator.pop(context, ImageSource.camera),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.photo_library),
+                    leading: const Icon(Icons.photo_library, color: _primaryColor),
                     title: const Text('Галерея'),
                     onTap: () => Navigator.pop(context, ImageSource.gallery),
                   ),
@@ -504,6 +510,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
             context: context,
             barrierDismissible: false,
             builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('Сформировать конверт?'),
               content: const Text(
                 'Вы закончили сдачу смены. Хотите сформировать конверт с выручкой?',
@@ -516,9 +523,9 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
+                    backgroundColor: _primaryColor,
                   ),
-                  child: const Text('Да, сформировать'),
+                  child: const Text('Да, сформировать', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -561,47 +568,52 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: _backgroundColor,
         appBar: AppBar(
-          title: const Text('Загрузка вопросов'),
-          backgroundColor: const Color(0xFF004D40),
+          title: const Text('Загрузка...'),
+          backgroundColor: _primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: _primaryColor),
+              SizedBox(height: 16),
+              Text('Загрузка вопросов...', style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ),
       );
     }
 
     if (_questions == null || _questions!.isEmpty) {
       return Scaffold(
+        backgroundColor: _backgroundColor,
         appBar: AppBar(
           title: const Text('Ошибка'),
-          backgroundColor: const Color(0xFF004D40),
+          backgroundColor: _primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF004D40),
-            image: DecorationImage(
-              image: AssetImage('assets/images/arabica_background.png'),
-              fit: BoxFit.cover,
-              opacity: 0.6,
-            ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                const Text(
-                  'Что-то пошло не так, попробуйте позже',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Назад'),
-                ),
-              ],
-            ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Вопросы не найдены',
+                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(backgroundColor: _primaryColor),
+                child: const Text('Назад', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
         ),
       );
@@ -616,6 +628,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     }
 
     final question = _questions![_currentQuestionIndex];
+    final progress = (_currentQuestionIndex + 1) / _questions!.length;
 
     // Логирование для отладки эталонного фото
     if (question.isPhotoOnly && _photoPath == null) {
@@ -631,346 +644,568 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     }
 
     return Scaffold(
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: Text('Вопрос ${_currentQuestionIndex + 1}'),
-        backgroundColor: const Color(0xFF004D40),
+        title: Text('Вопрос ${_currentQuestionIndex + 1} из ${_questions!.length}'),
+        backgroundColor: _primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+      body: Column(
+        children: [
+          // Прогресс-бар
+          Container(
+            height: 4,
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey[300],
+              valueColor: const AlwaysStoppedAnimation<Color>(_primaryColor),
+            ),
           ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    question.question,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              if (question.isNumberOnly) ...[
-                TextField(
-                  controller: _numberController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Введите число',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  onChanged: (_) => setState(() {}),
-                  onSubmitted: (_) {
-                    if (_canProceed()) {
-                      _saveAndNext();
-                    }
-                  },
-                ),
-              ] else if (question.isPhotoOnly) ...[
-                // ВАЖНО: Эталонное фото из вопроса сдачи смены (которое админ прикрепил)
-                // Эталонное фото ВСЕГДА показывается ДО того, как сотрудник сделал свое фото
-                // После того как фото сделано, эталонное фото скрывается (сравнение только в отчетах)
-                if (_photoPath == null) ...[
-                  // Получаем эталонное фото из вопроса для этого магазина (с нормализацией адресов)
-                  Builder(
-                    builder: (context) {
-                      final referencePhotoUrl = _findReferencePhoto(question);
-                      if (referencePhotoUrl != null) {
-                        Logger.debug('Builder: Показываем эталонное фото для магазина: ${widget.shopAddress}');
-                        Logger.debug('   URL эталонного фото: $referencePhotoUrl');
-                        return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Эталонное фото (как должно быть):',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF004D40),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              height: 400,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey, width: 2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  referencePhotoUrl,
-                                  fit: BoxFit.contain,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    Logger.error('Ошибка загрузки эталонного фото', error);
-                                    return const Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.error, size: 64, color: Colors.red),
-                                          SizedBox(height: 8),
-                                          Text('Ошибка загрузки эталонного фото'),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Посмотрите на эталонное фото, затем нажмите кнопку ниже для фотографирования',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                        );
-                      } else {
-                        Logger.warning('Нет эталонного фото в вопросе для магазина: ${widget.shopAddress}');
-                        if (question.referencePhotos != null) {
-                          Logger.debug('   Доступные магазины в referencePhotos: ${question.referencePhotos!.keys.toList()}');
-                        }
-                        return const SizedBox.shrink();
-                      }
-                    },
-                  ),
-                ],
-                if (_photoPath != null)
-                  Container(
-                    height: 300,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: kIsWeb
-                          ? Image.network(
-                              _photoPath!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(
-                                  child: Icon(Icons.error, size: 64),
-                                );
-                              },
-                            )
-                          : Image.file(
-                              File(_photoPath!),
-                              fit: BoxFit.cover,
-                            ),
-                    ),
-                  ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    Logger.debug('Нажата кнопка фотографирования');
-                    Logger.debug('   Текущий вопрос: "${question.question}"');
-                    Logger.debug('   Есть эталонное фото: ${question.referencePhotos != null && question.referencePhotos!.containsKey(widget.shopAddress)}');
-                    await _takePhoto();
-                    if (_photoPath != null) {
-                      Logger.success('Фото сделано: $_photoPath');
-                      // Если фото сделано, автоматически переходим к следующему вопросу
-                      if (_canProceed()) {
-                        _saveAndNext();
-                      }
-                    } else {
-                      Logger.warning('Фото не было сделано');
-                    }
-                  },
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(_photoPath == null ? 'Сфотографировать' : 'Изменить фото'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-              ] else if (question.isYesNo) ...[
-                // Кнопки Да/Нет
-                Row(
+          // Основной контент
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedYesNo = 'Да';
-                          });
-                          // Автоматически переходим к следующему вопросу
-                          if (_canProceed()) {
-                            _saveAndNext();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _selectedYesNo == 'Да'
-                              ? Colors.green
-                              : Colors.grey[300],
-                          foregroundColor: _selectedYesNo == 'Да'
-                              ? Colors.white
-                              : Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    // Карточка с вопросом
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                        child: const Text(
-                          'Да',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Иконка типа вопроса
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: _primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              _getQuestionIcon(question),
+                              color: _primaryColor,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Текст вопроса
+                          Text(
+                            question.question,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2D3748),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedYesNo = 'Нет';
-                          });
-                          // Автоматически переходим к следующему вопросу
-                          if (_canProceed()) {
-                            _saveAndNext();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _selectedYesNo == 'Нет'
-                              ? Colors.red
-                              : Colors.grey[300],
-                          foregroundColor: _selectedYesNo == 'Нет'
-                              ? Colors.white
-                              : Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Нет',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 24),
+
+                    // Ввод ответа
+                    if (question.isNumberOnly) ...[
+                      _buildNumberInput(),
+                    ] else if (question.isPhotoOnly) ...[
+                      _buildPhotoInput(question),
+                    ] else if (question.isYesNo) ...[
+                      _buildYesNoButtons(),
+                    ] else ...[
+                      _buildTextInput(),
+                    ],
+
+                    const SizedBox(height: 32),
+
+                    // Кнопки навигации
+                    _buildNavigationButtons(),
                   ],
                 ),
-              ] else ...[
-                TextField(
-                  controller: _textController,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    labelText: 'Введите ответ',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  onChanged: (_) => setState(() {}),
-                  onSubmitted: (_) {
-                    if (_canProceed()) {
-                      _saveAndNext();
-                    }
-                  },
-                ),
-              ],
-
-              const SizedBox(height: 32),
-
-              Row(
-                children: [
-                  if (_currentQuestionIndex > 0)
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : _previousQuestion,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: const Text('Назад'),
-                      ),
-                    ),
-                  if (_currentQuestionIndex > 0) const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (_isSubmitting || !_canProceed())
-                          ? null
-                          : (_currentQuestionIndex < _questions!.length - 1
-                              ? () {
-                                  _saveAnswer();
-                                  _nextQuestion();
-                                }
-                              : _submitReport),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(
-                              _currentQuestionIndex < _questions!.length - 1
-                                  ? 'Далее'
-                                  : 'Отправить',
-                            ),
-                    ),
-                  ),
-                ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: (_currentQuestionIndex + 1) / _questions!.length,
-                backgroundColor: Colors.grey[300],
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+  IconData _getQuestionIcon(ShiftHandoverQuestion question) {
+    if (question.isNumberOnly) return Icons.numbers;
+    if (question.isPhotoOnly) return Icons.camera_alt_rounded;
+    if (question.isYesNo) return Icons.help_outline_rounded;
+    return Icons.edit_note_rounded;
+  }
+
+  Widget _buildNumberInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _primaryColor.withOpacity(0.3)),
+      ),
+      child: TextField(
+        controller: _numberController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        decoration: InputDecoration(
+          hintText: 'Введите число',
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 18),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(20),
+        ),
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) {
+          if (_canProceed()) {
+            _saveAndNext();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildTextInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _primaryColor.withOpacity(0.3)),
+      ),
+      child: TextField(
+        controller: _textController,
+        maxLines: 4,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 16),
+        decoration: InputDecoration(
+          hintText: 'Введите ответ',
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(20),
+        ),
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) {
+          if (_canProceed()) {
+            _saveAndNext();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildYesNoButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildYesNoButton(
+            label: 'Да',
+            isSelected: _selectedYesNo == 'Да',
+            color: Colors.green,
+            onTap: () {
+              setState(() => _selectedYesNo = 'Да');
+              if (_canProceed()) {
+                _saveAndNext();
+              }
+            },
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _buildYesNoButton(
+            label: 'Нет',
+            isSelected: _selectedYesNo == 'Нет',
+            color: Colors.red,
+            onTap: () {
+              setState(() => _selectedYesNo = 'Нет');
+              if (_canProceed()) {
+                _saveAndNext();
+              }
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildYesNoButton({
+    required String label,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade300,
+              width: 2,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            children: [
+              Icon(
+                label == 'Да' ? Icons.check_circle_outline : Icons.cancel_outlined,
+                size: 40,
+                color: isSelected ? Colors.white : color,
               ),
               const SizedBox(height: 8),
               Text(
-                '${_currentQuestionIndex + 1} из ${_questions!.length}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white),
+                label,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : color,
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPhotoInput(ShiftHandoverQuestion question) {
+    final referencePhotoUrl = _findReferencePhoto(question);
+
+    return Column(
+      children: [
+        // Эталонное фото (если есть и фото сотрудника еще не сделано)
+        if (referencePhotoUrl != null && _photoPath == null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _primaryColor.withOpacity(0.3)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.photo_library, color: _primaryColor, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Эталонное фото',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _primaryColor.withOpacity(0.2)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      referencePhotoUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            color: _primaryColor,
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error, size: 48, color: Colors.grey[400]),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Ошибка загрузки',
+                                style: TextStyle(color: Colors.grey[500]),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Сделайте фото как на образце выше',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Фото сотрудника (если сделано)
+        if (_photoPath != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.green.withOpacity(0.3)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Ваше фото',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.withOpacity(0.2)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: kIsWeb
+                        ? Image.network(
+                            _photoPath!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(child: Icon(Icons.error, size: 64));
+                            },
+                          )
+                        : Image.file(
+                            File(_photoPath!),
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Кнопка фотографирования
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              Logger.debug('Нажата кнопка фотографирования');
+              await _takePhoto();
+              if (_photoPath != null) {
+                Logger.success('Фото сделано: $_photoPath');
+                if (_canProceed()) {
+                  _saveAndNext();
+                }
+              }
+            },
+            icon: Icon(_photoPath == null ? Icons.camera_alt : Icons.refresh),
+            label: Text(
+              _photoPath == null ? 'Сфотографировать' : 'Переснять',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavigationButtons() {
+    final isLastQuestion = _currentQuestionIndex >= _questions!.length - 1;
+    final canProceed = _canProceed();
+
+    return Row(
+      children: [
+        // Кнопка "Назад"
+        if (_currentQuestionIndex > 0) ...[
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isSubmitting ? null : _previousQuestion,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.arrow_back_ios_rounded,
+                        size: 18,
+                        color: _primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Назад',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+
+        // Кнопка "Далее" / "Отправить"
+        Expanded(
+          flex: _currentQuestionIndex > 0 ? 2 : 1,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: (_isSubmitting || !canProceed)
+                  ? null
+                  : (isLastQuestion
+                      ? _submitReport
+                      : () {
+                          _saveAnswer();
+                          _nextQuestion();
+                        }),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  color: (_isSubmitting || !canProceed)
+                      ? Colors.white.withOpacity(0.5)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: _isSubmitting
+                    ? Center(
+                        child: SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                          ),
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isLastQuestion) ...[
+                            Icon(
+                              Icons.send_rounded,
+                              size: 20,
+                              color: (_isSubmitting || !canProceed)
+                                  ? Colors.grey
+                                  : _primaryColor,
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Text(
+                            isLastQuestion ? 'Отправить' : 'Далее',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: (_isSubmitting || !canProceed)
+                                  ? Colors.grey
+                                  : _primaryColor,
+                            ),
+                          ),
+                          if (!isLastQuestion) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 18,
+                              color: (_isSubmitting || !canProceed)
+                                  ? Colors.grey
+                                  : _primaryColor,
+                            ),
+                          ],
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

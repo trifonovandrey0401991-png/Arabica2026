@@ -139,6 +139,36 @@ async function sendPushNotification(title, body, data = {}) {
       console.log('Push-уведомление отправлено:', token.substring(0, 20) + '...');
     } catch (e) {
       console.error('❌ Ошибка отправки push-уведомления:', e.message);
+
+      // Проверяем, является ли токен невалидным
+      const errorMessage = e.message || '';
+      const isInvalidToken =
+        errorMessage.includes('Requested entity was not found') ||
+        errorMessage.includes('NotRegistered') ||
+        errorMessage.includes('InvalidRegistration') ||
+        errorMessage.includes('messaging/registration-token-not-registered') ||
+        errorMessage.includes('messaging/invalid-registration-token');
+
+      if (isInvalidToken) {
+        // Ищем и удаляем файл с этим токеном
+        try {
+          if (fs.existsSync(FCM_TOKENS_DIR)) {
+            const files = fs.readdirSync(FCM_TOKENS_DIR);
+            for (const file of files) {
+              if (!file.endsWith('.json')) continue;
+              const filePath = path.join(FCM_TOKENS_DIR, file);
+              const tokenData = loadJsonFile(filePath, null);
+              if (tokenData && tokenData.token === token) {
+                fs.unlinkSync(filePath);
+                console.log(`🗑️ Невалидный FCM токен удалён: ${file}`);
+                break;
+              }
+            }
+          }
+        } catch (deleteError) {
+          console.error(`Ошибка удаления невалидного токена:`, deleteError.message);
+        }
+      }
     }
   }
 }
@@ -191,6 +221,30 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     return true;
   } catch (e) {
     console.error(`❌ Ошибка отправки push-уведомления на ${phone}:`, e.message);
+
+    // Проверяем, является ли токен невалидным
+    const errorMessage = e.message || '';
+    const isInvalidToken =
+      errorMessage.includes('Requested entity was not found') ||
+      errorMessage.includes('NotRegistered') ||
+      errorMessage.includes('InvalidRegistration') ||
+      errorMessage.includes('messaging/registration-token-not-registered') ||
+      errorMessage.includes('messaging/invalid-registration-token');
+
+    if (isInvalidToken) {
+      // Удаляем невалидный токен
+      try {
+        const normalizedPhone = phone.replace(/[\s\+]/g, '');
+        const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
+        if (fs.existsSync(tokenFile)) {
+          fs.unlinkSync(tokenFile);
+          console.log(`🗑️ Невалидный FCM токен удалён для: ${phone}`);
+        }
+      } catch (deleteError) {
+        console.error(`Ошибка удаления невалидного токена:`, deleteError.message);
+      }
+    }
+
     return false;
   }
 }

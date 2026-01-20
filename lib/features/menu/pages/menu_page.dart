@@ -195,16 +195,18 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       contentPadding: EdgeInsets.zero,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Изображение с градиентом
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: _buildItemImage(item, height: 200, width: double.infinity),
-              ),
+      content: SizedBox(
+        width: 300,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Изображение с градиентом
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: _buildItemImage(item, height: 200, width: 300),
+                ),
               // Градиент для текста
               Positioned(
                 bottom: 0,
@@ -244,7 +246,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                     ],
                   ),
                   child: Text(
-                    '${item.price} ₽',
+                    '${item.price} руб.',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -326,6 +328,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -702,7 +705,7 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
                     ],
                   ),
                   child: Text(
-                    '${item.price} ₽',
+                    '${item.price} руб.',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

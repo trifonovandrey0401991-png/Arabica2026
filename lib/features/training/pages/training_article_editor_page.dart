@@ -28,6 +28,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
   List<ContentBlock> _contentBlocks = [];
   bool _isSaving = false;
   bool _showUrlField = false;
+  String _visibility = 'all';  // 'all' или 'managers'
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -38,6 +39,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
       _groupController.text = widget.article!.group;
       _urlController.text = widget.article!.url ?? '';
       _showUrlField = widget.article!.hasUrl;
+      _visibility = widget.article!.visibility;
 
       // Загружаем блоки контента
       if (widget.article!.contentBlocks.isNotEmpty) {
@@ -233,6 +235,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           content: simpleContent,
           url: url,
           contentBlocks: filteredBlocks,
+          visibility: _visibility,
         );
       } else {
         result = await TrainingArticleService.createArticle(
@@ -241,6 +244,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           content: simpleContent,
           url: url,
           contentBlocks: filteredBlocks,
+          visibility: _visibility,
         );
       }
 
@@ -481,7 +485,98 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
               return null;
             },
           ),
+          const SizedBox(height: 16),
+          // Выбор видимости
+          _buildVisibilitySelector(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVisibilitySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.visibility_rounded, color: _primaryColor, size: 18),
+            const SizedBox(width: 8),
+            const Text(
+              'Кто может видеть',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF666666),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildVisibilityOption(
+                value: 'all',
+                label: 'Все',
+                icon: Icons.people_rounded,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildVisibilityOption(
+                value: 'managers',
+                label: 'Заведующие',
+                icon: Icons.supervisor_account_rounded,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVisibilityOption({
+    required String value,
+    required String label,
+    required IconData icon,
+  }) {
+    final isSelected = _visibility == value;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _visibility = value;
+        });
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.grey[50],
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? _primaryColor : Colors.grey[200]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? _primaryColor : Colors.grey[500],
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? _primaryColor : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -654,50 +749,7 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Превью изображения
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            block.content,
-            width: double.infinity,
-            height: 200,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                width: double.infinity,
-                height: 200,
-                color: Colors.grey[100],
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: _primaryColor,
-                  ),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) => Container(
-              width: double.infinity,
-              height: 200,
-              color: Colors.grey[100],
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 48),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Ошибка загрузки',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Поле подписи
+        // Поле подписи (сверху фото)
         TextFormField(
           initialValue: block.caption ?? '',
           style: const TextStyle(fontSize: 13),
@@ -724,8 +776,174 @@ class _TrainingArticleEditorPageState extends State<TrainingArticleEditorPage> {
           ),
           onChanged: (value) => _updateImageCaption(index, value),
         ),
+        const SizedBox(height: 12),
+        // Превью изображения с кнопкой замены
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                block.content,
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    width: double.infinity,
+                    height: 200,
+                    color: Colors.grey[100],
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: double.infinity,
+                  height: 200,
+                  color: Colors.grey[100],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.broken_image_rounded, color: Colors.grey[400], size: 48),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Ошибка загрузки',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Кнопка замены фото
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: Material(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  onTap: () => _replaceImage(index),
+                  borderRadius: BorderRadius.circular(8),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text(
+                          'Заменить',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
+  }
+
+  Future<void> _replaceImage(int index) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      // Показываем индикатор загрузки
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: _primaryColor),
+                  SizedBox(height: 16),
+                  Text('Загрузка изображения...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Загружаем новое изображение на сервер
+      final imageUrl = await TrainingArticleService.uploadImage(File(image.path));
+
+      if (!mounted) return;
+      Navigator.pop(context); // Закрываем индикатор
+
+      if (imageUrl != null) {
+        // Сохраняем подпись при замене изображения
+        final currentCaption = _contentBlocks[index].caption;
+        setState(() {
+          _contentBlocks[index] = ContentBlock(
+            id: _contentBlocks[index].id,
+            type: ContentBlockType.image,
+            content: imageUrl,
+            caption: currentCaption,
+          );
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('Изображение заменено'),
+                ],
+              ),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Ошибка загрузки изображения'),
+            backgroundColor: Colors.red[600],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Закрываем индикатор если открыт
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red[600],
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildAddBlockButtons() {

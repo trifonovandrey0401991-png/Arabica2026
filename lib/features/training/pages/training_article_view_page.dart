@@ -363,6 +363,8 @@ class TrainingArticleViewPage extends StatelessWidget {
 
   /// Блок изображения
   Widget _buildImageBlock(BuildContext context, ContentBlock block) {
+    final hasCaption = block.caption != null && block.caption!.isNotEmpty;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
@@ -380,12 +382,34 @@ class TrainingArticleViewPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Подпись к изображению (сверху)
+          if (hasCaption)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Text(
+                block.caption!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+            ),
           // Изображение
           ClipRRect(
-            borderRadius: block.caption != null && block.caption!.isNotEmpty
+            borderRadius: hasCaption
                 ? const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
                   )
                 : BorderRadius.circular(16),
             child: GestureDetector(
@@ -430,29 +454,6 @@ class TrainingArticleViewPage extends StatelessWidget {
               ),
             ),
           ),
-          // Подпись к изображению
-          if (block.caption != null && block.caption!.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Text(
-                block.caption!,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[700],
-                  fontStyle: FontStyle.italic,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
         ],
       ),
     );

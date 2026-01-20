@@ -1448,65 +1448,186 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
 
   /// Показать диалог выбора: Обучение или Тест
   void _showTrainingDialog(BuildContext context) {
+    // Основной цвет приложения
+    const primaryColor = Color(0xFF004D40);
+    const primaryColorLight = Color(0xFF00695C);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text(
-          'Обучение',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF004D40),
-          ),
-        ),
+        contentPadding: EdgeInsets.zero,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            // Заголовок
+            Container(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TrainingPage(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.menu_book),
-                label: const Text('Обучение'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TestPage(),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Обучение и тесты',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.quiz),
-                label: const Text('Сдать тест'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[700],
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ],
+              ),
+            ),
+            // Опции
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Обучение
+                  _buildTrainingOption(
+                    icon: Icons.menu_book_rounded,
+                    title: 'Обучение',
+                    subtitle: 'Изучайте материалы',
+                    color: primaryColor,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TrainingPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Тест
+                  _buildTrainingOption(
+                    icon: Icons.quiz_rounded,
+                    title: 'Сдать тест',
+                    subtitle: 'Проверьте знания',
+                    color: primaryColorLight,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TestPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Кнопка отмены
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: Colors.grey),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Виджет опции в диалоге обучения
+  Widget _buildTrainingOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            border: Border.all(color: color.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: color,
+                size: 24,
+              ),
+            ],
+          ),
         ),
       ),
     );

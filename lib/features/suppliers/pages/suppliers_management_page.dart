@@ -113,284 +113,440 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
       shopManagerIds.putIfAbsent(shop.id, () => []);
     }
 
-    final result = await showDialog<bool>(
+    final result = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Редактировать поставщика' : 'Добавить поставщика'),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // === Основные данные ===
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Название *',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Юридический тип
-                  const Text('Тип организации:', style: TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: const Text('ООО'),
-                          value: 'ООО',
-                          groupValue: selectedLegalType,
-                          onChanged: (v) => setDialogState(() => selectedLegalType = v!),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: const Text('ИП'),
-                          value: 'ИП',
-                          groupValue: selectedLegalType,
-                          onChanged: (v) => setDialogState(() => selectedLegalType = v!),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  TextField(
-                    controller: innController,
-                    decoration: const InputDecoration(
-                      labelText: 'ИНН',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'Телефон',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: contactPersonController,
-                    decoration: const InputDecoration(
-                      labelText: 'Контактное лицо',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Тип оплаты
-                  const Text('Тип оплаты:', style: TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: const Text('БезНал'),
-                          value: 'БезНал',
-                          groupValue: selectedPaymentType,
-                          onChanged: (v) => setDialogState(() => selectedPaymentType = v!),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: const Text('Нал'),
-                          value: 'Нал',
-                          groupValue: selectedPaymentType,
-                          onChanged: (v) => setDialogState(() => selectedPaymentType = v!),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-
-                  // === Дни доставки по магазинам ===
-                  const Text(
-                    'Дни доставки по магазинам',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Выберите дни доставки для каждого магазина',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Список магазинов с днями и заведующими
-                  ..._shops.map((shop) => _buildShopDeliveryCard(
-                    shop: shop,
-                    selectedDays: shopDeliveryDays[shop.id] ?? [],
-                    selectedManagerIds: shopManagerIds[shop.id] ?? [],
-                    allManagers: _managers,
-                    onDaysChanged: (days) {
-                      setDialogState(() {
-                        shopDeliveryDays[shop.id] = days;
-                      });
-                    },
-                    onManagersChanged: (managerIds) {
-                      setDialogState(() {
-                        shopManagerIds[shop.id] = managerIds;
-                      });
-                    },
-                  )),
-                ],
-              ),
+        builder: (context, setDialogState) => Container(
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Введите название поставщика'),
-                      backgroundColor: Colors.red,
+          child: Column(
+            children: [
+              // Заголовок
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 16, 16, 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF00695C),
+                      const Color(0xFF004D40),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(28),
+                    topRight: Radius.circular(28),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.local_shipping,
+                        color: Colors.white,
+                        size: 26,
+                      ),
                     ),
-                  );
-                  return;
-                }
-
-                // Собираем данные о доставках
-                final List<SupplierShopDelivery> deliveries = [];
-                for (var shop in _shops) {
-                  final days = shopDeliveryDays[shop.id] ?? [];
-                  final managerIds = shopManagerIds[shop.id] ?? [];
-                  // Сохраняем если есть дни ИЛИ заведующие
-                  if (days.isNotEmpty || managerIds.isNotEmpty) {
-                    // Сортируем дни по порядку
-                    if (days.isNotEmpty) {
-                      days.sort((a, b) => _weekDays.indexOf(a).compareTo(_weekDays.indexOf(b)));
-                    }
-                    // Получаем имена заведующих
-                    final managerNames = managerIds
-                        .map((id) => _managers.firstWhere(
-                              (m) => m.id == id,
-                              orElse: () => Employee(id: id, name: 'Неизвестный'),
-                            ).name)
-                        .toList();
-                    deliveries.add(SupplierShopDelivery(
-                      shopId: shop.id,
-                      shopName: shop.name,
-                      days: days,
-                      managerIds: managerIds.isNotEmpty ? managerIds : null,
-                      managerNames: managerNames.isNotEmpty ? managerNames : null,
-                    ));
-                  }
-                }
-
-                final newSupplier = Supplier(
-                  id: supplier?.id ?? 'supplier_${DateTime.now().millisecondsSinceEpoch}',
-                  name: nameController.text.trim(),
-                  inn: innController.text.trim().isNotEmpty ? innController.text.trim() : null,
-                  legalType: selectedLegalType,
-                  phone: phoneController.text.trim().isNotEmpty ? phoneController.text.trim() : null,
-                  email: emailController.text.trim().isNotEmpty ? emailController.text.trim() : null,
-                  contactPerson: contactPersonController.text.trim().isNotEmpty ? contactPersonController.text.trim() : null,
-                  paymentType: selectedPaymentType,
-                  shopDeliveries: deliveries.isNotEmpty ? deliveries : null,
-                  createdAt: supplier?.createdAt ?? DateTime.now(),
-                  updatedAt: DateTime.now(),
-                );
-
-                Supplier? savedSupplier;
-                if (isEditing) {
-                  savedSupplier = await SupplierService.updateSupplier(newSupplier);
-                } else {
-                  savedSupplier = await SupplierService.createSupplier(newSupplier);
-                }
-
-                if (!context.mounted) return;
-
-                if (savedSupplier != null) {
-                  // Создаём/обновляем циклические задачи для поставщика
-                  if (savedSupplier.shopDeliveries != null && savedSupplier.shopDeliveries!.isNotEmpty) {
-                    try {
-                      // Собираем данные о заведующих для передачи в сервис
-                      final managersData = _managers
-                          .map((m) => {
-                                'id': m.id,
-                                'name': m.name,
-                                'phone': m.phone ?? '',
-                              })
-                          .toList();
-
-                      // Обновляем задачи (удаляем старые и создаём новые)
-                      final createdTasks = await RecurringTaskService.updateTasksForSupplier(
-                        supplierId: savedSupplier.id,
-                        supplierName: savedSupplier.name,
-                        shopDeliveries: savedSupplier.shopDeliveries!,
-                        managersData: managersData,
-                        createdBy: 'system',
-                      );
-
-                      Logger.info('Создано ${createdTasks.length} циклических задач для поставщика ${savedSupplier.name}');
-                    } catch (e) {
-                      Logger.error('Ошибка создания циклических задач для поставщика', e);
-                      // Не блокируем сохранение, только логируем ошибку
-                    }
-                  } else {
-                    // Если нет доставок, удаляем существующие задачи
-                    try {
-                      await RecurringTaskService.deleteTasksForSupplier(savedSupplier.id);
-                    } catch (e) {
-                      Logger.error('Ошибка удаления задач поставщика', e);
-                    }
-                  }
-
-                  Navigator.pop(context, true);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ошибка сохранения поставщика'),
-                      backgroundColor: Colors.red,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isEditing ? 'Редактирование' : 'Новый поставщик',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            isEditing ? supplier.name : 'Заполните данные',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF004D40),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      icon: const Icon(Icons.close, color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
-              child: Text(isEditing ? 'Сохранить' : 'Добавить'),
-            ),
-          ],
+              // Контент
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Секция: Основная информация
+                      _buildSectionHeader(
+                        icon: Icons.info_outline,
+                        title: 'Основная информация',
+                        color: const Color(0xFF004D40),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildStyledTextField(
+                        controller: nameController,
+                        label: 'Название компании',
+                        hint: 'Введите название',
+                        icon: Icons.business,
+                        isRequired: true,
+                      ),
+                      const SizedBox(height: 14),
+                      // Тип организации - красивые кнопки
+                      const Text(
+                        'Тип организации',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF636E72),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSelectButton(
+                              label: 'ООО',
+                              isSelected: selectedLegalType == 'ООО',
+                              onTap: () => setDialogState(() => selectedLegalType = 'ООО'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildSelectButton(
+                              label: 'ИП',
+                              isSelected: selectedLegalType == 'ИП',
+                              onTap: () => setDialogState(() => selectedLegalType = 'ИП'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _buildStyledTextField(
+                        controller: innController,
+                        label: 'ИНН',
+                        hint: 'Введите ИНН',
+                        icon: Icons.numbers,
+                        keyboardType: TextInputType.number,
+                      ),
+
+                      const SizedBox(height: 24),
+                      // Секция: Контакты
+                      _buildSectionHeader(
+                        icon: Icons.contact_phone_outlined,
+                        title: 'Контактные данные',
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildStyledTextField(
+                        controller: contactPersonController,
+                        label: 'Контактное лицо',
+                        hint: 'ФИО представителя',
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildStyledTextField(
+                        controller: phoneController,
+                        label: 'Телефон',
+                        hint: '+7 (___) ___-__-__',
+                        icon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 14),
+                      _buildStyledTextField(
+                        controller: emailController,
+                        label: 'Email',
+                        hint: 'email@example.com',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+
+                      const SizedBox(height: 24),
+                      // Секция: Оплата
+                      _buildSectionHeader(
+                        icon: Icons.payment_outlined,
+                        title: 'Тип оплаты',
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSelectButton(
+                              label: 'Безналичный',
+                              icon: Icons.credit_card,
+                              isSelected: selectedPaymentType == 'БезНал',
+                              onTap: () => setDialogState(() => selectedPaymentType = 'БезНал'),
+                              color: Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildSelectButton(
+                              label: 'Наличный',
+                              icon: Icons.money,
+                              isSelected: selectedPaymentType == 'Нал',
+                              onTap: () => setDialogState(() => selectedPaymentType = 'Нал'),
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+                      // Секция: Доставки
+                      _buildSectionHeader(
+                        icon: Icons.store_outlined,
+                        title: 'Доставки по магазинам',
+                        color: Colors.green,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Выберите дни доставки и ответственных',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Список магазинов
+                      ..._shops.map((shop) => _buildShopDeliveryCard(
+                        shop: shop,
+                        selectedDays: shopDeliveryDays[shop.id] ?? [],
+                        selectedManagerIds: shopManagerIds[shop.id] ?? [],
+                        allManagers: _managers,
+                        onDaysChanged: (days) {
+                          setDialogState(() {
+                            shopDeliveryDays[shop.id] = days;
+                          });
+                        },
+                        onManagersChanged: (managerIds) {
+                          setDialogState(() {
+                            shopManagerIds[shop.id] = managerIds;
+                          });
+                        },
+                      )),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+              // Кнопки внизу
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[700],
+                          side: BorderSide(color: Colors.grey[300]!),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Отмена',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF00695C), Color(0xFF004D40)],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF004D40).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (nameController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Row(
+                                    children: [
+                                      Icon(Icons.error_outline, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text('Введите название поставщика'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.red[400],
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Собираем данные о доставках
+                            final List<SupplierShopDelivery> deliveries = [];
+                            for (var shop in _shops) {
+                              final days = shopDeliveryDays[shop.id] ?? [];
+                              final managerIds = shopManagerIds[shop.id] ?? [];
+                              if (days.isNotEmpty || managerIds.isNotEmpty) {
+                                if (days.isNotEmpty) {
+                                  days.sort((a, b) => _weekDays.indexOf(a).compareTo(_weekDays.indexOf(b)));
+                                }
+                                final managerNames = managerIds
+                                    .map((id) => _managers.firstWhere(
+                                          (m) => m.id == id,
+                                          orElse: () => Employee(id: id, name: 'Неизвестный'),
+                                        ).name)
+                                    .toList();
+                                deliveries.add(SupplierShopDelivery(
+                                  shopId: shop.id,
+                                  shopName: shop.name,
+                                  days: days,
+                                  managerIds: managerIds.isNotEmpty ? managerIds : null,
+                                  managerNames: managerNames.isNotEmpty ? managerNames : null,
+                                ));
+                              }
+                            }
+
+                            final newSupplier = Supplier(
+                              id: supplier?.id ?? 'supplier_${DateTime.now().millisecondsSinceEpoch}',
+                              name: nameController.text.trim(),
+                              inn: innController.text.trim().isNotEmpty ? innController.text.trim() : null,
+                              legalType: selectedLegalType,
+                              phone: phoneController.text.trim().isNotEmpty ? phoneController.text.trim() : null,
+                              email: emailController.text.trim().isNotEmpty ? emailController.text.trim() : null,
+                              contactPerson: contactPersonController.text.trim().isNotEmpty ? contactPersonController.text.trim() : null,
+                              paymentType: selectedPaymentType,
+                              shopDeliveries: deliveries.isNotEmpty ? deliveries : null,
+                              createdAt: supplier?.createdAt ?? DateTime.now(),
+                              updatedAt: DateTime.now(),
+                            );
+
+                            Supplier? savedSupplier;
+                            if (isEditing) {
+                              savedSupplier = await SupplierService.updateSupplier(newSupplier);
+                            } else {
+                              savedSupplier = await SupplierService.createSupplier(newSupplier);
+                            }
+
+                            if (!context.mounted) return;
+
+                            if (savedSupplier != null) {
+                              if (savedSupplier.shopDeliveries != null && savedSupplier.shopDeliveries!.isNotEmpty) {
+                                try {
+                                  final managersData = _managers
+                                      .map((m) => {
+                                            'id': m.id,
+                                            'name': m.name,
+                                            'phone': m.phone ?? '',
+                                          })
+                                      .toList();
+
+                                  final createdTasks = await RecurringTaskService.updateTasksForSupplier(
+                                    supplierId: savedSupplier.id,
+                                    supplierName: savedSupplier.name,
+                                    shopDeliveries: savedSupplier.shopDeliveries!,
+                                    managersData: managersData,
+                                    createdBy: 'system',
+                                  );
+
+                                  Logger.info('Создано ${createdTasks.length} циклических задач для поставщика ${savedSupplier.name}');
+                                } catch (e) {
+                                  Logger.error('Ошибка создания циклических задач для поставщика', e);
+                                }
+                              } else {
+                                try {
+                                  await RecurringTaskService.deleteTasksForSupplier(savedSupplier.id);
+                                } catch (e) {
+                                  Logger.error('Ошибка удаления задач поставщика', e);
+                                }
+                              }
+
+                              Navigator.pop(context, true);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Row(
+                                    children: [
+                                      Icon(Icons.error_outline, color: Colors.white),
+                                      SizedBox(width: 8),
+                                      Text('Ошибка сохранения'),
+                                    ],
+                                  ),
+                                  backgroundColor: Colors.red[400],
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(isEditing ? Icons.save_outlined : Icons.add, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                isEditing ? 'Сохранить' : 'Добавить поставщика',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -398,6 +554,131 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     if (result == true) {
       _loadData();
     }
+  }
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStyledTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool isRequired = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF636E72),
+              ),
+            ),
+            if (isRequired)
+              const Text(
+                ' *',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectButton({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color color = const Color(0xFF004D40),
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.1) : const Color(0xFFF8F9FA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[200]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected ? color : Colors.grey[500],
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? color : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildShopDeliveryCard({
@@ -711,9 +992,11 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text('Поставщики'),
         backgroundColor: const Color(0xFF004D40),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -721,59 +1004,135 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEditDialog(),
-        backgroundColor: const Color(0xFF004D40),
-        child: const Icon(Icons.add),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF00695C), Color(0xFF004D40)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF004D40).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () => _showAddEditDialog(),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: const Icon(Icons.add, size: 28),
+        ),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Поиск по названию, ИНН, телефону...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
+          // Заголовок с количеством
+          Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              color: Color(0xFF004D40),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            child: Column(
+              children: [
+                // Поле поиска
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Поиск по названию, ИНН, телефону...',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Статистика
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStatChip(
+                      icon: Icons.local_shipping,
+                      label: 'Всего',
+                      count: _suppliers.length,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildStatChip(
+                      icon: Icons.check_circle,
+                      label: 'С доставкой',
+                      count: _suppliers.where((s) => s.shopsWithDeliveryCount > 0).length,
+                      color: Colors.greenAccent,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF004D40)))
                 : _filteredSuppliers.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.local_shipping_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [Colors.grey[300]!, Colors.grey[400]!],
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.local_shipping_outlined,
+                                size: 50,
+                                color: Colors.white,
+                              ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             Text(
                               _searchQuery.isEmpty
                                   ? 'Нет поставщиков'
                                   : 'Поставщики не найдены',
                               style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[700],
                               ),
                             ),
                             if (_searchQuery.isEmpty) ...[
                               const SizedBox(height: 8),
                               Text(
-                                'Нажмите + чтобы добавить',
+                                'Нажмите + чтобы добавить первого',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey[500],
@@ -785,139 +1144,13 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
                       )
                     : RefreshIndicator(
                         onRefresh: _loadData,
+                        color: const Color(0xFF004D40),
                         child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.all(16),
                           itemCount: _filteredSuppliers.length,
                           itemBuilder: (context, index) {
                             final supplier = _filteredSuppliers[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: const Color(0xFF004D40),
-                                  child: Text(
-                                    supplier.name.isNotEmpty
-                                        ? supplier.name[0].toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                title: Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        supplier.name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (supplier.legalType != null) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[200],
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          supplier.legalType!,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[700],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (supplier.paymentType != null)
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            supplier.paymentType == 'Нал'
-                                                ? Icons.money
-                                                : Icons.credit_card,
-                                            size: 14,
-                                            color: Colors.grey[600],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            supplier.paymentType!,
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    if (supplier.deliveryInfoText.isNotEmpty)
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.local_shipping,
-                                            size: 14,
-                                            color: supplier.shopsWithDeliveryCount > 0
-                                                ? Colors.green
-                                                : Colors.grey[600],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            supplier.deliveryInfoText,
-                                            style: TextStyle(
-                                              color: supplier.shopsWithDeliveryCount > 0
-                                                  ? Colors.green
-                                                  : Colors.grey[600],
-                                              fontSize: 12,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                                trailing: PopupMenuButton<String>(
-                                  onSelected: (value) {
-                                    if (value == 'edit') {
-                                      _showAddEditDialog(supplier);
-                                    } else if (value == 'delete') {
-                                      _deleteSupplier(supplier);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit, size: 20),
-                                          SizedBox(width: 8),
-                                          Text('Редактировать'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete, size: 20, color: Colors.red),
-                                          SizedBox(width: 8),
-                                          Text('Удалить', style: TextStyle(color: Colors.red)),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => _showSupplierDetails(supplier),
-                              ),
-                            );
+                            return _buildSupplierCard(supplier);
                           },
                         ),
                       ),
@@ -925,6 +1158,265 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildStatChip({
+    required IconData icon,
+    required String label,
+    required int count,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Text(
+            '$count',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withOpacity(0.8),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplierCard(Supplier supplier) {
+    final hasDelivery = supplier.shopsWithDeliveryCount > 0;
+    final gradientColors = hasDelivery
+        ? [const Color(0xFF00695C), const Color(0xFF004D40)]
+        : [Colors.blueGrey[600]!, Colors.blueGrey[800]!];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: () => _showSupplierDetails(supplier),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // Аватар с градиентом
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: gradientColors,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: gradientColors[0].withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          supplier.name.isNotEmpty
+                              ? supplier.name[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Информация
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  supplier.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                    color: Color(0xFF2D3436),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (supplier.legalType != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF004D40).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    supplier.legalType!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF004D40),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          if (supplier.contactPerson != null)
+                            Text(
+                              supplier.contactPerson!,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    // Меню
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: Colors.grey[400]),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _showAddEditDialog(supplier);
+                        } else if (value == 'delete') {
+                          _deleteSupplier(supplier);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 20, color: Colors.grey[700]),
+                              const SizedBox(width: 12),
+                              const Text('Редактировать'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                              SizedBox(width: 12),
+                              Text('Удалить', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Нижняя часть с тегами
+                Row(
+                  children: [
+                    // Тип оплаты
+                    if (supplier.paymentType != null)
+                      _buildInfoChip(
+                        icon: supplier.paymentType == 'Нал' ? Icons.money : Icons.credit_card,
+                        label: supplier.paymentType!,
+                        color: supplier.paymentType == 'Нал' ? Colors.orange : Colors.blue,
+                      ),
+                    if (supplier.paymentType != null) const SizedBox(width: 8),
+                    // Доставка
+                    if (hasDelivery)
+                      _buildInfoChip(
+                        icon: Icons.local_shipping,
+                        label: '${supplier.shopsWithDeliveryCount} ${_getShopWord(supplier.shopsWithDeliveryCount)}',
+                        color: Colors.green,
+                      ),
+                    const Spacer(),
+                    // Телефон
+                    if (supplier.phone != null)
+                      Icon(Icons.phone, size: 16, color: Colors.grey[400]),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getShopWord(int count) {
+    if (count == 1) return 'магазин';
+    if (count >= 2 && count <= 4) return 'магазина';
+    return 'магазинов';
   }
 
   void _showSupplierDetails(Supplier supplier) {

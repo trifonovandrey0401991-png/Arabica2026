@@ -281,89 +281,260 @@ class _ClientsManagementPageState extends State<ClientsManagementPage> {
                         itemCount: _filteredClients.length,
                         itemBuilder: (context, index) {
                           final client = _filteredClients[index];
-                          return Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: const Color(0xFF004D40),
-                                    child: Text(
-                                      client.name.isNotEmpty
-                                          ? client.name[0].toUpperCase()
-                                          : client.phone[0],
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
+                          final hasUnread = client.hasUnreadFromClient || client.hasUnreadManagement;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: hasUnread
+                                      ? Colors.red.withOpacity(0.3)
+                                      : Colors.black.withOpacity(0.1),
+                                  blurRadius: hasUnread ? 12 : 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              borderRadius: BorderRadius.circular(16),
+                              color: Colors.white,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () => _showClientActions(client),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: hasUnread
+                                        ? Border.all(color: Colors.red.withOpacity(0.5), width: 2)
+                                        : null,
                                   ),
-                                  if (client.hasUnreadFromClient)
-                                    Positioned(
-                                      right: -4,
-                                      top: -4,
-                                      child: Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            '!',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
+                                  child: Row(
+                                    children: [
+                                      // Аватар с градиентом
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            width: 56,
+                                            height: 56,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: hasUnread
+                                                    ? [Colors.red[400]!, Colors.red[700]!]
+                                                    : [const Color(0xFF00897B), const Color(0xFF004D40)],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: (hasUnread ? Colors.red : const Color(0xFF004D40))
+                                                      .withOpacity(0.4),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                client.name.isNotEmpty
+                                                    ? client.name[0].toUpperCase()
+                                                    : client.phone.isNotEmpty ? client.phone[0] : '?',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              title: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      client.name.isNotEmpty ? client.name : 'Без имени',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: client.hasUnreadFromClient || client.hasUnreadManagement
-                                            ? Colors.red
-                                            : null,
-                                      ),
-                                    ),
-                                  ),
-                                  if (client.hasUnreadManagement)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      margin: const EdgeInsets.only(left: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const [
-                                          Icon(Icons.business, size: 12, color: Colors.white),
-                                          SizedBox(width: 2),
-                                          Text(
-                                            'Рук.',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
+                                          // Индикатор непрочитанных сообщений
+                                          if (client.hasUnreadFromClient)
+                                            Positioned(
+                                              right: -2,
+                                              top: -2,
+                                              child: Container(
+                                                width: 22,
+                                                height: 22,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red,
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: Colors.white, width: 2),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.red.withOpacity(0.5),
+                                                      blurRadius: 4,
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.mail,
+                                                    color: Colors.white,
+                                                    size: 12,
+                                                  ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
                                         ],
                                       ),
-                                    ),
-                                ],
+                                      const SizedBox(width: 16),
+                                      // Информация о клиенте
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    client.name.isNotEmpty ? client.name : 'Без имени',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: hasUnread ? Colors.red[700] : Colors.grey[800],
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                if (client.hasUnreadManagement)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    margin: const EdgeInsets.only(left: 8),
+                                                    decoration: BoxDecoration(
+                                                      gradient: LinearGradient(
+                                                        colors: [Colors.blue[400]!, Colors.blue[700]!],
+                                                      ),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.blue.withOpacity(0.3),
+                                                          blurRadius: 4,
+                                                          offset: const Offset(0, 2),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(Icons.business, size: 12, color: Colors.white),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          'Рук.',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.phone_rounded,
+                                                  size: 16,
+                                                  color: Colors.grey[500],
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  client.phone,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: client.freeDrinksGiven > 0
+                                                          ? [Colors.teal[400]!, Colors.teal[600]!]
+                                                          : [Colors.grey[400]!, Colors.grey[500]!],
+                                                    ),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: (client.freeDrinksGiven > 0 ? Colors.teal : Colors.grey).withOpacity(0.3),
+                                                        blurRadius: 4,
+                                                        offset: const Offset(0, 2),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.local_cafe, size: 12, color: Colors.white),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        '${client.freeDrinksGiven}',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (hasUnread) ...[
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red[50],
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.red[200]!),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.mark_email_unread, size: 14, color: Colors.red[600]),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Новое сообщение',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.red[700],
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Стрелка
+                                      Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                              subtitle: Text(client.phone),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _showClientActions(client),
                             ),
                           );
                         },

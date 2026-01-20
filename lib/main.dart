@@ -4,6 +4,7 @@ import 'app/pages/main_menu_page.dart';
 import 'features/clients/pages/registration_page.dart';
 import 'shared/providers/cart_provider.dart';
 import 'shared/providers/order_provider.dart';
+import 'shared/dialogs/notification_required_dialog.dart';
 import 'core/services/notification_service.dart';
 import 'features/loyalty/services/loyalty_service.dart';
 import 'features/loyalty/services/loyalty_storage.dart';
@@ -15,6 +16,9 @@ import 'features/clients/services/registration_service.dart';
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
+
+/// Глобальный флаг - показывать ли диалог об уведомлениях при запуске
+bool _shouldShowNotificationDialog = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +36,13 @@ void main() async {
     Logger.debug('🔵 Начало инициализации Firebase Messaging...');
     await FirebaseService.initialize();
     Logger.success('Firebase Messaging инициализирован');
+
+    // Проверяем, разрешены ли уведомления
+    final notificationsEnabled = await FirebaseService.areNotificationsEnabled();
+    if (!notificationsEnabled) {
+      Logger.warning('Уведомления отключены - будет показан диалог');
+      _shouldShowNotificationDialog = true;
+    }
   } catch (e) {
     // Firebase недоступен (веб-платформа или пакеты не установлены)
     Logger.warning('Firebase не доступен: $e');
@@ -319,6 +330,15 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
         builder: (context) {
           NotificationService.setGlobalContext(context);
           FirebaseService.setGlobalContext(context);
+
+          // Показываем диалог об уведомлениях если нужно
+          if (_shouldShowNotificationDialog) {
+            _shouldShowNotificationDialog = false; // Чтобы не показывался повторно
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              NotificationRequiredDialog.show(context, showBackButton: false);
+            });
+          }
+
           return const MainMenuPage();
         },
       );

@@ -855,46 +855,135 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
               Row(
                 children: [
-                  if (_currentQuestionIndex > 0)
+                  // Кнопка "Назад"
+                  if (_currentQuestionIndex > 0) ...[
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : _previousQuestion,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Text('Назад'),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _isSubmitting ? null : _previousQuestion,
+                            borderRadius: BorderRadius.circular(14),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.arrow_back_ios_rounded,
+                                    size: 18,
+                                    color: const Color(0xFF004D40),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Назад',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF004D40),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  if (_currentQuestionIndex > 0) const SizedBox(width: 16),
+                    const SizedBox(width: 12),
+                  ],
+                  // Кнопка "Далее" / "Отправить"
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: (_isSubmitting || !_canProceed())
-                          ? null
-                          : (_currentQuestionIndex < _questions!.length - 1
-                              ? () {
-                                  _saveAnswer();
-                                  _nextQuestion();
-                                }
-                              : _submitReport),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(
-                              _currentQuestionIndex < _questions!.length - 1
-                                  ? 'Далее'
-                                  : 'Отправить',
-                            ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: (_isSubmitting || !_canProceed())
+                              ? null
+                              : (_currentQuestionIndex < _questions!.length - 1
+                                  ? () {
+                                      _saveAnswer();
+                                      _nextQuestion();
+                                    }
+                                  : _submitReport),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            child: _isSubmitting
+                                ? Center(
+                                    child: SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          const Color(0xFF004D40),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (_currentQuestionIndex >= _questions!.length - 1) ...[
+                                        Icon(
+                                          Icons.send_rounded,
+                                          size: 20,
+                                          color: (_isSubmitting || !_canProceed())
+                                              ? Colors.grey
+                                              : const Color(0xFF004D40),
+                                        ),
+                                        const SizedBox(width: 10),
+                                      ],
+                                      Text(
+                                        _currentQuestionIndex < _questions!.length - 1
+                                            ? 'Далее'
+                                            : 'Отправить',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: (_isSubmitting || !_canProceed())
+                                              ? Colors.grey
+                                              : const Color(0xFF004D40),
+                                        ),
+                                      ),
+                                      if (_currentQuestionIndex < _questions!.length - 1) ...[
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          Icons.arrow_forward_ios_rounded,
+                                          size: 18,
+                                          color: (_isSubmitting || !_canProceed())
+                                              ? Colors.grey
+                                              : const Color(0xFF004D40),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
