@@ -76,14 +76,25 @@ class MenuPage extends StatefulWidget {
   State<MenuPage> createState() => _MenuPageState();
 }
 
-class _MenuPageState extends State<MenuPage> {
+class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin {
   late Future<List<MenuItem>> _menuFuture;
   String _searchQuery = '';
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
     _menuFuture = _loadMenu();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<List<MenuItem>> _loadMenu() async {
@@ -92,7 +103,7 @@ class _MenuPageState extends State<MenuPage> {
       final recipes = await Recipe.loadRecipesFromServer();
 
       // Преобразуем рецепты в MenuItem
-      return recipes.map((recipe) => MenuItem(
+      final items = recipes.map((recipe) => MenuItem(
         id: recipe.id,
         name: recipe.name,
         price: recipe.price ?? '',
@@ -101,6 +112,9 @@ class _MenuPageState extends State<MenuPage> {
         photoId: recipe.photoId ?? '',
         photoUrl: recipe.photoUrl,
       )).toList();
+
+      _animationController.forward();
+      return items;
     } catch (e) {
       Logger.warning('Ошибка загрузки рецептов: $e');
       return [];
@@ -134,10 +148,23 @@ class _MenuPageState extends State<MenuPage> {
         fit: fit,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
-          return SizedBox(
+          return Container(
             height: height,
             width: width,
-            child: const Center(child: CircularProgressIndicator()),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF004D40).withOpacity(0.1),
+                  const Color(0xFF00695C).withOpacity(0.1),
+                ],
+              ),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF004D40),
+                strokeWidth: 2,
+              ),
+            ),
           );
         },
         errorBuilder: (_, __, ___) => Image.asset(
@@ -166,49 +193,140 @@ class _MenuPageState extends State<MenuPage> {
 
   Widget _buildDialog(MenuItem item) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: Text(item.name),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      contentPadding: EdgeInsets.zero,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: _buildItemImage(item, height: 150, width: 150),
+          // Изображение с градиентом
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: _buildItemImage(item, height: 200, width: double.infinity),
+              ),
+              // Градиент для текста
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Цена в углу
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '${item.price} ₽',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              // Название внизу
+              Positioned(
+                bottom: 12,
+                left: 16,
+                right: 16,
+                child: Text(
+                  item.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            '${item.price} руб.',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          // Кнопка добавления
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Добавляем товар в корзину
+                  final cart = CartProvider.of(context);
+                  cart.addItem(item);
+                  // Сохраняем адрес магазина для заказа
+                  if (widget.selectedShop != null && widget.selectedShop!.isNotEmpty) {
+                    cart.setShopAddress(widget.selectedShop);
+                  }
+                  Navigator.pop(context);
+                  // Показываем уведомление
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text('${item.name} добавлен в корзину')),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF004D40),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add_shopping_cart_rounded),
+                label: const Text(
+                  'Добавить в корзину',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004D40),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 3,
+                ),
+              ),
+            ),
           ),
         ],
       ),
-      actions: [
-        ElevatedButton.icon(
-          onPressed: () {
-            // Добавляем товар в корзину
-            final cart = CartProvider.of(context);
-            cart.addItem(item);
-            // Сохраняем адрес магазина для заказа
-            if (widget.selectedShop != null && widget.selectedShop!.isNotEmpty) {
-              cart.setShopAddress(widget.selectedShop);
-            }
-            Navigator.pop(context);
-            // Показываем уведомление
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${item.name} добавлен в корзину'),
-                backgroundColor: const Color(0xFF004D40),
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
-          icon: const Icon(Icons.add_shopping_cart),
-          label: const Text('Добавить в корзину'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF004D40),
-          ),
-        ),
-      ],
     );
   }
 
@@ -217,261 +335,525 @@ class _MenuPageState extends State<MenuPage> {
     Logger.debug('Категория: ${widget.selectedCategory}');
 
     return Scaffold(
+      backgroundColor: const Color(0xFF004D40),
       appBar: AppBar(
-        title: Text(widget.selectedCategory ?? 'Меню напитков'),
+        title: Text(
+          widget.selectedCategory ?? 'Меню напитков',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: const Color(0xFF004D40),
+        elevation: 0,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF004D40),
+              const Color(0xFF00695C),
+              const Color(0xFF00796B),
+            ],
           ),
         ),
         child: FutureBuilder<List<MenuItem>>(
-        future: _menuFuture,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Загрузка меню...'),
-                ],
-              ),
-            );
-          }
-
-          final all = snapshot.data!;
-
-          // Фильтруем по категории (магазин не учитываем - рецепты общие для всех)
-          final filtered = all.where((item) {
-            final byName = item.name.toLowerCase().contains(_searchQuery.toLowerCase());
-            final byCategory = widget.selectedCategory == null || _matchCategory(item);
-            return byName && byCategory;
-          }).toList();
-
-          final categories = filtered.map((e) => e.category).toSet().toList()
-            ..sort();
-
-          return ListenableBuilder(
-            listenable: CartProvider.of(context),
-            builder: (context, _) {
-              final cart = CartProvider.of(context);
-              final hasItems = !cart.isEmpty;
-
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Поиск напитка...',
-                              prefixIcon: const Icon(Icons.search),
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            onChanged: (v) => setState(() => _searchQuery = v),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Найдено напитков: ${filtered.length}",
-                        style: const TextStyle(color: Colors.black54),
+          future: _menuFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Загрузка меню...',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(child: Text("Нет напитков 😕"))
-                        : ListView.builder(
-                            padding: EdgeInsets.only(
-                              left: 8,
-                              right: 8,
-                              top: 8,
-                              bottom: hasItems ? 80 : 8, // Отступ снизу для кнопки
+            final all = snapshot.data!;
+
+            // Фильтруем по категории (магазин не учитываем - рецепты общие для всех)
+            final filtered = all.where((item) {
+              final byName = item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+              final byCategory = widget.selectedCategory == null || _matchCategory(item);
+              return byName && byCategory;
+            }).toList();
+
+            final categories = filtered.map((e) => e.category).toSet().toList()
+              ..sort();
+
+            return ListenableBuilder(
+              listenable: CartProvider.of(context),
+              builder: (context, _) {
+                final cart = CartProvider.of(context);
+                final hasItems = !cart.isEmpty;
+
+                return Column(
+                  children: [
+                    // Поиск
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            itemCount: categories.length,
-                            itemBuilder: (context, index) {
-                              final category = categories[index];
-                              final itemsOfCategory =
-                                  filtered.where((e) => e.category == category).toList();
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 14),
-                                  Text(
-                                    category,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF004D40),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-
-                                  GridView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
-                                      childAspectRatio: 0.9,
-                                    ),
-                                    itemCount: itemsOfCategory.length,
-                                    itemBuilder: (context, i) {
-                                      final item = itemsOfCategory[i];
-
-                                      return GestureDetector(
-                                        onTap: () => showDialog(
-                                          context: context,
-                                          builder: (_) => _buildDialog(item),
-                                        ),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(18),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.08),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 3),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              // Фото занимает всё доступное место
-                                              Expanded(
-                                                child: ClipRRect(
-                                                  borderRadius:
-                                                      const BorderRadius.vertical(
-                                                    top: Radius.circular(18),
-                                                  ),
-                                                  child: _buildItemImage(item),
-                                                ),
-                                              ),
-                                              // Компактная информация внизу
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 8, vertical: 6),
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        item.name,
-                                                        maxLines: 1,
-                                                        overflow:
-                                                            TextOverflow.ellipsis,
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      "${item.price} руб.",
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: Color(0xFF00695C),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
+                          ],
+                        ),
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Поиск напитка...',
+                            hintStyle: TextStyle(color: Colors.grey[400]),
+                            prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[500]),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                           ),
-                  ),
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                        ),
+                      ),
+                    ),
 
-                  // Кнопка "К заказу" внизу экрана
-                  if (hasItems)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, -2),
+                    // Счётчик найденных
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.local_cafe_rounded, color: Colors.white.withOpacity(0.9), size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Найдено: ${filtered.length}',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      child: SafeArea(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const CartPage(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.shopping_cart, size: 24),
-                            label: Text(
-                              'К заказу (${cart.itemCount})',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                    ),
+
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              padding: EdgeInsets.only(
+                                left: 16,
+                                right: 16,
+                                top: 8,
+                                bottom: hasItems ? 100 : 16,
                               ),
+                              itemCount: categories.length,
+                              itemBuilder: (context, index) {
+                                final category = categories[index];
+                                final itemsOfCategory =
+                                    filtered.where((e) => e.category == category).toList();
+
+                                return AnimatedBuilder(
+                                  animation: _animationController,
+                                  builder: (context, child) {
+                                    final delay = index * 0.1;
+                                    final animationValue = Curves.easeOutCubic.transform(
+                                      (_animationController.value - delay).clamp(0.0, 1.0),
+                                    );
+                                    return Transform.translate(
+                                      offset: Offset(0, 30 * (1 - animationValue)),
+                                      child: Opacity(
+                                        opacity: animationValue,
+                                        child: _buildCategorySection(category, itemsOfCategory),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF004D40),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                                horizontal: 24,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
+                    ),
+
+                    // Кнопка "К заказу" внизу экрана
+                    if (hasItems) _buildCartButton(cart),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.local_cafe_outlined,
+              size: 80,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Напитки не найдены',
+            style: TextStyle(
+              fontSize: 22,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Попробуйте изменить поисковый запрос',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySection(String category, List<MenuItem> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        // Заголовок категории
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withOpacity(0.2),
+                Colors.white.withOpacity(0.1),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.category_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                category,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${items.length}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.85,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, i) {
+            final item = items[i];
+            return _buildItemCard(item);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemCard(MenuItem item) {
+    return GestureDetector(
+      onTap: () => showDialog(
+        context: context,
+        builder: (_) => _buildDialog(item),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // Фото на всю карточку
+              Positioned.fill(
+                child: _buildItemImage(item),
+              ),
+              // Градиент снизу
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.8),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Цена в углу
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '${item.price} ₽',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              // Кнопка добавления
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    color: Color(0xFF004D40),
+                    size: 20,
+                  ),
+                ),
+              ),
+              // Название внизу
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Text(
+                  item.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCartButton(CartProvider cart) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withOpacity(0.0),
+            Colors.white.withOpacity(0.95),
+            Colors.white,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF004D40), Color(0xFF00695C)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF004D40).withOpacity(0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CartPage(),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.shopping_cart_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Text(
+                      'К заказу',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        '${cart.itemCount}',
+                        style: const TextStyle(
+                          color: Color(0xFF004D40),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                ],
-              );
-            },
-          );
-        },
-      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
+      ),
     );
   }
 }

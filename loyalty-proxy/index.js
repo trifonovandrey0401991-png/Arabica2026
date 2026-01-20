@@ -4981,6 +4981,82 @@ app.delete('/api/training-articles/:id', async (req, res) => {
   }
 });
 
+// Настройка multer для загрузки изображений статей обучения
+const TRAINING_ARTICLES_MEDIA_DIR = '/var/www/training-articles-media';
+if (!fs.existsSync(TRAINING_ARTICLES_MEDIA_DIR)) {
+  fs.mkdirSync(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
+}
+
+const trainingArticleMediaStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    if (!fs.existsSync(TRAINING_ARTICLES_MEDIA_DIR)) {
+      fs.mkdirSync(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
+    }
+    cb(null, TRAINING_ARTICLES_MEDIA_DIR);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = `training_img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+const uploadTrainingArticleMedia = multer({
+  storage: trainingArticleMediaStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Разрешены только изображения (JPEG, PNG, GIF, WebP)'));
+    }
+  }
+});
+
+// Загрузка изображения для статьи обучения
+app.post('/api/training-articles/upload-image', uploadTrainingArticleMedia.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Файл не загружен' });
+    }
+
+    const imageUrl = `https://arabica26.ru/training-articles-media/${req.file.filename}`;
+    console.log(`📷 Загружено изображение статьи обучения: ${req.file.filename}`);
+
+    res.json({
+      success: true,
+      imageUrl: imageUrl,
+      filename: req.file.filename,
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки изображения статьи:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Удаление изображения статьи обучения
+app.delete('/api/training-articles/delete-image/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(TRAINING_ARTICLES_MEDIA_DIR, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Изображение не найдено' });
+    }
+
+    fs.unlinkSync(filePath);
+    console.log(`🗑️ Удалено изображение статьи обучения: ${filename}`);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления изображения статьи:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Статические файлы для изображений статей обучения
+app.use('/training-articles-media', express.static(TRAINING_ARTICLES_MEDIA_DIR));
+
 // ========== API для вопросов тестирования ==========
 const TEST_QUESTIONS_DIR = '/var/www/test-questions';
 if (!fs.existsSync(TEST_QUESTIONS_DIR)) {

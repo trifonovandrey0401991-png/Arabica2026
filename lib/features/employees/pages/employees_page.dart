@@ -156,7 +156,7 @@ class EmployeesPage extends StatefulWidget {
   static Future<String?> getCurrentEmployeeId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // 1. Пытаемся получить сохраненный employeeId (основной способ)
       final savedEmployeeId = prefs.getString('currentEmployeeId');
       if (savedEmployeeId != null && savedEmployeeId.isNotEmpty) {
@@ -173,7 +173,7 @@ class EmployeesPage extends StatefulWidget {
           await prefs.remove('currentEmployeeId');
         }
       }
-      
+
       // 2. Резервный способ: ищем по телефону
       Logger.debug('Поиск сотрудника по телефону...');
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
@@ -219,26 +219,26 @@ class EmployeesPage extends StatefulWidget {
   static Future<String?> getCurrentEmployeeName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // 1. Пытаемся получить сохраненное имя
       final savedName = prefs.getString('currentEmployeeName');
       if (savedName != null && savedName.isNotEmpty) {
         Logger.success('Найдено сохраненное имя сотрудника: $savedName');
         return savedName;
       }
-      
+
       // 2. Получаем ID и затем имя
       final employeeId = await getCurrentEmployeeId();
       if (employeeId == null) {
         return null;
       }
-      
+
       final employees = await EmployeeService.getEmployees();
       final employee = employees.firstWhere(
         (e) => e.id == employeeId,
         orElse: () => throw StateError('Employee not found'),
       );
-      
+
       // Сохраняем имя
       await prefs.setString('currentEmployeeName', employee.name);
       return employee.name;
@@ -254,7 +254,7 @@ class EmployeesPage extends StatefulWidget {
     try {
       // Загружаем всех сотрудников с сервера
       final allEmployees = await EmployeeService.getEmployees();
-      
+
       // Фильтруем только сотрудников и админов (у которых есть phone или isAdmin = true)
       final employees = allEmployees.where((emp) =>
         emp.phone != null && emp.phone!.isNotEmpty
@@ -272,17 +272,32 @@ class EmployeesPage extends StatefulWidget {
   State<EmployeesPage> createState() => _EmployeesPageState();
 }
 
-class _EmployeesPageState extends State<EmployeesPage> {
+class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateMixin {
   late Future<List<Employee>> _employeesFuture;
   String _searchQuery = '';
   Map<String, bool> _verificationStatus = {}; // Кэш статуса верификации по телефону
   bool _isLoadingVerification = false;
+  late AnimationController _animationController;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _tabController = TabController(length: 3, vsync: this);
     _employeesFuture = _loadEmployees();
     _loadVerificationStatuses();
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _tabController.dispose();
+    super.dispose();
   }
 
 
@@ -323,7 +338,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     try {
       // Загружаем сотрудников с сервера
       final employees = await EmployeeService.getEmployees();
-      
+
       // Сортируем по имени
       employees.sort((a, b) => a.name.compareTo(b.name));
 
@@ -339,22 +354,74 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Сотрудники'),
-          backgroundColor: const Color(0xFF004D40),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Сотрудники', icon: Icon(Icons.people)),
-              Tab(text: 'Регистрация', icon: Icon(Icons.person_add)),
-              Tab(text: 'Магазины', icon: Icon(Icons.store)),
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF004D40),
+              Color(0xFF00695C),
+              Color(0xFF00796B),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.person_off),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom AppBar
+              _buildAppBar(),
+              // Custom TabBar
+              _buildTabBar(),
+              // TabBarView
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Вкладка "Сотрудники"
+                    _buildEmployeesTab(),
+                    // Вкладка "Регистрация"
+                    _buildRegistrationTab(),
+                    // Вкладка "Магазины"
+                    const ShopsManagementPage(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const Expanded(
+            child: Text(
+              'Сотрудники',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          // Кнопка "Не верифицированные"
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.person_off, color: Colors.white),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -365,28 +432,115 @@ class _EmployeesPageState extends State<EmployeesPage> {
               },
               tooltip: 'Не верифицированные сотрудники',
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
+          ),
+          const SizedBox(width: 8),
+          // Кнопка обновления
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: () {
                 setState(() {
                   _employeesFuture = _loadEmployees();
                 });
                 _loadVerificationStatuses();
+                _animationController.reset();
+                _animationController.forward();
               },
               tooltip: 'Обновить',
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
-        body: TabBarView(
-          children: [
-            // Вкладка "Сотрудники"
-            _buildEmployeesTab(),
-            // Вкладка "Регистрация"
-            _buildRegistrationTab(),
-            // Вкладка "Магазины"
-            const ShopsManagementPage(),
-          ],
+        indicatorPadding: const EdgeInsets.all(4),
+        labelColor: const Color(0xFF004D40),
+        unselectedLabelColor: Colors.white.withOpacity(0.8),
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
         ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 13,
+        ),
+        isScrollable: false,
+        labelPadding: EdgeInsets.zero,
+        tabs: const [
+          Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.people, size: 16),
+                SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Список',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.person_add, size: 16),
+                SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Новые',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.store, size: 16),
+                SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Магазины',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -397,30 +551,66 @@ class _EmployeesPageState extends State<EmployeesPage> {
       _employeesFuture = _loadEmployees();
     });
     _loadVerificationStatuses();
+    _animationController.reset();
+    _animationController.forward();
   }
 
   Widget _buildEmployeesTab() {
-    return Column(
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Column(
         children: [
           // Поиск
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Поиск сотрудника...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.trim().toLowerCase();
-                });
-              },
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Поиск сотрудника...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  prefixIcon: Icon(Icons.search, color: const Color(0xFF004D40).withOpacity(0.7)),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear, color: Colors.grey[400]),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.trim().toLowerCase();
+                  });
+                },
+              ),
             ),
           ),
           // Список сотрудников
@@ -429,88 +619,135 @@ class _EmployeesPageState extends State<EmployeesPage> {
               future: _employeesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.red,
+                        const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Ошибка загрузки данных',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${snapshot.error}',
-                          style: const TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _employeesFuture = _loadEmployees();
-                            });
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Повторить'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF004D40),
-                          ),
+                          'Загрузка сотрудников...',
+                          style: TextStyle(color: Colors.grey[600]),
                         ),
                       ],
                     ),
                   );
                 }
 
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Ошибка загрузки данных',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${snapshot.error}',
+                            style: TextStyle(color: Colors.grey[600]),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _employeesFuture = _loadEmployees();
+                              });
+                              _animationController.reset();
+                              _animationController.forward();
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Повторить'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004D40),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 final allEmployees = snapshot.data ?? [];
-                
+
                 // Фильтрация: показываем всех сотрудников (не только верифицированных)
                 final filteredEmployees = allEmployees.where((employee) {
                   // Если нет телефона, исключаем из списка
                   if (employee.phone == null || employee.phone!.isEmpty) {
                     return false;
                   }
-                  
+
                   // Фильтрация по поисковому запросу
                   if (_searchQuery.isEmpty) return true;
-                  
+
                   final name = employee.name.toLowerCase();
                   final position = (employee.position ?? '').toLowerCase();
                   final department = (employee.department ?? '').toLowerCase();
-                  
+
                   return name.contains(_searchQuery) ||
                       position.contains(_searchQuery) ||
                       department.contains(_searchQuery);
                 }).toList();
 
                 if (filteredEmployees.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.person_search,
-                          size: 64,
-                          color: Colors.grey,
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.person_search,
+                            size: 48,
+                            color: Colors.grey[400],
+                          ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Text(
                           'Сотрудники не найдены',
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Попробуйте изменить параметры поиска',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[400],
                           ),
                         ),
                       ],
@@ -518,177 +755,221 @@ class _EmployeesPageState extends State<EmployeesPage> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: filteredEmployees.length,
-                  itemBuilder: (context, index) {
-                    final employee = filteredEmployees[index];
-                    final isVerified = employee.phone != null
-                        ? _verificationStatus[employee.phone!] ?? false
-                        : false;
-                    
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                        leading: Stack(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: const Color(0xFF004D40),
-                              child: Text(
-                                employee.name.isNotEmpty
-                                    ? employee.name[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            if (isVerified)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 12,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                employee.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            if (isVerified)
-                              const Icon(
-                                Icons.verified,
-                                color: Colors.green,
-                                size: 20,
-                              ),
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (employee.position != null &&
-                                employee.position!.isNotEmpty)
-                              Text(
-                                employee.position!,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            if (employee.department != null &&
-                                employee.department!.isNotEmpty)
-                              Text(
-                                employee.department!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            if (employee.phone != null &&
-                                employee.phone!.isNotEmpty)
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.phone,
-                                    size: 14,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    employee.phone!,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  if (employee.referralCode != null) ...[
-                                    const SizedBox(width: 12),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF004D40).withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        '#${employee.referralCode}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF004D40),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            if (employee.email != null &&
-                                employee.email!.isNotEmpty)
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.email,
-                                    size: 14,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      employee.email!,
-                                      style: const TextStyle(fontSize: 12),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                        isThreeLine: employee.position != null ||
-                            employee.department != null ||
-                            employee.phone != null ||
-                            employee.email != null,
-                        onTap: employee.phone != null && employee.phone!.isNotEmpty
-                            ? () async {
-                                // Сохраняем navigator перед async операцией
-                                final navigator = Navigator.of(context);
-
-                                // Открываем страницу просмотра регистрации
-                                final result = await navigator.push(
-                                  MaterialPageRoute(
-                                    builder: (context) => EmployeeRegistrationViewPage(
-                                      employeePhone: employee.phone!,
-                                      employeeName: employee.name,
-                                    ),
-                                  ),
-                                );
-                                // Обновляем статусы верификации после возврата
-                                if (!mounted) return;
-                                if (result == true || result != null) {
-                                  await _loadVerificationStatuses();
-                                }
-                              }
-                            : null,
-                      ),
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {
+                      _employeesFuture = _loadEmployees();
+                    });
+                    await _loadVerificationStatuses();
+                    _animationController.reset();
+                    _animationController.forward();
                   },
+                  color: const Color(0xFF004D40),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredEmployees.length,
+                    itemBuilder: (context, index) {
+                      final employee = filteredEmployees[index];
+                      final isVerified = employee.phone != null
+                          ? _verificationStatus[employee.phone!] ?? false
+                          : false;
+
+                      // Анимация появления
+                      final delay = index * 0.05;
+                      final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: _animationController,
+                          curve: Interval(
+                            delay.clamp(0.0, 0.7),
+                            (delay + 0.3).clamp(0.0, 1.0),
+                            curve: Curves.easeOutBack,
+                          ),
+                        ),
+                      );
+
+                      return AnimatedBuilder(
+                        animation: animation,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 30 * (1 - animation.value)),
+                            child: Opacity(
+                              opacity: animation.value,
+                              child: _buildEmployeeCard(employee, isVerified),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 );
               },
             ),
           ),
         ],
-      );
+      ),
+    );
+  }
+
+  Widget _buildEmployeeCard(Employee employee, bool isVerified) {
+    // Определяем цвета в зависимости от статуса
+    final Color primaryColor = isVerified ? const Color(0xFF004D40) : const Color(0xFF78909C);
+    final Color accentColor = isVerified ? const Color(0xFF00897B) : const Color(0xFF90A4AE);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: employee.phone != null && employee.phone!.isNotEmpty
+              ? () async {
+                  final navigator = Navigator.of(context);
+                  final result = await navigator.push(
+                    MaterialPageRoute(
+                      builder: (context) => EmployeeRegistrationViewPage(
+                        employeePhone: employee.phone!,
+                        employeeName: employee.name,
+                      ),
+                    ),
+                  );
+                  if (!mounted) return;
+                  if (result == true || result != null) {
+                    await _loadVerificationStatuses();
+                  }
+                }
+              : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: isVerified ? const Color(0xFF4CAF50) : Colors.orange,
+                  width: 3,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Компактный аватар
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [primaryColor, accentColor],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      employee.name.isNotEmpty
+                          ? employee.name[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Информация о сотруднике
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Имя
+                      Text(
+                        employee.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      // Телефон и статус в одну строку
+                      Row(
+                        children: [
+                          if (employee.phone != null && employee.phone!.isNotEmpty) ...[
+                            Icon(Icons.phone, size: 12, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                employee.phone!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          // Компактный статус
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isVerified
+                                  ? Colors.green.withOpacity(0.1)
+                                  : Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isVerified ? Icons.check_circle : Icons.schedule,
+                                  color: isVerified ? Colors.green[700] : Colors.orange[700],
+                                  size: 10,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  isVerified ? 'Верифицирован' : 'Ожидает',
+                                  style: TextStyle(
+                                    color: isVerified ? Colors.green[700] : Colors.orange[700],
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Стрелка
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.grey[400],
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildRegistrationTab() {
@@ -697,6 +978,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
         // Обновляем данные в главном виджете после регистрации
         refreshEmployeesData();
       },
+      animationController: _animationController,
     );
   }
 }
@@ -704,9 +986,11 @@ class _EmployeesPageState extends State<EmployeesPage> {
 /// Вкладка регистрации сотрудников
 class _EmployeeRegistrationTab extends StatefulWidget {
   final VoidCallback? onEmployeeRegistered;
-  
+  final AnimationController animationController;
+
   const _EmployeeRegistrationTab({
     this.onEmployeeRegistered,
+    required this.animationController,
   });
 
   @override
@@ -730,7 +1014,7 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
     try {
       // Загружаем сотрудников с сервера
       final employees = await EmployeeService.getEmployees();
-      
+
       // Сортируем по имени
       employees.sort((a, b) => a.name.compareTo(b.name));
 
@@ -763,220 +1047,454 @@ class _EmployeeRegistrationTabState extends State<_EmployeeRegistrationTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Поиск сотрудника...',
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Поиск сотрудника...',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        prefixIcon: Icon(Icons.search, color: const Color(0xFF004D40).withOpacity(0.7)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value.trim().toLowerCase();
+                        });
+                      },
                     ),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.trim().toLowerCase();
-                    });
-                  },
                 ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  // Сохраняем navigator перед async операцией
-                  final navigator = Navigator.of(context);
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF004D40).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        final navigator = Navigator.of(context);
+                        final result = await navigator.push(
+                          MaterialPageRoute(
+                            builder: (context) => const EmployeeRegistrationPage(),
+                          ),
+                        );
 
-                  // Открываем форму регистрации нового сотрудника
+                        if (!mounted) return;
+                        if (result == true) {
+                          setState(() {
+                            _employeesFuture = _loadEmployees();
+                          });
+                          await _loadVerificationStatuses();
+                          if (widget.onEmployeeRegistered != null) {
+                            widget.onEmployeeRegistered!();
+                          }
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.person_add, color: Colors.white, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Новый',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<Employee>>(
+              future: _employeesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Загрузка сотрудников...',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Ошибка загрузки данных',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _employeesFuture = _loadEmployees();
+                              });
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Повторить'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF004D40),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final allEmployees = snapshot.data ?? [];
+                final filteredEmployees = allEmployees.where((employee) {
+                  // Исключаем сотрудников, у которых уже есть регистрация (даже если isVerified = false)
+                  if (employee.phone != null && employee.phone!.isNotEmpty) {
+                    final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
+                    if (_hasRegistration[normalizedPhone] == true) {
+                      return false; // Скрываем сотрудников с регистрацией
+                    }
+                  }
+
+                  if (_searchQuery.isEmpty) return true;
+                  final name = employee.name.toLowerCase();
+                  return name.contains(_searchQuery);
+                }).toList();
+
+                if (filteredEmployees.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.check_circle_outline,
+                            size: 48,
+                            color: Colors.green[400],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Все сотрудники зарегистрированы',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'или не найдены по запросу',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {
+                      _employeesFuture = _loadEmployees();
+                    });
+                    await _loadVerificationStatuses();
+                  },
+                  color: const Color(0xFF004D40),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredEmployees.length,
+                    itemBuilder: (context, index) {
+                      final employee = filteredEmployees[index];
+                      final isVerified = employee.phone != null
+                          ? _verificationStatus[employee.phone!] ?? false
+                          : false;
+
+                      // Анимация появления
+                      final delay = index * 0.05;
+                      final animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: widget.animationController,
+                          curve: Interval(
+                            delay.clamp(0.0, 0.7),
+                            (delay + 0.3).clamp(0.0, 1.0),
+                            curve: Curves.easeOutBack,
+                          ),
+                        ),
+                      );
+
+                      return AnimatedBuilder(
+                        animation: animation,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 30 * (1 - animation.value)),
+                            child: Opacity(
+                              opacity: animation.value,
+                              child: _buildRegistrationCard(employee, isVerified),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegistrationCard(Employee employee, bool isVerified) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: employee.phone != null && employee.phone!.isNotEmpty
+              ? () async {
+                  final navigator = Navigator.of(context);
+                  final existingRegistration = await EmployeeRegistrationService.getRegistration(employee.phone!);
+
+                  if (!mounted) return;
+
                   final result = await navigator.push(
                     MaterialPageRoute(
-                      builder: (context) => const EmployeeRegistrationPage(),
+                      builder: (context) => EmployeeRegistrationPage(
+                        employeePhone: employee.phone!,
+                        existingRegistration: existingRegistration,
+                      ),
                     ),
                   );
 
                   if (!mounted) return;
                   if (result == true) {
-                    // Обновляем список сотрудников и статусы
-                    setState(() {
-                      _employeesFuture = _loadEmployees();
-                    });
                     await _loadVerificationStatuses();
-                    // Уведомляем родительский виджет об обновлении
-                    if (widget.onEmployeeRegistered != null) {
-                      widget.onEmployeeRegistered!();
-                    }
                   }
-                },
-                icon: const Icon(Icons.person_add),
-                label: const Text('Новый'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: FutureBuilder<List<Employee>>(
-            future: _employeesFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      const SizedBox(height: 16),
-                      const Text('Ошибка загрузки данных'),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _employeesFuture = _loadEmployees();
-                          });
-                        },
-                        child: const Text('Повторить'),
+                }
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Аватар
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Colors.orange[400]!, Colors.deepOrange[400]!],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                );
-              }
-
-              final allEmployees = snapshot.data ?? [];
-              final filteredEmployees = allEmployees.where((employee) {
-                // Исключаем сотрудников, у которых уже есть регистрация (даже если isVerified = false)
-                if (employee.phone != null && employee.phone!.isNotEmpty) {
-                  final normalizedPhone = employee.phone!.replaceAll(RegExp(r'[\s\+]'), '');
-                  if (_hasRegistration[normalizedPhone] == true) {
-                    return false; // Скрываем сотрудников с регистрацией
-                  }
-                }
-                
-                if (_searchQuery.isEmpty) return true;
-                final name = employee.name.toLowerCase();
-                return name.contains(_searchQuery);
-              }).toList();
-
-              if (filteredEmployees.isEmpty) {
-                return const Center(
-                  child: Text('Все сотрудники зарегистрированы или не найдены'),
-                );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: filteredEmployees.length,
-                itemBuilder: (context, index) {
-                  final employee = filteredEmployees[index];
-                  final isVerified = employee.phone != null
-                      ? _verificationStatus[employee.phone!] ?? false
-                      : false;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: Stack(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: const Color(0xFF004D40),
-                            child: Text(
-                              employee.name.isNotEmpty
-                                  ? employee.name[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          if (isVerified)
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
-                              ),
-                            ),
-                        ],
+                  child: Center(
+                    child: Text(
+                      employee.name.isNotEmpty
+                          ? employee.name[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
                       ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              employee.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          if (isVerified)
-                            const Icon(
-                              Icons.verified,
-                              color: Colors.green,
-                              size: 20,
-                            ),
-                        ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Информация
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        employee.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
-                      subtitle: employee.phone != null
-                          ? Text(employee.phone!)
-                          : null,
-                      onTap: employee.phone != null && employee.phone!.isNotEmpty
-                          ? () async {
-                              // Сохраняем navigator перед async операцией
-                              final navigator = Navigator.of(context);
-
-                              // Загружаем существующую регистрацию, если есть
-                              final existingRegistration = await EmployeeRegistrationService.getRegistration(employee.phone!);
-
-                              if (!mounted) return;
-
-                              final result = await navigator.push(
-                                MaterialPageRoute(
-                                  builder: (context) => EmployeeRegistrationPage(
-                                    employeePhone: employee.phone!,
-                                    existingRegistration: existingRegistration,
+                      if (employee.phone != null && employee.phone!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.phone, size: 12, color: Colors.grey[600]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  employee.phone!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
                                   ),
                                 ),
-                              );
-
-                              if (!mounted) return;
-                              if (result == true) {
-                                // Обновляем статусы верификации
-                                await _loadVerificationStatuses();
-                              }
-                            }
-                          : null,
-                    ),
-                  );
-                },
-              );
-            },
+                              ],
+                            ),
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.pending, size: 12, color: Colors.orange[700]),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Ожидает регистрации',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Кнопка регистрации
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.person_add,
+                    color: Color(0xFF004D40),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
-

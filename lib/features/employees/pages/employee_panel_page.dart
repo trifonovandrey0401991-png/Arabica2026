@@ -592,7 +592,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
-                  'assets/images/work_time_icon.png',
+                  'assets/images/arrival_report_icon.png',
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,

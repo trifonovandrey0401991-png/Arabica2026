@@ -21,6 +21,11 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // Цвета для современного дизайна
+  static const _primaryColor = Color(0xFF004D40);
+  static const _gradientStart = Color(0xFF00695C);
+  static const _gradientEnd = Color(0xFF004D40);
+
   // Вопросы сдачи смены
   List<ShiftHandoverQuestion> _questions = [];
   bool _isLoading = true;
@@ -111,9 +116,18 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
       await _loadQuestions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Вопрос успешно добавлен'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Вопрос успешно добавлен'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -130,9 +144,18 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
       await _loadQuestions();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Вопрос успешно обновлен'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Вопрос успешно обновлен'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -142,20 +165,151 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   Future<void> _deleteQuestion(ShiftHandoverQuestion question) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить вопрос?'),
-        content: Text('Вы уверены, что хотите удалить вопрос:\n"${question.question}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Удалить'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Иконка предупреждения
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red[400]!, Colors.red[600]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.delete_forever_rounded,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Удалить вопрос?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Контент
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Text(
+                        question.question,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Это действие невозможно отменить',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Кнопки
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        child: Text(
+                          'Отмена',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[500],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Удалить',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
 
@@ -165,18 +319,36 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         await _loadQuestions();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Вопрос успешно удален'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Вопрос успешно удален'),
+                ],
+              ),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
             ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка удаления вопроса'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Ошибка удаления вопроса'),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
             ),
           );
         }
@@ -238,54 +410,239 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Управление вопросами'),
-        backgroundColor: const Color(0xFF004D40),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: 'Сдача смены'),
-            Tab(text: 'Форм. конверта'),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_gradientStart, _gradientEnd],
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _loadQuestions();
-              _loadEnvelopeQuestions();
-            },
-            tooltip: 'Обновить',
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Кастомный AppBar с градиентом
+              _buildCustomAppBar(),
+              // Кастомный TabBar
+              _buildCustomTabBar(),
+              // Контент
+              Expanded(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildShiftHandoverQuestionsTab(),
+                        _buildEnvelopeQuestionsTab(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: AnimatedBuilder(
+        animation: _tabController,
+        builder: (context, child) {
+          if (_tabController.index == 0) {
+            return FloatingActionButton.extended(
+              onPressed: _showAddQuestionDialog,
+              backgroundColor: _primaryColor,
+              elevation: 4,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text(
+                'Добавить',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  Widget _buildCustomAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: Row(
+        children: [
+          // Кнопка назад
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Заголовок
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Вопросы (Сдать Смену)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                AnimatedBuilder(
+                  animation: _tabController,
+                  builder: (context, child) {
+                    return Text(
+                      _tabController.index == 0
+                          ? '${_questions.length} вопросов'
+                          : '${_envelopeQuestions.length} вопросов',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 13,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Кнопка обновления
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+              onPressed: () {
+                _loadQuestions();
+                _loadEnvelopeQuestions();
+              },
+              tooltip: 'Обновить',
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            ),
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Вкладка 1: Сдача смены
-          _buildShiftHandoverQuestionsTab(),
-          // Вкладка 2: Формирование конверта
-          _buildEnvelopeQuestionsTab(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (_tabController.index == 0) {
-            _showAddQuestionDialog();
-          }
-        },
-        backgroundColor: _tabController.index == 0 ? const Color(0xFF004D40) : Colors.grey,
-        child: const Icon(Icons.add, color: Colors.white),
+    );
+  }
+
+  Widget _buildCustomTabBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          indicator: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorPadding: const EdgeInsets.all(4),
+          dividerColor: Colors.transparent,
+          labelColor: _primaryColor,
+          unselectedLabelColor: Colors.white.withOpacity(0.85),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+          tabs: const [
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.assignment_turned_in_outlined, size: 20),
+                  SizedBox(width: 8),
+                  Text('Сдача смены'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.mail_outline_rounded, size: 20),
+                  SizedBox(width: 8),
+                  Text('Конверт'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildShiftHandoverQuestionsTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Загрузка вопросов...',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     if (_questions.isEmpty) {
@@ -293,16 +650,46 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.question_answer, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withOpacity(0.1),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.assignment_turned_in_outlined,
+                size: 56,
+                color: _primaryColor.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 24),
             const Text(
               'Нет вопросов',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: _primaryColor,
+              ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Нажмите + чтобы добавить первый вопрос',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48),
+              child: Text(
+                'Нажмите кнопку "Добавить"\nчтобы создать первый вопрос',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
@@ -310,72 +697,360 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: _questions.length,
       itemBuilder: (context, index) {
         final question = _questions[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFF004D40),
-              child: Text(
-                '${index + 1}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            title: Text(
-              question.question,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Row(
-              children: [
-                Icon(
-                  _getAnswerTypeIcon(question),
-                  size: 16,
-                  color: Colors.grey[600],
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _getAnswerTypeLabel(question),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Color(0xFF004D40)),
-                  onPressed: () => _showEditQuestionDialog(question),
-                  tooltip: 'Редактировать',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteQuestion(question),
-                  tooltip: 'Удалить',
-                ),
-              ],
-            ),
-            isThreeLine: false,
-          ),
-        );
+        return _buildQuestionCard(question, index);
       },
     );
   }
 
+  Widget _buildQuestionCard(ShiftHandoverQuestion question, int index) {
+    final Color typeColor = _getAnswerTypeColor(question);
+    final String targetRoleLabel = _getTargetRoleLabel(question.targetRole);
+    final IconData targetRoleIcon = _getTargetRoleIcon(question.targetRole);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: typeColor.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showEditQuestionDialog(question),
+          splashColor: typeColor.withOpacity(0.08),
+          child: Column(
+            children: [
+              // Верхняя часть карточки
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Номер вопроса
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [typeColor, typeColor.withOpacity(0.8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: typeColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Контент
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Бейджи типа и роли
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              // Тип ответа
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: typeColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: typeColor.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _getAnswerTypeIcon(question),
+                                      size: 14,
+                                      color: typeColor,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _getAnswerTypeLabel(question),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: typeColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Целевая роль
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.blueGrey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      targetRoleIcon,
+                                      size: 14,
+                                      color: Colors.blueGrey[600],
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      targetRoleLabel,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.blueGrey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          // Текст вопроса
+                          Text(
+                            question.question,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1A1A1A),
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Кнопки действий
+                    Column(
+                      children: [
+                        _buildCardActionButton(
+                          icon: Icons.edit_rounded,
+                          color: _primaryColor,
+                          onTap: () => _showEditQuestionDialog(question),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildCardActionButton(
+                          icon: Icons.delete_outline_rounded,
+                          color: Colors.red[400]!,
+                          onTap: () => _deleteQuestion(question),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Метаданные внизу
+              if ((question.shops != null && question.shops!.isNotEmpty) ||
+                  (question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty))
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Магазины
+                      if (question.shops != null && question.shops!.isNotEmpty)
+                        _buildMetadataBadge(
+                          icon: Icons.store_rounded,
+                          text: '${question.shops!.length} магазин${_getShopEnding(question.shops!.length)}',
+                          color: Colors.amber[700]!,
+                          bgColor: Colors.amber.withOpacity(0.12),
+                        ),
+                      if (question.shops != null && question.shops!.isNotEmpty &&
+                          question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
+                        const SizedBox(width: 10),
+                      // Эталонные фото
+                      if (question.isPhotoOnly && question.referencePhotos != null && question.referencePhotos!.isNotEmpty)
+                        _buildMetadataBadge(
+                          icon: Icons.photo_library_rounded,
+                          text: '${question.referencePhotos!.length} эталон${_getPhotoEnding(question.referencePhotos!.length)}',
+                          color: Colors.green[700]!,
+                          bgColor: Colors.green.withOpacity(0.12),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
+    );
+  }
+
+  Widget _buildMetadataBadge({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getShopEnding(int count) {
+    if (count == 1) return '';
+    if (count >= 2 && count <= 4) return 'а';
+    return 'ов';
+  }
+
+  String _getPhotoEnding(int count) {
+    if (count == 1) return '';
+    if (count >= 2 && count <= 4) return 'а';
+    return 'ов';
+  }
+
+  Color _getAnswerTypeColor(ShiftHandoverQuestion question) {
+    if (question.isPhotoOnly) return const Color(0xFF7B1FA2); // Purple
+    if (question.isYesNo) return const Color(0xFF0288D1); // Blue
+    if (question.isNumberOnly) return const Color(0xFFE65100); // Orange
+    return const Color(0xFF2E7D32); // Green for text
+  }
+
+  String _getTargetRoleLabel(String? targetRole) {
+    switch (targetRole) {
+      case 'manager':
+        return 'Заведующая';
+      case 'employee':
+        return 'Сотрудник';
+      case 'all':
+      default:
+        return 'Все';
+    }
+  }
+
+  IconData _getTargetRoleIcon(String? targetRole) {
+    switch (targetRole) {
+      case 'manager':
+        return Icons.business_center;
+      case 'employee':
+        return Icons.person;
+      case 'all':
+      default:
+        return Icons.groups;
+    }
+  }
+
   Widget _buildEnvelopeQuestionsTab() {
     if (_isLoadingEnvelope) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Загрузка вопросов конверта...',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     if (_envelopeQuestions.isEmpty) {
@@ -383,16 +1058,41 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mail, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text(
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.mail_outline_rounded,
+                size: 56,
+                color: Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
               'Нет вопросов',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Вопросы конверта не загружены',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -400,105 +1100,168 @@ class _ShiftHandoverQuestionsManagementPageState extends State<ShiftHandoverQues
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       itemCount: _envelopeQuestions.length,
       itemBuilder: (context, index) {
         final question = _envelopeQuestions[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: question.isActive ? const Color(0xFF004D40) : Colors.grey,
-              child: Text(
-                '${question.order}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    question.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: question.isActive ? Colors.black : Colors.grey,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getSectionColor(question.section).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    question.sectionText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _getSectionColor(question.section),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            subtitle: Column(
+        return _buildEnvelopeQuestionCard(question);
+      },
+    );
+  }
+
+  Widget _buildEnvelopeQuestionCard(EnvelopeQuestion question) {
+    final sectionColor = _getSectionColor(question.section);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: sectionColor.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showEditEnvelopeQuestionDialog(question),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (question.description.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                // Номер порядка
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: question.isActive
+                          ? [sectionColor, sectionColor.withOpacity(0.8)]
+                          : [Colors.grey[400]!, Colors.grey[300]!],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
                     child: Text(
-                      question.description,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
+                      '${question.order}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      _getEnvelopeTypeIcon(question.type),
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      question.typeText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                ),
+                const SizedBox(width: 12),
+                // Контент
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Бейджи
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: sectionColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              question.sectionText,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: sectionColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _getEnvelopeTypeIcon(question.type),
+                                  size: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  question.typeText,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 8),
+                      // Заголовок
+                      Text(
+                        question.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: question.isActive ? Colors.black87 : Colors.grey,
+                        ),
+                      ),
+                      if (question.description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          question.description,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Переключатель и кнопка редактирования
+                Column(
+                  children: [
+                    Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: question.isActive,
+                        onChanged: (value) => _toggleEnvelopeQuestionActive(question),
+                        activeColor: _primaryColor,
+                      ),
+                    ),
+                    _buildCardActionButton(
+                      icon: Icons.edit_rounded,
+                      color: _primaryColor,
+                      onTap: () => _showEditEnvelopeQuestionDialog(question),
                     ),
                   ],
                 ),
               ],
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Switch(
-                  value: question.isActive,
-                  onChanged: (value) => _toggleEnvelopeQuestionActive(question),
-                  activeColor: const Color(0xFF004D40),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Color(0xFF004D40)),
-                  onPressed: () => _showEditEnvelopeQuestionDialog(question),
-                  tooltip: 'Редактировать',
-                ),
-              ],
-            ),
-            isThreeLine: true,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -827,43 +1590,132 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.question != null;
+
     return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Container(
         constraints: BoxConstraints(
           maxWidth: 600,
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                widget.question == null ? 'Добавить вопрос' : 'Редактировать вопрос',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+            // Красивый заголовок
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
                 ),
               ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      isEditing ? Icons.edit_note : Icons.add_circle_outline,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEditing ? 'Редактировать вопрос' : 'Новый вопрос',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isEditing ? 'Измените параметры вопроса' : 'Заполните все поля',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.15),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const Divider(height: 1),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+              // Секция: Текст вопроса
+              _buildSectionHeader(
+                icon: Icons.help_outline,
+                title: 'Текст вопроса',
+                color: const Color(0xFF004D40),
+              ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _questionController,
-                decoration: const InputDecoration(
-                  labelText: 'Текст вопроса',
-                  border: OutlineInputBorder(),
-                  hintText: 'Введите текст вопроса',
+                decoration: InputDecoration(
+                  hintText: 'Введите текст вопроса...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF004D40), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.all(16),
                 ),
                 maxLines: 3,
+                style: const TextStyle(fontSize: 16, height: 1.4),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Пожалуйста, введите текст вопроса';
@@ -871,13 +1723,12 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'Кому задавать вопрос:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SizedBox(height: 28),
+              // Секция: Кому задавать
+              _buildSectionHeader(
+                icon: Icons.people_alt_outlined,
+                title: 'Кому задавать вопрос',
+                color: const Color(0xFF1565C0),
               ),
               const SizedBox(height: 12),
               Row(
@@ -889,7 +1740,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       value: 'manager',
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _buildTargetRoleOption(
                       icon: Icons.person,
@@ -897,7 +1748,7 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                       value: 'employee',
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _buildTargetRoleOption(
                       icon: Icons.groups,
@@ -907,128 +1758,190 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'Тип ответа:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SizedBox(height: 28),
+              // Секция: Тип ответа
+              _buildSectionHeader(
+                icon: Icons.format_list_bulleted,
+                title: 'Тип ответа',
+                color: const Color(0xFF7B1FA2),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: _buildAnswerTypeOption(
-                      icon: Icons.camera_alt,
+                      icon: Icons.camera_alt_outlined,
                       label: 'Фото',
                       value: 'photo',
+                      color: const Color(0xFF7B1FA2),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _buildAnswerTypeOption(
-                      icon: Icons.check_circle,
+                      icon: Icons.check_circle_outline,
                       label: 'Да/Нет',
                       value: 'yesno',
+                      color: const Color(0xFF0288D1),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: _buildAnswerTypeOption(
-                      icon: Icons.numbers,
+                      icon: Icons.tag,
                       label: 'Число',
                       value: 'number',
+                      color: const Color(0xFFE65100),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: _buildAnswerTypeOption(
                       icon: Icons.text_fields,
                       label: 'Текст',
                       value: 'text',
+                      color: const Color(0xFF2E7D32),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'Магазины:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              const SizedBox(height: 28),
+              // Секция: Магазины
+              _buildSectionHeader(
+                icon: Icons.store_mall_directory_outlined,
+                title: 'Магазины',
+                color: const Color(0xFFEF6C00),
               ),
               const SizedBox(height: 12),
               if (_isLoadingShops)
-                const Center(child: CircularProgressIndicator())
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                    ),
+                  ),
+                )
               else ...[
-                CheckboxListTile(
-                  title: const Text('Задавать всем магазинам'),
-                  value: _isForAllShops,
-                  onChanged: (value) {
-                    setState(() {
-                      _isForAllShops = value ?? false;
-                      if (_isForAllShops) {
-                        _selectedShopAddresses.clear();
-                      }
-                    });
-                  },
-                  controlAffinity: ListTileControlAffinity.leading,
+                // Переключатель "Все магазины"
+                Container(
+                  decoration: BoxDecoration(
+                    color: _isForAllShops ? const Color(0xFF004D40).withOpacity(0.1) : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isForAllShops ? const Color(0xFF004D40).withOpacity(0.3) : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: CheckboxListTile(
+                    title: const Text(
+                      'Задавать всем магазинам',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      'Вопрос будет задан на всех точках',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                    value: _isForAllShops,
+                    onChanged: (value) {
+                      setState(() {
+                        _isForAllShops = value ?? false;
+                        if (_isForAllShops) {
+                          _selectedShopAddresses.clear();
+                        }
+                      });
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: const Color(0xFF004D40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                 ),
                 if (!_isForAllShops) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Container(
                     constraints: const BoxConstraints(maxHeight: 200),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: _allShops.map((shop) {
-                          final isSelected = _selectedShopAddresses.contains(shop.address);
-                          return CheckboxListTile(
-                            title: Text(shop.name),
-                            subtitle: Text(
-                              shop.address,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            value: isSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                if (value ?? false) {
-                                  _selectedShopAddresses.add(shop.address);
-                                } else {
-                                  _selectedShopAddresses.remove(shop.address);
-                                  _referencePhotoFiles.remove(shop.address);
-                                  _referencePhotoBytes.remove(shop.address);
-                                  _referencePhotoUrls.remove(shop.address);
-                                }
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                          );
-                        }).toList(),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: _allShops.map((shop) {
+                            final isSelected = _selectedShopAddresses.contains(shop.address);
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFF004D40).withOpacity(0.05) : Colors.white,
+                                border: Border(
+                                  bottom: BorderSide(color: Colors.grey[200]!),
+                                ),
+                              ),
+                              child: CheckboxListTile(
+                                title: Text(
+                                  shop.name,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  shop.address,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                                value: isSelected,
+                                onChanged: (value) {
+                                  setState(() {
+                                    if (value ?? false) {
+                                      _selectedShopAddresses.add(shop.address);
+                                    } else {
+                                      _selectedShopAddresses.remove(shop.address);
+                                      _referencePhotoFiles.remove(shop.address);
+                                      _referencePhotoBytes.remove(shop.address);
+                                      _referencePhotoUrls.remove(shop.address);
+                                    }
+                                  });
+                                },
+                                controlAffinity: ListTileControlAffinity.leading,
+                                activeColor: const Color(0xFF004D40),
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ),
+                  if (_selectedShopAddresses.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Выбрано: ${_selectedShopAddresses.length} магазин(ов)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                 ],
                 if (_selectedAnswerType == 'photo') ...[
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Эталонные фото:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader(
+                    icon: Icons.photo_library_outlined,
+                    title: 'Эталонные фото',
+                    color: const Color(0xFF388E3C),
                   ),
                   const SizedBox(height: 8),
+                  Text(
+                    'Добавьте образцы, чтобы сотрудники знали, как должно выглядеть фото',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     constraints: const BoxConstraints(maxHeight: 300),
                     child: SingleChildScrollView(
@@ -1057,32 +1970,82 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
                 ),
               ),
             ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16),
+            // Красивые кнопки действий
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+                border: Border(
+                  top: BorderSide(color: Colors.grey[200]!),
+                ),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: _isSaving ? null : () => Navigator.pop(context),
-                    child: const Text('Отмена'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _saveQuestion,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isSaving ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Colors.grey[400]!),
+                      ),
+                      child: Text(
+                        'Отмена',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
                     ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveQuestion,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF004D40),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isEditing ? Icons.save : Icons.add_circle,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  isEditing ? 'Сохранить' : 'Добавить',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                          )
-                        : const Text('Сохранить'),
+                    ),
                   ),
                 ],
               ),
@@ -1093,46 +2056,105 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     );
   }
 
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAnswerTypeOption({
     required IconData icon,
     required String label,
     required String value,
+    Color? color,
   }) {
     final isSelected = _selectedAnswerType == value;
-    return InkWell(
+    final cardColor = color ?? const Color(0xFF004D40);
+
+    return GestureDetector(
       onTap: () {
         setState(() {
           _selectedAnswerType = value;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.all(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF004D40).withOpacity(0.1)
-              : Colors.grey[100],
+          color: isSelected ? cardColor.withOpacity(0.12) : Colors.grey[50],
           border: Border.all(
-            color: isSelected ? const Color(0xFF004D40) : Colors.grey[300]!,
+            color: isSelected ? cardColor : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: cardColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF004D40) : Colors.grey[600],
-              size: 32,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected ? cardColor.withOpacity(0.15) : Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? cardColor : Colors.grey[500],
+                size: 28,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFF004D40) : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12,
+                color: isSelected ? cardColor : Colors.grey[700],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 13,
               ),
             ),
+            if (isSelected)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Container(
+                  width: 20,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -1147,87 +2169,228 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     final photoBytes = _referencePhotoBytes[shopAddress];
     final photoUrl = _referencePhotoUrls[shopAddress];
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              shopName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (hasPhoto) ...[
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: photoBytes != null
-                      ? Image.memory(
-                          photoBytes,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(child: Icon(Icons.error));
-                          },
-                        )
-                      : photoFile != null && !kIsWeb
-                          ? Image.file(
-                              photoFile,
-                              fit: BoxFit.cover,
-                            )
-                          : photoUrl != null
-                              ? Image.network(
-                                  photoUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Center(child: Icon(Icons.error));
-                                  },
-                                )
-                              : const Center(child: Icon(Icons.image)),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
+            // Заголовок магазина
             Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.store, size: 18, color: Colors.orange[700]),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
-                    icon: const Icon(Icons.add_photo_alternate, size: 18),
-                    label: Text(hasPhoto ? 'Изменить фото' : 'Добавить эталонное фото'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
-                      foregroundColor: Colors.white,
+                  child: Text(
+                    shopName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ),
-                if (hasPhoto) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      setState(() {
-                        _referencePhotoFiles.remove(shopAddress);
-                        _referencePhotoBytes.remove(shopAddress);
-                        _referencePhotoUrls.remove(shopAddress);
-                      });
-                    },
-                    tooltip: 'Удалить фото',
+                if (hasPhoto)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, size: 14, color: Colors.green[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Загружено',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
               ],
             ),
+            const SizedBox(height: 12),
+            // Превью фото или кнопка добавления
+            if (hasPhoto) ...[
+              Stack(
+                children: [
+                  Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: photoBytes != null
+                          ? Image.memory(
+                              photoBytes,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
+                                );
+                              },
+                            )
+                          : photoFile != null && !kIsWeb
+                              ? Image.file(
+                                  photoFile,
+                                  fit: BoxFit.cover,
+                                )
+                              : photoUrl != null
+                                  ? Image.network(
+                                      photoUrl,
+                                      fit: BoxFit.cover,
+                                      loadingBuilder: (context, child, loadingProgress) {
+                                        if (loadingProgress == null) return child;
+                                        return Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded /
+                                                    loadingProgress.expectedTotalBytes!
+                                                : null,
+                                            strokeWidth: 2,
+                                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Center(
+                                          child: Icon(Icons.error_outline, size: 40, color: Colors.red[300]),
+                                        );
+                                      },
+                                    )
+                                  : Center(child: Icon(Icons.image, size: 40, color: Colors.grey[400])),
+                    ),
+                  ),
+                  // Кнопки поверх фото
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Row(
+                      children: [
+                        _buildPhotoActionButton(
+                          icon: Icons.refresh,
+                          onPressed: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
+                          tooltip: 'Заменить',
+                        ),
+                        const SizedBox(width: 6),
+                        _buildPhotoActionButton(
+                          icon: Icons.delete_outline,
+                          onPressed: () {
+                            setState(() {
+                              _referencePhotoFiles.remove(shopAddress);
+                              _referencePhotoBytes.remove(shopAddress);
+                              _referencePhotoUrls.remove(shopAddress);
+                            });
+                          },
+                          tooltip: 'Удалить',
+                          isDestructive: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              // Зона добавления фото
+              InkWell(
+                onTap: _isUploadingPhotos ? null : () => _pickReferencePhoto(shopAddress),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 100,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_photo_alternate_outlined,
+                        size: 36,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Добавить эталонное фото',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoActionButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required String tooltip,
+    bool isDestructive = false,
+  }) {
+    return Material(
+      color: isDestructive ? Colors.red[50] : Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: isDestructive ? Colors.red[600] : Colors.grey[700],
+          ),
         ),
       ),
     );
@@ -1239,40 +2402,68 @@ class _ShiftHandoverQuestionFormDialogState extends State<ShiftHandoverQuestionF
     required String value,
   }) {
     final isSelected = _selectedTargetRole == value;
-    return InkWell(
+    final cardColor = const Color(0xFF1565C0);
+
+    return GestureDetector(
       onTap: () {
         setState(() {
           _selectedTargetRole = value;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.all(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF004D40).withOpacity(0.1)
-              : Colors.grey[100],
+          color: isSelected ? cardColor.withOpacity(0.12) : Colors.grey[50],
           border: Border.all(
-            color: isSelected ? const Color(0xFF004D40) : Colors.grey[300]!,
+            color: isSelected ? cardColor : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: cardColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF004D40) : Colors.grey[600],
-              size: 32,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected ? cardColor.withOpacity(0.15) : Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? cardColor : Colors.grey[500],
+                size: 24,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFF004D40) : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? cardColor : Colors.grey[700],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 fontSize: 12,
               ),
+              textAlign: TextAlign.center,
             ),
+            if (isSelected)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Icon(
+                  Icons.check_circle,
+                  color: cardColor,
+                  size: 16,
+                ),
+              ),
           ],
         ),
       ),

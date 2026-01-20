@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/logger.dart';
 import '../models/training_model.dart';
+import 'training_article_view_page.dart';
 
 /// Страница обучения
 class TrainingPage extends StatefulWidget {
@@ -100,24 +101,45 @@ class _TrainingPageState extends State<TrainingPage> {
                         article.title,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      trailing: const Icon(Icons.open_in_new),
+                      trailing: Icon(
+                        article.hasContent ? Icons.visibility : Icons.open_in_new,
+                      ),
                       onTap: () async {
-                        final uri = Uri.parse(article.url);
-                        try {
-                          await launchUrl(
-                            uri,
-                            mode: LaunchMode.externalApplication,
+                        // Если есть контент - открываем страницу просмотра
+                        if (article.hasContent) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TrainingArticleViewPage(article: article),
+                            ),
                           );
-                        } catch (e) {
-                          Logger.error('Ошибка открытия ссылки', e);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Не удалось открыть ссылку: ${article.url}'),
-                                backgroundColor: Colors.red,
-                              ),
+                        } else if (article.hasUrl) {
+                          // Если только URL - открываем в браузере
+                          final uri = Uri.parse(article.url!);
+                          try {
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
                             );
+                          } catch (e) {
+                            Logger.error('Ошибка открытия ссылки', e);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Не удалось открыть ссылку: ${article.url}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
+                        } else {
+                          // Нет ни контента, ни URL
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TrainingArticleViewPage(article: article),
+                            ),
+                          );
                         }
                       },
                     ),
