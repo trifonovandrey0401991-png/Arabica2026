@@ -4931,9 +4931,13 @@ app.post('/api/training-articles', async (req, res) => {
       id: `training_article_${Date.now()}`,
       group: req.body.group,
       title: req.body.title,
-      url: req.body.url,
+      content: req.body.content || '',  // Контент статьи
       createdAt: new Date().toISOString(),
     };
+    // URL опционален (для обратной совместимости)
+    if (req.body.url) {
+      article.url = req.body.url;
+    }
     const articleFile = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
     fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
     res.json({ success: true, article });
@@ -4950,9 +4954,10 @@ app.put('/api/training-articles/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Статья не найдена' });
     }
     const article = JSON.parse(fs.readFileSync(articleFile, 'utf8'));
-    if (req.body.group) article.group = req.body.group;
-    if (req.body.title) article.title = req.body.title;
-    if (req.body.url) article.url = req.body.url;
+    if (req.body.group !== undefined) article.group = req.body.group;
+    if (req.body.title !== undefined) article.title = req.body.title;
+    if (req.body.content !== undefined) article.content = req.body.content;
+    if (req.body.url !== undefined) article.url = req.body.url;
     article.updatedAt = new Date().toISOString();
     fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
     res.json({ success: true, article });
