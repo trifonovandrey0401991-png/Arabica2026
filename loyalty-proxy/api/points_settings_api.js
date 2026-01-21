@@ -95,6 +95,13 @@ const DEFAULT_SHIFT_HANDOVER_POINTS_SETTINGS = {
   maxPoints: 1,         // Points for rating 10 (best)
   minRating: 1,         // Fixed: minimum rating
   maxRating: 10,        // Fixed: maximum rating
+  // Временные окна для сдачи смены
+  morningStartTime: '07:00',   // Начало утренней смены
+  morningEndTime: '14:00',     // Дедлайн утренней сдачи смены
+  eveningStartTime: '14:00',   // Начало вечерней смены
+  eveningEndTime: '23:00',     // Дедлайн вечерней сдачи смены
+  // Штраф за пропуск сдачи смены
+  missedPenalty: -3,           // Баллы за пропуск
   createdAt: null,
   updatedAt: null
 };
@@ -763,7 +770,11 @@ function setupPointsSettingsAPI(app) {
     try {
       ensureDir();
 
-      const { minPoints, zeroThreshold, maxPoints } = req.body;
+      const {
+        minPoints, zeroThreshold, maxPoints,
+        morningStartTime, morningEndTime, eveningStartTime, eveningEndTime,
+        missedPenalty
+      } = req.body;
 
       // Validation
       if (minPoints === undefined || zeroThreshold === undefined || maxPoints === undefined) {
@@ -807,6 +818,14 @@ function setupPointsSettingsAPI(app) {
       settings.minPoints = parseFloat(minPoints);
       settings.zeroThreshold = parseInt(zeroThreshold);
       settings.maxPoints = parseFloat(maxPoints);
+
+      // Update time windows if provided
+      if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
+      if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
+      if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
+      if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
+      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+
       settings.updatedAt = new Date().toISOString();
 
       fs.writeFileSync(SHIFT_HANDOVER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');

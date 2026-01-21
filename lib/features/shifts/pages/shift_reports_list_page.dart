@@ -1,13 +1,41 @@
 import 'package:flutter/material.dart';
 import '../models/shift_report_model.dart';
 import '../models/pending_shift_report_model.dart';
+import '../models/shift_question_model.dart';
 import '../services/shift_report_service.dart';
+import '../services/shift_question_service.dart';
 import 'shift_report_view_page.dart';
+import 'shift_summary_report_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../features/shops/models/shop_model.dart';
 import '../../../features/efficiency/models/points_settings_model.dart';
 import '../../../features/efficiency/services/points_settings_service.dart';
+
+/// Модель строки сводного отчёта (дата + смена)
+class ShiftSummaryItem {
+  final DateTime date;
+  final String shiftType; // 'morning' | 'evening'
+  final String shiftName; // 'Утренняя' | 'Вечерняя'
+  final int passedCount;  // Сколько магазинов прошли
+  final int totalCount;   // Всего магазинов
+  final List<ShiftReport> reports; // Отчёты за эту смену
+
+  ShiftSummaryItem({
+    required this.date,
+    required this.shiftType,
+    required this.shiftName,
+    required this.passedCount,
+    required this.totalCount,
+    required this.reports,
+  });
+
+  String get displayTitle {
+    const months = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    return '${date.day} ${months[date.month]}, $shiftName ($passedCount/$totalCount)';
+  }
+}
 
 /// Тип группы для иерархической группировки отчётов
 enum ReportGroupType { today, yesterday, day, week, month }
@@ -53,6 +81,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   List<Shop> _allShops = [];
   ShiftPointsSettings? _shiftSettings;
   int _failedShiftsBadgeCount = 0;
+  List<ShiftSummaryItem> _summaryItems = []; // Сводные данные за 30 дней
 
   // Состояние раскрытия групп (ключ = уникальный идентификатор группы)
   final Map<String, bool> _expandedGroups = {};
@@ -60,7 +89,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadSettings();
     _loadData();
@@ -167,6 +196,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
       // Вычисляем непройденные пересменки на клиенте
       _calculatePendingShifts();
+      // Вычисляем сводные данные за 30 дней
+      _calculateSummaryItems();
 
       Logger.success('Всего отчетов после объединения: ${_allReports.length}');
       setState(() {});
@@ -174,6 +205,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       Logger.error('Ошибка загрузки отчетов', e);
       _allReports = await ShiftReport.loadAllReports();
       _calculatePendingShifts();
+      _calculateSummaryItems();
       setState(() {});
     }
   }
@@ -278,6 +310,59 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     Logger.info('Просроченных пересменок: ${_failedShifts.length}');
   }
 
+  /// Вычислить сводные данные за последние 30 дней
+  void _calculateSummaryItems() {
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+
+    _summaryItems = [];
+
+    // Группируем отчёты по дням и сменам
+    Map<String, List<ShiftReport>> grouped = {};
+
+    for (final report in _allReports) {
+      if (report.createdAt.isBefore(thirtyDaysAgo)) continue;
+
+      final dateKey = '${report.createdAt.year}-${report.createdAt.month.toString().padLeft(2, '0')}-${report.createdAt.day.toString().padLeft(2, '0')}';
+      final shiftType = _getShiftType(report.createdAt);
+      final key = '${dateKey}_$shiftType';
+
+      grouped.putIfAbsent(key, () => []).add(report);
+    }
+
+    // Создаём строки для каждого дня и смены за 30 дней
+    for (int i = 0; i < 30; i++) {
+      final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
+      final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      // Утренняя смена
+      final morningKey = '${dateKey}_morning';
+      final morningReports = grouped[morningKey] ?? [];
+      _summaryItems.add(ShiftSummaryItem(
+        date: date,
+        shiftType: 'morning',
+        shiftName: 'Утренняя',
+        passedCount: morningReports.length,
+        totalCount: _allShops.length,
+        reports: morningReports,
+      ));
+
+      // Вечерняя смена
+      final eveningKey = '${dateKey}_evening';
+      final eveningReports = grouped[eveningKey] ?? [];
+      _summaryItems.add(ShiftSummaryItem(
+        date: date,
+        shiftType: 'evening',
+        shiftName: 'Вечерняя',
+        passedCount: eveningReports.length,
+        totalCount: _allShops.length,
+        reports: eveningReports,
+      ));
+    }
+
+    Logger.info('Сводных записей за 30 дней: ${_summaryItems.length}');
+  }
+
   List<ShiftReport> _applyFilters(List<ShiftReport> reports) {
     var filtered = reports;
 
@@ -369,6 +454,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
               _buildTabButton(3, Icons.check_circle, 'Подтверждённые', _allReports.where((r) => r.isConfirmed).length, Colors.green),
               const SizedBox(width: 6),
               _buildTabButton(4, Icons.cancel, 'Отклонённые', _expiredReports.length + _overdueUnconfirmedReports.length, Colors.grey),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Третий ряд: 1 вкладка "Отчёт"
+          Row(
+            children: [
+              _buildTabButton(5, Icons.table_chart, 'Отчёт', _summaryItems.where((s) => s.passedCount > 0).length, Colors.deepPurple),
             ],
           ),
         ],
@@ -784,6 +876,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                     _buildGroupedReportsList(_confirmedReports, isConfirmed: true),
                     // Вкладка 4: "Не подтверждённые" (с иерархической группировкой)
                     _buildGroupedReportsList([..._expiredReports, ..._overdueUnconfirmedReports], isConfirmed: false),
+                    // Вкладка 5: "Отчёт" - сводные данные за 30 дней
+                    _buildSummaryReportsList(),
                   ],
                 ),
               ),
@@ -1895,6 +1989,185 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
             // Стрелка
             const Icon(Icons.chevron_right, color: Colors.grey),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // СВОДНЫЙ ОТЧЁТ ЗА 30 ДНЕЙ
+  // ============================================================
+
+  /// Проверить, является ли дата сегодняшней
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
+
+  /// Построить список сводных отчётов за 30 дней
+  Widget _buildSummaryReportsList() {
+    if (_summaryItems.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.table_chart_outlined,
+        title: 'Нет данных за последние 30 дней',
+        subtitle: 'Сводные отчёты появятся здесь',
+        color: Colors.deepPurple,
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: _summaryItems.length,
+      itemBuilder: (context, index) {
+        final item = _summaryItems[index];
+        final isToday = _isToday(item.date);
+        final allPassed = item.passedCount == item.totalCount && item.totalCount > 0;
+        final nonePassed = item.passedCount == 0;
+        final isMorning = item.shiftType == 'morning';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: allPassed
+                  ? [Colors.green.shade50, Colors.white]
+                  : nonePassed
+                      ? [Colors.red.shade50, Colors.white]
+                      : [Colors.white, Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: allPassed
+                  ? Colors.green.withOpacity(0.4)
+                  : nonePassed
+                      ? Colors.red.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.2),
+              width: isToday ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _openSummaryReport(item),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    // Иконка смены
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isMorning
+                              ? [Colors.orange.shade300, Colors.orange.shade600]
+                              : [Colors.indigo.shade300, Colors.indigo.shade600],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isMorning ? Colors.orange : Colors.indigo).withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isMorning ? Icons.wb_sunny : Icons.nights_stay,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Информация
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.displayTitle,
+                            style: TextStyle(
+                              fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            allPassed
+                                ? 'Все магазины прошли'
+                                : nonePassed
+                                    ? 'Никто не прошёл'
+                                    : 'Не прошли: ${item.totalCount - item.passedCount}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: allPassed
+                                  ? Colors.green
+                                  : nonePassed
+                                      ? Colors.red
+                                      : Colors.orange,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Бейдж с количеством
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: allPassed
+                            ? Colors.green
+                            : nonePassed
+                                ? Colors.red.shade400
+                                : Colors.deepPurple,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${item.passedCount}/${item.totalCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Открыть страницу сводного отчёта
+  void _openSummaryReport(ShiftSummaryItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShiftSummaryReportPage(
+          date: item.date,
+          shiftType: item.shiftType,
+          shiftName: item.shiftName,
+          reports: item.reports,
+          allShops: _allShops,
         ),
       ),
     );
