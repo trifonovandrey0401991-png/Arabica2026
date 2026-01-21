@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/z_report_service.dart';
 import '../services/z_report_template_service.dart';
 import '../models/z_report_sample_model.dart';
 import '../models/z_report_template_model.dart';
 import 'template_editor_page.dart';
 
-/// Страница обучения ИИ распознаванию Z-отчётов
+/// Страница обучения ИИ распознаванию Z-отчётов - Премиум версия
 class ZReportTrainingPage extends StatefulWidget {
   const ZReportTrainingPage({super.key});
 
@@ -18,42 +19,193 @@ class ZReportTrainingPage extends StatefulWidget {
 
 class _ZReportTrainingPageState extends State<ZReportTrainingPage>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  TabController? _tabController;
+  bool _isAdmin = false;
+  bool _isInitialized = false;
+
+  // Цвета для градиентов
+  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static const _orangeGradient = [Color(0xFFF59E0B), Color(0xFFFBBF24)];
+
+  /// Количество вкладок зависит от роли: админ видит 3 вкладки, остальные - 2
+  int get _tabCount => _isAdmin ? 3 : 2;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _initTabController();
+  }
+
+  Future<void> _initTabController() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('user_role') ?? '';
+
+    if (mounted) {
+      setState(() {
+        _isAdmin = role == 'admin';
+        _tabController = TabController(length: _tabCount, vsync: this);
+        _isInitialized = true;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Обучение Z-отчётов'),
-        backgroundColor: const Color(0xFF004D40),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(icon: Icon(Icons.add_a_photo), text: 'Обучить'),
-            Tab(icon: Icon(Icons.grid_view), text: 'Шаблоны'),
-            Tab(icon: Icon(Icons.analytics), text: 'Статистика'),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1A1A2E),
+              Color(0xFF16213E),
+              Color(0xFF0F3460),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: !_isInitialized || _tabController == null
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                )
+              : Column(
+                  children: [
+                    // Custom AppBar
+                    _buildCustomAppBar(),
+
+                    // TabBar
+                    _buildTabBar(),
+
+                    // TabBarView
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          const _TrainingSampleTab(),
+                          if (_isAdmin) const _TemplatesTab(),
+                          const _StatsTab(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
-      body: TabBarView(
+    );
+  }
+
+  Widget _buildCustomAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'Обучение Z-отчётов',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    if (_tabController == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: TabBar(
         controller: _tabController,
-        children: const [
-          _TrainingSampleTab(),
-          _TemplatesTab(),
-          _StatsTab(),
+        indicator: BoxDecoration(
+          gradient: const LinearGradient(colors: _purpleGradient),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: _purpleGradient[0].withOpacity(0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicatorPadding: const EdgeInsets.all(4),
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withOpacity(0.5),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        dividerColor: Colors.transparent,
+        tabs: [
+          const Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_a_photo, size: 18),
+                SizedBox(width: 6),
+                Text('Обучить'),
+              ],
+            ),
+          ),
+          if (_isAdmin)
+            const Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.grid_view, size: 18),
+                  SizedBox(width: 6),
+                  Text('Шаблоны'),
+                ],
+              ),
+            ),
+          const Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.analytics, size: 18),
+                SizedBox(width: 6),
+                Text('Статистика'),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -76,7 +228,6 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   bool _isParsing = false;
   ZReportParseResult? _parseResult;
 
-  // Список шаблонов и выбранный шаблон
   List<ZReportTemplate> _templates = [];
   ZReportTemplate? _selectedTemplate;
   bool _isLoadingTemplates = true;
@@ -85,6 +236,10 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   final _cashSumController = TextEditingController();
   final _ofdNotSentController = TextEditingController();
   final _resourceKeysController = TextEditingController();
+
+  // Цвета
+  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
 
   @override
   void initState() {
@@ -98,7 +253,6 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       setState(() {
         _templates = templates;
         _isLoadingTemplates = false;
-        // Если есть шаблоны, выбираем первый по умолчанию
         if (templates.isNotEmpty) {
           _selectedTemplate = templates.first;
         }
@@ -149,7 +303,6 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     try {
       ZReportParseResult result;
 
-      // Если выбран шаблон с областями - используем распознавание по шаблону
       if (_selectedTemplate != null && _selectedTemplate!.regions.isNotEmpty) {
         final response = await ZReportTemplateService.parseWithTemplate(
           imageBase64: _imageBase64!,
@@ -176,7 +329,6 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           );
         }
       } else {
-        // Обычное распознавание без шаблона
         result = await ZReportService.parseZReport(_imageBase64!);
       }
 
@@ -226,7 +378,6 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     setState(() => _isLoading = true);
 
     try {
-      // Сохраняем образец для обучения с информацией о том, что было исправлено
       final success = await ZReportTemplateService.saveTrainingSample(
         imageBase64: _imageBase64!,
         rawText: _parseResult?.rawText ?? '',
@@ -245,7 +396,6 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       );
 
       if (success) {
-        // Формируем сообщение с результатом обучения
         final learningResult = ZReportTemplateService.lastLearningResult;
         String message = 'Образец сохранён для обучения';
 
@@ -256,14 +406,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             message = 'Выучено $newPatterns новых паттернов!';
           } else if (totalPatterns != null) {
             final total = (totalPatterns['totalSum'] ?? 0) +
-                         (totalPatterns['cashSum'] ?? 0) +
-                         (totalPatterns['ofdNotSent'] ?? 0) +
-                         (totalPatterns['resourceKeys'] ?? 0);
+                (totalPatterns['cashSum'] ?? 0) +
+                (totalPatterns['ofdNotSent'] ?? 0) +
+                (totalPatterns['resourceKeys'] ?? 0);
             message = 'Образец сохранён. Всего паттернов: $total';
           }
         }
 
-        _showSnackBar(message, Colors.green);
+        _showSnackBar(message, _greenGradient[0]);
         setState(() {
           _selectedImage = null;
           _imageBase64 = null;
@@ -283,7 +433,22 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
 
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              color == Colors.red ? Icons.error_outline : Icons.check_circle,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 
@@ -294,184 +459,105 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Инструкция с градиентом
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.teal.shade50, Colors.blue.shade50],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.teal.shade200, width: 1),
-            ),
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.school, color: Colors.teal.shade700, size: 24),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Выберите шаблон, сфотографируйте Z-отчёт, проверьте данные. '
-                    'Это поможет ИИ лучше распознавать такие чеки.',
-                    style: TextStyle(fontSize: 13, height: 1.4),
-                  ),
-                ),
-              ],
-            ),
+          // Инструкция
+          _buildInfoCard(
+            icon: Icons.school,
+            title: 'Как обучать ИИ',
+            description:
+                'Выберите шаблон, сфотографируйте Z-отчёт, проверьте данные. '
+                'Это поможет ИИ лучше распознавать такие чеки.',
+            gradient: _purpleGradient,
           ),
           const SizedBox(height: 16),
 
           // Выбор шаблона
           if (_isLoadingTemplates)
-            const Center(child: CircularProgressIndicator())
-          else if (_templates.isNotEmpty) ...[
-            const Text('Выберите шаблон:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<ZReportTemplate>(
-              value: _selectedTemplate,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            Center(
+              child: CircularProgressIndicator(
+                color: _purpleGradient[0],
               ),
-              items: _templates.map((template) {
-                return DropdownMenuItem(
-                  value: template,
-                  child: Text(
-                    '${template.name} (${template.regions.length} обл.)',
-                    overflow: TextOverflow.ellipsis,
+            )
+          else if (_templates.isNotEmpty) ...[
+            Text(
+              'Выберите шаблон',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: DropdownButtonFormField<ZReportTemplate>(
+                value: _selectedTemplate,
+                dropdownColor: const Color(0xFF1A1A2E),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  prefixIcon: Container(
+                    margin: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: _purpleGradient),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.grid_view, color: Colors.white, size: 18),
                   ),
-                );
-              }).toList(),
-              onChanged: (template) {
-                setState(() => _selectedTemplate = template);
-                // Если уже есть изображение - перераспознаём с новым шаблоном
-                if (_imageBase64 != null) {
-                  _parseImage();
-                }
-              },
+                ),
+                style: const TextStyle(color: Colors.white),
+                items: _templates.map((template) {
+                  return DropdownMenuItem(
+                    value: template,
+                    child: Text(
+                      '${template.name} (${template.regions.length} обл.)',
+                      style: const TextStyle(color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (template) {
+                  setState(() => _selectedTemplate = template);
+                  if (_imageBase64 != null) {
+                    _parseImage();
+                  }
+                },
+              ),
             ),
             const SizedBox(height: 16),
           ] else
-            Card(
-              color: Colors.orange[50],
-              child: const Padding(
-                padding: EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.orange),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Нет шаблонов. Создайте шаблон во вкладке "Шаблоны" для лучшего распознавания.',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _buildWarningCard(),
           const SizedBox(height: 16),
 
-          // Кнопки с улучшенным дизайном
+          // Кнопки
           Row(
             children: [
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00695C), Color(0xFF004D40)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF004D40).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _isLoading || _isParsing ? null : () => _pickImage(ImageSource.camera),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.camera_alt, color: Colors.white, size: 22),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Камера',
-                              style: TextStyle(
-                                color: _isLoading || _isParsing ? Colors.white54 : Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                child: _buildGradientButton(
+                  icon: Icons.camera_alt,
+                  label: 'Камера',
+                  gradient: _purpleGradient,
+                  onTap: _isLoading || _isParsing
+                      ? null
+                      : () => _pickImage(ImageSource.camera),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blueGrey.shade600, Colors.blueGrey.shade800],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blueGrey.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _isLoading || _isParsing ? null : () => _pickImage(ImageSource.gallery),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.photo_library, color: Colors.white, size: 22),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Галерея',
-                              style: TextStyle(
-                                color: _isLoading || _isParsing ? Colors.white54 : Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                child: _buildGradientButton(
+                  icon: Icons.photo_library,
+                  label: 'Галерея',
+                  gradient: const [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                  onTap: _isLoading || _isParsing
+                      ? null
+                      : () => _pickImage(ImageSource.gallery),
                 ),
               ),
             ],
@@ -480,7 +566,14 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
 
           // Превью
           if (_selectedImage != null) ...[
-            Card(
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
               clipBehavior: Clip.antiAlias,
               child: Stack(
                 children: [
@@ -493,14 +586,21 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
                   if (_isParsing)
                     Container(
                       height: 250,
-                      color: Colors.black54,
-                      child: const Center(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                      ),
+                      child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircularProgressIndicator(color: Colors.white),
-                            SizedBox(height: 16),
-                            Text('Распознавание...', style: TextStyle(color: Colors.white)),
+                            CircularProgressIndicator(
+                              color: _purpleGradient[0],
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Распознавание...',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -511,145 +611,133 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             const SizedBox(height: 16),
           ],
 
-          // Результат с улучшенным дизайном
+          // Результат
           if (_parseResult != null) ...[
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _parseResult!.success
-                      ? [Colors.green.shade50, Colors.teal.shade50]
-                      : [Colors.red.shade50, Colors.orange.shade50],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _parseResult!.success ? Colors.green.shade200 : Colors.red.shade200,
-                  width: 1,
-                ),
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _parseResult!.success
-                              ? Colors.green.shade100
-                              : Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          _parseResult!.success ? Icons.check_circle : Icons.error_outline,
-                          color: _parseResult!.success ? Colors.green.shade700 : Colors.red.shade700,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _parseResult!.success ? 'Текст распознан' : 'Ошибка распознавания',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: _parseResult!.success ? Colors.green.shade800 : Colors.red.shade800,
-                              ),
-                            ),
-                            if (_parseResult!.success && _selectedTemplate != null)
-                              Text(
-                                'Шаблон: ${_selectedTemplate!.name}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_parseResult!.error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(_parseResult!.error!, style: TextStyle(color: Colors.red.shade700)),
-                  ],
-                  if (_parseResult!.data != null) ...[
-                    const SizedBox(height: 12),
-                    _buildConfidenceInfo(_parseResult!.data!),
-                  ],
-                ],
-              ),
-            ),
+            _buildResultCard(_parseResult!),
             const SizedBox(height: 16),
           ],
 
           // Форма
-          const Text('Проверьте и исправьте данные:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            'Проверьте и исправьте данные',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
           const SizedBox(height: 12),
 
-          _buildTextField(_totalSumController, 'Общая сумма *', Icons.currency_ruble, true),
+          _buildDarkTextField(_totalSumController, 'Общая сумма *', Icons.currency_ruble, true),
           const SizedBox(height: 12),
-          _buildTextField(_cashSumController, 'Сумма наличных', Icons.payments_outlined, true),
+          _buildDarkTextField(_cashSumController, 'Сумма наличных', Icons.payments_outlined, true),
           const SizedBox(height: 12),
-          _buildTextField(_ofdNotSentController, 'Не передано в ОФД', Icons.cloud_off, false),
+          _buildDarkTextField(_ofdNotSentController, 'Не передано в ОФД', Icons.cloud_off, false),
           const SizedBox(height: 12),
-          _buildTextField(_resourceKeysController, 'Ресурс ключей', Icons.key, false),
+          _buildDarkTextField(_resourceKeysController, 'Ресурс ключей', Icons.key, false),
           const SizedBox(height: 24),
 
-          // Кнопка сохранения с градиентом
+          // Кнопка сохранения
+          _buildGradientButton(
+            icon: _isLoading ? null : Icons.save_alt,
+            label: _isLoading ? 'Сохранение...' : 'Сохранить образец',
+            gradient: _imageBase64 == null || _isLoading || _isParsing
+                ? [Colors.grey.shade600, Colors.grey.shade700]
+                : _greenGradient,
+            onTap: _isLoading || _isParsing || _imageBase64 == null ? null : _saveSample,
+            isLoading: _isLoading,
+            height: 56,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required List<Color> gradient,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: gradient[0].withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
           Container(
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _isLoading || _isParsing || _imageBase64 == null
-                    ? [Colors.grey.shade400, Colors.grey.shade500]
-                    : [Colors.teal.shade600, const Color(0xFF004D40)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: LinearGradient(colors: gradient),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: _isLoading || _isParsing || _imageBase64 == null
-                  ? []
-                  : [
-                      BoxShadow(
-                        color: const Color(0xFF004D40).withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _isLoading || _isParsing || _imageBase64 == null ? null : _saveSample,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (_isLoading)
-                        const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      else
-                        const Icon(Icons.save_alt, color: Colors.white, size: 22),
-                      const SizedBox(width: 10),
-                      Text(
-                        _isLoading ? 'Сохранение...' : 'Сохранить образец',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.5),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarningCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.orange.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Нет шаблонов. Создайте шаблон во вкладке "Шаблоны".',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.7),
               ),
             ),
           ),
@@ -658,64 +746,183 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     );
   }
 
-  Widget _buildTextField(
-      TextEditingController controller, String label, IconData icon, bool decimal) {
-    final bool isMoney = icon == Icons.currency_ruble || icon == Icons.payments_outlined;
+  Widget _buildGradientButton({
+    IconData? icon,
+    required String label,
+    required List<Color> gradient,
+    VoidCallback? onTap,
+    bool isLoading = false,
+    double height = 50,
+  }) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: onTap != null
+            ? [
+                BoxShadow(
+                  color: gradient[0].withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isLoading)
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                else if (icon != null)
+                  Icon(icon, color: Colors.white, size: 20),
+                if (icon != null || isLoading) const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: onTap != null ? Colors.white : Colors.white70,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDarkTextField(
+      TextEditingController controller, String label, IconData icon, bool isMoney) {
     return Container(
       decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
       ),
       child: TextField(
         controller: controller,
-        keyboardType: decimal
+        keyboardType: isMoney
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.number,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade600),
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
           prefixIcon: Container(
             margin: const EdgeInsets.all(8),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isMoney ? Colors.teal.shade50 : Colors.blueGrey.shade50,
+              gradient: LinearGradient(
+                colors: isMoney ? _purpleGradient : [Colors.blueGrey, Colors.blueGrey.shade700],
+              ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
-              size: 20,
-            ),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
           suffixText: isMoney ? '₽' : null,
           suffixStyle: TextStyle(
-            color: Colors.teal.shade700,
+            color: _purpleGradient[1],
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.teal.shade400, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
+      ),
+    );
+  }
+
+  Widget _buildResultCard(ZReportParseResult result) {
+    final isSuccess = result.success;
+    final gradient = isSuccess ? _greenGradient : [Colors.red, Colors.red.shade300];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: gradient[0].withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradient),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isSuccess ? Icons.check_circle : Icons.error_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isSuccess ? 'Текст распознан' : 'Ошибка распознавания',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (isSuccess && _selectedTemplate != null)
+                      Text(
+                        'Шаблон: ${_selectedTemplate!.name}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (result.error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              result.error!,
+              style: TextStyle(color: Colors.red.shade300),
+            ),
+          ],
+          if (result.data != null) ...[
+            const SizedBox(height: 12),
+            _buildConfidenceInfo(result.data!),
+          ],
+        ],
       ),
     );
   }
@@ -724,7 +931,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -735,7 +942,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
+              color: Colors.white.withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 8),
@@ -753,6 +960,8 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
   Widget _buildConfidenceRow(String label, double? value, String? confidence, bool isMoney) {
     final isFound = confidence == 'high' || confidence == 'medium';
     final isHigh = confidence == 'high';
+    final color = isFound ? (isHigh ? _greenGradient[0] : Colors.orange) : Colors.grey;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -760,24 +969,23 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: isFound
-                  ? (isHigh ? Colors.green.shade100 : Colors.orange.shade100)
-                  : Colors.grey.shade200,
+              color: color.withOpacity(0.2),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(
               isFound ? (isHigh ? Icons.check : Icons.help_outline) : Icons.close,
               size: 14,
-              color: isFound
-                  ? (isHigh ? Colors.green.shade700 : Colors.orange.shade700)
-                  : Colors.grey.shade600,
+              color: color,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.6),
+              ),
             ),
           ),
           Text(
@@ -787,9 +995,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: isFound
-                  ? (isHigh ? Colors.green.shade800 : Colors.orange.shade800)
-                  : Colors.grey.shade500,
+              color: isFound ? color : Colors.white.withOpacity(0.4),
             ),
           ),
         ],
@@ -810,6 +1016,8 @@ class _TemplatesTab extends StatefulWidget {
 class _TemplatesTabState extends State<_TemplatesTab> {
   List<ZReportTemplate> _templates = [];
   bool _isLoading = true;
+
+  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
 
   @override
   void initState() {
@@ -834,10 +1042,18 @@ class _TemplatesTabState extends State<_TemplatesTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить шаблон?'),
-        content: Text('Шаблон "${template.name}" будет удалён.'),
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Удалить шаблон?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Шаблон "${template.name}" будет удалён.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Отмена', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Удалить', style: TextStyle(color: Colors.red)),
@@ -855,7 +1071,9 @@ class _TemplatesTabState extends State<_TemplatesTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(color: _purpleGradient[0]),
+      );
     }
 
     return Column(
@@ -863,19 +1081,48 @@ class _TemplatesTabState extends State<_TemplatesTab> {
         // Кнопка создания
         Padding(
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(builder: (context) => const TemplateEditorPage()),
-              );
-              if (result == true) _loadTemplates();
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Создать шаблон'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              minimumSize: const Size(double.infinity, 48),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: _purpleGradient),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: _purpleGradient[0].withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  final result = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TemplateEditorPage()),
+                  );
+                  if (result == true) _loadTemplates();
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Создать шаблон',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -883,23 +1130,37 @@ class _TemplatesTabState extends State<_TemplatesTab> {
         // Инструкция
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Card(
-            color: Colors.amber[50],
-            child: const Padding(
-              padding: EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Icon(Icons.lightbulb_outline, color: Colors.amber),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Создайте шаблон для кассы, выделив области где находятся нужные данные. '
-                      'Это улучшит точность распознавания.',
-                      style: TextStyle(fontSize: 12),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.amber.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Создайте шаблон для кассы, выделив области где находятся нужные данные.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.7),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -907,73 +1168,181 @@ class _TemplatesTabState extends State<_TemplatesTab> {
         // Список
         Expanded(
           child: _templates.isEmpty
-              ? const Center(
-                  child: Text('Шаблонов пока нет', style: TextStyle(color: Colors.grey)),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.grid_view,
+                          size: 40,
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Шаблонов пока нет',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
                 )
               : RefreshIndicator(
                   onRefresh: _loadTemplates,
+                  color: _purpleGradient[0],
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _templates.length,
                     itemBuilder: (context, index) {
                       final template = _templates[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF004D40),
-                            child: Text(
-                              template.cashRegisterType?.substring(0, 1) ?? '?',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          title: Text(template.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (template.cashRegisterType != null)
-                                Text('Касса: ${template.cashRegisterType}'),
-                              Text(
-                                'Использований: ${template.usageCount}, '
-                                'Успех: ${(template.successRate * 100).toStringAsFixed(0)}%',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                              ),
-                              Text(
-                                'Областей: ${template.regions.length}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
-                          trailing: PopupMenuButton(
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(value: 'edit', child: Text('Редактировать')),
-                              const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Удалить', style: TextStyle(color: Colors.red))),
-                            ],
-                            onSelected: (value) {
-                              if (value == 'edit') {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        TemplateEditorPage(existingTemplate: template),
-                                  ),
-                                ).then((result) {
-                                  if (result == true) _loadTemplates();
-                                });
-                              } else if (value == 'delete') {
-                                _deleteTemplate(template);
-                              }
-                            },
-                          ),
-                        ),
-                      );
+                      return _buildTemplateCard(template);
                     },
                   ),
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTemplateCard(ZReportTemplate template) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            final result = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TemplateEditorPage(existingTemplate: template),
+              ),
+            );
+            if (result == true) _loadTemplates();
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: _purpleGradient),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      template.cashRegisterType?.substring(0, 1) ?? '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        template.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (template.cashRegisterType != null)
+                        Text(
+                          'Касса: ${template.cashRegisterType}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          _buildStatChip(
+                            '${template.usageCount}',
+                            Icons.analytics,
+                            Colors.blue,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStatChip(
+                            '${(template.successRate * 100).toStringAsFixed(0)}%',
+                            Icons.check_circle,
+                            Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStatChip(
+                            '${template.regions.length}',
+                            Icons.grid_view,
+                            Colors.purple,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _deleteTemplate(template),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Colors.red.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -990,6 +1359,10 @@ class _StatsTab extends StatefulWidget {
 class _StatsTabState extends State<_StatsTab> {
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
+
+  static const _purpleGradient = [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+  static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
+  static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
 
   @override
   void initState() {
@@ -1013,7 +1386,9 @@ class _StatsTabState extends State<_StatsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(color: _purpleGradient[0]),
+      );
     }
 
     final totalSamples = _stats['totalSamples'] ?? 0;
@@ -1023,6 +1398,7 @@ class _StatsTabState extends State<_StatsTab> {
 
     return RefreshIndicator(
       onRefresh: _loadStats,
+      color: _purpleGradient[0],
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -1037,7 +1413,7 @@ class _StatsTabState extends State<_StatsTab> {
                     'Образцов',
                     totalSamples.toString(),
                     Icons.photo_library,
-                    Colors.blue,
+                    _blueGradient,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1046,7 +1422,7 @@ class _StatsTabState extends State<_StatsTab> {
                     'Шаблонов',
                     totalTemplates.toString(),
                     Icons.grid_view,
-                    Colors.green,
+                    _greenGradient,
                   ),
                 ),
               ],
@@ -1056,7 +1432,7 @@ class _StatsTabState extends State<_StatsTab> {
               'Средняя точность',
               '${(avgSuccessRate * 100).toStringAsFixed(1)}%',
               Icons.analytics,
-              Colors.purple,
+              _purpleGradient,
             ),
             const SizedBox(height: 24),
 
@@ -1064,24 +1440,33 @@ class _StatsTabState extends State<_StatsTab> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.edit_note, color: Colors.orange.shade700, size: 20),
+                  child: const Icon(Icons.edit_note, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Исправления по полям',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     Text(
                       'Поля, требующие корректировки',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                     ),
                   ],
                 ),
@@ -1099,34 +1484,37 @@ class _StatsTabState extends State<_StatsTab> {
 
             const SizedBox(height: 24),
 
-            // Подсказка с улучшенным дизайном
+            // Подсказка
             Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green.shade50, Colors.teal.shade50],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _greenGradient[0].withOpacity(0.3),
+                  width: 1,
                 ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green.shade200, width: 1),
               ),
-              padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: const LinearGradient(colors: _greenGradient),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.lightbulb_outline, color: Colors.green.shade700, size: 22),
+                    child: const Icon(Icons.lightbulb_outline, color: Colors.white, size: 22),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+                  const SizedBox(width: 14),
+                  Expanded(
                     child: Text(
-                      'Чем больше образцов с исправлениями — тем точнее будет распознавание. '
-                      'Создавайте шаблоны для разных типов касс.',
-                      style: TextStyle(fontSize: 13, height: 1.4),
+                      'Чем больше образцов с исправлениями — тем точнее будет распознавание.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.6),
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],
@@ -1138,42 +1526,41 @@ class _StatsTabState extends State<_StatsTab> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(String label, String value, IconData icon, List<Color> gradient) {
     return Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: gradient[0].withOpacity(0.3),
+          width: 1,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(colors: gradient),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: gradient[0].withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Icon(icon, size: 28, color: color),
+            child: Icon(icon, size: 28, color: Colors.white),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
             value,
             style: TextStyle(
-              fontSize: 26,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: gradient[1],
             ),
           ),
           const SizedBox(height: 4),
@@ -1181,7 +1568,7 @@ class _StatsTabState extends State<_StatsTab> {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey.shade600,
+              color: Colors.white.withOpacity(0.5),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1192,21 +1579,19 @@ class _StatsTabState extends State<_StatsTab> {
 
   Widget _buildCorrectionBar(String label, int count, int total) {
     final percent = total > 0 ? count / total : 0.0;
-    final color = percent > 0.5 ? Colors.red : (percent > 0.2 ? Colors.orange : Colors.green);
+    final color = percent > 0.5
+        ? Colors.red
+        : (percent > 0.2 ? Colors.orange : _greenGradient[0]);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1217,27 +1602,34 @@ class _StatsTabState extends State<_StatsTab> {
               Row(
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.5),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Text(
                     label,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
+                      color: Colors.white,
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1251,12 +1643,12 @@ class _StatsTabState extends State<_StatsTab> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: percent,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: Colors.white.withOpacity(0.1),
               valueColor: AlwaysStoppedAnimation(color),
               minHeight: 6,
             ),

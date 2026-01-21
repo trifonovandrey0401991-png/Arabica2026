@@ -19,8 +19,12 @@ class ProductQuestionInputPage extends StatefulWidget {
 class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   final TextEditingController _questionController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
+  final FocusNode _focusNode = FocusNode();
   File? _selectedImage;
   bool _isSending = false;
+
+  // Цвета
+  static const _primaryColor = Color(0xFF004D40);
 
   Future<void> _pickImage() async {
     try {
@@ -30,7 +34,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         maxHeight: 1920,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
@@ -56,7 +60,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         maxHeight: 1920,
         imageQuality: 85,
       );
-      
+
       if (image != null) {
         setState(() {
           _selectedImage = File(image.path);
@@ -75,23 +79,71 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   }
 
   Future<void> _showImageSourceDialog() async {
-    final source = await showDialog<ImageSource>(
+    final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Выберите источник'),
-        content: Column(
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Добавить фото',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Галерея'),
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.photo_library, color: _primaryColor),
+              ),
+              title: const Text('Выбрать из галереи'),
+              subtitle: Text(
+                'Выберите готовое фото',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Камера'),
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.camera_alt, color: _primaryColor),
+              ),
+              title: const Text('Сделать фото'),
+              subtitle: Text(
+                'Сфотографируйте товар',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -154,7 +206,7 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
         Navigator.pop(context, true); // Возвращаемся назад с результатом
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Вопрос отправлен! Вы получите ответ в разделе "Мои диалоги"'),
+            content: Text('Вопрос отправлен! Ответ придёт в "Мои диалоги"'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
@@ -183,117 +235,404 @@ class _ProductQuestionInputPageState extends State<ProductQuestionInputPage> {
   @override
   void dispose() {
     _questionController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Вопрос о товаре'),
-        backgroundColor: const Color(0xFF004D40),
+        backgroundColor: _primaryColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              color: const Color(0xFF004D40),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Магазин: ${widget.shopAddress}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+            // Карточка магазина
+            _buildShopCard(),
+            const SizedBox(height: 20),
+
+            // Поле ввода вопроса
+            _buildQuestionInput(),
             const SizedBox(height: 16),
-            TextField(
-              controller: _questionController,
-              decoration: const InputDecoration(
-                labelText: 'Ваш вопрос о товаре',
-                hintText: 'Опишите товар, который вы ищете...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 6,
-            ),
-            const SizedBox(height: 16),
+
             // Превью фото
             if (_selectedImage != null) ...[
-              Stack(
+              _buildImagePreview(),
+              const SizedBox(height: 16),
+            ],
+
+            // Кнопки действий
+            _buildActionButtons(),
+
+            const SizedBox(height: 24),
+
+            // Подсказка
+            _buildHint(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShopCard() {
+    final isAllNetwork = widget.shopAddress == 'Вся сеть';
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isAllNetwork
+              ? [const Color(0xFF004D40), const Color(0xFF00796B)]
+              : [Colors.grey.shade100, Colors.grey.shade50],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: isAllNetwork
+            ? null
+            : Border.all(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isAllNetwork
+                    ? Colors.white.withOpacity(0.2)
+                    : _primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isAllNetwork ? Icons.store_mall_directory : Icons.store,
+                color: isAllNetwork ? Colors.white : _primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      _selectedImage!,
-                      width: double.infinity,
-                      height: 200,
-                      fit: BoxFit.cover,
+                  Text(
+                    isAllNetwork ? 'Вся сеть магазинов' : 'Магазин',
+                    style: TextStyle(
+                      color: isAllNetwork ? Colors.white70 : Colors.grey.shade600,
+                      fontSize: 12,
                     ),
                   ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.black54,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _selectedImage = null;
-                        });
-                      },
+                  const SizedBox(height: 2),
+                  Text(
+                    isAllNetwork ? 'Вопрос получат все' : widget.shopAddress,
+                    style: TextStyle(
+                      color: isAllNetwork ? Colors.white : const Color(0xFF1A1A1A),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-            ],
-            // Кнопки действий
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isSending ? null : _showImageSourceDialog,
-                    icon: const Icon(Icons.photo),
-                    label: const Text('Прикрепить фото'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _isSending ? null : _sendQuestion,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: _isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text('Отправить'),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildQuestionInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: TextField(
+        controller: _questionController,
+        focusNode: _focusNode,
+        decoration: InputDecoration(
+          hintText: 'Опишите товар, который вы ищете...',
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(16),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 8),
+            child: Icon(
+              Icons.edit_note,
+              color: _primaryColor.withOpacity(0.5),
+              size: 24,
+            ),
+          ),
+        ),
+        maxLines: 5,
+        minLines: 3,
+        textCapitalization: TextCapitalization.sentences,
+      ),
+    );
+  }
+
+  Widget _buildImagePreview() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.file(
+              _selectedImage!,
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Затемнение сверху
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.4),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Кнопка удаления
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedImage = null;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          // Метка "Фото товара"
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.photo, color: Colors.white, size: 14),
+                  SizedBox(width: 4),
+                  Text(
+                    'Фото товара',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        // Кнопка прикрепить фото
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: _primaryColor, width: 2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _isSending ? null : _showImageSourceDialog,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _selectedImage != null ? Icons.photo : Icons.add_photo_alternate,
+                        color: _primaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          _selectedImage != null ? 'Изменить' : 'Фото',
+                          style: TextStyle(
+                            color: _primaryColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Кнопка отправить
+        Expanded(
+          flex: 2,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF004D40), Color(0xFF00796B)],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _isSending ? null : _sendQuestion,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isSending)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      else ...[
+                        const Icon(Icons.send, color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Отправить',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHint() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.lightbulb_outline,
+            color: Colors.blue.shade600,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Совет',
+                  style: TextStyle(
+                    color: Colors.blue.shade800,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Добавьте фото товара для более точного ответа. Ответ придёт в раздел "Мои диалоги".',
+                  style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
-
-
-

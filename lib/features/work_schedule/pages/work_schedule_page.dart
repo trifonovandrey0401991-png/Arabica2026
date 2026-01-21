@@ -1,9 +1,13 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import '../../../core/utils/logger.dart';
 import '../models/work_schedule_model.dart';
 import '../models/shift_transfer_model.dart';
 import '../services/work_schedule_service.dart';
 import '../services/shift_transfer_service.dart';
+import '../services/schedule_pdf_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../shops/models/shop_settings_model.dart';
@@ -1060,6 +1064,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               onPressed: _showAutoFillDialog,
               tooltip: 'Автозаполнение графика',
             ),
+          if (_schedule != null)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf),
+              onPressed: _exportToPdf,
+              tooltip: 'Экспорт в PDF',
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -1560,6 +1570,104 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     } else {
       print('🔵 result == null, пропускаем');
       Logger.warning('⚠️ Результат диалога = null, автозаполнение не выполнено');
+    }
+  }
+
+  /// Экспортирует график в PDF
+  Future<void> _exportToPdf() async {
+    if (_schedule == null || _schedule!.entries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Нет данных для экспорта'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Показываем индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Создание PDF...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Собираем уникальные имена сотрудников
+      final employeeNames = _schedule!.entries
+          .map((e) => e.employeeName)
+          .toSet()
+          .toList()
+        ..sort();
+
+      // Собираем аббревиатуры из кэша настроек магазинов
+      final abbreviations = <String, Map<ShiftType, String>>{};
+      for (final entry in _shopSettingsCache.entries) {
+        final shopAddress = entry.key;
+        final settings = entry.value;
+        abbreviations[shopAddress] = {
+          ShiftType.morning: settings.morningAbbreviation ?? 'У',
+          ShiftType.day: settings.dayAbbreviation ?? 'Д',
+          ShiftType.evening: settings.nightAbbreviation ?? 'В',
+        };
+      }
+
+      // Генерируем PDF
+      final pdfBytes = await SchedulePdfService.generateSchedulePdf(
+        schedule: _schedule!,
+        employeeNames: employeeNames,
+        month: _selectedMonth,
+        startDay: _startDay,
+        endDay: _endDay,
+        abbreviations: abbreviations.isNotEmpty ? abbreviations : null,
+      );
+
+      if (mounted) Navigator.pop(context); // Закрываем индикатор
+
+      // Открываем страницу предпросмотра
+      final monthNames = [
+        'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      ];
+      final fileName = 'График_${monthNames[_selectedMonth.month - 1]}_${_selectedMonth.year}.pdf';
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => _PdfPreviewPage(
+              pdfBytes: pdfBytes,
+              fileName: fileName,
+              title: 'График - ${monthNames[_selectedMonth.month - 1]} ${_selectedMonth.year}',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      Logger.error('Ошибка создания PDF', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка создания PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -2812,6 +2920,64 @@ class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
           child: const Text('Применить'),
         ),
       ],
+    );
+  }
+}
+
+/// Страница предпросмотра PDF с кнопкой назад
+class _PdfPreviewPage extends StatelessWidget {
+  final Uint8List pdfBytes;
+  final String fileName;
+  final String title;
+
+  const _PdfPreviewPage({
+    required this.pdfBytes,
+    required this.fileName,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF004D40),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(title),
+        actions: [
+          // Кнопка поделиться
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () async {
+              await Printing.sharePdf(bytes: pdfBytes, filename: fileName);
+            },
+            tooltip: 'Поделиться',
+          ),
+          // Кнопка печати/сохранения
+          IconButton(
+            icon: const Icon(Icons.print),
+            onPressed: () async {
+              await Printing.layoutPdf(
+                onLayout: (format) async => pdfBytes,
+                name: fileName,
+                format: PdfPageFormat.a4.landscape,
+              );
+            },
+            tooltip: 'Печать / Сохранить',
+          ),
+        ],
+      ),
+      body: PdfPreview(
+        build: (format) async => pdfBytes,
+        canChangeOrientation: false,
+        canChangePageFormat: false,
+        canDebug: false,
+        pdfFileName: fileName,
+        initialPageFormat: PdfPageFormat.a4.landscape,
+        actions: const [], // Убираем стандартные кнопки, у нас свои в AppBar
+      ),
     );
   }
 }

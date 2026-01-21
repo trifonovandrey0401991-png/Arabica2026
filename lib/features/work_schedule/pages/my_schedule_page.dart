@@ -7,6 +7,9 @@ import '../services/shift_transfer_service.dart';
 import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../shops/services/shop_service.dart';
+import '../../shops/models/shop_model.dart';
+import '../../kpi/services/kpi_service.dart';
+import '../../kpi/models/kpi_models.dart';
 
 /// Страница моего графика (для просмотра личного графика сотрудника)
 class MySchedulePage extends StatefulWidget {
@@ -43,10 +46,19 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   bool _isLoadingOutgoing = false;
   int _outgoingUpdatesCount = 0;
 
+  // Вкладка "Отработал"
+  List<_WorkedShiftInfo> _workedShifts = [];
+  bool _isLoadingWorked = false;
+
+  // Вкладка "Общий"
+  WorkSchedule? _generalSchedule;
+  List<Shop> _allShops = [];
+  bool _isLoadingGeneral = false;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadEmployeeId();
   }
@@ -59,10 +71,19 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   }
 
   void _onTabChanged() {
+    // Обновляем UI для кастомного TabBar только когда анимация завершена
+    if (!_tabController.indexIsChanging && mounted) {
+      setState(() {});
+    }
+
     if (_tabController.index == 1 && _employeeId != null) {
       _loadNotifications();
     } else if (_tabController.index == 2 && _employeeId != null) {
       _loadOutgoingRequests();
+    } else if (_tabController.index == 3 && _employeeId != null) {
+      _loadWorkedHistory();
+    } else if (_tabController.index == 4) {
+      _loadGeneralSchedule();
     }
   }
 
@@ -316,23 +337,28 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
+          preferredSize: const Size.fromHeight(100),
           child: Container(
             decoration: BoxDecoration(
               color: _primaryColor.withOpacity(0.9),
             ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: Colors.white,
-              indicatorWeight: 3,
-              indicatorSize: TabBarIndicatorSize.tab,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white60,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              tabs: [
-                _buildTab(Icons.calendar_month, 'Расписание', null),
-                _buildTab(Icons.notifications, 'Входящие', _unreadCount > 0 ? _unreadCount : null, Colors.red),
-                _buildTab(Icons.send, 'Заявки', _outgoingUpdatesCount > 0 ? _outgoingUpdatesCount : null, Colors.green),
+            child: Column(
+              children: [
+                // Верхний ряд - 3 вкладки
+                Row(
+                  children: [
+                    Expanded(child: _buildTabButton(0, Icons.calendar_month, 'Расписание', null)),
+                    Expanded(child: _buildTabButton(1, Icons.notifications, 'Входящие', _unreadCount > 0 ? _unreadCount : null, Colors.red)),
+                    Expanded(child: _buildTabButton(2, Icons.send, 'Заявки', _outgoingUpdatesCount > 0 ? _outgoingUpdatesCount : null, Colors.green)),
+                  ],
+                ),
+                // Нижний ряд - 2 вкладки
+                Row(
+                  children: [
+                    Expanded(child: _buildTabButton(3, Icons.check_circle_outline, 'Отработал', null)),
+                    Expanded(child: _buildTabButton(4, Icons.calendar_view_month, 'Общий', null)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -344,35 +370,60 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
           _buildScheduleTab(),
           _buildNotificationsTab(),
           _buildOutgoingRequestsTab(),
+          _buildWorkedTab(),
+          _buildGeneralScheduleTab(),
         ],
       ),
     );
   }
 
-  Widget _buildTab(IconData icon, String label, int? badge, [Color? badgeColor]) {
-    return Tab(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 6),
-          Text(label),
-          if (badge != null) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: badgeColor ?? Colors.red,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$badge',
-                style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+  Widget _buildTabButton(int index, IconData icon, String label, int? badge, [Color? badgeColor]) {
+    final isSelected = _tabController.index == index;
+    return GestureDetector(
+      onTap: () {
+        _tabController.animateTo(index);
+        setState(() {});
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? Colors.white : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: isSelected ? Colors.white : Colors.white60),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: isSelected ? Colors.white : Colors.white60,
               ),
             ),
+            if (badge != null) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: badgeColor ?? Colors.red,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$badge',
+                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -415,11 +466,18 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         _loadSchedule,
       );
     }
-    if (_schedule!.entries.isEmpty) {
+    // Проверяем только будущие смены (прошедшие во вкладке "Отработал")
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final futureEntries = _schedule!.entries
+        .where((e) => !DateTime(e.date.year, e.date.month, e.date.day).isBefore(today))
+        .toList();
+
+    if (futureEntries.isEmpty) {
       return _buildEmptyState(
         Icons.event_busy,
-        'Нет смен',
-        'На ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year} смен не назначено',
+        'Нет предстоящих смен',
+        'Прошедшие смены можно посмотреть во вкладке "Отработал"',
         _loadSchedule,
       );
     }
@@ -525,7 +583,14 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   }
 
   Widget _buildCalendarView() {
-    final entriesWithDates = List<WorkScheduleEntry>.from(_schedule!.entries);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Фильтруем: показываем только сегодняшние и будущие смены
+    // Прошедшие смены переносятся во вкладку "Отработал"
+    final entriesWithDates = _schedule!.entries
+        .where((e) => !DateTime(e.date.year, e.date.month, e.date.day).isBefore(today))
+        .toList();
     entriesWithDates.sort((a, b) => a.date.compareTo(b.date));
 
     return Column(
@@ -564,7 +629,7 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${_schedule!.entries.length} смен',
+                  '${entriesWithDates.length} смен',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -724,6 +789,13 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
   }
 
   Widget _buildStatisticsBar() {
+    // Фильтруем только будущие смены для статистики
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final futureEntries = _schedule!.entries
+        .where((e) => !DateTime(e.date.year, e.date.month, e.date.day).isBefore(today))
+        .toList();
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
@@ -741,10 +813,10 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatChip('Всего', '${_schedule!.entries.length}', _primaryColor),
-          _buildStatChip('Утро', '${_schedule!.entries.where((e) => e.shiftType == ShiftType.morning).length}', ShiftType.morning.color),
-          _buildStatChip('День', '${_schedule!.entries.where((e) => e.shiftType == ShiftType.day).length}', ShiftType.day.color),
-          _buildStatChip('Вечер', '${_schedule!.entries.where((e) => e.shiftType == ShiftType.evening).length}', ShiftType.evening.color),
+          _buildStatChip('Всего', '${futureEntries.length}', _primaryColor),
+          _buildStatChip('Утро', '${futureEntries.where((e) => e.shiftType == ShiftType.morning).length}', ShiftType.morning.color),
+          _buildStatChip('День', '${futureEntries.where((e) => e.shiftType == ShiftType.day).length}', ShiftType.day.color),
+          _buildStatChip('Вечер', '${futureEntries.where((e) => e.shiftType == ShiftType.evening).length}', ShiftType.evening.color),
         ],
       ),
     );
@@ -1418,6 +1490,512 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
     const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return weekdays[weekday - 1];
   }
+
+  // ============== Вкладка "Отработал" ==============
+
+  Future<void> _loadWorkedHistory() async {
+    if (_employeeId == null || _employeeName == null) return;
+    if (_isLoadingWorked) return;
+
+    setState(() => _isLoadingWorked = true);
+
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Получаем прошедшие смены из текущего расписания
+      final pastEntries = _schedule?.entries
+          .where((e) => DateTime(e.date.year, e.date.month, e.date.day).isBefore(today))
+          .toList() ?? [];
+
+      // Сортируем: ближайшие первыми (по убыванию даты)
+      pastEntries.sort((a, b) => b.date.compareTo(a.date));
+
+      // Собираем уникальные комбинации магазин+дата для запросов
+      final uniqueRequests = <String, MapEntry<String, DateTime>>{};
+      for (final entry in pastEntries) {
+        final key = '${entry.shopAddress}_${entry.date.toIso8601String().split('T')[0]}';
+        uniqueRequests[key] = MapEntry(entry.shopAddress, entry.date);
+      }
+
+      // Загружаем KPI данные параллельно
+      final kpiCache = <String, KPIShopDayData>{};
+      final futures = uniqueRequests.entries.map((e) async {
+        try {
+          final kpi = await KPIService.getShopDayData(e.value.key, e.value.value);
+          kpiCache[e.key] = kpi;
+        } catch (_) {
+          // Игнорируем ошибки отдельных запросов
+        }
+      });
+      await Future.wait(futures);
+
+      // Формируем результат
+      final worked = <_WorkedShiftInfo>[];
+      for (final entry in pastEntries) {
+        final key = '${entry.shopAddress}_${entry.date.toIso8601String().split('T')[0]}';
+        final kpiData = kpiCache[key];
+
+        // Ищем данные для текущего сотрудника
+        KPIDayData? employeeKpi;
+        if (kpiData != null) {
+          try {
+            employeeKpi = kpiData.employeesData.firstWhere(
+              (e) => e.employeeName == _employeeName,
+            );
+          } catch (_) {
+            employeeKpi = null;
+          }
+        }
+
+        // Определяем, отработана ли смена
+        final wasWorked = employeeKpi != null && (
+            employeeKpi.attendanceTime != null ||
+            employeeKpi.hasShift ||
+            employeeKpi.hasShiftHandover
+        );
+
+        String? details;
+        if (employeeKpi != null) {
+          if (employeeKpi.attendanceTime != null) {
+            final time = employeeKpi.attendanceTime!;
+            details = 'Отметился в ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+          } else if (employeeKpi.hasShift) {
+            details = 'Прошёл пересменку';
+          } else if (employeeKpi.hasShiftHandover) {
+            details = 'Сдал смену';
+          }
+        }
+
+        worked.add(_WorkedShiftInfo(
+          entry: entry,
+          wasWorked: wasWorked,
+          details: details,
+        ));
+      }
+
+      if (mounted) {
+        setState(() {
+          _workedShifts = worked;
+          _isLoadingWorked = false;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки истории работы', e);
+      if (mounted) {
+        setState(() => _isLoadingWorked = false);
+      }
+    }
+  }
+
+  Widget _buildWorkedTab() {
+    if (_isLoadingWorked) {
+      return const Center(
+        child: CircularProgressIndicator(color: _primaryColor),
+      );
+    }
+
+    if (_workedShifts.isEmpty) {
+      return _buildEmptyState(
+        Icons.history,
+        'Нет прошедших смен',
+        'Здесь появятся смены, которые уже прошли',
+        _loadWorkedHistory,
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadWorkedHistory,
+      color: _primaryColor,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _workedShifts.length,
+        itemBuilder: (context, index) {
+          final item = _workedShifts[index];
+          return _buildWorkedShiftCard(item);
+        },
+      ),
+    );
+  }
+
+  Widget _buildWorkedShiftCard(_WorkedShiftInfo item) {
+    final day = item.entry.date;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: item.wasWorked ? Colors.green.withOpacity(0.5) : Colors.red.withOpacity(0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Дата
+            Container(
+              width: 60,
+              height: 70,
+              decoration: BoxDecoration(
+                color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${day.day}',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: item.wasWorked ? Colors.green[700] : Colors.red[700],
+                    ),
+                  ),
+                  Text(
+                    _getWeekdayShort(day.weekday),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Информация
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: item.entry.shiftType.color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          item.entry.shiftType.label,
+                          style: TextStyle(
+                            color: item.entry.shiftType.color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.store, size: 16, color: Colors.grey[500]),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          item.entry.shopAddress,
+                          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (item.details != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      item.details!,
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Галочка/Крестик
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: (item.wasWorked ? Colors.green : Colors.red).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                item.wasWorked ? Icons.check : Icons.close,
+                color: item.wasWorked ? Colors.green : Colors.red,
+                size: 28,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============== Вкладка "Общий" ==============
+
+  Future<void> _loadGeneralSchedule() async {
+    Logger.debug('📅 _loadGeneralSchedule вызван, _isLoadingGeneral=$_isLoadingGeneral');
+    if (_isLoadingGeneral) return;
+
+    setState(() => _isLoadingGeneral = true);
+
+    try {
+      Logger.debug('📅 Загрузка общего графика на месяц: $_selectedMonth');
+      final schedule = await WorkScheduleService.getSchedule(_selectedMonth);
+      Logger.debug('📅 Общий график загружен: ${schedule.entries.length} записей');
+
+      final shops = await Shop.loadShopsFromGoogleSheets();
+      Logger.debug('📅 Магазины загружены: ${shops.length}');
+
+      if (mounted) {
+        setState(() {
+          _generalSchedule = schedule;
+          _allShops = shops;
+          _isLoadingGeneral = false;
+        });
+        Logger.debug('📅 Состояние обновлено, _generalSchedule записей: ${_generalSchedule?.entries.length}');
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки общего графика', e);
+      if (mounted) {
+        setState(() => _isLoadingGeneral = false);
+      }
+    }
+  }
+
+  Widget _buildGeneralScheduleTab() {
+    if (_isLoadingGeneral) {
+      return const Center(
+        child: CircularProgressIndicator(color: _primaryColor),
+      );
+    }
+
+    if (_generalSchedule == null || _generalSchedule!.entries.isEmpty) {
+      return _buildEmptyState(
+        Icons.calendar_view_month,
+        'График не загружен',
+        'Общий график работы за ${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
+        _loadGeneralSchedule,
+      );
+    }
+
+    // Группируем по дням
+    final entriesByDate = <DateTime, List<WorkScheduleEntry>>{};
+    for (final entry in _generalSchedule!.entries) {
+      final dateKey = DateTime(entry.date.year, entry.date.month, entry.date.day);
+      entriesByDate.putIfAbsent(dateKey, () => []).add(entry);
+    }
+
+    final sortedDates = entriesByDate.keys.toList()..sort();
+
+    return RefreshIndicator(
+      onRefresh: _loadGeneralSchedule,
+      color: _primaryColor,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: sortedDates.length,
+        itemBuilder: (context, index) {
+          final date = sortedDates[index];
+          final entries = entriesByDate[date]!;
+          return _buildGeneralDayCard(date, entries);
+        },
+      ),
+    );
+  }
+
+  Widget _buildGeneralDayCard(DateTime date, List<WorkScheduleEntry> entries) {
+    final now = DateTime.now();
+    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+
+    // Группируем по магазинам
+    final byShop = <String, List<WorkScheduleEntry>>{};
+    for (final e in entries) {
+      byShop.putIfAbsent(e.shopAddress, () => []).add(e);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: isToday ? Border.all(color: _primaryColor, width: 2) : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          title: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isToday ? _gradientColors : [Colors.grey[200]!, Colors.grey[100]!],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isToday ? Colors.white : Colors.grey[700],
+                      ),
+                    ),
+                    Text(
+                      _getWeekdayShort(date.weekday),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isToday ? Colors.white70 : Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${date.day} ${_getMonthName(date.month)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${entries.length} сотр. в ${byShop.length} маг.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              if (isToday)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Сегодня',
+                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
+            ],
+          ),
+          children: [
+            for (final shopAddress in byShop.keys)
+              _buildShopSection(shopAddress, byShop[shopAddress]!),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShopSection(String shopAddress, List<WorkScheduleEntry> entries) {
+    // Сортируем по типу смены
+    final sortedEntries = List<WorkScheduleEntry>.from(entries)
+      ..sort((a, b) => a.shiftType.index.compareTo(b.shiftType.index));
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.store, size: 16, color: Colors.grey[500]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  shopAddress,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: sortedEntries.map((e) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: e.shiftType.color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    e.employeeName,
+                    style: TextStyle(fontSize: 12, color: e.shiftType.color),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: e.shiftType.color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      e.shiftType.label.isNotEmpty ? e.shiftType.label.substring(0, 1) : '?',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: e.shiftType.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Модель данных для вкладки "Отработал"
+class _WorkedShiftInfo {
+  final WorkScheduleEntry entry;
+  final bool wasWorked;
+  final String? details;
+
+  _WorkedShiftInfo({
+    required this.entry,
+    required this.wasWorked,
+    this.details,
+  });
 }
 
 /// Диалог выбора смены для передачи

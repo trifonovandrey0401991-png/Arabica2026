@@ -18,7 +18,6 @@ import '../../features/clients/pages/registration_page.dart';
 import '../../features/loyalty/services/loyalty_storage.dart';
 import '../../features/product_questions/pages/product_search_shop_selection_page.dart';
 import '../../features/employees/pages/employee_panel_page.dart';
-import '../../features/work_schedule/pages/work_schedule_page.dart';
 import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
 import '../../features/rating/widgets/rating_badge_widget.dart';
@@ -537,16 +536,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }));
     }
 
-    // График работы - только админ (управление графиком сотрудников)
-    if (role == UserRole.admin) {
-      items.add(_tileSchedule(context, 'График работы', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const WorkSchedulePage()),
-        );
-      }));
-    }
-
     Logger.debug('Всего кнопок в меню: ${items.length}');
 
     return items;
@@ -983,49 +972,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   'assets/images/search_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка "График работы" с кастомной иконкой
-  Widget _tileSchedule(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/schedule_icon.png',
                   fit: BoxFit.contain,
                 ),
               ),

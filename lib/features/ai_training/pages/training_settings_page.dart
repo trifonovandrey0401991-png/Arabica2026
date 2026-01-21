@@ -6,13 +6,13 @@ import '../../../core/constants/api_constants.dart';
 /// Страница настроек обучения ИИ
 /// Позволяет изменять количество требуемых фото и удалять некачественные фото
 class TrainingSettingsPage extends StatefulWidget {
-  final List<CigaretteProduct> products;
-  final VoidCallback onSettingsChanged;
+  final List<CigaretteProduct>? products;
+  final VoidCallback? onSettingsChanged;
 
   const TrainingSettingsPage({
     super.key,
-    required this.products,
-    required this.onSettingsChanged,
+    this.products,
+    this.onSettingsChanged,
   });
 
   @override
@@ -68,7 +68,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
             backgroundColor: Colors.green,
           ),
         );
-        widget.onSettingsChanged();
+        widget.onSettingsChanged?.call();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -80,23 +80,41 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
     }
   }
 
+  /// Проверка, открыта ли страница как отдельный экран (не как вкладка)
+  bool get _isStandalonePage => widget.products == null;
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+    final content = _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Секция настроек количества фото
+              _buildSettingsSection(),
+              const SizedBox(height: 24),
+
+              // Секция управления фото по товарам
+              _buildPhotosManagementSection(),
+            ],
+          );
+
+    // Если открыто как отдельная страница - оборачиваем в Scaffold с AppBar
+    if (_isStandalonePage) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Настройки обучения'),
+          backgroundColor: const Color(0xFF004D40),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: content,
+      );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Секция настроек количества фото
-        _buildSettingsSection(),
-        const SizedBox(height: 24),
-
-        // Секция управления фото по товарам
-        _buildPhotosManagementSection(),
-      ],
-    );
+    return content;
   }
 
   Widget _buildSettingsSection() {
@@ -255,7 +273,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
   Widget _buildPhotosManagementSection() {
     // Фильтруем товары с фото
-    final productsWithPhotos = widget.products
+    final productsWithPhotos = (widget.products ?? [])
         .where((p) => p.trainingPhotosCount > 0)
         .toList()
       ..sort((a, b) => b.trainingPhotosCount.compareTo(a.trainingPhotosCount));
@@ -396,7 +414,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
     );
 
     if (result == true && mounted) {
-      widget.onSettingsChanged();
+      widget.onSettingsChanged?.call();
     }
   }
 }

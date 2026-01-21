@@ -12,6 +12,7 @@ import '../../features/efficiency/pages/points_settings_page.dart';
 import '../../features/tasks/pages/task_management_page.dart';
 import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
 import '../../features/data_cleanup/pages/data_cleanup_page.dart';
+import '../../features/work_schedule/pages/work_schedule_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
@@ -52,6 +53,19 @@ class DataManagementPage extends StatelessWidget {
               if (context.mounted) {
                 // Можно добавить обновление данных, если нужно
               }
+            },
+          ),
+          const SizedBox(height: 8),
+          _buildScheduleSection(
+            context,
+            title: 'График работы',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WorkSchedulePage(),
+                ),
+              );
             },
           ),
           const SizedBox(height: 8),
@@ -735,6 +749,50 @@ class DataManagementPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
                   'assets/images/supplier_icon.png',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка графика работы с кастомной иконкой
+  Widget _buildScheduleSection(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/schedule_icon.png',
                   width: 48,
                   height: 48,
                   fit: BoxFit.contain,
