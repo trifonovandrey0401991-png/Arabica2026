@@ -131,7 +131,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const ShiftPointsSettingsPageV2(),
+          builder: (context) => const ShiftPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'recount') {

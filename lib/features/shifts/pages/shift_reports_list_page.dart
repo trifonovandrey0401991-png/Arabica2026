@@ -2,10 +2,34 @@ import 'package:flutter/material.dart';
 import '../models/shift_report_model.dart';
 import '../models/pending_shift_report_model.dart';
 import '../services/shift_report_service.dart';
-import '../services/pending_shift_service.dart';
 import 'shift_report_view_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
+import '../../../features/shops/models/shop_model.dart';
+import '../../../features/efficiency/models/points_settings_model.dart';
+import '../../../features/efficiency/services/points_settings_service.dart';
+
+/// Тип группы для иерархической группировки отчётов
+enum ReportGroupType { today, yesterday, day, week, month }
+
+/// Группа отчётов для иерархического отображения
+class ReportGroup {
+  final ReportGroupType type;
+  final String title;
+  final String key; // Уникальный ключ для хранения состояния
+  final int count;
+  final DateTime startDate;
+  final List<dynamic> children; // List<ShiftReport> или List<ReportGroup>
+
+  ReportGroup({
+    required this.type,
+    required this.title,
+    required this.key,
+    required this.count,
+    required this.startDate,
+    required this.children,
+  });
+}
 
 /// Страница со списком отчетов по пересменкам с вкладками
 class ShiftReportsListPage extends StatefulWidget {
@@ -24,19 +48,53 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   DateTime? _selectedDate;
   List<ShiftReport> _allReports = [];
   List<PendingShiftReport> _pendingShifts = [];
+  List<PendingShiftReport> _failedShifts = []; // Просроченные непройденные пересменки
   List<ShiftReport> _expiredReports = [];
+  List<Shop> _allShops = [];
+  ShiftPointsSettings? _shiftSettings;
+  int _failedShiftsBadgeCount = 0;
+
+  // Состояние раскрытия групп (ключ = уникальный идентификатор группы)
+  final Map<String, bool> _expandedGroups = {};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    _loadSettings();
     _loadData();
     // Отмечаем все уведомления этого типа как просмотренные
     ReportNotificationService.markAllAsViewed(reportType: ReportType.shiftHandover);
   }
 
+  void _onTabChanged() {
+    // Когда открываем вкладку "Не прошли" (index 1), обнуляем счётчик
+    if (_tabController.index == 1 && _failedShiftsBadgeCount > 0) {
+      setState(() {
+        _failedShiftsBadgeCount = 0;
+      });
+    } else {
+      // Обновляем UI для подсветки активной вкладки
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final settings = await PointsSettingsService.getShiftPointsSettings();
+      setState(() {
+        _shiftSettings = settings;
+      });
+      Logger.success('Загружены настройки пересменки: утро ${settings.morningStartTime}-${settings.morningEndTime}, вечер ${settings.eveningStartTime}-${settings.eveningEndTime}');
+    } catch (e) {
+      Logger.error('Ошибка загрузки настроек пересменки', e);
+    }
+  }
+
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -68,13 +126,13 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       _shopsFuture = _loadShopAddresses();
     });
 
-    // Загружаем непройденные пересменки
+    // Загружаем магазины для вычисления непройденных пересменок
     try {
-      final pendingShifts = await PendingShiftService.getPendingReports();
-      _pendingShifts = pendingShifts;
-      Logger.success('Загружено непройденных пересменок: ${pendingShifts.length}');
+      final shops = await Shop.loadShopsFromServer();
+      _allShops = shops;
+      Logger.success('Загружено магазинов: ${shops.length}');
     } catch (e) {
-      Logger.error('Ошибка загрузки непройденных пересменок', e);
+      Logger.error('Ошибка загрузки магазинов', e);
     }
 
     // Загружаем просроченные отчёты
@@ -107,13 +165,117 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       _allReports = reportsMap.values.toList();
       _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+      // Вычисляем непройденные пересменки на клиенте
+      _calculatePendingShifts();
+
       Logger.success('Всего отчетов после объединения: ${_allReports.length}');
       setState(() {});
     } catch (e) {
       Logger.error('Ошибка загрузки отчетов', e);
       _allReports = await ShiftReport.loadAllReports();
+      _calculatePendingShifts();
       setState(() {});
     }
+  }
+
+  /// Определить тип смены по времени отчёта
+  String _getShiftType(DateTime time) {
+    final hour = time.hour;
+    // Утренняя смена: 7:00 - 13:59
+    // Вечерняя смена: 14:00 - 23:59 и 0:00 - 6:59
+    if (hour >= 7 && hour < 14) {
+      return 'morning';
+    }
+    return 'evening';
+  }
+
+  /// Вычислить непройденные пересменки за сегодня (магазин + смена)
+  void _calculatePendingShifts() {
+    final today = DateTime.now();
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    // Получаем дедлайны из настроек или используем значения по умолчанию
+    final morningDeadline = _shiftSettings?.morningEndTime ?? '13:00';
+    final eveningDeadline = _shiftSettings?.eveningEndTime ?? '23:00';
+
+    Logger.info('Вычисление непройденных пересменок. Магазинов: ${_allShops.length}');
+    Logger.info('Дедлайны: утро до $morningDeadline, вечер до $eveningDeadline');
+
+    // Собираем пройденные пересменки за сегодня (ключ: магазин_смена)
+    final completedShifts = <String>{};
+    for (final report in _allReports) {
+      final reportDate = '${report.createdAt.year}-${report.createdAt.month.toString().padLeft(2, '0')}-${report.createdAt.day.toString().padLeft(2, '0')}';
+      if (reportDate == todayStr) {
+        final shiftType = _getShiftType(report.createdAt);
+        final key = '${report.shopAddress.toLowerCase().trim()}_$shiftType';
+        completedShifts.add(key);
+        Logger.debug('Найден отчёт за сегодня: ${report.shopAddress} - $shiftType');
+      }
+    }
+
+    Logger.info('Пройденных пересменок сегодня: ${completedShifts.length}');
+
+    // Формируем списки: ожидающие и просроченные
+    final allPending = <PendingShiftReport>[];
+
+    for (final shop in _allShops) {
+      final shopKey = shop.address.toLowerCase().trim();
+
+      // Утренняя смена
+      final morningKey = '${shopKey}_morning';
+      if (!completedShifts.contains(morningKey)) {
+        allPending.add(PendingShiftReport(
+          id: 'pending_${shop.id}_morning',
+          shopAddress: shop.address,
+          shiftType: 'morning',
+          shiftLabel: 'Утро',
+          date: todayStr,
+          deadline: morningDeadline,
+          status: 'pending',
+          createdAt: today,
+        ));
+      }
+
+      // Вечерняя смена
+      final eveningKey = '${shopKey}_evening';
+      if (!completedShifts.contains(eveningKey)) {
+        allPending.add(PendingShiftReport(
+          id: 'pending_${shop.id}_evening',
+          shopAddress: shop.address,
+          shiftType: 'evening',
+          shiftLabel: 'Вечер',
+          date: todayStr,
+          deadline: eveningDeadline,
+          status: 'pending',
+          createdAt: today,
+        ));
+      }
+    }
+
+    // Разделяем на ожидающие и просроченные
+    _pendingShifts = allPending.where((p) => !p.isOverdue).toList();
+    _failedShifts = allPending.where((p) => p.isOverdue).toList();
+
+    // Обновляем счётчик бейджа (только если не на вкладке "Не прошли")
+    if (_tabController.index != 1) {
+      _failedShiftsBadgeCount = _failedShifts.length;
+    }
+
+    // Сортируем: сначала по магазину, потом по смене
+    _pendingShifts.sort((a, b) {
+      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+      if (shopCompare != 0) return shopCompare;
+      return a.shiftType == 'morning' ? -1 : 1;
+    });
+
+    _failedShifts.sort((a, b) {
+      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+      if (shopCompare != 0) return shopCompare;
+      return a.shiftType == 'morning' ? -1 : 1;
+    });
+
+    Logger.info('Ожидающих пересменок: ${_pendingShifts.length}');
+    Logger.info('Просроченных пересменок: ${_failedShifts.length}');
   }
 
   List<ShiftReport> _applyFilters(List<ShiftReport> reports) {
@@ -184,200 +346,332 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчеты по пересменкам'),
-        backgroundColor: const Color(0xFF004D40),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Обновить',
+  /// Построение двухрядных вкладок (3 сверху, 2 снизу)
+  Widget _buildTwoRowTabs() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      child: Column(
+        children: [
+          // Первый ряд: 3 вкладки
+          Row(
+            children: [
+              _buildTabButton(0, Icons.schedule, 'Ожидают', _pendingShifts.length, Colors.orange),
+              const SizedBox(width: 6),
+              _buildTabButton(1, Icons.warning_amber, 'Не прошли', _failedShifts.length, Colors.red, badge: _failedShiftsBadgeCount),
+              const SizedBox(width: 6),
+              _buildTabButton(2, Icons.hourglass_empty, 'Проверка', _awaitingReports.length, Colors.blue),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Второй ряд: 2 вкладки
+          Row(
+            children: [
+              _buildTabButton(3, Icons.check_circle, 'Подтверждённые', _allReports.where((r) => r.isConfirmed).length, Colors.green),
+              const SizedBox(width: 6),
+              _buildTabButton(4, Icons.cancel, 'Отклонённые', _expiredReports.length + _overdueUnconfirmedReports.length, Colors.grey),
+            ],
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          isScrollable: true,
-          tabs: [
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.warning_amber, size: 16),
-                  const SizedBox(width: 4),
-                  Text('Не пройдены (${_pendingShifts.length})',
-                      style: const TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.hourglass_empty, size: 16),
-                  const SizedBox(width: 4),
-                  Text('Ожидают (${_awaitingReports.length})',
-                      style: const TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.check_circle, size: 16),
-                  const SizedBox(width: 4),
-                  Text('Подтверждённые (${_allReports.where((r) => r.isConfirmed).length})',
-                      style: const TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.cancel, size: 16),
-                  const SizedBox(width: 4),
-                  Text('Не подтверждённые (${_expiredReports.length + _overdueUnconfirmedReports.length})',
-                      style: const TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+    );
+  }
+
+  /// Построение одной кнопки-вкладки (компактная версия)
+  Widget _buildTabButton(int index, IconData icon, String label, int count, Color accentColor, {int badge = 0}) {
+    final isSelected = _tabController.index == index;
+
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _tabController.animateTo(index);
+            setState(() {});
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? LinearGradient(
+                      colors: [accentColor.withOpacity(0.8), accentColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isSelected ? null : Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isSelected ? accentColor : Colors.white30,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 14,
+                  color: isSelected ? Colors.white : Colors.white70,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white.withOpacity(0.3) : accentColor.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : accentColor,
+                    ),
+                  ),
+                ),
+                if (badge > 0) ...[
+                  const SizedBox(width: 2),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$badge',
+                      style: const TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
-        child: Column(
-          children: [
-            // Фильтры (только для вкладок с отчётами)
-            if (_tabController.index != 0)
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: Colors.white.withOpacity(0.1),
-                child: Column(
-                  children: [
-                    FutureBuilder<List<String>>(
-                      future: _shopsFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          return DropdownButtonFormField<String>(
-                            value: _selectedShop,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'Магазин',
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [
-                              const DropdownMenuItem<String>(
-                                value: null,
-                                child: Text('Все магазины'),
-                              ),
-                              ...snapshot.data!.map((shop) => DropdownMenuItem(
-                                value: shop,
-                                child: Text(shop),
-                              )),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedShop = value;
-                              });
-                            },
-                          );
-                        }
-                        return const SizedBox();
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _selectedEmployee,
-                      decoration: InputDecoration(
-                        labelText: 'Сотрудник',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('Все сотрудники'),
-                        ),
-                        ..._uniqueEmployees.map((emp) => DropdownMenuItem(
-                          value: emp,
-                          child: Text(emp),
-                        )),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedEmployee = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () => _selectDate(context),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Дата',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(),
-                          suffixIcon: Icon(Icons.calendar_today),
-                        ),
-                        child: Text(
-                          _selectedDate == null
-                              ? 'Все даты'
-                              : '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}',
-                        ),
-                      ),
-                    ),
-                    if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedShop = null;
-                              _selectedEmployee = null;
-                              _selectedDate = null;
-                            });
-                          },
-                          child: const Text('Сбросить фильтры'),
-                        ),
-                      ),
-                  ],
+      ),
+    );
+  }
+
+  // Градиентные цвета для страницы
+  static const _gradientColors = [Color(0xFF00695C), Color(0xFF004D40)];
+
+  /// Красивый заголовок страницы
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
+      child: Row(
+        children: [
+          // Кнопка назад
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Заголовок
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Отчёты по пересменкам',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Всего отчётов: ${_allReports.length}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Кнопка обновления
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _loadData,
+              tooltip: 'Обновить',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Секция фильтров
+  Widget _buildFiltersSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        children: [
+          // Компактная строка фильтров
+          Row(
+            children: [
+              // Магазин
+              Expanded(
+                child: FutureBuilder<List<String>>(
+                  future: _shopsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return _buildCompactDropdown(
+                        icon: Icons.store,
+                        value: _selectedShop,
+                        hint: 'Магазин',
+                        items: snapshot.data!,
+                        onChanged: (v) => setState(() => _selectedShop = v),
+                      );
+                    }
+                    return const SizedBox();
+                  },
                 ),
               ),
+              const SizedBox(width: 8),
+              // Дата
+              _buildDateButton(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Сотрудник + сброс
+          Row(
+            children: [
+              Expanded(
+                child: _buildCompactDropdown(
+                  icon: Icons.person,
+                  value: _selectedEmployee,
+                  hint: 'Сотрудник',
+                  items: _uniqueEmployees,
+                  onChanged: (v) => setState(() => _selectedEmployee = v),
+                ),
+              ),
+              if (_selectedShop != null || _selectedEmployee != null || _selectedDate != null) ...[
+                const SizedBox(width: 8),
+                _buildResetButton(),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Вкладки с отчётами
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+  /// Компактный dropdown
+  Widget _buildCompactDropdown({
+    required IconData icon,
+    required String? value,
+    required String hint,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: Icon(Icons.arrow_drop_down, color: _gradientColors[1]),
+          hint: Row(
+            children: [
+              Icon(icon, size: 18, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text(hint, style: const TextStyle(fontSize: 13)),
+            ],
+          ),
+          selectedItemBuilder: (context) {
+            return [
+              Row(
                 children: [
-                  // Вкладка "Не пройдены"
-                  _buildPendingShiftsList(),
-                  // Вкладка "Ожидают"
-                  _buildReportsList(_awaitingReports, isPending: true),
-                  // Вкладка "Подтверждённые"
-                  _buildReportsList(_confirmedReports, isPending: false),
-                  // Вкладка "Не подтверждённые" (просроченные)
-                  _buildExpiredReportsList(),
+                  Icon(icon, size: 18, color: _gradientColors[1]),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Все', style: TextStyle(fontSize: 13))),
                 ],
               ),
+              ...items.map((item) => Row(
+                children: [
+                  Icon(icon, size: 18, color: _gradientColors[1]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              )),
+            ];
+          },
+          items: [
+            DropdownMenuItem<String>(value: null, child: Text('Все $hint')),
+            ...items.map((item) => DropdownMenuItem(value: item, child: Text(item))),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка выбора даты
+  Widget _buildDateButton() {
+    return InkWell(
+      onTap: () => _selectDate(context),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.calendar_today, size: 18, color: _gradientColors[1]),
+            const SizedBox(width: 8),
+            Text(
+              _selectedDate == null
+                  ? 'Дата'
+                  : '${_selectedDate!.day}.${_selectedDate!.month}',
+              style: const TextStyle(fontSize: 13),
             ),
           ],
         ),
@@ -385,98 +679,428 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     );
   }
 
-  /// Виджет для списка непройденных пересменок
-  Widget _buildPendingShiftsList() {
-    if (_pendingShifts.isEmpty) {
-      return const Center(
+  /// Кнопка сброса фильтров
+  Widget _buildResetButton() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedShop = null;
+          _selectedEmployee = null;
+          _selectedDate = null;
+        });
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.clear, size: 20, color: Colors.white),
+      ),
+    );
+  }
+
+  /// Красивый пустой стейт
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, size: 64, color: Colors.white70),
-            SizedBox(height: 16),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 20),
             Text(
-              'Все пересменки пройдены!',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: _gradientColors,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Красивый заголовок
+              _buildHeader(),
+              // Вкладки
+              _buildTwoRowTabs(),
+              // Фильтры (только для вкладок с отчётами, не для "Ожидают" и "Не прошли")
+              if (_tabController.index >= 2) _buildFiltersSection(),
+
+              // Вкладки с отчётами
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Вкладка 0: "Ожидают" - непройденные пересменки (время ещё не истекло)
+                    _buildPendingShiftsList(),
+                    // Вкладка 1: "Не прошли" - просроченные пересменки
+                    _buildFailedShiftsList(),
+                    // Вкладка 2: "На проверке" - сданные отчёты ожидают подтверждения
+                    _buildReportsList(_awaitingReports, isPending: true),
+                    // Вкладка 3: "Подтверждённые" (с иерархической группировкой)
+                    _buildGroupedReportsList(_confirmedReports, isConfirmed: true),
+                    // Вкладка 4: "Не подтверждённые" (с иерархической группировкой)
+                    _buildGroupedReportsList([..._expiredReports, ..._overdueUnconfirmedReports], isConfirmed: false),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Виджет для списка непройденных пересменок (ещё не просроченных)
+  Widget _buildPendingShiftsList() {
+    if (_pendingShifts.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.check_circle_outline,
+        title: 'Нет ожидающих пересменок',
+        subtitle: 'Все пересменки пройдены или просрочены',
+        color: Colors.green,
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       itemCount: _pendingShifts.length,
       itemBuilder: (context, index) {
         final pending = _pendingShifts[index];
-        final isOverdue = pending.isOverdue;
+        final isMorning = pending.shiftType == 'morning';
+        final shiftColor = isMorning ? Colors.orange : Colors.indigo;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: isOverdue ? Colors.red.shade50 : null,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isOverdue ? Colors.red : Colors.orange,
-              child: Icon(
-                pending.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
-                color: Colors.white,
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: shiftColor.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-            ),
-            title: Text(
-              pending.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {},
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
                   children: [
+                    // Иконка смены
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color: pending.shiftType == 'morning'
-                            ? Colors.orange.shade100
-                            : Colors.indigo.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        pending.shiftLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: pending.shiftType == 'morning'
-                              ? Colors.orange.shade800
-                              : Colors.indigo.shade800,
+                        gradient: LinearGradient(
+                          colors: isMorning
+                              ? [Colors.orange.shade300, Colors.orange.shade600]
+                              : [Colors.indigo.shade300, Colors.indigo.shade600],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: shiftColor.withOpacity(0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isMorning ? Icons.wb_sunny : Icons.nights_stay,
+                        color: Colors.white,
+                        size: 26,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'до ${pending.deadline}',
-                      style: TextStyle(
-                        color: isOverdue ? Colors.red : Colors.grey,
-                        fontWeight: isOverdue ? FontWeight.bold : FontWeight.normal,
+                    const SizedBox(width: 14),
+                    // Информация
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            pending.shopAddress,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: shiftColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: shiftColor.withOpacity(0.3)),
+                                ),
+                                child: Text(
+                                  pending.shiftLabel,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: shiftColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                'до ${pending.deadline}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Статус
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.schedule,
+                        color: Colors.orange,
+                        size: 24,
                       ),
                     ),
                   ],
                 ),
-                if (isOverdue)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'ПРОСРОЧЕНО!',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
-            trailing: Icon(
-              isOverdue ? Icons.error : Icons.schedule,
-              color: isOverdue ? Colors.red : Colors.orange,
-              size: 28,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Виджет для списка просроченных (непройденных) пересменок
+  Widget _buildFailedShiftsList() {
+    if (_failedShifts.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.thumb_up,
+        title: 'Нет просроченных пересменок',
+        subtitle: 'Все пересменки пройдены вовремя',
+        color: Colors.green,
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: _failedShifts.length,
+      itemBuilder: (context, index) {
+        final failed = _failedShifts[index];
+        final isMorning = failed.shiftType == 'morning';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.red.shade50, Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // Иконка с предупреждением
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.red.shade400, Colors.red.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        isMorning ? Icons.wb_sunny : Icons.nights_stay,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.error, color: Colors.red, size: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Информация
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        failed.shopAddress,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isMorning ? Colors.orange.withOpacity(0.2) : Colors.indigo.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              failed.shiftLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isMorning ? Colors.orange.shade800 : Colors.indigo.shade800,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'ПРОСРОЧЕНО',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 14, color: Colors.red[400]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Дедлайн: ${failed.deadline}',
+                            style: TextStyle(fontSize: 12, color: Colors.red[600]),
+                          ),
+                          if (_shiftSettings != null) ...[
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.deepOrange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${_shiftSettings!.missedPenalty.toStringAsFixed(1)} б.',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepOrange,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -683,42 +1307,49 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
                         'Подтверждено: ',
                         style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                       ),
-                      Text(
-                        '${report.confirmedAt!.day}.${report.confirmedAt!.month}.${report.confirmedAt!.year} '
-                        '${report.confirmedAt!.hour}:${report.confirmedAt!.minute.toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.green),
+                      Flexible(
+                        child: Text(
+                          '${report.confirmedAt!.day}.${report.confirmedAt!.month}.${report.confirmedAt!.year} '
+                          '${report.confirmedAt!.hour}:${report.confirmedAt!.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(color: Colors.green),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
                   if (report.rating != null)
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text('Оценка: ', style: TextStyle(fontSize: 13)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _getRatingColor(report.rating!),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${report.rating}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Оценка: ', style: TextStyle(fontSize: 13)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _getRatingColor(report.rating!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${report.rating}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                        if (report.confirmedByAdmin != null) ...[
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Проверил: ${report.confirmedByAdmin}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        if (report.confirmedByAdmin != null)
+                          Text(
+                            'Проверил: ${report.confirmedByAdmin}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
                       ],
                     ),
                 ],
@@ -757,6 +1388,515 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
           ),
         );
       },
+    );
+  }
+
+  // ============================================================
+  // ИЕРАРХИЧЕСКАЯ ГРУППИРОВКА ОТЧЁТОВ
+  // ============================================================
+
+  /// Названия месяцев в родительном падеже
+  static const _monthNamesGenitive = [
+    '', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+  ];
+
+  /// Названия месяцев в именительном падеже
+  static const _monthNamesNominative = [
+    '', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
+
+  /// Получить начало недели (понедельник)
+  DateTime _getWeekStart(DateTime date) {
+    final weekday = date.weekday; // Пн=1, Вс=7
+    return DateTime(date.year, date.month, date.day).subtract(Duration(days: weekday - 1));
+  }
+
+  /// Форматировать название дня
+  String _formatDayTitle(DateTime day) {
+    return '${day.day} ${_monthNamesGenitive[day.month]}';
+  }
+
+  /// Группировать отчёты по времени
+  List<ReportGroup> _groupReports(List<ShiftReport> reports) {
+    if (reports.isEmpty) return [];
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekAgo = today.subtract(const Duration(days: 7));
+
+    List<ReportGroup> result = [];
+
+    // Группируем по дням
+    Map<DateTime, List<ShiftReport>> byDay = {};
+    for (final report in reports) {
+      final day = DateTime(report.createdAt.year, report.createdAt.month, report.createdAt.day);
+      byDay.putIfAbsent(day, () => []).add(report);
+    }
+
+    // Сортируем дни (новые первые)
+    final sortedDays = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    // Сегодня - по умолчанию развёрнуто
+    if (byDay.containsKey(today)) {
+      const key = 'today';
+      _expandedGroups.putIfAbsent(key, () => true); // По умолчанию развёрнуто
+      result.add(ReportGroup(
+        type: ReportGroupType.today,
+        title: 'Сегодня',
+        key: key,
+        count: byDay[today]!.length,
+        startDate: today,
+        children: byDay[today]!,
+      ));
+    }
+
+    // Вчера
+    if (byDay.containsKey(yesterday)) {
+      const key = 'yesterday';
+      _expandedGroups.putIfAbsent(key, () => false);
+      result.add(ReportGroup(
+        type: ReportGroupType.yesterday,
+        title: 'Вчера (${yesterday.day})',
+        key: key,
+        count: byDay[yesterday]!.length,
+        startDate: yesterday,
+        children: byDay[yesterday]!,
+      ));
+    }
+
+    // Дни 2-6 дней назад (отдельные строки)
+    for (final day in sortedDays) {
+      if (day == today || day == yesterday) continue;
+      if (day.isAfter(weekAgo) || day == weekAgo) {
+        final key = 'day_${day.year}_${day.month}_${day.day}';
+        _expandedGroups.putIfAbsent(key, () => false);
+        result.add(ReportGroup(
+          type: ReportGroupType.day,
+          title: _formatDayTitle(day),
+          key: key,
+          count: byDay[day]!.length,
+          startDate: day,
+          children: byDay[day]!,
+        ));
+      }
+    }
+
+    // Недели и месяцы (7+ дней назад)
+    Map<String, Map<String, Map<DateTime, List<ShiftReport>>>> byMonthWeek = {};
+
+    for (final day in sortedDays) {
+      if (day == today || day == yesterday) continue;
+      if (day.isAfter(weekAgo) || day == weekAgo) continue;
+
+      final monthKey = '${day.year}-${day.month.toString().padLeft(2, '0')}';
+      final weekStart = _getWeekStart(day);
+      final weekKey = '${weekStart.year}-${weekStart.month.toString().padLeft(2, '0')}-${weekStart.day.toString().padLeft(2, '0')}';
+
+      byMonthWeek.putIfAbsent(monthKey, () => {});
+      byMonthWeek[monthKey]!.putIfAbsent(weekKey, () => {});
+      byMonthWeek[monthKey]![weekKey]![day] = byDay[day]!;
+    }
+
+    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    // Сортируем месяцы (новые первые)
+    final sortedMonths = byMonthWeek.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    for (final monthKey in sortedMonths) {
+      final weeks = byMonthWeek[monthKey]!;
+      final sortedWeeks = weeks.keys.toList()..sort((a, b) => b.compareTo(a));
+
+      if (monthKey == currentMonth) {
+        // Текущий месяц - показываем недели напрямую
+        for (final weekKey in sortedWeeks) {
+          final weekDays = weeks[weekKey]!;
+          final sortedWeekDays = weekDays.keys.toList()..sort((a, b) => b.compareTo(a));
+
+          // Создаём дни внутри недели
+          final dayGroups = sortedWeekDays.map((day) {
+            final dayKey = 'week_${weekKey}_day_${day.year}_${day.month}_${day.day}';
+            _expandedGroups.putIfAbsent(dayKey, () => false);
+            return ReportGroup(
+              type: ReportGroupType.day,
+              title: _formatDayTitle(day),
+              key: dayKey,
+              count: weekDays[day]!.length,
+              startDate: day,
+              children: weekDays[day]!,
+            );
+          }).toList();
+
+          final weekStart = _getWeekStart(sortedWeekDays.last);
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          final totalCount = dayGroups.fold(0, (sum, d) => sum + d.count);
+
+          final wKey = 'week_$weekKey';
+          _expandedGroups.putIfAbsent(wKey, () => false);
+          result.add(ReportGroup(
+            type: ReportGroupType.week,
+            title: 'Неделя ${weekStart.day}-${weekEnd.day} ${_monthNamesGenitive[weekStart.month]}',
+            key: wKey,
+            count: totalCount,
+            startDate: weekStart,
+            children: dayGroups,
+          ));
+        }
+      } else {
+        // Прошлый месяц - группируем всё в месяц
+        final parts = monthKey.split('-');
+        final monthDate = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+
+        final allWeeks = sortedWeeks.map((weekKey) {
+          final weekDays = weeks[weekKey]!;
+          final sortedWeekDays = weekDays.keys.toList()..sort((a, b) => b.compareTo(a));
+
+          final dayGroups = sortedWeekDays.map((day) {
+            final dayKey = 'month_${monthKey}_week_${weekKey}_day_${day.year}_${day.month}_${day.day}';
+            _expandedGroups.putIfAbsent(dayKey, () => false);
+            return ReportGroup(
+              type: ReportGroupType.day,
+              title: _formatDayTitle(day),
+              key: dayKey,
+              count: weekDays[day]!.length,
+              startDate: day,
+              children: weekDays[day]!,
+            );
+          }).toList();
+
+          final weekStart = _getWeekStart(sortedWeekDays.last);
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          final totalCount = dayGroups.fold(0, (sum, d) => sum + d.count);
+
+          final wKey = 'month_${monthKey}_week_$weekKey';
+          _expandedGroups.putIfAbsent(wKey, () => false);
+          return ReportGroup(
+            type: ReportGroupType.week,
+            title: 'Неделя ${weekStart.day}-${weekEnd.day}',
+            key: wKey,
+            count: totalCount,
+            startDate: weekStart,
+            children: dayGroups,
+          );
+        }).toList();
+
+        final monthTotalCount = allWeeks.fold(0, (sum, w) => sum + w.count);
+
+        final mKey = 'month_$monthKey';
+        _expandedGroups.putIfAbsent(mKey, () => false);
+        result.add(ReportGroup(
+          type: ReportGroupType.month,
+          title: '${_monthNamesNominative[monthDate.month]} ${monthDate.year}',
+          key: mKey,
+          count: monthTotalCount,
+          startDate: monthDate,
+          children: allWeeks,
+        ));
+      }
+    }
+
+    return result;
+  }
+
+  /// Получить цвет для типа группы
+  Color _getGroupColor(ReportGroupType type) {
+    switch (type) {
+      case ReportGroupType.today:
+        return Colors.green;
+      case ReportGroupType.yesterday:
+        return Colors.blue;
+      case ReportGroupType.day:
+        return Colors.orange;
+      case ReportGroupType.week:
+        return Colors.purple;
+      case ReportGroupType.month:
+        return Colors.indigo;
+    }
+  }
+
+  /// Получить иконку для типа группы
+  IconData _getGroupIcon(ReportGroupType type) {
+    switch (type) {
+      case ReportGroupType.today:
+        return Icons.today;
+      case ReportGroupType.yesterday:
+        return Icons.history;
+      case ReportGroupType.day:
+        return Icons.calendar_today;
+      case ReportGroupType.week:
+        return Icons.date_range;
+      case ReportGroupType.month:
+        return Icons.calendar_month;
+    }
+  }
+
+  /// Построить сгруппированный список отчётов
+  Widget _buildGroupedReportsList(List<ShiftReport> reports, {required bool isConfirmed}) {
+    final groups = _groupReports(reports);
+
+    if (groups.isEmpty) {
+      return _buildEmptyState(
+        icon: isConfirmed ? Icons.check_circle_outline : Icons.cancel_outlined,
+        title: isConfirmed ? 'Нет подтверждённых отчётов' : 'Нет отклонённых отчётов',
+        subtitle: isConfirmed
+            ? 'Подтверждённые отчёты появятся здесь'
+            : 'Отклонённые отчёты появятся здесь',
+        color: isConfirmed ? Colors.green : Colors.grey,
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: groups.length,
+      itemBuilder: (context, index) => _buildGroupTile(groups[index], 0),
+    );
+  }
+
+  /// Рекурсивно построить плитку группы
+  Widget _buildGroupTile(ReportGroup group, int depth) {
+    final isExpanded = _expandedGroups[group.key] ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Заголовок группы
+        _buildGroupHeader(group, depth),
+
+        // Дети (если развёрнуто)
+        if (isExpanded)
+          ...group.children.map((child) {
+            if (child is ReportGroup) {
+              return Padding(
+                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                child: _buildGroupTile(child, depth + 1),
+              );
+            } else if (child is ShiftReport) {
+              return Padding(
+                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                child: _buildReportCard(child),
+              );
+            }
+            return const SizedBox();
+          }),
+      ],
+    );
+  }
+
+  /// Построить заголовок группы
+  Widget _buildGroupHeader(ReportGroup group, int depth) {
+    final color = _getGroupColor(group.type);
+    final icon = _getGroupIcon(group.type);
+    final isExpanded = _expandedGroups[group.key] ?? false;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _expandedGroups[group.key] = !isExpanded;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isExpanded ? color.withOpacity(0.15) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isExpanded ? color : color.withOpacity(0.3),
+            width: isExpanded ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Стрелка разворачивания
+            AnimatedRotation(
+              turns: isExpanded ? 0.25 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                Icons.chevron_right,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Иконка типа
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 10),
+            // Название
+            Expanded(
+              child: Text(
+                group.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: isExpanded ? color : Colors.black87,
+                ),
+              ),
+            ),
+            // Счётчик
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${group.count}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Построить карточку отчёта
+  Widget _buildReportCard(ShiftReport report) {
+    final isConfirmed = report.isConfirmed;
+
+    return GestureDetector(
+      onTap: () async {
+        final allReports = await ShiftReport.loadAllReports();
+        if (!mounted) return;
+
+        final updatedReport = allReports.firstWhere(
+          (r) => r.id == report.id,
+          orElse: () => report,
+        );
+
+        if (!context.mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ShiftReportViewPage(report: updatedReport),
+          ),
+        ).then((_) => _loadData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isConfirmed ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Иконка
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isConfirmed ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isConfirmed ? Icons.check_circle : Icons.receipt_long,
+                color: isConfirmed ? Colors.green : Colors.grey,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Информация
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    report.shopAddress,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          report.employeeName,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${report.createdAt.hour}:${report.createdAt.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  if (isConfirmed && report.rating != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Text('Оценка: ', style: TextStyle(fontSize: 12)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getRatingColor(report.rating!),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${report.rating}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        if (report.confirmedByAdmin != null) ...[
+                          const Spacer(),
+                          Text(
+                            report.confirmedByAdmin!,
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Стрелка
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
+      ),
     );
   }
 }

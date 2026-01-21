@@ -174,6 +174,16 @@ class ShiftPointsSettings {
   final double maxPoints;     // Points for rating 10 (best)
   final int minRating;        // Fixed: 1
   final int maxRating;        // Fixed: 10
+
+  // Временные окна для пересменок
+  final String morningStartTime;   // "07:00" - начало утренней смены
+  final String morningEndTime;     // "13:00" - дедлайн утренней пересменки
+  final String eveningStartTime;   // "14:00" - начало вечерней смены
+  final String eveningEndTime;     // "23:00" - дедлайн вечерней пересменки
+
+  // Штраф за пропуск пересменки
+  final double missedPenalty;      // -3 балла по умолчанию
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -185,6 +195,11 @@ class ShiftPointsSettings {
     required this.maxPoints,
     this.minRating = 1,
     this.maxRating = 10,
+    this.morningStartTime = '07:00',
+    this.morningEndTime = '13:00',
+    this.eveningStartTime = '14:00',
+    this.eveningEndTime = '23:00',
+    this.missedPenalty = -3.0,
     this.createdAt,
     this.updatedAt,
   });
@@ -198,6 +213,11 @@ class ShiftPointsSettings {
       maxPoints: (json['maxPoints'] ?? 2).toDouble(),
       minRating: json['minRating'] ?? 1,
       maxRating: json['maxRating'] ?? 10,
+      morningStartTime: json['morningStartTime'] ?? '07:00',
+      morningEndTime: json['morningEndTime'] ?? '13:00',
+      eveningStartTime: json['eveningStartTime'] ?? '14:00',
+      eveningEndTime: json['eveningEndTime'] ?? '23:00',
+      missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -215,6 +235,11 @@ class ShiftPointsSettings {
     'maxPoints': maxPoints,
     'minRating': minRating,
     'maxRating': maxRating,
+    'morningStartTime': morningStartTime,
+    'morningEndTime': morningEndTime,
+    'eveningStartTime': eveningStartTime,
+    'eveningEndTime': eveningEndTime,
+    'missedPenalty': missedPenalty,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -225,6 +250,11 @@ class ShiftPointsSettings {
       minPoints: -3,
       zeroThreshold: 7,
       maxPoints: 2,
+      morningStartTime: '07:00',
+      morningEndTime: '13:00',
+      eveningStartTime: '14:00',
+      eveningEndTime: '23:00',
+      missedPenalty: -3.0,
     );
   }
 
@@ -248,6 +278,11 @@ class ShiftPointsSettings {
     double? minPoints,
     int? zeroThreshold,
     double? maxPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) {
     return ShiftPointsSettings(
       id: id,
@@ -257,6 +292,11 @@ class ShiftPointsSettings {
       maxPoints: maxPoints ?? this.maxPoints,
       minRating: minRating,
       maxRating: maxRating,
+      morningStartTime: morningStartTime ?? this.morningStartTime,
+      morningEndTime: morningEndTime ?? this.morningEndTime,
+      eveningStartTime: eveningStartTime ?? this.eveningStartTime,
+      eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      missedPenalty: missedPenalty ?? this.missedPenalty,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

@@ -92,16 +92,30 @@ class PointsSettingsService {
     required double minPoints,
     required int zeroThreshold,
     required double maxPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) async {
     Logger.debug('Saving shift points settings: min=$minPoints, zero=$zeroThreshold, max=$maxPoints');
 
+    final body = <String, dynamic>{
+      'minPoints': minPoints,
+      'zeroThreshold': zeroThreshold,
+      'maxPoints': maxPoints,
+    };
+
+    // Add time window settings if provided
+    if (morningStartTime != null) body['morningStartTime'] = morningStartTime;
+    if (morningEndTime != null) body['morningEndTime'] = morningEndTime;
+    if (eveningStartTime != null) body['eveningStartTime'] = eveningStartTime;
+    if (eveningEndTime != null) body['eveningEndTime'] = eveningEndTime;
+    if (missedPenalty != null) body['missedPenalty'] = missedPenalty;
+
     return await BaseHttpService.post<ShiftPointsSettings>(
       endpoint: '$baseEndpoint/shift',
-      body: {
-        'minPoints': minPoints,
-        'zeroThreshold': zeroThreshold,
-        'maxPoints': maxPoints,
-      },
+      body: body,
       fromJson: (json) => ShiftPointsSettings.fromJson(json),
       itemKey: 'settings',
     );

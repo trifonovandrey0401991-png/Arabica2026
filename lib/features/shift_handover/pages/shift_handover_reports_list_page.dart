@@ -91,6 +91,8 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     final currentHour = today.hour;
 
+    Logger.info('Вычисление непройденных сдач смен. Магазинов: ${_allShops.length}, текущий час: $currentHour');
+
     // Собираем пройденные сдачи смен за сегодня (ключ: магазин_смена)
     final completedHandovers = <String>{};
     for (final report in _allReports) {
@@ -99,36 +101,35 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         final shiftType = _getShiftType(report.createdAt);
         final key = '${report.shopAddress.toLowerCase().trim()}_$shiftType';
         completedHandovers.add(key);
+        Logger.debug('Найден отчёт за сегодня: ${report.shopAddress} - $shiftType');
       }
     }
+
+    Logger.info('Пройденных сдач смен сегодня: ${completedHandovers.length}');
 
     // Формируем список непройденных сдач смен
     _pendingHandovers = [];
     for (final shop in _allShops) {
       final shopKey = shop.address.toLowerCase().trim();
 
-      // Утренняя смена - показываем если текущее время >= 7:00
-      if (currentHour >= 7) {
-        final morningKey = '${shopKey}_morning';
-        if (!completedHandovers.contains(morningKey)) {
-          _pendingHandovers.add(PendingShiftHandover(
-            shopAddress: shop.address,
-            shiftType: 'morning',
-            shiftName: 'Утренняя смена',
-          ));
-        }
+      // Утренняя смена - показываем всегда (смена уже должна была начаться)
+      final morningKey = '${shopKey}_morning';
+      if (!completedHandovers.contains(morningKey)) {
+        _pendingHandovers.add(PendingShiftHandover(
+          shopAddress: shop.address,
+          shiftType: 'morning',
+          shiftName: 'Утренняя смена',
+        ));
       }
 
-      // Вечерняя смена - показываем если текущее время >= 14:00
-      if (currentHour >= 14) {
-        final eveningKey = '${shopKey}_evening';
-        if (!completedHandovers.contains(eveningKey)) {
-          _pendingHandovers.add(PendingShiftHandover(
-            shopAddress: shop.address,
-            shiftType: 'evening',
-            shiftName: 'Вечерняя смена',
-          ));
-        }
+      // Вечерняя смена - показываем всегда (для полной картины)
+      final eveningKey = '${shopKey}_evening';
+      if (!completedHandovers.contains(eveningKey)) {
+        _pendingHandovers.add(PendingShiftHandover(
+          shopAddress: shop.address,
+          shiftType: 'evening',
+          shiftName: 'Вечерняя смена',
+        ));
       }
     }
 
