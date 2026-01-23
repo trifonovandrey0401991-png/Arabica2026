@@ -184,6 +184,9 @@ class ShiftPointsSettings {
   // Штраф за пропуск пересменки
   final double missedPenalty;      // -3 балла по умолчанию
 
+  // Время на проверку админом (в часах: 1, 2 или 3)
+  final int adminReviewTimeout;    // Дефолт: 2 часа
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -200,6 +203,7 @@ class ShiftPointsSettings {
     this.eveningStartTime = '14:00',
     this.eveningEndTime = '23:00',
     this.missedPenalty = -3.0,
+    this.adminReviewTimeout = 2,
     this.createdAt,
     this.updatedAt,
   });
@@ -215,6 +219,149 @@ class ShiftPointsSettings {
       maxRating: json['maxRating'] ?? 10,
       morningStartTime: json['morningStartTime'] ?? '07:00',
       morningEndTime: json['morningEndTime'] ?? '13:00',
+      eveningStartTime: json['eveningStartTime'] ?? '14:00',
+      eveningEndTime: json['eveningEndTime'] ?? '23:00',
+      missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
+      adminReviewTimeout: json['adminReviewTimeout'] ?? 2,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'category': category,
+    'minPoints': minPoints,
+    'zeroThreshold': zeroThreshold,
+    'maxPoints': maxPoints,
+    'minRating': minRating,
+    'maxRating': maxRating,
+    'morningStartTime': morningStartTime,
+    'morningEndTime': morningEndTime,
+    'eveningStartTime': eveningStartTime,
+    'eveningEndTime': eveningEndTime,
+    'missedPenalty': missedPenalty,
+    'adminReviewTimeout': adminReviewTimeout,
+    if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+    if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+  };
+
+  /// Default settings
+  factory ShiftPointsSettings.defaults() {
+    return ShiftPointsSettings(
+      minPoints: -3,
+      zeroThreshold: 7,
+      maxPoints: 2,
+      morningStartTime: '07:00',
+      morningEndTime: '13:00',
+      eveningStartTime: '14:00',
+      eveningEndTime: '23:00',
+      missedPenalty: -3.0,
+      adminReviewTimeout: 2,
+    );
+  }
+
+  /// Calculate efficiency points for a given rating using linear interpolation
+  double calculatePoints(int rating) {
+    if (rating <= minRating) return minPoints;
+    if (rating >= maxRating) return maxPoints;
+
+    if (rating <= zeroThreshold) {
+      // Interpolate from minPoints to 0 (rating: 1 -> zeroThreshold)
+      final range = zeroThreshold - minRating;
+      return minPoints + (0 - minPoints) * ((rating - minRating) / range);
+    } else {
+      // Interpolate from 0 to maxPoints (rating: zeroThreshold -> 10)
+      final range = maxRating - zeroThreshold;
+      return 0 + (maxPoints - 0) * ((rating - zeroThreshold) / range);
+    }
+  }
+
+  ShiftPointsSettings copyWith({
+    double? minPoints,
+    int? zeroThreshold,
+    double? maxPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
+    int? adminReviewTimeout,
+  }) {
+    return ShiftPointsSettings(
+      id: id,
+      category: category,
+      minPoints: minPoints ?? this.minPoints,
+      zeroThreshold: zeroThreshold ?? this.zeroThreshold,
+      maxPoints: maxPoints ?? this.maxPoints,
+      minRating: minRating,
+      maxRating: maxRating,
+      morningStartTime: morningStartTime ?? this.morningStartTime,
+      morningEndTime: morningEndTime ?? this.morningEndTime,
+      eveningStartTime: eveningStartTime ?? this.eveningStartTime,
+      eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      missedPenalty: missedPenalty ?? this.missedPenalty,
+      adminReviewTimeout: adminReviewTimeout ?? this.adminReviewTimeout,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+/// Model for recount points settings (Пересчет)
+class RecountPointsSettings {
+  final String id;
+  final String category;
+  final double minPoints;     // Points for rating 1 (worst)
+  final int zeroThreshold;    // Rating that gives 0 points
+  final double maxPoints;     // Points for rating 10 (best)
+  final int minRating;        // Fixed: 1
+  final int maxRating;        // Fixed: 10
+
+  // Временные окна для пересчёта
+  final String morningStartTime;   // "08:00" - начало утренней смены
+  final String morningEndTime;     // "14:00" - дедлайн утреннего пересчёта
+  final String eveningStartTime;   // "14:00" - начало вечерней смены
+  final String eveningEndTime;     // "23:00" - дедлайн вечернего пересчёта
+
+  // Штраф за пропуск пересчёта
+  final double missedPenalty;      // -3 балла по умолчанию
+
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  RecountPointsSettings({
+    this.id = 'recount_points',
+    this.category = 'recount',
+    required this.minPoints,
+    required this.zeroThreshold,
+    required this.maxPoints,
+    this.minRating = 1,
+    this.maxRating = 10,
+    this.morningStartTime = '08:00',
+    this.morningEndTime = '14:00',
+    this.eveningStartTime = '14:00',
+    this.eveningEndTime = '23:00',
+    this.missedPenalty = -3.0,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory RecountPointsSettings.fromJson(Map<String, dynamic> json) {
+    return RecountPointsSettings(
+      id: json['id'] ?? 'recount_points',
+      category: json['category'] ?? 'recount',
+      minPoints: (json['minPoints'] ?? -3).toDouble(),
+      zeroThreshold: json['zeroThreshold'] ?? 7,
+      maxPoints: (json['maxPoints'] ?? 1).toDouble(),
+      minRating: json['minRating'] ?? 1,
+      maxRating: json['maxRating'] ?? 10,
+      morningStartTime: json['morningStartTime'] ?? '08:00',
+      morningEndTime: json['morningEndTime'] ?? '14:00',
       eveningStartTime: json['eveningStartTime'] ?? '14:00',
       eveningEndTime: json['eveningEndTime'] ?? '23:00',
       missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
@@ -245,124 +392,16 @@ class ShiftPointsSettings {
   };
 
   /// Default settings
-  factory ShiftPointsSettings.defaults() {
-    return ShiftPointsSettings(
-      minPoints: -3,
-      zeroThreshold: 7,
-      maxPoints: 2,
-      morningStartTime: '07:00',
-      morningEndTime: '13:00',
-      eveningStartTime: '14:00',
-      eveningEndTime: '23:00',
-      missedPenalty: -3.0,
-    );
-  }
-
-  /// Calculate efficiency points for a given rating using linear interpolation
-  double calculatePoints(int rating) {
-    if (rating <= minRating) return minPoints;
-    if (rating >= maxRating) return maxPoints;
-
-    if (rating <= zeroThreshold) {
-      // Interpolate from minPoints to 0 (rating: 1 -> zeroThreshold)
-      final range = zeroThreshold - minRating;
-      return minPoints + (0 - minPoints) * ((rating - minRating) / range);
-    } else {
-      // Interpolate from 0 to maxPoints (rating: zeroThreshold -> 10)
-      final range = maxRating - zeroThreshold;
-      return 0 + (maxPoints - 0) * ((rating - zeroThreshold) / range);
-    }
-  }
-
-  ShiftPointsSettings copyWith({
-    double? minPoints,
-    int? zeroThreshold,
-    double? maxPoints,
-    String? morningStartTime,
-    String? morningEndTime,
-    String? eveningStartTime,
-    String? eveningEndTime,
-    double? missedPenalty,
-  }) {
-    return ShiftPointsSettings(
-      id: id,
-      category: category,
-      minPoints: minPoints ?? this.minPoints,
-      zeroThreshold: zeroThreshold ?? this.zeroThreshold,
-      maxPoints: maxPoints ?? this.maxPoints,
-      minRating: minRating,
-      maxRating: maxRating,
-      morningStartTime: morningStartTime ?? this.morningStartTime,
-      morningEndTime: morningEndTime ?? this.morningEndTime,
-      eveningStartTime: eveningStartTime ?? this.eveningStartTime,
-      eveningEndTime: eveningEndTime ?? this.eveningEndTime,
-      missedPenalty: missedPenalty ?? this.missedPenalty,
-      createdAt: createdAt,
-      updatedAt: DateTime.now(),
-    );
-  }
-}
-
-/// Model for recount points settings (Пересчет)
-class RecountPointsSettings {
-  final String id;
-  final String category;
-  final double minPoints;     // Points for rating 1 (worst)
-  final int zeroThreshold;    // Rating that gives 0 points
-  final double maxPoints;     // Points for rating 10 (best)
-  final int minRating;        // Fixed: 1
-  final int maxRating;        // Fixed: 10
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-
-  RecountPointsSettings({
-    this.id = 'recount_points',
-    this.category = 'recount',
-    required this.minPoints,
-    required this.zeroThreshold,
-    required this.maxPoints,
-    this.minRating = 1,
-    this.maxRating = 10,
-    this.createdAt,
-    this.updatedAt,
-  });
-
-  factory RecountPointsSettings.fromJson(Map<String, dynamic> json) {
-    return RecountPointsSettings(
-      id: json['id'] ?? 'recount_points',
-      category: json['category'] ?? 'recount',
-      minPoints: (json['minPoints'] ?? -3).toDouble(),
-      zeroThreshold: json['zeroThreshold'] ?? 7,
-      maxPoints: (json['maxPoints'] ?? 1).toDouble(),
-      minRating: json['minRating'] ?? 1,
-      maxRating: json['maxRating'] ?? 10,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'category': category,
-    'minPoints': minPoints,
-    'zeroThreshold': zeroThreshold,
-    'maxPoints': maxPoints,
-    'minRating': minRating,
-    'maxRating': maxRating,
-    if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
-    if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
-  };
-
-  /// Default settings
   factory RecountPointsSettings.defaults() {
     return RecountPointsSettings(
       minPoints: -3,
       zeroThreshold: 7,
       maxPoints: 1,
+      morningStartTime: '08:00',
+      morningEndTime: '14:00',
+      eveningStartTime: '14:00',
+      eveningEndTime: '23:00',
+      missedPenalty: -3.0,
     );
   }
 
@@ -386,6 +425,11 @@ class RecountPointsSettings {
     double? minPoints,
     int? zeroThreshold,
     double? maxPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) {
     return RecountPointsSettings(
       id: id,
@@ -395,6 +439,11 @@ class RecountPointsSettings {
       maxPoints: maxPoints ?? this.maxPoints,
       minRating: minRating,
       maxRating: maxRating,
+      morningStartTime: morningStartTime ?? this.morningStartTime,
+      morningEndTime: morningEndTime ?? this.morningEndTime,
+      eveningStartTime: eveningStartTime ?? this.eveningStartTime,
+      eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      missedPenalty: missedPenalty ?? this.missedPenalty,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

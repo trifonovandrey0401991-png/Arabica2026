@@ -59,6 +59,8 @@ const DEFAULT_SHIFT_POINTS_SETTINGS = {
   eveningEndTime: '23:00',     // Дедлайн вечерней пересменки
   // Штраф за пропуск пересменки
   missedPenalty: -3,           // Баллы за пропуск
+  // Время на проверку админом (в часах: 1, 2 или 3)
+  adminReviewTimeout: 2,       // Дефолт: 2 часа
   createdAt: null,
   updatedAt: null
 };
@@ -72,6 +74,13 @@ const DEFAULT_RECOUNT_POINTS_SETTINGS = {
   maxPoints: 1,         // Points for rating 10 (best)
   minRating: 1,         // Fixed: minimum rating
   maxRating: 10,        // Fixed: maximum rating
+  // Временные окна для пересчёта
+  morningStartTime: '08:00',   // Начало утренней смены
+  morningEndTime: '14:00',     // Дедлайн утреннего пересчёта
+  eveningStartTime: '14:00',   // Начало вечерней смены
+  eveningEndTime: '23:00',     // Дедлайн вечернего пересчёта
+  // Штраф за пропуск пересчёта
+  missedPenalty: -3,           // Баллы за пропуск
   createdAt: null,
   updatedAt: null
 };
@@ -446,7 +455,7 @@ function setupPointsSettingsAPI(app) {
       const {
         minPoints, zeroThreshold, maxPoints,
         morningStartTime, morningEndTime, eveningStartTime, eveningEndTime,
-        missedPenalty
+        missedPenalty, adminReviewTimeout
       } = req.body;
 
       // Validation
@@ -498,6 +507,7 @@ function setupPointsSettingsAPI(app) {
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
       if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
 
@@ -573,7 +583,11 @@ function setupPointsSettingsAPI(app) {
     try {
       ensureDir();
 
-      const { minPoints, zeroThreshold, maxPoints } = req.body;
+      const {
+        minPoints, zeroThreshold, maxPoints,
+        morningStartTime, morningEndTime, eveningStartTime, eveningEndTime,
+        missedPenalty
+      } = req.body;
 
       // Validation
       if (minPoints === undefined || zeroThreshold === undefined || maxPoints === undefined) {
@@ -617,6 +631,14 @@ function setupPointsSettingsAPI(app) {
       settings.minPoints = parseFloat(minPoints);
       settings.zeroThreshold = parseInt(zeroThreshold);
       settings.maxPoints = parseFloat(maxPoints);
+
+      // Update time windows if provided
+      if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
+      if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
+      if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
+      if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
+      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+
       settings.updatedAt = new Date().toISOString();
 
       fs.writeFileSync(RECOUNT_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');

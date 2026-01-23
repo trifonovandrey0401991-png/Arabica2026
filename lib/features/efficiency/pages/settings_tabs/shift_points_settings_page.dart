@@ -27,6 +27,7 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
   String _eveningStartTime = '14:00';
   String _eveningEndTime = '23:00';
   double _missedPenalty = -3.0;
+  int _adminReviewTimeout = 2; // Время на проверку админом (1, 2 или 3 часа)
 
   // Gradient colors for this page (orange theme)
   static const _gradientColors = [Color(0xFFf46b45), Color(0xFFeea849)];
@@ -52,6 +53,7 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
         _eveningStartTime = settings.eveningStartTime;
         _eveningEndTime = settings.eveningEndTime;
         _missedPenalty = settings.missedPenalty;
+        _adminReviewTimeout = settings.adminReviewTimeout;
         _isLoading = false;
       });
     } catch (e) {
@@ -80,6 +82,7 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
         eveningStartTime: _eveningStartTime,
         eveningEndTime: _eveningEndTime,
         missedPenalty: _missedPenalty,
+        adminReviewTimeout: _adminReviewTimeout,
       );
 
       if (result != null) {
@@ -289,6 +292,12 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
                           accentColor: Colors.deepOrange,
                           icon: Icons.warning_amber_outlined,
                         ),
+                        const SizedBox(height: 24),
+
+                        // Admin review timeout section
+                        _buildSectionTitle('Время на проверку админом'),
+                        const SizedBox(height: 12),
+                        _buildAdminReviewTimeoutSection(),
                         const SizedBox(height: 24),
 
                         // Preview section
@@ -505,6 +514,153 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
             onEndChanged: (time) => setState(() => _eveningEndTime = time),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAdminReviewTimeoutSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.admin_panel_settings_outlined,
+                  color: Colors.purple,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Таймаут проверки',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D3436),
+                      ),
+                    ),
+                    Text(
+                      'Время админу на оценку отчёта',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildTimeoutOption(1),
+              const SizedBox(width: 12),
+              _buildTimeoutOption(2),
+              const SizedBox(width: 12),
+              _buildTimeoutOption(3),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.amber[700], size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Если админ не оценит отчёт за $_adminReviewTimeout ч., статус изменится на "Отклонено" и сотрудник получит штраф',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber[900],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeoutOption(int hours) {
+    final isSelected = _adminReviewTimeout == hours;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() => _adminReviewTimeout = hours);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.purple : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? Colors.purple : Colors.grey[300]!,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            children: [
+              Text(
+                '$hours',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : Colors.grey[700],
+                ),
+              ),
+              Text(
+                hours == 1 ? 'час' : 'часа',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected ? Colors.white.withOpacity(0.9) : Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -97,8 +97,9 @@ class PointsSettingsService {
     String? eveningStartTime,
     String? eveningEndTime,
     double? missedPenalty,
+    int? adminReviewTimeout,
   }) async {
-    Logger.debug('Saving shift points settings: min=$minPoints, zero=$zeroThreshold, max=$maxPoints');
+    Logger.debug('Saving shift points settings: min=$minPoints, zero=$zeroThreshold, max=$maxPoints, adminReviewTimeout=$adminReviewTimeout');
 
     final body = <String, dynamic>{
       'minPoints': minPoints,
@@ -112,6 +113,7 @@ class PointsSettingsService {
     if (eveningStartTime != null) body['eveningStartTime'] = eveningStartTime;
     if (eveningEndTime != null) body['eveningEndTime'] = eveningEndTime;
     if (missedPenalty != null) body['missedPenalty'] = missedPenalty;
+    if (adminReviewTimeout != null) body['adminReviewTimeout'] = adminReviewTimeout;
 
     return await BaseHttpService.post<ShiftPointsSettings>(
       endpoint: '$baseEndpoint/shift',
@@ -141,16 +143,30 @@ class PointsSettingsService {
     required double minPoints,
     required int zeroThreshold,
     required double maxPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) async {
     Logger.debug('Saving recount points settings: min=$minPoints, zero=$zeroThreshold, max=$maxPoints');
 
+    final body = <String, dynamic>{
+      'minPoints': minPoints,
+      'zeroThreshold': zeroThreshold,
+      'maxPoints': maxPoints,
+    };
+
+    // Add time window settings if provided
+    if (morningStartTime != null) body['morningStartTime'] = morningStartTime;
+    if (morningEndTime != null) body['morningEndTime'] = morningEndTime;
+    if (eveningStartTime != null) body['eveningStartTime'] = eveningStartTime;
+    if (eveningEndTime != null) body['eveningEndTime'] = eveningEndTime;
+    if (missedPenalty != null) body['missedPenalty'] = missedPenalty;
+
     return await BaseHttpService.post<RecountPointsSettings>(
       endpoint: '$baseEndpoint/recount',
-      body: {
-        'minPoints': minPoints,
-        'zeroThreshold': zeroThreshold,
-        'maxPoints': maxPoints,
-      },
+      body: body,
       fromJson: (json) => RecountPointsSettings.fromJson(json),
       itemKey: 'settings',
     );

@@ -52,6 +52,7 @@ const { setupPointsSettingsAPI } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
+const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
@@ -6711,6 +6712,9 @@ setupDataCleanupAPI(app);
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();
+
+// Start shift automation scheduler (auto-create reports, check deadlines, penalties)
+startShiftAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);

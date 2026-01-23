@@ -2,6 +2,71 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 
+/// Статусы отчёта пересменки
+enum ShiftReportStatus {
+  pending,    // Ожидает (сотрудник должен пройти пересменку)
+  review,     // На проверке (отправлен, ожидает оценки админа)
+  confirmed,  // Подтверждён (админ оценил)
+  failed,     // Не пройден (сотрудник не прошёл до дедлайна)
+  rejected,   // Отклонён (админ не оценил вовремя → автоматический отказ)
+  expired,    // Устаревший (> 7 дней)
+}
+
+extension ShiftReportStatusExtension on ShiftReportStatus {
+  String get name {
+    switch (this) {
+      case ShiftReportStatus.pending:
+        return 'pending';
+      case ShiftReportStatus.review:
+        return 'review';
+      case ShiftReportStatus.confirmed:
+        return 'confirmed';
+      case ShiftReportStatus.failed:
+        return 'failed';
+      case ShiftReportStatus.rejected:
+        return 'rejected';
+      case ShiftReportStatus.expired:
+        return 'expired';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case ShiftReportStatus.pending:
+        return 'Ожидает';
+      case ShiftReportStatus.review:
+        return 'На проверке';
+      case ShiftReportStatus.confirmed:
+        return 'Подтверждён';
+      case ShiftReportStatus.failed:
+        return 'Не пройден';
+      case ShiftReportStatus.rejected:
+        return 'Отклонён';
+      case ShiftReportStatus.expired:
+        return 'Истёк';
+    }
+  }
+
+  static ShiftReportStatus fromString(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'pending':
+        return ShiftReportStatus.pending;
+      case 'review':
+        return ShiftReportStatus.review;
+      case 'confirmed':
+        return ShiftReportStatus.confirmed;
+      case 'failed':
+        return ShiftReportStatus.failed;
+      case 'rejected':
+        return ShiftReportStatus.rejected;
+      case 'expired':
+        return ShiftReportStatus.expired;
+      default:
+        return ShiftReportStatus.pending;
+    }
+  }
+}
+
 /// Модель ответа на вопрос
 class ShiftAnswer {
   final String question;
@@ -43,20 +108,31 @@ class ShiftAnswer {
 class ShiftReport {
   final String id;
   final String employeeName;
+  final String? employeeId; // ID сотрудника для связи с графиком
   final String shopAddress;
+  final String? shopName; // Название магазина
   final DateTime createdAt;
   final List<ShiftAnswer> answers;
   final bool isSynced; // Синхронизирован ли с облаком
   final DateTime? confirmedAt; // Время подтверждения отчета
   final int? rating; // Оценка от 1 до 10
   final String? confirmedByAdmin; // Имя админа, который подтвердил
-  final String? status; // "pending" | "confirmed" | "expired"
+  final String? status; // "pending" | "review" | "confirmed" | "failed" | "rejected" | "expired"
   final DateTime? expiredAt; // Когда был просрочен
+
+  // Новые поля для автоматизации
+  final String? shiftType; // "morning" | "evening" - тип смены
+  final DateTime? submittedAt; // Время отправки отчёта сотрудником
+  final DateTime? reviewDeadline; // Дедлайн для проверки админом
+  final DateTime? failedAt; // Время когда был отмечен как failed
+  final DateTime? rejectedAt; // Время автоматического отклонения
 
   ShiftReport({
     required this.id,
     required this.employeeName,
+    this.employeeId,
     required this.shopAddress,
+    this.shopName,
     required this.createdAt,
     required this.answers,
     this.isSynced = false,
@@ -65,6 +141,11 @@ class ShiftReport {
     this.confirmedByAdmin,
     this.status,
     this.expiredAt,
+    this.shiftType,
+    this.submittedAt,
+    this.reviewDeadline,
+    this.failedAt,
+    this.rejectedAt,
   });
 
   /// Генерировать уникальный ID на основе комбинации
@@ -77,7 +158,9 @@ class ShiftReport {
   Map<String, dynamic> toJson() => {
     'id': id,
     'employeeName': employeeName,
+    'employeeId': employeeId,
     'shopAddress': shopAddress,
+    'shopName': shopName,
     'createdAt': createdAt.toIso8601String(),
     'answers': answers.map((a) => a.toJson()).toList(),
     'isSynced': isSynced,
@@ -86,12 +169,19 @@ class ShiftReport {
     'confirmedByAdmin': confirmedByAdmin,
     'status': status,
     'expiredAt': expiredAt?.toIso8601String(),
+    'shiftType': shiftType,
+    'submittedAt': submittedAt?.toIso8601String(),
+    'reviewDeadline': reviewDeadline?.toIso8601String(),
+    'failedAt': failedAt?.toIso8601String(),
+    'rejectedAt': rejectedAt?.toIso8601String(),
   };
 
   factory ShiftReport.fromJson(Map<String, dynamic> json) => ShiftReport(
     id: json['id'] ?? '',
     employeeName: json['employeeName'] ?? '',
+    employeeId: json['employeeId'],
     shopAddress: json['shopAddress'] ?? '',
+    shopName: json['shopName'],
     createdAt: DateTime.parse(json['createdAt']),
     answers: (json['answers'] as List<dynamic>?)
         ?.map((a) => ShiftAnswer.fromJson(a))
@@ -105,6 +195,19 @@ class ShiftReport {
     status: json['status'],
     expiredAt: json['expiredAt'] != null
         ? DateTime.parse(json['expiredAt'])
+        : null,
+    shiftType: json['shiftType'],
+    submittedAt: json['submittedAt'] != null
+        ? DateTime.parse(json['submittedAt'])
+        : null,
+    reviewDeadline: json['reviewDeadline'] != null
+        ? DateTime.parse(json['reviewDeadline'])
+        : null,
+    failedAt: json['failedAt'] != null
+        ? DateTime.parse(json['failedAt'])
+        : null,
+    rejectedAt: json['rejectedAt'] != null
+        ? DateTime.parse(json['rejectedAt'])
         : null,
   );
 
@@ -144,11 +247,18 @@ class ShiftReport {
     String? confirmedByAdmin,
     String? status,
     DateTime? expiredAt,
+    String? shiftType,
+    DateTime? submittedAt,
+    DateTime? reviewDeadline,
+    DateTime? failedAt,
+    DateTime? rejectedAt,
   }) {
     return ShiftReport(
       id: id,
       employeeName: employeeName,
+      employeeId: employeeId,
       shopAddress: shopAddress,
+      shopName: shopName,
       createdAt: createdAt,
       answers: answers,
       isSynced: isSynced,
@@ -157,8 +267,28 @@ class ShiftReport {
       confirmedByAdmin: confirmedByAdmin ?? this.confirmedByAdmin,
       status: status ?? this.status,
       expiredAt: expiredAt ?? this.expiredAt,
+      shiftType: shiftType ?? this.shiftType,
+      submittedAt: submittedAt ?? this.submittedAt,
+      reviewDeadline: reviewDeadline ?? this.reviewDeadline,
+      failedAt: failedAt ?? this.failedAt,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
     );
   }
+
+  /// Получить статус как enum
+  ShiftReportStatus get statusEnum => ShiftReportStatusExtension.fromString(status);
+
+  /// Отчёт ожидает прохождения
+  bool get isPending => status == 'pending' || status == null;
+
+  /// Отчёт на проверке у админа
+  bool get isInReview => status == 'review';
+
+  /// Отчёт не пройден (сотрудник не успел)
+  bool get isFailed => status == 'failed';
+
+  /// Отчёт отклонён (админ не успел проверить)
+  bool get isRejected => status == 'rejected';
 
   /// Сохранить отчет локально
   static Future<void> saveReport(ShiftReport report) async {
