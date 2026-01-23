@@ -221,6 +221,8 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   if (widget.employee.phone != null)
                                     Text(
@@ -290,10 +292,16 @@ class _EmployeePreferencesDialogState extends State<EmployeePreferencesDialog> {
                         final isSelected = _selectedShops.contains(shop.id) ||
                             _selectedShops.contains(shop.address);
                         return CheckboxListTile(
-                          title: Text(shop.name),
+                          title: Text(
+                            shop.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           subtitle: Text(
                             shop.address,
                             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           value: isSelected,
                           onChanged: (value) {

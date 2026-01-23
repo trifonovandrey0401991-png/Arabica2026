@@ -57,6 +57,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   int _errorCount = 0;
   ScheduleValidationResult? _validationResult;
 
+  // Контроллеры для синхронной вертикальной прокрутки (frozen column)
+  final ScrollController _namesVerticalController = ScrollController();
+  final ScrollController _gridVerticalController = ScrollController();
+  bool _isSyncingScroll = false;
+
   @override
   void initState() {
     super.initState();
@@ -64,12 +69,34 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     _tabController.addListener(_onTabChanged);
     _loadData();
     _loadAdminUnreadCount();
+
+    // Синхронизация вертикальной прокрутки
+    _namesVerticalController.addListener(_syncNamesToGrid);
+    _gridVerticalController.addListener(_syncGridToNames);
+  }
+
+  void _syncNamesToGrid() {
+    if (_isSyncingScroll) return;
+    if (!_gridVerticalController.hasClients) return;
+    _isSyncingScroll = true;
+    _gridVerticalController.jumpTo(_namesVerticalController.offset);
+    _isSyncingScroll = false;
+  }
+
+  void _syncGridToNames() {
+    if (_isSyncingScroll) return;
+    if (!_namesVerticalController.hasClients) return;
+    _isSyncingScroll = true;
+    _namesVerticalController.jumpTo(_gridVerticalController.offset);
+    _isSyncingScroll = false;
   }
 
   @override
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _namesVerticalController.dispose();
+    _gridVerticalController.dispose();
     super.dispose();
   }
 
@@ -1043,34 +1070,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.date_range),
-            onPressed: _selectPeriod,
-            tooltip: 'Выбрать период',
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _selectMonth,
-            tooltip: 'Выбрать месяц',
-          ),
-          if (_schedule != null)
-            IconButton(
-              icon: const Icon(Icons.copy_all),
-              onPressed: _showBulkOperations,
-              tooltip: 'Массовые операции',
-            ),
-          if (_schedule != null)
-            IconButton(
-              icon: const Icon(Icons.auto_fix_high),
-              onPressed: _showAutoFillDialog,
-              tooltip: 'Автозаполнение графика',
-            ),
-          if (_schedule != null)
-            IconButton(
-              icon: const Icon(Icons.picture_as_pdf),
-              onPressed: _exportToPdf,
-              tooltip: 'Экспорт в PDF',
-            ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               _loadData();
@@ -1098,19 +1097,28 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                     ],
                   ),
                 )
-              : TabBarView(
-                  controller: _tabController,
+              : Column(
                   children: [
-                    // Вкладка "График"
-                    _schedule == null
-                        ? const Center(child: Text('График не загружен'))
-                        : _buildCalendarGrid(),
-                    // Вкладка "По сотрудникам"
-                    _buildByEmployeesTab(),
-                    // Вкладка "Заявки на передачу смен"
-                    _buildAdminNotificationsTab(),
-                    // Вкладка "Очистить график"
-                    _buildClearScheduleTab(),
+                    // Тулбар с кнопками управления
+                    _buildScheduleToolbar(),
+                    // Контент вкладок
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // Вкладка "График"
+                          _schedule == null
+                              ? const Center(child: Text('График не загружен'))
+                              : _buildCalendarGrid(),
+                          // Вкладка "По сотрудникам"
+                          _buildByEmployeesTab(),
+                          // Вкладка "Заявки на передачу смен"
+                          _buildAdminNotificationsTab(),
+                          // Вкладка "Очистить график"
+                          _buildClearScheduleTab(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
       floatingActionButton: _schedule != null
@@ -1125,6 +1133,134 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               ),
             )
           : null,
+    );
+  }
+
+  /// Строит тулбар с кнопками управления графиком
+  Widget _buildScheduleToolbar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF004D40).withOpacity(0.05),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[300]!,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Ряд 1: Период | Месяц | Автозаполнение
+          Row(
+            children: [
+              Expanded(
+                child: _buildToolbarChip(
+                  icon: Icons.date_range,
+                  label: 'Период',
+                  onTap: _selectPeriod,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildToolbarChip(
+                  icon: Icons.calendar_today,
+                  label: 'Месяц',
+                  onTap: _selectMonth,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildToolbarChip(
+                  icon: Icons.auto_fix_high,
+                  label: 'Автозаполнение',
+                  onTap: _schedule != null ? _showAutoFillDialog : null,
+                  enabled: _schedule != null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Ряд 2: Сотрудники | PDF | Очистка
+          Row(
+            children: [
+              Expanded(
+                child: _buildToolbarChip(
+                  icon: Icons.people,
+                  label: 'Сотрудники',
+                  onTap: () => _tabController.animateTo(1),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildToolbarChip(
+                  icon: Icons.picture_as_pdf,
+                  label: 'PDF',
+                  onTap: _schedule != null ? _exportToPdf : null,
+                  enabled: _schedule != null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildToolbarChip(
+                  icon: Icons.cleaning_services,
+                  label: 'Очистка',
+                  onTap: () => _tabController.animateTo(3),
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Строит кнопку-чип для тулбара
+  Widget _buildToolbarChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+    bool enabled = true,
+    Color? color,
+  }) {
+    final effectiveColor = color ?? const Color(0xFF004D40);
+    final isEnabled = enabled && onTap != null;
+
+    return Material(
+      color: isEnabled ? effectiveColor.withOpacity(0.1) : Colors.grey[200],
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: isEnabled ? onTap : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isEnabled ? effectiveColor : Colors.grey[400],
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isEnabled ? effectiveColor : Colors.grey[400],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1230,14 +1366,145 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             ],
           ),
         ),
-        // Календарная сетка
+        // Календарная сетка с фиксированной колонкой имён
         Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: _buildTable(days, employeesByShop),
-            ),
+          child: Row(
+            children: [
+              // Фиксированная колонка с именами сотрудников
+              SizedBox(
+                width: 140,
+                child: Column(
+                  children: [
+                    // Заголовок "Сотрудник"
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey[400]!, width: 2),
+                          right: BorderSide(color: Colors.grey[400]!, width: 2),
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Сотрудник',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Список имён сотрудников
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: _namesVerticalController,
+                        child: Column(
+                          children: _employees.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final employee = entry.value;
+                            final isEven = index % 2 == 0;
+                            return Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isEven ? Colors.white : Colors.grey[50],
+                                border: Border(
+                                  bottom: BorderSide(color: Colors.grey[300]!),
+                                  right: BorderSide(color: Colors.grey[400]!, width: 2),
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                employee.name,
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Скроллируемая часть с датами и ячейками
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: days.length * 70.0,
+                    child: Column(
+                      children: [
+                        // Заголовок с датами
+                        Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            border: Border(
+                              bottom: BorderSide(color: Colors.grey[400]!, width: 2),
+                            ),
+                          ),
+                          child: Row(
+                            children: days.map((day) {
+                              final isValid = _isDayValid(day);
+                              return Container(
+                                width: 70,
+                                decoration: BoxDecoration(
+                                  color: isValid ? Colors.green[100] : Colors.grey[300],
+                                  border: Border(
+                                    right: BorderSide(color: Colors.grey[300]!),
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '${day.day}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      _getWeekdayName(day.weekday),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        // Ячейки со сменами
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: _gridVerticalController,
+                            child: Column(
+                              children: _employees.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final employee = entry.value;
+                                final isEven = index % 2 == 0;
+                                return SizedBox(
+                                  height: 40,
+                                  child: Row(
+                                    children: days.map((day) => _buildCell(employee, day)).toList(),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -2530,6 +2797,165 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     );
   }
 
+  /// Показывает диалог со списком смен сотрудника
+  void _showEmployeeScheduleDialog(Employee employee) {
+    final employeeEntries = _schedule?.entries
+        .where((e) => e.employeeId == employee.id)
+        .toList() ?? [];
+
+    // Сортируем по дате
+    employeeEntries.sort((a, b) => a.date.compareTo(b.date));
+
+    // Фильтруем по выбранному периоду
+    final filteredEntries = employeeEntries.where((e) =>
+      e.date.day >= _startDay && e.date.day <= _endDay
+    ).toList();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'График: ${employee.name}',
+                style: const TextStyle(fontSize: 18),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.85,
+          height: MediaQuery.of(context).size.height * 0.5,
+          child: filteredEntries.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Нет смен в выбранном периоде',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filteredEntries.length,
+                  itemBuilder: (context, index) {
+                    final entry = filteredEntries[index];
+                    final shop = _shops.firstWhere(
+                      (s) => s.address == entry.shopAddress,
+                      orElse: () => Shop(
+                        id: '',
+                        name: entry.shopAddress,
+                        address: entry.shopAddress,
+                        icon: Icons.store,
+                      ),
+                    );
+                    final weekday = _getWeekdayName(entry.date.weekday);
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: entry.shiftType.color.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: entry.shiftType.color,
+                              width: 1,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${entry.date.day}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: entry.shiftType.color,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          '$weekday, ${entry.date.day}.${entry.date.month.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          shop.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: entry.shiftType.color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: entry.shiftType.color.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            entry.shiftType.label,
+                            style: TextStyle(
+                              color: entry.shiftType.color,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EmployeeSchedulePage(
+                    employee: employee,
+                    selectedMonth: _selectedMonth,
+                    startDay: _startDay,
+                    endDay: _endDay,
+                    shops: _shops,
+                    schedule: _schedule,
+                    shopSettingsCache: _shopSettingsCache,
+                    onScheduleUpdated: () => _loadData(),
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF004D40),
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.edit),
+            label: const Text('Редактировать'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Строит вкладку "По сотрудникам"
   Widget _buildByEmployeesTab() {
     if (_employees.isEmpty) {
@@ -2652,23 +3078,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   borderRadius: BorderRadius.circular(16),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EmployeeSchedulePage(
-                            employee: employee,
-                            selectedMonth: _selectedMonth,
-                            startDay: _startDay,
-                            endDay: _endDay,
-                            shops: _shops,
-                            schedule: _schedule,
-                            shopSettingsCache: _shopSettingsCache,
-                            onScheduleUpdated: () => _loadData(),
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: () => _showEmployeeScheduleDialog(employee),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(

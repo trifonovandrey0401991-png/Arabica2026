@@ -120,10 +120,12 @@ app.set('trust proxy', 1);
 
 // Применяем Rate Limiting если пакет установлен
 if (rateLimit) {
-  // Общий лимит: 100 запросов в минуту с одного IP
+  // Общий лимит: 500 запросов в минуту с одного IP
+  // Увеличено с 100 т.к. приложение делает много параллельных запросов
+  // (сотрудники + регистрации + магазины + настройки)
   const generalLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 минута
-    max: 100,
+    max: 500,
     message: { success: false, error: 'Слишком много запросов. Попробуйте позже.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -148,7 +150,7 @@ if (rateLimit) {
   app.use('/api/bonus-penalties', strictLimiter);
   app.use('/api/rko', strictLimiter);
 
-  console.log('✅ Rate Limiting активирован: 100 req/min (общий), 10 req/min (финансовые операции)');
+  console.log('✅ Rate Limiting активирован: 500 req/min (общий), 10 req/min (финансовые операции)');
 }
 
 // Статические файлы для редактора координат
@@ -2959,19 +2961,19 @@ app.get('/api/work-schedule/employee/:employeeId', (req, res) => {
 });
 
 // POST /api/work-schedule - создать/обновить смену
-app.post('/api/work-schedule', (req, res) => {
+app.post('/api/work-schedule', async (req, res) => {
   try {
     const entry = req.body;
     if (!entry.month || !entry.employeeId || !entry.date || !entry.shiftType) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Не указаны обязательные поля: month, employeeId, date, shiftType' 
+      return res.status(400).json({
+        success: false,
+        error: 'Не указаны обязательные поля: month, employeeId, date, shiftType'
       });
     }
 
     const month = entry.month;
     const schedule = loadSchedule(month);
-    
+
     // Если есть ID - это обновление существующей записи
     if (entry.id) {
       // Удаляем старую запись по ID
@@ -2993,6 +2995,32 @@ app.post('/api/work-schedule', (req, res) => {
 
     if (saveSchedule(schedule)) {
       res.json({ success: true, entry });
+
+      // Отправляем push-уведомление сотруднику об изменении в графике
+      try {
+        const employeeFile = path.join(EMPLOYEES_DIR, `${entry.employeeId}.json`);
+        if (fs.existsSync(employeeFile)) {
+          const employeeData = JSON.parse(fs.readFileSync(employeeFile, 'utf8'));
+          if (employeeData.phone) {
+            const shiftLabels = { morning: 'Утренняя', day: 'Дневная', night: 'Ночная' };
+            const shiftLabel = shiftLabels[entry.shiftType] || entry.shiftType;
+            const dateFormatted = entry.date; // формат YYYY-MM-DD
+            const dateParts = dateFormatted.split('-');
+            const displayDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : dateFormatted;
+
+            await sendPushToPhone(
+              employeeData.phone,
+              'Изменение в графике',
+              `Ваша смена на ${displayDate}: ${shiftLabel}`,
+              { type: 'schedule_change', date: entry.date, shiftType: entry.shiftType }
+            );
+            console.log(`Push-уведомление отправлено сотруднику ${employeeData.name || entry.employeeId} об изменении смены`);
+          }
+        }
+      } catch (pushError) {
+        console.error('Ошибка отправки push-уведомления о смене:', pushError.message);
+        // Не прерываем работу, уведомление не критично
+      }
     } else {
       res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
     }

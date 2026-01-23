@@ -104,6 +104,8 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
             child: Text(
               '${widget.employee.name} - ${widget.date.day}.${widget.date.month}.${widget.date.year}',
               style: const TextStyle(fontSize: 18),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(

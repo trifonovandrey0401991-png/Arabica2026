@@ -23,6 +23,8 @@ import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
 import '../../features/orders/services/order_service.dart';
+import '../../features/work_schedule/pages/shift_transfer_requests_page.dart';
+import '../../features/work_schedule/services/shift_transfer_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/employees/services/employee_registration_service.dart';
 import '../../core/utils/logger.dart';
@@ -51,6 +53,7 @@ class _ReportsPageState extends State<ReportsPage> {
   int _unviewedExpiredTasksCount = 0;
   int _referralsUnviewedCount = 0;
   int _ordersUnviewedCount = 0;
+  int _shiftTransferRequestsUnreadCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -66,6 +69,7 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadUnviewedExpiredTasksCount();
     _loadReferralsUnviewedCount();
     _loadOrdersUnviewedCount();
+    _loadShiftTransferRequestsCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -174,6 +178,20 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества непросмотренных заказов', e);
+    }
+  }
+
+  Future<void> _loadShiftTransferRequestsCount() async {
+    try {
+      final requests = await ShiftTransferService.getAdminRequests();
+      final unreadCount = requests.where((r) => !r.isReadByAdmin).length;
+      if (mounted) {
+        setState(() {
+          _shiftTransferRequestsUnreadCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества заявок на смены', e);
     }
   }
 
@@ -337,6 +355,22 @@ class _ReportsPageState extends State<ReportsPage> {
                   MaterialPageRoute(builder: (context) => const AttendanceReportsPage()),
                 );
                 _loadReportCounts();
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Заявки на смены - только админ
+          if (isAdmin)
+            _buildShiftTransferRequestsSection(
+              context,
+              title: 'Заявки на смены',
+              badgeCount: _shiftTransferRequestsUnreadCount,
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ShiftTransferRequestsPage()),
+                );
+                _loadShiftTransferRequestsCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
@@ -2179,6 +2213,135 @@ class _ReportsPageState extends State<ReportsPage> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.red.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                )
+              else
+                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка "Заявки на смены" с иконкой и бейджем
+  Widget _buildShiftTransferRequestsSection(
+    BuildContext context, {
+    required String title,
+    required int badgeCount,
+    required Future<void> Function() onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Иконка заявок с бейджем
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.orange[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.swap_horiz,
+                      size: 28,
+                      color: Colors.orange[800],
+                    ),
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : '$badgeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              // Текст
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF004D40),
+                      ),
+                    ),
+                    if (badgeCount > 0)
+                      Text(
+                        'Ожидают одобрения: $badgeCount',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Бейдж или стрелка
+              if (badgeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Colors.orange, Color(0xFFF57C00)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.3),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
