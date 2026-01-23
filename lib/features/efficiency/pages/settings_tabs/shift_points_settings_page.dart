@@ -519,6 +519,13 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
   }
 
   Widget _buildAdminReviewTimeoutSection() {
+    // Форматирование часов для отображения
+    String formatHours(int hours) {
+      if (hours == 1 || hours == 21) return '$hours час';
+      if (hours >= 2 && hours <= 4 || hours >= 22 && hours <= 24) return '$hours часа';
+      return '$hours часов';
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -551,11 +558,11 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Таймаут проверки',
                       style: TextStyle(
                         fontSize: 16,
@@ -563,7 +570,7 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
                         color: Color(0xFF2D3436),
                       ),
                     ),
-                    Text(
+                    const Text(
                       'Время админу на оценку отчёта',
                       style: TextStyle(
                         fontSize: 12,
@@ -573,19 +580,69 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
                   ],
                 ),
               ),
+              // Текущее значение
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.purple, Colors.deepPurple],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  formatHours(_adminReviewTimeout),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 20),
+          // Слайдер
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: Colors.purple,
+              inactiveTrackColor: Colors.purple.withOpacity(0.2),
+              thumbColor: Colors.purple,
+              overlayColor: Colors.purple.withOpacity(0.2),
+              trackHeight: 6,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+            ),
+            child: Slider(
+              value: _adminReviewTimeout.toDouble(),
+              min: 1,
+              max: 24,
+              divisions: 23,
+              onChanged: (value) {
+                setState(() => _adminReviewTimeout = value.round());
+              },
+            ),
+          ),
+          // Метки
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('1 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('6 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('12 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('18 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('24 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildTimeoutOption(1),
-              const SizedBox(width: 12),
-              _buildTimeoutOption(2),
-              const SizedBox(width: 12),
-              _buildTimeoutOption(3),
-            ],
-          ),
-          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -599,7 +656,7 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Если админ не оценит отчёт за $_adminReviewTimeout ч., статус изменится на "Отклонено" и сотрудник получит штраф',
+                    'Если админ не оценит отчёт за ${formatHours(_adminReviewTimeout)}, статус изменится на "Отклонено" и сотрудник получит штраф',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.amber[900],
@@ -610,57 +667,6 @@ class _ShiftPointsSettingsPageState extends State<ShiftPointsSettingsPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTimeoutOption(int hours) {
-    final isSelected = _adminReviewTimeout == hours;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() => _adminReviewTimeout = hours);
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.purple : Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? Colors.purple : Colors.grey[300]!,
-              width: isSelected ? 2 : 1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.purple.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            children: [
-              Text(
-                '$hours',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : Colors.grey[700],
-                ),
-              ),
-              Text(
-                hours == 1 ? 'час' : 'часа',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected ? Colors.white.withOpacity(0.9) : Colors.grey[500],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

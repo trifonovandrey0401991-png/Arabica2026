@@ -5118,10 +5118,15 @@ app.post('/api/shift-reports', async (req, res) => {
     const report = {
       id: req.body.id || `shift_report_${Date.now()}`,
       employeeName: req.body.employeeName,
+      employeeId: req.body.employeeId,
       shopAddress: req.body.shopAddress,
+      shopName: req.body.shopName,
       timestamp: req.body.timestamp || new Date().toISOString(),
+      createdAt: req.body.createdAt || new Date().toISOString(),
       answers: req.body.answers || [],
-      createdAt: new Date().toISOString(),
+      status: req.body.status || 'review',
+      shiftType: req.body.shiftType,
+      submittedAt: req.body.submittedAt,
     };
     const reportFile = path.join(SHIFT_REPORTS_DIR, `${report.id}.json`);
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
@@ -5131,6 +5136,84 @@ app.post('/api/shift-reports', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// PUT - Update shift report (confirm/rate)
+app.put('/api/shift-reports/:id', async (req, res) => {
+  try {
+    const reportId = decodeURIComponent(req.params.id);
+    const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
+
+    if (!fs.existsSync(reportFile)) {
+      return res.status(404).json({ success: false, error: 'Отчет не найден' });
+    }
+
+    const existingReport = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+    const updatedReport = { ...existingReport, ...req.body };
+
+    // If rating is provided and confirmedAt is set, mark as confirmed
+    if (req.body.rating !== undefined && req.body.confirmedAt) {
+      updatedReport.status = 'confirmed';
+
+      // Send push notification to employee
+      if (existingReport.employeeId || existingReport.employeeName) {
+        try {
+          const employeeIdentifier = existingReport.employeeId || existingReport.employeeName;
+          await sendShiftConfirmationNotification(employeeIdentifier, req.body.rating);
+        } catch (notifError) {
+          console.error('Ошибка отправки уведомления сотруднику:', notifError);
+        }
+      }
+    }
+
+    updatedReport.updatedAt = new Date().toISOString();
+    fs.writeFileSync(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+
+    console.log(`Отчет пересменки обновлен: ${reportId}, статус: ${updatedReport.status}, оценка: ${updatedReport.rating}`);
+    res.json({ success: true, report: updatedReport });
+  } catch (error) {
+    console.error('Ошибка обновления отчета пересменки:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Helper function to send push notification when shift report is confirmed
+async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
+  try {
+    // Find employee by ID or name to get FCM token
+    const employeesFile = '/var/www/employees/employees.json';
+    if (!fs.existsSync(employeesFile)) return;
+
+    const employeesData = JSON.parse(fs.readFileSync(employeesFile, 'utf8'));
+    const employees = employeesData.employees || [];
+
+    const employee = employees.find(e =>
+      e.id === employeeIdentifier ||
+      e.name === employeeIdentifier ||
+      e.phone === employeeIdentifier
+    );
+
+    if (!employee || !employee.fcmToken) {
+      console.log(`[ShiftNotification] Сотрудник ${employeeIdentifier} не найден или нет FCM токена`);
+      return;
+    }
+
+    // Send via Firebase
+    const message = {
+      notification: {
+        title: 'Пересменка - оценка',
+        body: `Ваш отчёт оценён на ${rating} баллов`
+      },
+      token: employee.fcmToken
+    };
+
+    if (admin && admin.messaging) {
+      await admin.messaging().send(message);
+      console.log(`[ShiftNotification] ✅ Push отправлен ${employee.name}: оценка ${rating}`);
+    }
+  } catch (error) {
+    console.error('[ShiftNotification] Ошибка отправки push:', error.message);
+  }
+}
 
 // ========== API для статей обучения ==========
 const TRAINING_ARTICLES_DIR = '/var/www/training-articles';

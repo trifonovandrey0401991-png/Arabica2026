@@ -49,6 +49,7 @@ class _ShiftReportViewPageState extends State<ShiftReportViewPage> {
       confirmedAt: DateTime.now(),
       rating: rating,
       confirmedByAdmin: adminName,
+      status: 'confirmed',
     );
 
     // Сохраняем локально
