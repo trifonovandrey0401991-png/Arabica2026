@@ -48,7 +48,7 @@ const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = r
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
-const { setupPointsSettingsAPI } = require("./api/points_settings_api");
+const { setupPointsSettingsAPI, calculateRecountPoints } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
@@ -557,20 +557,22 @@ app.get('/api/recount-reports/expired', async (req, res) => {
   }
 });
 
-// Эндпоинт для оценки отчета
+// Эндпоинт для оценки отчета пересчёта
 app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
   try {
     let { reportId } = req.params;
+    const { rating, adminName } = req.body;
     // Декодируем URL-кодированный reportId
     reportId = decodeURIComponent(reportId);
     // Санитизируем имя файла (как при сохранении)
     const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
     console.log(`Санитизированный ID: ${sanitizedId}`);
-    
+
     const reportsDir = '/var/www/recount-reports';
-    const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
-    
+    let reportFile = path.join(reportsDir, `${sanitizedId}.json`);
+    let actualFile = reportFile;
+
     if (!fs.existsSync(reportFile)) {
       console.error(`Файл не найден: ${reportFile}`);
       // Попробуем найти файл по частичному совпадению
@@ -578,40 +580,108 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
       const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
       if (matchingFile) {
         console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
-        const actualFile = path.join(reportsDir, matchingFile);
-        const content = fs.readFileSync(actualFile, 'utf8');
-        const report = JSON.parse(content);
-        
-        // Обновляем оценку
-        report.adminRating = req.body.rating;
-        report.adminName = req.body.adminName;
-        report.ratedAt = new Date().toISOString();
-        
-        // Сохраняем обновленный отчет
-        fs.writeFileSync(actualFile, JSON.stringify(report, null, 2), 'utf8');
-        console.log('Оценка сохранена для отчета:', matchingFile);
-        
-        return res.json({ success: true, message: 'Оценка успешно сохранена' });
+        actualFile = path.join(reportsDir, matchingFile);
+      } else {
+        return res.status(404).json({ success: false, error: 'Отчет не найден' });
       }
-      return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
-    
+
     // Читаем отчет
-    const content = fs.readFileSync(reportFile, 'utf8');
+    const content = fs.readFileSync(actualFile, 'utf8');
     const report = JSON.parse(content);
-    
-    // Обновляем оценку
-    report.adminRating = req.body.rating;
-    report.adminName = req.body.adminName;
+
+    // Обновляем оценку и статус
+    report.adminRating = rating;
+    report.adminName = adminName;
     report.ratedAt = new Date().toISOString();
-    
+    report.status = 'confirmed';
+
     // Сохраняем обновленный отчет
-    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
-    console.log('Оценка сохранена для отчета:', reportId);
-    
-    res.json({ success: true, message: 'Оценка успешно сохранена' });
+    fs.writeFileSync(actualFile, JSON.stringify(report, null, 2), 'utf8');
+    console.log('✅ Оценка сохранена для отчета:', reportId);
+
+    // Загружаем настройки баллов пересчёта
+    const settingsFile = '/var/www/points-settings/recount_points_settings.json';
+    let settings = {
+      minPoints: -3,
+      zeroThreshold: 7,
+      maxPoints: 1,
+      minRating: 1,
+      maxRating: 10
+    };
+    if (fs.existsSync(settingsFile)) {
+      const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+      settings = { ...settings, ...JSON.parse(settingsContent) };
+    }
+
+    // Рассчитываем баллы эффективности
+    const efficiencyPoints = calculateRecountPoints(rating, settings);
+    console.log(`📊 Рассчитанные баллы эффективности: ${efficiencyPoints} (оценка: ${rating})`);
+
+    // Сохраняем баллы в efficiency-penalties
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const today = now.toISOString().split('T')[0];
+    const efficiencyDir = '/var/www/efficiency-penalties';
+
+    if (!fs.existsSync(efficiencyDir)) {
+      fs.mkdirSync(efficiencyDir, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(efficiencyDir, `${monthKey}.json`);
+    let penalties = [];
+    if (fs.existsSync(penaltiesFile)) {
+      penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+    }
+
+    // Проверяем дубликат
+    const sourceId = `recount_rating_${reportId}`;
+    const exists = penalties.some(p => p.sourceId === sourceId);
+    if (!exists) {
+      const penalty = {
+        id: `ep_${Date.now()}`,
+        employeeId: report.employeePhone || report.employeeId,
+        employeeName: report.employeeName,
+        category: 'recount',
+        categoryName: 'Пересчёт товара',
+        date: today,
+        points: Math.round(efficiencyPoints * 100) / 100,
+        reason: `Оценка пересчёта: ${rating}/10`,
+        sourceId: sourceId,
+        sourceType: 'recount_report',
+        createdAt: now.toISOString()
+      };
+
+      penalties.push(penalty);
+      fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+      console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);
+    }
+
+    // Отправляем push-уведомление сотруднику
+    const employeePhone = report.employeePhone;
+    if (employeePhone && sendPushToPhone) {
+      try {
+        const title = 'Пересчёт оценён';
+        const body = `Ваша оценка: ${rating}/10 (${efficiencyPoints > 0 ? '+' : ''}${Math.round(efficiencyPoints * 100) / 100} баллов)`;
+
+        await sendPushToPhone(employeePhone, title, body, {
+          type: 'recount_confirmed',
+          rating: String(rating),
+          points: String(efficiencyPoints)
+        });
+        console.log(`📱 Push-уведомление отправлено: ${employeePhone}`);
+      } catch (pushError) {
+        console.error('⚠️ Ошибка отправки push:', pushError.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Оценка успешно сохранена',
+      efficiencyPoints: Math.round(efficiencyPoints * 100) / 100
+    });
   } catch (error) {
-    console.error('Ошибка оценки отчета:', error);
+    console.error('❌ Ошибка оценки отчета:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
