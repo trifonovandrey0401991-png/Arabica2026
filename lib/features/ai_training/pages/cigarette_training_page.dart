@@ -8,6 +8,7 @@ import '../../employees/pages/employees_page.dart';
 import 'cigarette_annotation_page.dart';
 import 'photo_templates_page.dart';
 import 'training_settings_page.dart';
+import 'pending_codes_page.dart';
 
 /// Страница обучения ИИ распознаванию сигарет - Премиум версия
 class CigaretteTrainingPage extends StatefulWidget {
@@ -38,7 +39,9 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   static const _redGradient = [Color(0xFFEF4444), Color(0xFFF87171)];
 
   /// Количество вкладок зависит от роли
-  int get _tabCount => _isAdmin ? 4 : 3;
+  /// Для админа: Фото, Товары, Новые коды, Статистика, Настройки = 5
+  /// Для обычного: Фото, Товары, Статистика = 3
+  int get _tabCount => _isAdmin ? 5 : 3;
 
   @override
   void initState() {
@@ -133,6 +136,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             children: [
                               _buildAddPhotoTab(),
                               _buildProductsTab(),
+                              if (_isAdmin) PendingCodesPage(onCodeApproved: _loadData),
                               _buildStatsTab(),
                               if (_isAdmin) _buildSettingsTab(),
                             ],
@@ -232,6 +236,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             icon: Icon(Icons.inventory_2, size: 20),
             text: 'Товары',
           ),
+          if (_isAdmin)
+            const Tab(
+              icon: Icon(Icons.new_releases, size: 20),
+              text: 'Новые',
+            ),
           const Tab(
             icon: Icon(Icons.bar_chart, size: 20),
             text: 'Статистика',

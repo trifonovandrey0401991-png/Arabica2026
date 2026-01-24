@@ -13,10 +13,12 @@ const path = require('path');
 const MASTER_CATALOG_DIR = '/var/www/master-catalog';
 const PRODUCTS_FILE = path.join(MASTER_CATALOG_DIR, 'products.json');
 const MAPPINGS_FILE = path.join(MASTER_CATALOG_DIR, 'mappings.json');
+const PENDING_CODES_FILE = path.join(MASTER_CATALOG_DIR, 'pending-codes.json');
 
 // Кэш
 let productsCache = null;
 let mappingsCache = null;
+let pendingCodesCache = null;
 
 /**
  * Загрузить продукты мастер-каталога
@@ -96,6 +98,119 @@ function saveMappings(mappings) {
     console.error('[Master Catalog API] Ошибка сохранения маппингов:', error);
     return false;
   }
+}
+
+/**
+ * Загрузить pending-коды (ожидающие подтверждения)
+ */
+function loadPendingCodes() {
+  try {
+    if (pendingCodesCache !== null) {
+      return pendingCodesCache;
+    }
+
+    if (!fs.existsSync(PENDING_CODES_FILE)) {
+      return [];
+    }
+
+    const data = fs.readFileSync(PENDING_CODES_FILE, 'utf8');
+    pendingCodesCache = JSON.parse(data);
+    return pendingCodesCache;
+  } catch (error) {
+    console.error('[Master Catalog API] Ошибка загрузки pending-codes:', error);
+    return [];
+  }
+}
+
+/**
+ * Сохранить pending-коды
+ */
+function savePendingCodes(codes) {
+  try {
+    if (!fs.existsSync(MASTER_CATALOG_DIR)) {
+      fs.mkdirSync(MASTER_CATALOG_DIR, { recursive: true });
+    }
+
+    fs.writeFileSync(PENDING_CODES_FILE, JSON.stringify(codes, null, 2));
+    pendingCodesCache = codes;
+    return true;
+  } catch (error) {
+    console.error('[Master Catalog API] Ошибка сохранения pending-codes:', error);
+    return false;
+  }
+}
+
+/**
+ * Проверить, есть ли код в мастер-каталоге
+ */
+function isCodeInMasterCatalog(kod) {
+  const products = loadProducts();
+  return products.some((p) => p.barcode === kod);
+}
+
+/**
+ * Проверить, есть ли код в pending
+ */
+function isCodeInPending(kod) {
+  const pending = loadPendingCodes();
+  return pending.some((p) => p.kod === kod);
+}
+
+/**
+ * Добавить новый код в pending (вызывается из shop_products_api.js при sync)
+ * Возвращает true если код был добавлен (новый), false если уже существует
+ */
+function addPendingCode({ kod, shopId, shopName, name, group }) {
+  // Проверяем, есть ли уже в мастер-каталоге
+  if (isCodeInMasterCatalog(kod)) {
+    return { added: false, reason: 'in_master_catalog' };
+  }
+
+  const pending = loadPendingCodes();
+  const existingIndex = pending.findIndex((p) => p.kod === kod);
+
+  if (existingIndex >= 0) {
+    // Код уже в pending - добавляем источник если его нет
+    const existing = pending[existingIndex];
+    const sourceExists = existing.sources.some((s) => s.shopId === shopId);
+
+    if (!sourceExists) {
+      existing.sources.push({
+        shopId,
+        shopName,
+        name,
+        group,
+        firstSeenAt: new Date().toISOString(),
+      });
+      savePendingCodes(pending);
+      console.log(`[Master Catalog API] Добавлен источник ${shopId} для pending-кода ${kod}`);
+    }
+
+    return { added: false, reason: 'already_pending' };
+  }
+
+  // Новый код - добавляем в pending
+  const newPending = {
+    kod,
+    sources: [
+      {
+        shopId,
+        shopName,
+        name,
+        group,
+        firstSeenAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    notificationSent: false,
+  };
+
+  pending.push(newPending);
+  savePendingCodes(pending);
+
+  console.log(`[Master Catalog API] Новый pending-код: ${kod} (${name}) от магазина ${shopName}`);
+
+  return { added: true, pendingCode: newPending };
 }
 
 /**
@@ -550,6 +665,247 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
+  // ============ PENDING CODES (новые коды из магазинов) ============
+
+  /**
+   * GET /api/master-catalog/pending-codes
+   * Получить список кодов ожидающих подтверждения
+   */
+  app.get('/api/master-catalog/pending-codes', (req, res) => {
+    try {
+      const pending = loadPendingCodes();
+
+      // Сортируем по дате (новые первыми)
+      pending.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      res.json({
+        success: true,
+        codes: pending,
+        total: pending.length,
+      });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка получения pending-codes:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/master-catalog/approve-code
+   * Подтвердить код и добавить в мастер-каталог
+   *
+   * Body:
+   *   {
+   *     "kod": "4620011111111",
+   *     "name": "CAMEL (KS) BLUE",
+   *     "group": "Сигареты"
+   *   }
+   */
+  app.post('/api/master-catalog/approve-code', (req, res) => {
+    try {
+      const { kod, name, group } = req.body;
+
+      if (!kod || !name) {
+        return res.status(400).json({ success: false, error: 'kod и name обязательны' });
+      }
+
+      // Проверяем что код в pending
+      const pending = loadPendingCodes();
+      const pendingIndex = pending.findIndex((p) => p.kod === kod);
+
+      if (pendingIndex === -1) {
+        return res.status(404).json({ success: false, error: 'Код не найден в pending' });
+      }
+
+      const pendingCode = pending[pendingIndex];
+
+      // Проверяем что нет в мастер-каталоге
+      const products = loadProducts();
+      const existing = products.find((p) => p.barcode === kod);
+
+      if (existing) {
+        // Удаляем из pending и возвращаем существующий
+        pending.splice(pendingIndex, 1);
+        savePendingCodes(pending);
+        return res.json({
+          success: true,
+          message: 'Код уже в мастер-каталоге',
+          product: existing,
+        });
+      }
+
+      // Собираем shopCodes из всех источников
+      const shopCodes = {};
+      pendingCode.sources.forEach((source) => {
+        shopCodes[source.shopId] = kod;
+      });
+
+      // Создаём новый продукт
+      const newProduct = {
+        id: generateId(),
+        name: name.trim(),
+        group: group?.trim() || pendingCode.sources[0]?.group || '',
+        barcode: kod,
+        shopCodes,
+        createdAt: new Date().toISOString(),
+        createdBy: 'admin',
+        updatedAt: new Date().toISOString(),
+      };
+
+      products.push(newProduct);
+      saveProducts(products);
+
+      // Обновляем маппинги
+      updateMappingsForProduct(newProduct);
+
+      // Удаляем из pending
+      pending.splice(pendingIndex, 1);
+      savePendingCodes(pending);
+
+      console.log(`[Master Catalog API] Код ${kod} подтверждён как: ${name}`);
+
+      res.json({ success: true, product: newProduct });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка подтверждения кода:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * DELETE /api/master-catalog/pending-codes/:kod
+   * Отклонить код (удалить из pending)
+   */
+  app.delete('/api/master-catalog/pending-codes/:kod', (req, res) => {
+    try {
+      const { kod } = req.params;
+
+      const pending = loadPendingCodes();
+      const index = pending.findIndex((p) => p.kod === kod);
+
+      if (index === -1) {
+        return res.status(404).json({ success: false, error: 'Код не найден в pending' });
+      }
+
+      const deleted = pending.splice(index, 1)[0];
+      savePendingCodes(pending);
+
+      console.log(`[Master Catalog API] Код ${kod} отклонён`);
+
+      res.json({ success: true, deleted });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка удаления pending-кода:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/master-catalog/bulk-import
+   * Массовый импорт товаров в мастер-каталог
+   *
+   * Body:
+   *   {
+   *     "products": [
+   *       { "name": "...", "barcode": "...", "group": "..." },
+   *       ...
+   *     ],
+   *     "skipExisting": true  // пропускать существующие (по barcode)
+   *   }
+   */
+  app.post('/api/master-catalog/bulk-import', (req, res) => {
+    try {
+      const { products: inputProducts, skipExisting = true } = req.body;
+
+      if (!inputProducts || !Array.isArray(inputProducts)) {
+        return res.status(400).json({ success: false, error: 'products должен быть массивом' });
+      }
+
+      const existingProducts = loadProducts();
+      const existingBarcodes = new Set(existingProducts.filter((p) => p.barcode).map((p) => p.barcode));
+
+      let added = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      inputProducts.forEach((input) => {
+        if (!input.name || !input.barcode) {
+          errors++;
+          return;
+        }
+
+        if (existingBarcodes.has(input.barcode)) {
+          if (skipExisting) {
+            skipped++;
+            return;
+          } else {
+            // Обновляем существующий
+            const existing = existingProducts.find((p) => p.barcode === input.barcode);
+            if (existing) {
+              existing.name = input.name.trim();
+              if (input.group) existing.group = input.group.trim();
+              existing.updatedAt = new Date().toISOString();
+            }
+            return;
+          }
+        }
+
+        // Создаём новый
+        const newProduct = {
+          id: generateId(),
+          name: input.name.trim(),
+          group: input.group?.trim() || '',
+          barcode: input.barcode.trim(),
+          shopCodes: {},
+          createdAt: new Date().toISOString(),
+          createdBy: 'bulk-import',
+          updatedAt: new Date().toISOString(),
+        };
+
+        existingProducts.push(newProduct);
+        existingBarcodes.add(newProduct.barcode);
+        added++;
+      });
+
+      saveProducts(existingProducts);
+
+      console.log(`[Master Catalog API] Bulk import: добавлено ${added}, пропущено ${skipped}, ошибок ${errors}`);
+
+      res.json({
+        success: true,
+        added,
+        skipped,
+        errors,
+        total: existingProducts.length,
+      });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка bulk import:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * POST /api/master-catalog/pending-codes/:kod/mark-notified
+   * Пометить pending-код как отправивший уведомление
+   */
+  app.post('/api/master-catalog/pending-codes/:kod/mark-notified', (req, res) => {
+    try {
+      const { kod } = req.params;
+
+      const pending = loadPendingCodes();
+      const pendingCode = pending.find((p) => p.kod === kod);
+
+      if (!pendingCode) {
+        return res.status(404).json({ success: false, error: 'Код не найден в pending' });
+      }
+
+      pendingCode.notificationSent = true;
+      savePendingCodes(pending);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка mark-notified:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ ДЛЯ AI TRAINING ============
 
   /**
@@ -597,4 +953,9 @@ module.exports = {
   saveProducts,
   loadMappings,
   saveMappings,
+  loadPendingCodes,
+  savePendingCodes,
+  addPendingCode,
+  isCodeInMasterCatalog,
+  isCodeInPending,
 };

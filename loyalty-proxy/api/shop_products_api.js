@@ -6,6 +6,10 @@
 const fs = require('fs');
 const path = require('path');
 
+// Импортируем функции мастер-каталога для детекции новых кодов
+const { addPendingCode, isCodeInMasterCatalog } = require('./master_catalog_api');
+const { notifyAdminsAboutNewCodes } = require('./master_catalog_notifications');
+
 // Директория для хранения товаров магазинов
 const SHOP_PRODUCTS_DIR = '/var/www/shop-products';
 
@@ -203,8 +207,45 @@ function setupShopProductsAPI(app) {
         name: String(p.name || '').trim(),
         group: String(p.group || p['ГРУППА'] || '').trim(),
         stock: parseInt(p.stock || p['ОСТ'] || 0, 10),
+        sales: parseInt(p.sales || p['ПРОДАЖА'] || 0, 10),
         updatedAt: new Date().toISOString(),
       }));
+
+      // ============ ДЕТЕКЦИЯ НОВЫХ КОДОВ ============
+      // Получаем название магазина для pending-codes
+      const shopName = req.body.shopName || shopId;
+      const newCodes = [];
+
+      for (const product of normalizedProducts) {
+        if (!product.kod) continue;
+
+        // Проверяем через master_catalog_api
+        const result = addPendingCode({
+          kod: product.kod,
+          shopId,
+          shopName,
+          name: product.name,
+          group: product.group,
+        });
+
+        if (result.added) {
+          newCodes.push({
+            kod: product.kod,
+            name: product.name,
+            group: product.group,
+          });
+        }
+      }
+
+      if (newCodes.length > 0) {
+        console.log(`[Shop Products API] Обнаружено ${newCodes.length} новых кодов от магазина ${shopName}`);
+
+        // Отправляем push-уведомления админам (асинхронно, не блокируем ответ)
+        notifyAdminsAboutNewCodes(newCodes, shopName).catch((err) => {
+          console.error('[Shop Products API] Ошибка отправки push:', err.message);
+        });
+      }
+      // ============ КОНЕЦ ДЕТЕКЦИИ ============
 
       // Сохраняем
       const saved = saveShopProducts(shopId, normalizedProducts);
@@ -214,6 +255,8 @@ function setupShopProductsAPI(app) {
           success: true,
           message: `Синхронизировано ${normalizedProducts.length} товаров`,
           productCount: normalizedProducts.length,
+          newCodesCount: newCodes.length,
+          newCodes: newCodes.slice(0, 10), // Первые 10 для лога
         });
       } else {
         res.status(500).json({ success: false, error: 'Ошибка сохранения' });
