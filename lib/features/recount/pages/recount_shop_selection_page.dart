@@ -28,11 +28,12 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   Future<void> _loadEmployeeData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final employeeName = prefs.getString('user_name');
+      // Используем user_display_name (короткое имя "Андрей В") вместо user_name (полное имя)
+      final employeeName = prefs.getString('user_display_name') ?? prefs.getString('user_name');
       // Проверяем оба ключа для телефона (userPhone для сотрудников, user_phone для клиентов)
       final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
 
-      Logger.debug('Загружены данные: name=$employeeName, phone=$employeePhone');
+      Logger.debug('Загружены данные: displayName=$employeeName, phone=$employeePhone');
 
       setState(() {
         _employeeName = employeeName;

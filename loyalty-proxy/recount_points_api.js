@@ -34,6 +34,29 @@ function ensureDirectories() {
 module.exports = function setupRecountPointsAPI(app) {
   ensureDirectories();
 
+  // Функция получения имени сотрудника по телефону из employees
+  function getEmployeeNameByPhone(phone) {
+    if (!phone || !fs.existsSync(EMPLOYEES_DIR)) return null;
+
+    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const employeeFiles = fs.readdirSync(EMPLOYEES_DIR);
+
+    for (const file of employeeFiles) {
+      if (!file.endsWith('.json')) continue;
+      try {
+        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const employee = JSON.parse(content);
+        const empPhone = (employee.phone || '').replace(/[\s+]/g, '');
+        if (empPhone === normalizedPhone) {
+          return employee.name || null;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return null;
+  }
+
   // =====================================================
   // GET /api/recount-points - получить баллы всех сотрудников
   // =====================================================
@@ -53,6 +76,13 @@ module.exports = function setupRecountPointsAPI(app) {
 
         const content = fs.readFileSync(path.join(RECOUNT_POINTS_DIR, file), 'utf8');
         const data = JSON.parse(content);
+
+        // Обогащаем актуальным именем из employees
+        const actualName = getEmployeeNameByPhone(data.phone);
+        if (actualName) {
+          data.employeeName = actualName;
+        }
+
         points.push(data);
       }
 
@@ -84,21 +114,12 @@ module.exports = function setupRecountPointsAPI(app) {
         const newPoints = {
           id: `rp_${Date.now()}`,
           employeeId: normalizedPhone,
-          employeeName: '',
+          employeeName: getEmployeeNameByPhone(normalizedPhone) || '',
           phone: normalizedPhone,
           points: settings.defaultPoints,
           updatedAt: new Date().toISOString(),
           updatedBy: null
         };
-
-        // Пробуем найти имя сотрудника
-        if (fs.existsSync(EMPLOYEES_DIR)) {
-          const empFile = path.join(EMPLOYEES_DIR, `${normalizedPhone}.json`);
-          if (fs.existsSync(empFile)) {
-            const empData = JSON.parse(fs.readFileSync(empFile, 'utf8'));
-            newPoints.employeeName = empData.name || '';
-          }
-        }
 
         fs.writeFileSync(filePath, JSON.stringify(newPoints, null, 2), 'utf8');
         return res.json({ success: true, points: newPoints });
@@ -106,6 +127,12 @@ module.exports = function setupRecountPointsAPI(app) {
 
       const content = fs.readFileSync(filePath, 'utf8');
       const data = JSON.parse(content);
+
+      // Обогащаем актуальным именем из employees
+      const actualName = getEmployeeNameByPhone(normalizedPhone);
+      if (actualName) {
+        data.employeeName = actualName;
+      }
 
       res.json({ success: true, points: data });
     } catch (error) {
