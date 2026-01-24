@@ -5088,17 +5088,43 @@ if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
 
 app.get('/api/shift-reports', async (req, res) => {
   try {
-    const { employeeName, shopAddress, date } = req.query;
+    const { employeeName, shopAddress, date, status, shiftType } = req.query;
     const reports = [];
+
+    // Читаем из daily-файлов (формат scheduler'а: YYYY-MM-DD.json)
     if (fs.existsSync(SHIFT_REPORTS_DIR)) {
       const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
-          const report = JSON.parse(content);
-          if ((!employeeName || report.employeeName === employeeName) &&
-              (!shopAddress || report.shopAddress === shopAddress) &&
-              (!date || report.timestamp?.startsWith(date))) {
+          const filePath = path.join(SHIFT_REPORTS_DIR, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const data = JSON.parse(content);
+
+          // Проверяем формат файла: daily (массив) или individual (объект)
+          if (Array.isArray(data)) {
+            // Daily файл: YYYY-MM-DD.json содержит массив отчётов
+            const fileDate = file.replace('.json', ''); // YYYY-MM-DD
+
+            for (const report of data) {
+              // Фильтрация
+              if (employeeName && report.employeeName !== employeeName) continue;
+              if (shopAddress && report.shopAddress !== shopAddress) continue;
+              if (date && !report.createdAt?.startsWith(date) && fileDate !== date) continue;
+              if (status && report.status !== status) continue;
+              if (shiftType && report.shiftType !== shiftType) continue;
+
+              reports.push(report);
+            }
+          } else if (data.id) {
+            // Individual файл (старый формат): report_id.json содержит один отчёт
+            const report = data;
+            if (employeeName && report.employeeName !== employeeName) continue;
+            if (shopAddress && report.shopAddress !== shopAddress) continue;
+            if (date && !report.timestamp?.startsWith(date) && !report.createdAt?.startsWith(date)) continue;
+            if (status && report.status !== status) continue;
+            if (shiftType && report.shiftType !== shiftType) continue;
+
             reports.push(report);
           }
         } catch (e) {
@@ -5106,6 +5132,14 @@ app.get('/api/shift-reports', async (req, res) => {
         }
       }
     }
+
+    // Сортируем по дате создания (новые первыми)
+    reports.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.timestamp || 0);
+      const dateB = new Date(b.createdAt || b.timestamp || 0);
+      return dateB - dateA;
+    });
+
     res.json({ success: true, reports });
   } catch (error) {
     console.error('Ошибка получения отчетов пересменки:', error);
@@ -5115,22 +5149,103 @@ app.get('/api/shift-reports', async (req, res) => {
 
 app.post('/api/shift-reports', async (req, res) => {
   try {
-    const report = {
-      id: req.body.id || `shift_report_${Date.now()}`,
-      employeeName: req.body.employeeName,
-      employeeId: req.body.employeeId,
-      shopAddress: req.body.shopAddress,
-      shopName: req.body.shopName,
-      timestamp: req.body.timestamp || new Date().toISOString(),
-      createdAt: req.body.createdAt || new Date().toISOString(),
-      answers: req.body.answers || [],
-      status: req.body.status || 'review',
-      shiftType: req.body.shiftType,
-      submittedAt: req.body.submittedAt,
-    };
-    const reportFile = path.join(SHIFT_REPORTS_DIR, `${report.id}.json`);
-    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
-    res.json({ success: true, report });
+    const { getShiftSettings, loadTodayReports, saveTodayReports } = require('./api/shift_automation_scheduler');
+    const settings = getShiftSettings();
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const shiftType = req.body.shiftType;
+    const shopAddress = req.body.shopAddress;
+
+    // Функция для парсинга времени
+    function parseTime(timeStr) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return { hours, minutes };
+    }
+
+    // Функция для проверки активного интервала
+    function isWithinInterval(shiftType) {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentMinutes = currentHour * 60 + currentMinute;
+
+      if (shiftType === 'morning') {
+        const start = parseTime(settings.morningStartTime);
+        const end = parseTime(settings.morningEndTime);
+        const startMinutes = start.hours * 60 + start.minutes;
+        const endMinutes = end.hours * 60 + end.minutes;
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+      } else if (shiftType === 'evening') {
+        const start = parseTime(settings.eveningStartTime);
+        const end = parseTime(settings.eveningEndTime);
+        const startMinutes = start.hours * 60 + start.minutes;
+        const endMinutes = end.hours * 60 + end.minutes;
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+      }
+      return false;
+    }
+
+    // Валидация времени - проверяем активен ли интервал
+    if (shiftType && !isWithinInterval(shiftType)) {
+      console.log(`[ShiftReports] TIME_EXPIRED: ${shiftType} интервал не активен для ${shopAddress}`);
+      return res.status(400).json({
+        success: false,
+        error: 'TIME_EXPIRED',
+        message: 'К сожалению вы не успели пройти пересменку вовремя'
+      });
+    }
+
+    // Загружаем отчёты из daily-файла scheduler'а
+    let reports = loadTodayReports();
+
+    // Ищем pending отчёт для этого магазина и типа смены
+    const pendingIndex = reports.findIndex(r =>
+      r.shopAddress === shopAddress &&
+      r.shiftType === shiftType &&
+      r.status === 'pending'
+    );
+
+    let updatedReport;
+
+    if (pendingIndex !== -1) {
+      // Обновляем существующий pending отчёт
+      const reviewDeadline = new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000);
+
+      reports[pendingIndex] = {
+        ...reports[pendingIndex],
+        employeeName: req.body.employeeName,
+        employeeId: req.body.employeeId,
+        answers: req.body.answers || [],
+        status: 'review',
+        submittedAt: now.toISOString(),
+        reviewDeadline: reviewDeadline.toISOString(),
+        timestamp: req.body.timestamp || now.toISOString(),
+      };
+      updatedReport = reports[pendingIndex];
+      saveTodayReports(reports);
+      console.log(`[ShiftReports] Pending отчёт обновлён до review: ${updatedReport.id}`);
+    } else {
+      // Нет pending отчёта - создаём новый (для обратной совместимости)
+      const report = {
+        id: req.body.id || `shift_report_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        employeeName: req.body.employeeName,
+        employeeId: req.body.employeeId,
+        shopAddress: shopAddress,
+        shopName: req.body.shopName,
+        timestamp: req.body.timestamp || now.toISOString(),
+        createdAt: now.toISOString(),
+        answers: req.body.answers || [],
+        status: 'review',
+        shiftType: shiftType,
+        submittedAt: now.toISOString(),
+        reviewDeadline: new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000).toISOString(),
+      };
+      reports.push(report);
+      saveTodayReports(reports);
+      updatedReport = report;
+      console.log(`[ShiftReports] Новый отчёт создан (без pending): ${report.id}`);
+    }
+
+    res.json({ success: true, report: updatedReport });
   } catch (error) {
     console.error('Ошибка сохранения отчета пересменки:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -5141,13 +5256,49 @@ app.post('/api/shift-reports', async (req, res) => {
 app.put('/api/shift-reports/:id', async (req, res) => {
   try {
     const reportId = decodeURIComponent(req.params.id);
-    const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
+    let existingReport = null;
+    let reportSource = null; // 'daily' or 'individual'
+    let dailyFilePath = null;
+    let dailyReports = null;
+    let reportIndex = -1;
 
-    if (!fs.existsSync(reportFile)) {
+    // 1. Сначала ищем в daily-файлах (формат scheduler'а)
+    if (fs.existsSync(SHIFT_REPORTS_DIR)) {
+      const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
+
+      for (const file of files) {
+        const filePath = path.join(SHIFT_REPORTS_DIR, file);
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          const reports = JSON.parse(content);
+          if (Array.isArray(reports)) {
+            const idx = reports.findIndex(r => r.id === reportId);
+            if (idx !== -1) {
+              existingReport = reports[idx];
+              reportSource = 'daily';
+              dailyFilePath = filePath;
+              dailyReports = reports;
+              reportIndex = idx;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 2. Если не нашли в daily - ищем в individual файлах (старый формат)
+    if (!existingReport) {
+      const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
+      if (fs.existsSync(reportFile)) {
+        existingReport = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+        reportSource = 'individual';
+      }
+    }
+
+    if (!existingReport) {
       return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
 
-    const existingReport = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
     const updatedReport = { ...existingReport, ...req.body };
 
     // If rating is provided and confirmedAt is set, mark as confirmed
@@ -5166,7 +5317,15 @@ app.put('/api/shift-reports/:id', async (req, res) => {
     }
 
     updatedReport.updatedAt = new Date().toISOString();
-    fs.writeFileSync(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+
+    // Сохраняем в соответствующий формат
+    if (reportSource === 'daily' && dailyReports && reportIndex !== -1) {
+      dailyReports[reportIndex] = updatedReport;
+      fs.writeFileSync(dailyFilePath, JSON.stringify(dailyReports, null, 2), 'utf8');
+    } else {
+      const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
+      fs.writeFileSync(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+    }
 
     console.log(`Отчет пересменки обновлен: ${reportId}, статус: ${updatedReport.status}, оценка: ${updatedReport.rating}`);
     res.json({ success: true, report: updatedReport });

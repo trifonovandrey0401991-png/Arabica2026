@@ -194,8 +194,8 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       _allReports = reportsMap.values.toList();
       _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      // Вычисляем непройденные пересменки на клиенте
-      _calculatePendingShifts();
+      // Загружаем pending отчёты с сервера (вместо локального вычисления)
+      await _loadPendingReportsFromServer();
       // Вычисляем сводные данные за 30 дней
       _calculateSummaryItems();
 
@@ -204,7 +204,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     } catch (e) {
       Logger.error('Ошибка загрузки отчетов', e);
       _allReports = await ShiftReport.loadAllReports();
-      _calculatePendingShifts();
+      _calculatePendingShiftsFallback();
       _calculateSummaryItems();
       setState(() {});
     }
@@ -221,93 +221,196 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     return 'evening';
   }
 
-  /// Вычислить непройденные пересменки за сегодня (магазин + смена)
-  void _calculatePendingShifts() {
+  /// Определить текущий активный тип смены (morning/evening) или null если вне интервала
+  String? _getCurrentShiftType() {
+    if (_shiftSettings == null) return null;
+
+    final now = TimeOfDay.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+
+    // Парсим время из настроек
+    TimeOfDay parseTime(String timeStr) {
+      final parts = timeStr.split(':');
+      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    }
+
+    final morningStart = parseTime(_shiftSettings!.morningStartTime ?? '07:00');
+    final morningEnd = parseTime(_shiftSettings!.morningEndTime ?? '13:00');
+    final eveningStart = parseTime(_shiftSettings!.eveningStartTime ?? '14:00');
+    final eveningEnd = parseTime(_shiftSettings!.eveningEndTime ?? '23:00');
+
+    final morningStartMinutes = morningStart.hour * 60 + morningStart.minute;
+    final morningEndMinutes = morningEnd.hour * 60 + morningEnd.minute;
+    final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
+    final eveningEndMinutes = eveningEnd.hour * 60 + eveningEnd.minute;
+
+    if (currentMinutes >= morningStartMinutes && currentMinutes < morningEndMinutes) {
+      return 'morning';
+    } else if (currentMinutes >= eveningStartMinutes && currentMinutes < eveningEndMinutes) {
+      return 'evening';
+    }
+
+    return null; // Вне интервалов
+  }
+
+  /// Загрузить pending отчёты с сервера (вместо локального вычисления)
+  Future<void> _loadPendingReportsFromServer() async {
     final today = DateTime.now();
     final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-    // Получаем дедлайны из настроек или используем значения по умолчанию
+    // Получаем дедлайны из настроек
     final morningDeadline = _shiftSettings?.morningEndTime ?? '13:00';
     final eveningDeadline = _shiftSettings?.eveningEndTime ?? '23:00';
 
-    Logger.info('Вычисление непройденных пересменок. Магазинов: ${_allShops.length}');
-    Logger.info('Дедлайны: утро до $morningDeadline, вечер до $eveningDeadline');
+    Logger.info('Загрузка pending отчётов с сервера...');
 
-    // Собираем пройденные пересменки за сегодня (ключ: магазин_смена)
+    try {
+      // Определяем текущий активный интервал
+      final currentShiftType = _getCurrentShiftType();
+      Logger.info('Текущий активный интервал: $currentShiftType');
+
+      // Загружаем pending отчёты с сервера для текущего интервала
+      List<ShiftReport> serverPending = [];
+      if (currentShiftType != null) {
+        serverPending = await ShiftReportService.getPendingReports(shiftType: currentShiftType);
+        Logger.success('Загружено pending с сервера: ${serverPending.length}');
+      }
+
+      // Также загружаем failed отчёты (статус 'failed') за сегодня
+      final allTodayReports = await ShiftReportService.getReports(date: today);
+      final failedReports = allTodayReports.where((r) => r.status == 'failed').toList();
+      Logger.info('Failed отчётов за сегодня: ${failedReports.length}');
+
+      // Конвертируем pending отчёты в PendingShiftReport
+      _pendingShifts = serverPending.map((report) {
+        final isMorning = report.shiftType == 'morning';
+        return PendingShiftReport(
+          id: report.id,
+          shopAddress: report.shopAddress,
+          shiftType: report.shiftType ?? 'morning',
+          shiftLabel: isMorning ? 'Утро' : 'Вечер',
+          date: todayStr,
+          deadline: isMorning ? morningDeadline : eveningDeadline,
+          status: 'pending',
+          createdAt: report.createdAt,
+        );
+      }).toList();
+
+      // Конвертируем failed отчёты в PendingShiftReport (для вкладки "Не прошли")
+      _failedShifts = failedReports.map((report) {
+        final isMorning = report.shiftType == 'morning';
+        return PendingShiftReport(
+          id: report.id,
+          shopAddress: report.shopAddress,
+          shiftType: report.shiftType ?? 'morning',
+          shiftLabel: isMorning ? 'Утро' : 'Вечер',
+          date: todayStr,
+          deadline: isMorning ? morningDeadline : eveningDeadline,
+          status: 'failed',
+          createdAt: report.createdAt,
+        );
+      }).toList();
+
+      // Обновляем счётчик бейджа
+      if (_tabController.index != 1) {
+        _failedShiftsBadgeCount = _failedShifts.length;
+      }
+
+      // Сортируем
+      _pendingShifts.sort((a, b) {
+        final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+        if (shopCompare != 0) return shopCompare;
+        return a.shiftType == 'morning' ? -1 : 1;
+      });
+
+      _failedShifts.sort((a, b) {
+        final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+        if (shopCompare != 0) return shopCompare;
+        return a.shiftType == 'morning' ? -1 : 1;
+      });
+
+      Logger.info('Ожидающих пересменок (с сервера): ${_pendingShifts.length}');
+      Logger.info('Просроченных пересменок (с сервера): ${_failedShifts.length}');
+    } catch (e) {
+      Logger.error('Ошибка загрузки pending с сервера, используем fallback', e);
+      _calculatePendingShiftsFallback();
+    }
+  }
+
+  /// Fallback: локальное вычисление pending (если сервер недоступен)
+  void _calculatePendingShiftsFallback() {
+    final today = DateTime.now();
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final morningDeadline = _shiftSettings?.morningEndTime ?? '13:00';
+    final eveningDeadline = _shiftSettings?.eveningEndTime ?? '23:00';
+
+    Logger.info('[Fallback] Вычисление непройденных пересменок. Магазинов: ${_allShops.length}');
+
+    // Собираем пройденные пересменки за сегодня
     final completedShifts = <String>{};
     for (final report in _allReports) {
       final reportDate = '${report.createdAt.year}-${report.createdAt.month.toString().padLeft(2, '0')}-${report.createdAt.day.toString().padLeft(2, '0')}';
-      if (reportDate == todayStr) {
-        final shiftType = _getShiftType(report.createdAt);
+      if (reportDate == todayStr && (report.status == 'review' || report.status == 'confirmed')) {
+        final shiftType = report.shiftType ?? _getShiftType(report.createdAt);
         final key = '${report.shopAddress.toLowerCase().trim()}_$shiftType';
         completedShifts.add(key);
-        Logger.debug('Найден отчёт за сегодня: ${report.shopAddress} - $shiftType');
       }
     }
 
-    Logger.info('Пройденных пересменок сегодня: ${completedShifts.length}');
-
-    // Формируем списки: ожидающие и просроченные
+    // Определяем текущий активный интервал
+    final currentShiftType = _getCurrentShiftType();
     final allPending = <PendingShiftReport>[];
 
     for (final shop in _allShops) {
       final shopKey = shop.address.toLowerCase().trim();
 
-      // Утренняя смена
-      final morningKey = '${shopKey}_morning';
-      if (!completedShifts.contains(morningKey)) {
-        allPending.add(PendingShiftReport(
-          id: 'pending_${shop.id}_morning',
-          shopAddress: shop.address,
-          shiftType: 'morning',
-          shiftLabel: 'Утро',
-          date: todayStr,
-          deadline: morningDeadline,
-          status: 'pending',
-          createdAt: today,
-        ));
-      }
-
-      // Вечерняя смена
-      final eveningKey = '${shopKey}_evening';
-      if (!completedShifts.contains(eveningKey)) {
-        allPending.add(PendingShiftReport(
-          id: 'pending_${shop.id}_evening',
-          shopAddress: shop.address,
-          shiftType: 'evening',
-          shiftLabel: 'Вечер',
-          date: todayStr,
-          deadline: eveningDeadline,
-          status: 'pending',
-          createdAt: today,
-        ));
+      // Только для текущего активного интервала
+      if (currentShiftType == 'morning') {
+        final morningKey = '${shopKey}_morning';
+        if (!completedShifts.contains(morningKey)) {
+          allPending.add(PendingShiftReport(
+            id: 'pending_${shop.id}_morning',
+            shopAddress: shop.address,
+            shiftType: 'morning',
+            shiftLabel: 'Утро',
+            date: todayStr,
+            deadline: morningDeadline,
+            status: 'pending',
+            createdAt: today,
+          ));
+        }
+      } else if (currentShiftType == 'evening') {
+        final eveningKey = '${shopKey}_evening';
+        if (!completedShifts.contains(eveningKey)) {
+          allPending.add(PendingShiftReport(
+            id: 'pending_${shop.id}_evening',
+            shopAddress: shop.address,
+            shiftType: 'evening',
+            shiftLabel: 'Вечер',
+            date: todayStr,
+            deadline: eveningDeadline,
+            status: 'pending',
+            createdAt: today,
+          ));
+        }
       }
     }
 
-    // Разделяем на ожидающие и просроченные
-    _pendingShifts = allPending.where((p) => !p.isOverdue).toList();
-    _failedShifts = allPending.where((p) => p.isOverdue).toList();
+    _pendingShifts = allPending;
+    _failedShifts = []; // В fallback режиме failed загружаем отдельно
 
-    // Обновляем счётчик бейджа (только если не на вкладке "Не прошли")
     if (_tabController.index != 1) {
       _failedShiftsBadgeCount = _failedShifts.length;
     }
 
-    // Сортируем: сначала по магазину, потом по смене
-    _pendingShifts.sort((a, b) {
-      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
-      if (shopCompare != 0) return shopCompare;
-      return a.shiftType == 'morning' ? -1 : 1;
-    });
+    _pendingShifts.sort((a, b) => a.shopAddress.compareTo(b.shopAddress));
+    Logger.info('[Fallback] Ожидающих: ${_pendingShifts.length}');
+  }
 
-    _failedShifts.sort((a, b) {
-      final shopCompare = a.shopAddress.compareTo(b.shopAddress);
-      if (shopCompare != 0) return shopCompare;
-      return a.shiftType == 'morning' ? -1 : 1;
-    });
-
-    Logger.info('Ожидающих пересменок: ${_pendingShifts.length}');
-    Logger.info('Просроченных пересменок: ${_failedShifts.length}');
+  /// Устаревший метод для совместимости (теперь вызывает fallback)
+  void _calculatePendingShifts() {
+    _calculatePendingShiftsFallback();
   }
 
   /// Вычислить сводные данные за последние 30 дней

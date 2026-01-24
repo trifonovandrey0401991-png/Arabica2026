@@ -16,11 +16,13 @@ import '../../../core/utils/logger.dart';
 class ShiftQuestionsPage extends StatefulWidget {
   final String employeeName;
   final String shopAddress;
+  final String? shiftType; // 'morning' | 'evening' - тип смены для валидации времени
 
   const ShiftQuestionsPage({
     super.key,
     required this.employeeName,
     required this.shopAddress,
+    this.shiftType,
   });
 
   @override
@@ -385,7 +387,7 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
 
   Future<void> _submitReport() async {
     if (_questions == null) return;
-    
+
     setState(() => _isSubmitting = true);
 
     try {
@@ -409,18 +411,18 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         Logger.debug('   photoPath: ${answer.photoPath}');
         Logger.debug('   photoDriveId: ${answer.photoDriveId}');
         Logger.debug('   referencePhotoUrl: ${answer.referencePhotoUrl}');
-        
+
         if (answer.photoPath != null && answer.photoDriveId == null) {
           try {
             final fileName = '${reportId}_${i}.jpg';
             Logger.info('Загрузка фото сотрудника на сервер: $fileName');
             Logger.debug('   Путь к фото: ${answer.photoPath}');
-            
+
             final driveId = await PhotoUploadService.uploadPhoto(
               answer.photoPath!,
               fileName,
             );
-            
+
             if (driveId != null) {
               Logger.success('Фото сотрудника успешно загружено: $driveId');
               syncedAnswers.add(ShiftAnswer(
@@ -459,13 +461,48 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         createdAt: now,
         answers: syncedAnswers,
         isSynced: true,
+        shiftType: widget.shiftType, // Передаём тип смены для валидации на сервере
       );
 
-      // Сохраняем на сервере
-      final saved = await ShiftReportService.saveReport(report);
+      // Сохраняем на сервере с обработкой TIME_EXPIRED
+      final result = await ShiftReportService.submitReport(report);
 
-      if (!saved) {
-        // Если не удалось сохранить на сервере, сохраняем локально как резерв
+      if (!result.success) {
+        if (result.isTimeExpired) {
+          // Время истекло - показываем диалог и закрываем
+          if (mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(Icons.timer_off, color: Colors.red, size: 28),
+                    const SizedBox(width: 8),
+                    const Text('Время истекло'),
+                  ],
+                ),
+                content: Text(
+                  result.message ?? 'К сожалению вы не успели пройти пересменку вовремя',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Закрыть диалог
+                      Navigator.of(context).popUntil((route) => route.isFirst); // Вернуться на главную
+                    },
+                    child: const Text('Понятно'),
+                  ),
+                ],
+              ),
+            );
+          }
+          return; // Выходим из метода
+        }
+
+        // Другая ошибка - сохраняем локально как резерв
+        Logger.warning('Ошибка сохранения на сервере: ${result.errorType}');
         await ShiftReport.saveReport(report);
       }
 
