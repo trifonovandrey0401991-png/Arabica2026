@@ -13,6 +13,18 @@
 const fs = require('fs');
 const path = require('path');
 
+// Импортируем функции отправки push-уведомлений
+let sendPushNotification = null;
+let sendPushToPhone = null;
+try {
+  const notificationsApi = require('../report_notifications_api');
+  sendPushNotification = notificationsApi.sendPushNotification;
+  sendPushToPhone = notificationsApi.sendPushToPhone;
+  console.log('[ShiftScheduler] Push notifications enabled');
+} catch (e) {
+  console.log('[ShiftScheduler] Push notifications disabled:', e.message);
+}
+
 // Directories
 const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
 const SHOPS_DIR = '/var/www/shops';
@@ -244,7 +256,7 @@ function generatePendingReports(shiftType) {
 // ============================================
 // 2. Check Pending Deadlines (pending → failed)
 // ============================================
-function checkPendingDeadlines() {
+async function checkPendingDeadlines() {
   const now = new Date();
   let reports = loadTodayReports();
   let failedCount = 0;
@@ -281,7 +293,7 @@ function checkPendingDeadlines() {
     saveTodayReports(reports);
 
     // Send push notification to admin about failed reports
-    sendAdminFailedNotification(failedCount, failedShops);
+    await sendAdminFailedNotification(failedCount, failedShops);
   }
 
   return failedCount;
@@ -429,32 +441,55 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
 // ============================================
 // 7. Admin Failed Notification
 // ============================================
-function sendAdminFailedNotification(count, failedShops) {
-  // TODO: Integrate with Firebase push notifications
+async function sendAdminFailedNotification(count, failedShops) {
   const shiftTypes = [...new Set(failedShops.map(s => s.shiftType))];
   const shiftLabel = shiftTypes.includes('morning') ? 'утреннюю' : 'вечернюю';
 
-  console.log(`[ShiftScheduler] 📢 PUSH to Admin: ${count} магазинов не прошли ${shiftLabel} пересменку`);
+  const title = 'Пересменки не пройдены';
+  const body = `${count} магазинов не прошли ${shiftLabel} пересменку`;
 
-  // Integration point for push notifications
-  // sendPushToAdmins({
-  //   title: 'Пересменки не пройдены',
-  //   body: `${count} магазинов не прошли ${shiftLabel} пересменку`
-  // });
+  console.log(`[ShiftScheduler] 📢 PUSH to Admin: ${body}`);
+
+  // Отправляем реальное push-уведомление админам
+  if (sendPushNotification) {
+    try {
+      await sendPushNotification(title, body, {
+        type: 'shift_failed',
+        count: String(count),
+        shiftType: shiftTypes.join(','),
+      });
+      console.log('[ShiftScheduler] Push notification sent successfully');
+    } catch (e) {
+      console.error('[ShiftScheduler] Error sending push notification:', e.message);
+    }
+  } else {
+    console.log('[ShiftScheduler] Push notifications not available');
+  }
 }
 
 // ============================================
 // 8. Employee Confirmed Notification
 // ============================================
-function sendEmployeeConfirmedNotification(employeePhone, rating) {
-  // TODO: Integrate with Firebase push notifications
-  console.log(`[ShiftScheduler] 📢 PUSH to ${employeePhone}: Ваш отчёт оценён на ${rating} баллов`);
+async function sendEmployeeConfirmedNotification(employeePhone, rating) {
+  const title = 'Пересменка оценена';
+  const body = `Ваш отчёт оценён на ${rating} баллов`;
 
-  // Integration point for push notifications
-  // sendPushToEmployee(employeePhone, {
-  //   title: 'Пересменка - оценка',
-  //   body: `Ваш отчёт оценён на ${rating} баллов`
-  // });
+  console.log(`[ShiftScheduler] 📢 PUSH to ${employeePhone}: ${body}`);
+
+  // Отправляем реальное push-уведомление сотруднику
+  if (sendPushToPhone && employeePhone) {
+    try {
+      await sendPushToPhone(employeePhone, title, body, {
+        type: 'shift_confirmed',
+        rating: String(rating),
+      });
+      console.log(`[ShiftScheduler] Push notification sent to ${employeePhone}`);
+    } catch (e) {
+      console.error(`[ShiftScheduler] Error sending push to ${employeePhone}:`, e.message);
+    }
+  } else {
+    console.log('[ShiftScheduler] Push to employee not available');
+  }
 }
 
 // ============================================
@@ -480,7 +515,7 @@ function cleanupFailedReports() {
 // ============================================
 // 10. Main Check Function
 // ============================================
-function runScheduledChecks() {
+async function runScheduledChecks() {
   const now = new Date();
   const moscow = getMoscowTime();
   const settings = getShiftSettings();
@@ -511,7 +546,7 @@ function runScheduledChecks() {
   }
 
   // Check pending deadlines
-  const failed = checkPendingDeadlines();
+  const failed = await checkPendingDeadlines();
   if (failed > 0) {
     console.log(`[ShiftScheduler] ${failed} reports marked as failed`);
   }
