@@ -53,6 +53,7 @@ const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
 const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
+const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
@@ -310,37 +311,109 @@ app.post('/upload-photo', upload.single('file'), (req, res) => {
   }
 });
 
-// Эндпоинт для создания отчета пересчета
+// Эндпоинт для создания отчета пересчета с TIME_EXPIRED валидацией
 app.post('/api/recount-reports', async (req, res) => {
   try {
     console.log('POST /api/recount-reports:', JSON.stringify(req.body).substring(0, 200));
-    
-    // Сохраняем отчет локально в файл
+
+    // ============================================
+    // TIME_EXPIRED валидация (аналогично пересменкам)
+    // ============================================
+    const shiftType = req.body.shiftType; // 'morning' | 'evening'
+
+    if (shiftType) {
+      // Загружаем настройки пересчёта
+      const settingsFile = '/var/www/points-settings/recount_points_settings.json';
+      let recountSettings = {
+        morningStartTime: '08:00',
+        morningEndTime: '14:00',
+        eveningStartTime: '14:00',
+        eveningEndTime: '23:00'
+      };
+
+      if (fs.existsSync(settingsFile)) {
+        try {
+          const settingsData = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+          recountSettings = { ...recountSettings, ...settingsData };
+        } catch (e) {
+          console.log('Ошибка чтения настроек пересчёта, используем дефолтные');
+        }
+      }
+
+      // Получаем московское время (UTC+3)
+      const now = new Date();
+      const moscowTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+      const currentHours = moscowTime.getUTCHours();
+      const currentMinutes = moscowTime.getUTCMinutes();
+      const currentTimeMinutes = currentHours * 60 + currentMinutes;
+
+      // Определяем дедлайн для текущей смены
+      let deadlineTime;
+      if (shiftType === 'morning') {
+        deadlineTime = recountSettings.morningEndTime;
+      } else {
+        deadlineTime = recountSettings.eveningEndTime;
+      }
+
+      // Парсим время дедлайна
+      const [deadlineHours, deadlineMinutes] = deadlineTime.split(':').map(Number);
+      const deadlineTimeMinutes = deadlineHours * 60 + deadlineMinutes;
+
+      // Проверяем, не просрочено ли время
+      if (currentTimeMinutes > deadlineTimeMinutes) {
+        console.log(`⏰ TIME_EXPIRED: Текущее время ${currentHours}:${currentMinutes}, дедлайн ${deadlineTime}`);
+        return res.status(400).json({
+          success: false,
+          error: 'TIME_EXPIRED',
+          message: 'К сожалению вы не успели пройти пересчёт вовремя'
+        });
+      }
+    }
+
+    // ============================================
+    // Сохранение отчёта
+    // ============================================
     const reportsDir = '/var/www/recount-reports';
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
-    
+
     const reportId = req.body.id || `report_${Date.now()}`;
     // Санитизируем имя файла: заменяем недопустимые символы на подчеркивания
     const sanitizedId = reportId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const reportFile = path.join(reportsDir, `${sanitizedId}.json`);
-    
-    // Сохраняем отчет с временной меткой
+
+    // Загружаем настройки для вычисления reviewDeadline
+    let adminReviewTimeout = 2; // часы по умолчанию
+    const settingsFile = '/var/www/points-settings/recount_points_settings.json';
+    if (fs.existsSync(settingsFile)) {
+      try {
+        const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        adminReviewTimeout = settings.adminReviewTimeout || 2;
+      } catch (e) {}
+    }
+
+    const now = new Date();
+    const reviewDeadline = new Date(now.getTime() + adminReviewTimeout * 60 * 60 * 1000);
+
+    // Сохраняем отчет с временной меткой и статусом
     const reportData = {
       ...req.body,
-      createdAt: new Date().toISOString(),
-      savedAt: new Date().toISOString()
+      status: 'review', // Отчёт сразу идёт на проверку
+      createdAt: now.toISOString(),
+      savedAt: now.toISOString(),
+      submittedAt: now.toISOString(),
+      reviewDeadline: reviewDeadline.toISOString()
     };
-    
+
     try {
       fs.writeFileSync(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
-      console.log('Отчет сохранен:', reportFile);
+      console.log('✅ Отчет пересчёта сохранен:', reportFile);
     } catch (writeError) {
       console.error('Ошибка записи файла:', writeError);
       throw writeError;
     }
-    
+
     // Пытаемся также отправить в Google Apps Script (опционально)
     try {
       const response = await fetch(SCRIPT_URL, {
@@ -362,17 +435,18 @@ app.post('/api/recount-reports', async (req, res) => {
     } catch (scriptError) {
       console.log('Google Apps Script не поддерживает это действие, отчет сохранен локально');
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Отчет успешно сохранен',
-      reportId: reportId
+      reportId: reportId,
+      report: reportData
     });
   } catch (error) {
     console.error('Ошибка создания отчета:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ошибка при сохранении отчета' 
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при сохранении отчета'
     });
   }
 });
@@ -6996,6 +7070,9 @@ setupProductQuestionsPenaltyScheduler();
 
 // Start shift automation scheduler (auto-create reports, check deadlines, penalties)
 startShiftAutomationScheduler();
+
+// Start recount automation scheduler (auto-create reports, check deadlines, penalties)
+startRecountAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);

@@ -331,6 +331,9 @@ class RecountPointsSettings {
   // Штраф за пропуск пересчёта
   final double missedPenalty;      // -3 балла по умолчанию
 
+  // Время на проверку админом (в часах: 1, 2 или 3)
+  final int adminReviewTimeout;    // Дефолт: 2 часа
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -347,6 +350,7 @@ class RecountPointsSettings {
     this.eveningStartTime = '14:00',
     this.eveningEndTime = '23:00',
     this.missedPenalty = -3.0,
+    this.adminReviewTimeout = 2,
     this.createdAt,
     this.updatedAt,
   });
@@ -365,6 +369,7 @@ class RecountPointsSettings {
       eveningStartTime: json['eveningStartTime'] ?? '14:00',
       eveningEndTime: json['eveningEndTime'] ?? '23:00',
       missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
+      adminReviewTimeout: json['adminReviewTimeout'] ?? 2,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -387,6 +392,7 @@ class RecountPointsSettings {
     'eveningStartTime': eveningStartTime,
     'eveningEndTime': eveningEndTime,
     'missedPenalty': missedPenalty,
+    'adminReviewTimeout': adminReviewTimeout,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -402,6 +408,7 @@ class RecountPointsSettings {
       eveningStartTime: '14:00',
       eveningEndTime: '23:00',
       missedPenalty: -3.0,
+      adminReviewTimeout: 2,
     );
   }
 
@@ -430,6 +437,7 @@ class RecountPointsSettings {
     String? eveningStartTime,
     String? eveningEndTime,
     double? missedPenalty,
+    int? adminReviewTimeout,
   }) {
     return RecountPointsSettings(
       id: id,
@@ -444,6 +452,7 @@ class RecountPointsSettings {
       eveningStartTime: eveningStartTime ?? this.eveningStartTime,
       eveningEndTime: eveningEndTime ?? this.eveningEndTime,
       missedPenalty: missedPenalty ?? this.missedPenalty,
+      adminReviewTimeout: adminReviewTimeout ?? this.adminReviewTimeout,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

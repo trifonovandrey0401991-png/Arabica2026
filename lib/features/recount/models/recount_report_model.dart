@@ -1,5 +1,15 @@
 import 'recount_answer_model.dart';
 
+/// Статусы отчёта пересчёта (аналог ShiftReportStatus)
+enum RecountReportStatus {
+  pending,    // Ожидает прохождения (создан scheduler-ом)
+  review,     // На проверке у админа (сотрудник отправил)
+  confirmed,  // Подтверждён (админ оценил)
+  failed,     // Не прошёл вовремя (дедлайн истёк)
+  rejected,   // Админ не проверил вовремя (таймаут проверки)
+  expired,    // Просрочен (устаревший статус для совместимости)
+}
+
 /// Модель отчета пересчета
 class RecountReport {
   final String id;
@@ -13,9 +23,16 @@ class RecountReport {
   final int? adminRating; // Оценка админа (1-10)
   final String? adminName; // Имя админа, поставившего оценку
   final DateTime? ratedAt; // Время оценки
-  final String? status; // "pending" | "rated" | "expired"
+  final String? status; // "pending" | "review" | "confirmed" | "failed" | "rejected" | "expired"
   final DateTime? expiredAt; // Когда был просрочен
   final List<Map<String, dynamic>>? photoVerifications; // Верификация фото
+
+  // Новые поля (аналогично ShiftReport)
+  final String? shiftType; // "morning" | "evening" - тип смены
+  final DateTime? submittedAt; // Время отправки отчёта
+  final DateTime? reviewDeadline; // Дедлайн проверки админом
+  final DateTime? failedAt; // Время перехода в статус failed
+  final DateTime? rejectedAt; // Время авто-отклонения (админ не проверил)
 
   RecountReport({
     required this.id,
@@ -32,6 +49,11 @@ class RecountReport {
     this.status,
     this.expiredAt,
     this.photoVerifications,
+    this.shiftType,
+    this.submittedAt,
+    this.reviewDeadline,
+    this.failedAt,
+    this.rejectedAt,
   });
 
   /// Генерировать уникальный ID
@@ -53,10 +75,53 @@ class RecountReport {
   }
 
   /// Проверить, оценен ли отчет
-  bool get isRated => adminRating != null;
+  bool get isRated => adminRating != null || status == 'confirmed';
 
   /// Проверить, просрочен ли отчет
   bool get isExpired => status == 'expired' || expiredAt != null;
+
+  /// Проверить, ожидает ли прохождения
+  bool get isPending => status == 'pending';
+
+  /// Проверить, на проверке ли у админа
+  bool get isInReview => status == 'review';
+
+  /// Проверить, не прошёл ли вовремя
+  bool get isFailed => status == 'failed' || failedAt != null;
+
+  /// Проверить, отклонён ли (админ не проверил вовремя)
+  bool get isRejected => status == 'rejected' || rejectedAt != null;
+
+  /// Проверить, подтверждён ли
+  bool get isConfirmed => status == 'confirmed';
+
+  /// Получить статус как enum
+  RecountReportStatus get statusEnum {
+    switch (status) {
+      case 'pending':
+        return RecountReportStatus.pending;
+      case 'review':
+        return RecountReportStatus.review;
+      case 'confirmed':
+        return RecountReportStatus.confirmed;
+      case 'failed':
+        return RecountReportStatus.failed;
+      case 'rejected':
+        return RecountReportStatus.rejected;
+      case 'expired':
+        return RecountReportStatus.expired;
+      case 'rated': // Для обратной совместимости
+        return RecountReportStatus.confirmed;
+      default:
+        // Определяем статус по полям
+        if (adminRating != null) return RecountReportStatus.confirmed;
+        if (failedAt != null) return RecountReportStatus.failed;
+        if (rejectedAt != null) return RecountReportStatus.rejected;
+        if (expiredAt != null) return RecountReportStatus.expired;
+        if (submittedAt != null) return RecountReportStatus.review;
+        return RecountReportStatus.pending;
+    }
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -73,6 +138,11 @@ class RecountReport {
     'status': status,
     'expiredAt': expiredAt?.toIso8601String(),
     'photoVerifications': photoVerifications,
+    'shiftType': shiftType,
+    'submittedAt': submittedAt?.toIso8601String(),
+    'reviewDeadline': reviewDeadline?.toIso8601String(),
+    'failedAt': failedAt?.toIso8601String(),
+    'rejectedAt': rejectedAt?.toIso8601String(),
   };
 
   factory RecountReport.fromJson(Map<String, dynamic> json) {
@@ -135,21 +205,40 @@ class RecountReport {
       photoVerifications: (json['photoVerifications'] as List<dynamic>?)
           ?.map((v) => v as Map<String, dynamic>)
           .toList(),
+      shiftType: json['shiftType']?.toString(),
+      submittedAt: json['submittedAt'] != null && json['submittedAt'] is String
+          ? DateTime.tryParse(json['submittedAt'])
+          : null,
+      reviewDeadline: json['reviewDeadline'] != null && json['reviewDeadline'] is String
+          ? DateTime.tryParse(json['reviewDeadline'])
+          : null,
+      failedAt: json['failedAt'] != null && json['failedAt'] is String
+          ? DateTime.tryParse(json['failedAt'])
+          : null,
+      rejectedAt: json['rejectedAt'] != null && json['rejectedAt'] is String
+          ? DateTime.tryParse(json['rejectedAt'])
+          : null,
     );
   }
 
-  /// Создать копию с обновленной оценкой
+  /// Создать копию с обновленными полями
   RecountReport copyWith({
     int? adminRating,
     String? adminName,
     DateTime? ratedAt,
     String? status,
     DateTime? expiredAt,
+    String? shiftType,
+    DateTime? submittedAt,
+    DateTime? reviewDeadline,
+    DateTime? failedAt,
+    DateTime? rejectedAt,
   }) {
     return RecountReport(
       id: id,
       employeeName: employeeName,
       shopAddress: shopAddress,
+      employeePhone: employeePhone,
       startedAt: startedAt,
       completedAt: completedAt,
       duration: duration,
@@ -159,6 +248,12 @@ class RecountReport {
       ratedAt: ratedAt ?? this.ratedAt,
       status: status ?? this.status,
       expiredAt: expiredAt ?? this.expiredAt,
+      photoVerifications: photoVerifications,
+      shiftType: shiftType ?? this.shiftType,
+      submittedAt: submittedAt ?? this.submittedAt,
+      reviewDeadline: reviewDeadline ?? this.reviewDeadline,
+      failedAt: failedAt ?? this.failedAt,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
     );
   }
 }

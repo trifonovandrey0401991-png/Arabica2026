@@ -13,6 +13,23 @@ import '../../../core/services/html_stub.dart' as html if (dart.library.html) 'd
 
 // http и dart:convert оставлены для веб-специфичных запросов (dart:html HttpRequest)
 
+/// Результат отправки отчёта пересчёта (аналог ShiftSubmitResult)
+class RecountSubmitResult {
+  final bool success;
+  final String? errorType; // 'TIME_EXPIRED' или другие
+  final String? message;
+  final RecountReport? report;
+
+  RecountSubmitResult({
+    required this.success,
+    this.errorType,
+    this.message,
+    this.report,
+  });
+
+  bool get isTimeExpired => errorType == 'TIME_EXPIRED';
+}
+
 /// Сервис для работы с пересчетом товаров
 class RecountService {
   static const String baseEndpoint = ApiConstants.recountReportsEndpoint;
@@ -160,6 +177,106 @@ class RecountService {
     } catch (e) {
       Logger.error('❌ Ошибка создания отчета', e);
       return false;
+    }
+  }
+
+  /// Отправить отчет пересчёта на сервер с обработкой TIME_EXPIRED
+  /// Аналог ShiftReportService.submitReport()
+  static Future<RecountSubmitResult> submitReport(RecountReport report) async {
+    Logger.debug('📤 Отправка отчета пересчёта: ${report.id}');
+
+    try {
+      // Загружаем фото на сервер, если есть
+      final List<RecountAnswer> answersWithPhotos = [];
+      for (var answer in report.answers) {
+        if (answer.photoPath != null && answer.photoRequired) {
+          try {
+            final fileName = 'recount_${report.id}_${report.answers.indexOf(answer)}.jpg';
+            final photoUrl = await PhotoUploadService.uploadPhoto(
+              answer.photoPath!,
+              fileName,
+            );
+
+            if (photoUrl != null) {
+              answersWithPhotos.add(RecountAnswer(
+                question: answer.question,
+                grade: answer.grade,
+                answer: answer.answer,
+                quantity: answer.quantity,
+                programBalance: answer.programBalance,
+                actualBalance: answer.actualBalance,
+                difference: answer.difference,
+                photoPath: answer.photoPath,
+                photoUrl: photoUrl,
+                photoRequired: answer.photoRequired,
+              ));
+            } else {
+              answersWithPhotos.add(answer);
+            }
+          } catch (e) {
+            Logger.error('⚠️ Ошибка загрузки фото', e);
+            answersWithPhotos.add(answer);
+          }
+        } else {
+          answersWithPhotos.add(answer);
+        }
+      }
+
+      // Создаем отчет с загруженными фото
+      final reportWithPhotos = RecountReport(
+        id: report.id,
+        employeeName: report.employeeName,
+        shopAddress: report.shopAddress,
+        employeePhone: report.employeePhone,
+        startedAt: report.startedAt,
+        completedAt: report.completedAt,
+        duration: report.duration,
+        answers: answersWithPhotos,
+        shiftType: report.shiftType,
+        submittedAt: DateTime.now(),
+      );
+
+      final response = await http
+          .post(
+            Uri.parse('${ApiConstants.serverUrl}$baseEndpoint'),
+            headers: ApiConstants.jsonHeaders,
+            body: jsonEncode(reportWithPhotos.toJson()),
+          )
+          .timeout(ApiConstants.longTimeout);
+
+      final result = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (result['success'] == true) {
+          Logger.debug('✅ Отчёт пересчёта успешно отправлен');
+          // Отправляем push-уведомление
+          await _sendPushNotification(report);
+          return RecountSubmitResult(
+            success: true,
+            report: result['report'] != null
+                ? RecountReport.fromJson(result['report'])
+                : null,
+          );
+        }
+      }
+
+      // Обработка ошибок
+      final errorType = result['error']?.toString();
+      final message = result['message']?.toString();
+
+      Logger.warning('⚠️ Ошибка отправки: $errorType - $message');
+      return RecountSubmitResult(
+        success: false,
+        errorType: errorType,
+        message: message ?? 'Ошибка сохранения отчёта',
+      );
+    } catch (e) {
+      Logger.error('❌ Ошибка сети при отправке отчёта', e);
+      return RecountSubmitResult(
+        success: false,
+        errorType: 'NETWORK_ERROR',
+        message: 'Ошибка сети: $e',
+      );
     }
   }
 
