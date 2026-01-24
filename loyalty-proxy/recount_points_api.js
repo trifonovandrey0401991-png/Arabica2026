@@ -254,11 +254,11 @@ module.exports = function setupRecountPointsAPI(app) {
   });
 
   // =====================================================
-  // PUT /api/recount-settings - обновить общие настройки
+  // PUT/POST /api/recount-settings - обновить общие настройки
   // =====================================================
-  app.put('/api/recount-settings', async (req, res) => {
+  const updateRecountSettings = async (req, res) => {
     try {
-      console.log('📤 PUT /api/recount-settings');
+      console.log(`📤 ${req.method} /api/recount-settings`);
 
       const {
         defaultPoints,
@@ -291,8 +291,8 @@ module.exports = function setupRecountPointsAPI(app) {
       if (settings.maxPhotos < settings.basePhotos) {
         return res.status(400).json({ success: false, error: 'maxPhotos должен быть >= basePhotos' });
       }
-      if (settings.questionsCount < 5 || settings.questionsCount > 100) {
-        return res.status(400).json({ success: false, error: 'questionsCount должен быть от 5 до 100' });
+      if (settings.questionsCount < 1 || settings.questionsCount > 500) {
+        return res.status(400).json({ success: false, error: 'questionsCount должен быть от 1 до 500' });
       }
 
       const settingsDir = path.dirname(RECOUNT_SETTINGS_FILE);
@@ -308,7 +308,11 @@ module.exports = function setupRecountPointsAPI(app) {
       console.error('❌ Ошибка обновления настроек:', error);
       res.status(500).json({ success: false, error: error.message });
     }
-  });
+  };
+
+  // Регистрируем PUT и POST handlers
+  app.put('/api/recount-settings', updateRecountSettings);
+  app.post('/api/recount-settings', updateRecountSettings);
 
   // =====================================================
   // PATCH /api/recount-reports/:id/verify-photo - верифицировать фото
