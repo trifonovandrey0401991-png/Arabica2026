@@ -305,25 +305,7 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
-  /**
-   * GET /api/master-catalog/:id
-   * Получить продукт по ID
-   */
-  app.get('/api/master-catalog/:id', (req, res) => {
-    try {
-      const products = loadProducts();
-      const product = products.find((p) => p.id === req.params.id);
-
-      if (!product) {
-        return res.status(404).json({ success: false, error: 'Продукт не найден' });
-      }
-
-      res.json({ success: true, product });
-    } catch (error) {
-      console.error('[Master Catalog API] Ошибка получения продукта:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
+  // ВАЖНО: Маршрут /:id перенесён в конец файла, чтобы не перехватывать конкретные пути
 
   /**
    * POST /api/master-catalog
@@ -940,6 +922,29 @@ function setupMasterCatalogAPI(app) {
       res.json({ success: true, products: trainingProducts });
     } catch (error) {
       console.error('[Master Catalog API] Ошибка получения товаров для обучения:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ ПАРАМЕТРИЗОВАННЫЕ МАРШРУТЫ (ДОЛЖНЫ БЫТЬ В КОНЦЕ!) ============
+
+  /**
+   * GET /api/master-catalog/:id
+   * Получить продукт по ID
+   * ВАЖНО: Этот маршрут должен быть ПОСЛЕ всех конкретных путей!
+   */
+  app.get('/api/master-catalog/:id', (req, res) => {
+    try {
+      const products = loadProducts();
+      const product = products.find((p) => p.id === req.params.id);
+
+      if (!product) {
+        return res.status(404).json({ success: false, error: 'Продукт не найден' });
+      }
+
+      res.json({ success: true, product });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка получения продукта:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
