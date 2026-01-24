@@ -5371,8 +5371,25 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
       return;
     }
 
-    if (!foundEmployee.fcmToken) {
-      console.log(`[ShiftNotification] У сотрудника ${foundEmployee.name} нет FCM токена`);
+    if (!foundEmployee.phone) {
+      console.log(`[ShiftNotification] У сотрудника ${foundEmployee.name} нет телефона`);
+      return;
+    }
+
+    // Get FCM token from /var/www/fcm-tokens/{phone}.json
+    const normalizedPhone = foundEmployee.phone.replace(/[\s+]/g, '');
+    const tokenFile = path.join('/var/www/fcm-tokens', `${normalizedPhone}.json`);
+
+    if (!fs.existsSync(tokenFile)) {
+      console.log(`[ShiftNotification] FCM токен не найден для телефона ${normalizedPhone}`);
+      return;
+    }
+
+    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const fcmToken = tokenData.token;
+
+    if (!fcmToken) {
+      console.log(`[ShiftNotification] Пустой FCM токен для ${normalizedPhone}`);
       return;
     }
 
@@ -5382,12 +5399,12 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
         title: 'Пересменка оценена',
         body: `Ваш отчёт оценён на ${rating} баллов`
       },
-      token: foundEmployee.fcmToken
+      token: fcmToken
     };
 
     if (admin && admin.messaging) {
       await admin.messaging().send(message);
-      console.log(`[ShiftNotification] ✅ Push отправлен ${foundEmployee.name}: оценка ${rating}`);
+      console.log(`[ShiftNotification] ✅ Push отправлен ${foundEmployee.name} (${normalizedPhone}): оценка ${rating}`);
     } else {
       console.log('[ShiftNotification] Firebase Admin не инициализирован');
     }
