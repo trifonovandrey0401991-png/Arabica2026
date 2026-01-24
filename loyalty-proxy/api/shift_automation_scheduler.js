@@ -191,6 +191,12 @@ function generatePendingReports(shiftType) {
     ? settings.morningEndTime
     : settings.eveningEndTime;
 
+  // Вычисляем deadline в UTC (deadline - это московское время, конвертируем в UTC)
+  const { hours, minutes } = parseTime(deadlineTime);
+  const deadlineMoscow = new Date(`${today}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+  // Вычитаем 3 часа чтобы получить UTC
+  const deadlineUtc = new Date(deadlineMoscow.getTime() - MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
+
   for (const shop of shops) {
     // Check if pending report already exists for this shop/shift
     const exists = reports.some(r =>
@@ -209,7 +215,7 @@ function generatePendingReports(shiftType) {
       shiftType: shiftType,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      deadline: `${today}T${deadlineTime}:00`,
+      deadline: deadlineUtc.toISOString(), // Сохраняем в UTC формате
       employeeName: null,
       employeeId: null,
       answers: [],
