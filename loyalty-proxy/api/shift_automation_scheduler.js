@@ -26,6 +26,22 @@ const STATE_FILE = path.join(SHIFT_AUTOMATION_STATE_DIR, 'state.json');
 const PENALTY_CATEGORY = 'shift_missed_penalty';
 const PENALTY_CATEGORY_NAME = 'Пропущенная пересменка';
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
+const MOSCOW_OFFSET_HOURS = 3; // UTC+3 для московского времени
+
+// ============================================
+// Moscow Time Helper
+// ============================================
+function getMoscowTime() {
+  const now = new Date();
+  // Создаём дату в московском времени (UTC+3)
+  const moscowTime = new Date(now.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
+  return moscowTime;
+}
+
+function getMoscowDateString() {
+  const moscow = getMoscowTime();
+  return moscow.toISOString().split('T')[0]; // YYYY-MM-DD в московском времени
+}
 
 // ============================================
 // Helper: Load JSON file safely
@@ -102,7 +118,7 @@ function getAllShops() {
 // Reports Management
 // ============================================
 function getTodayReportsFile() {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const today = getMoscowDateString(); // YYYY-MM-DD в московском времени
   return path.join(SHIFT_REPORTS_DIR, `${today}.json`);
 }
 
@@ -123,25 +139,36 @@ function parseTime(timeStr) {
 }
 
 function isTimeReached(timeStr) {
-  const now = new Date();
+  const moscow = getMoscowTime();
   const { hours, minutes } = parseTime(timeStr);
   const targetHour = hours;
   const targetMinute = minutes;
 
-  return now.getHours() > targetHour ||
-         (now.getHours() === targetHour && now.getMinutes() >= targetMinute);
+  // Получаем часы и минуты в московском времени
+  const moscowHours = moscow.getUTCHours();
+  const moscowMinutes = moscow.getUTCMinutes();
+
+  return moscowHours > targetHour ||
+         (moscowHours === targetHour && moscowMinutes >= targetMinute);
 }
 
 function isSameDay(date1, date2) {
-  return date1.toISOString().split('T')[0] === date2.toISOString().split('T')[0];
+  // Конвертируем обе даты в московское время для сравнения
+  const moscow1 = new Date(date1.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
+  const moscow2 = new Date(date2.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
+  return moscow1.toISOString().split('T')[0] === moscow2.toISOString().split('T')[0];
 }
 
 function getDeadlineTime(timeStr) {
-  const now = new Date();
+  // Создаём дедлайн в московском времени
   const { hours, minutes } = parseTime(timeStr);
-  const deadline = new Date(now);
-  deadline.setHours(hours, minutes, 0, 0);
-  return deadline;
+  const today = getMoscowDateString();
+  // Формируем строку дедлайна в московском времени и конвертируем обратно в UTC
+  const deadlineStr = `${today}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+  // Парсим как московское время, получаем UTC
+  const deadlineLocal = new Date(deadlineStr);
+  // Вычитаем смещение чтобы получить UTC время
+  return new Date(deadlineLocal.getTime() - MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
 }
 
 // ============================================
@@ -150,7 +177,7 @@ function getDeadlineTime(timeStr) {
 function generatePendingReports(shiftType) {
   const settings = getShiftSettings();
   const shops = getAllShops();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getMoscowDateString();
 
   if (shops.length === 0) {
     console.log(`[ShiftScheduler] No shops found, skipping ${shiftType} report generation`);
@@ -295,7 +322,7 @@ function checkReviewTimeouts() {
 // ============================================
 function assignPenaltyFromSchedule(report) {
   const settings = getShiftSettings();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
 
   // Load work schedule for this month
@@ -356,7 +383,7 @@ function assignPenaltyDirect(report) {
 // ============================================
 function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
+  const today = getMoscowDateString();
   const monthKey = today.substring(0, 7);
 
   const penalty = {
@@ -449,10 +476,11 @@ function cleanupFailedReports() {
 // ============================================
 function runScheduledChecks() {
   const now = new Date();
+  const moscow = getMoscowTime();
   const settings = getShiftSettings();
   const state = loadState();
 
-  console.log(`\n[${now.toISOString()}] ShiftScheduler: Running checks...`);
+  console.log(`\n[${now.toISOString()}] ShiftScheduler: Running checks... (Moscow time: ${moscow.toISOString()})`);
 
   // Check if morning window started
   if (isTimeReached(settings.morningStartTime) && !isTimeReached(settings.morningEndTime)) {
@@ -488,8 +516,10 @@ function runScheduledChecks() {
     console.log(`[ShiftScheduler] ${rejected} reports auto-rejected (admin timeout)`);
   }
 
-  // Cleanup at 23:59
-  if (now.getHours() === 23 && now.getMinutes() >= 59) {
+  // Cleanup at 23:59 Moscow time
+  const moscowHours = moscow.getUTCHours();
+  const moscowMinutes = moscow.getUTCMinutes();
+  if (moscowHours === 23 && moscowMinutes >= 59) {
     const lastCleanup = state.lastCleanup;
     if (!lastCleanup || !isSameDay(new Date(lastCleanup), now)) {
       cleanupFailedReports();
@@ -506,9 +536,12 @@ function runScheduledChecks() {
 // ============================================
 function startShiftAutomationScheduler() {
   const settings = getShiftSettings();
+  const moscow = getMoscowTime();
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Shift Automation Scheduler started');
+  console.log(`  - Timezone: Moscow (UTC+3)`);
+  console.log(`  - Current Moscow time: ${moscow.toISOString()}`);
   console.log(`  - Morning window: ${settings.morningStartTime} - ${settings.morningEndTime}`);
   console.log(`  - Evening window: ${settings.eveningStartTime} - ${settings.eveningEndTime}`);
   console.log(`  - Admin review timeout: ${settings.adminReviewTimeout} hours`);
@@ -598,5 +631,7 @@ module.exports = {
   confirmReport,
   loadTodayReports,
   saveTodayReports,
-  getShiftSettings
+  getShiftSettings,
+  getMoscowTime,
+  getMoscowDateString
 };
