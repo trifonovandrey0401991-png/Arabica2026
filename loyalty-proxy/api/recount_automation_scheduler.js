@@ -106,15 +106,30 @@ function saveState(state) {
 // Settings Loading
 // ============================================
 function getRecountSettings() {
-  const settingsFile = path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json');
-  return loadJsonFile(settingsFile, {
+  const defaults = {
     morningStartTime: '08:00',
     morningEndTime: '14:00',
     eveningStartTime: '14:00',
     eveningEndTime: '23:00',
     missedPenalty: -3,
     adminReviewTimeout: 2 // hours
-  });
+  };
+
+  const settingsFile = path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json');
+  const loaded = loadJsonFile(settingsFile, {});
+
+  // Объединяем загруженные настройки с defaults
+  return {
+    ...defaults,
+    ...loaded,
+    // Гарантируем что критичные поля всегда имеют значение
+    morningStartTime: loaded.morningStartTime || defaults.morningStartTime,
+    morningEndTime: loaded.morningEndTime || defaults.morningEndTime,
+    eveningStartTime: loaded.eveningStartTime || defaults.eveningStartTime,
+    eveningEndTime: loaded.eveningEndTime || defaults.eveningEndTime,
+    missedPenalty: loaded.missedPenalty !== undefined ? loaded.missedPenalty : defaults.missedPenalty,
+    adminReviewTimeout: loaded.adminReviewTimeout || defaults.adminReviewTimeout
+  };
 }
 
 // ============================================
