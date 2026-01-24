@@ -6,8 +6,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Импортируем функции мастер-каталога для детекции новых кодов
-const { addPendingCode, isCodeInMasterCatalog } = require('./master_catalog_api');
+// Импортируем функции мастер-каталога для детекции новых кодов и подстановки названий
+const { addPendingCode, isCodeInMasterCatalog, getMasterNameByBarcode } = require('./master_catalog_api');
 const { notifyAdminsAboutNewCodes } = require('./master_catalog_notifications');
 
 // Директория для хранения товаров магазинов
@@ -125,6 +125,26 @@ function saveShopProducts(shopId, products) {
     console.error(`[Shop Products API] Ошибка сохранения товаров магазина ${shopId}:`, error);
     return false;
   }
+}
+
+/**
+ * Подставить названия из мастер-каталога для массива товаров
+ * Если товар найден в мастер-каталоге - используется название оттуда
+ * Сохраняет оригинальное название в поле originalName
+ */
+function enrichProductsWithMasterNames(products) {
+  return products.map((p) => {
+    const masterName = getMasterNameByBarcode(p.kod);
+    if (masterName && masterName !== p.name) {
+      return {
+        ...p,
+        originalName: p.name, // Сохраняем оригинальное название из DBF
+        name: masterName, // Используем название из мастер-каталога
+        fromMasterCatalog: true, // Флаг что название из мастер-каталога
+      };
+    }
+    return p;
+  });
 }
 
 /**
@@ -272,11 +292,12 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/:shopId
    * Получить все товары магазина
+   * Названия подставляются из мастер-каталога если товар там найден
    */
   app.get('/api/shop-products/:shopId', (req, res) => {
     try {
       const { shopId } = req.params;
-      const { group, hasStock } = req.query;
+      const { group, hasStock, useMasterNames } = req.query;
 
       const shopData = loadShopProducts(shopId);
       let products = shopData.products || [];
@@ -291,6 +312,11 @@ function setupShopProductsAPI(app) {
         products = products.filter((p) => p.stock > 0);
       } else if (hasStock === 'false') {
         products = products.filter((p) => p.stock === 0);
+      }
+
+      // Подставляем названия из мастер-каталога (по умолчанию включено)
+      if (useMasterNames !== 'false') {
+        products = enrichProductsWithMasterNames(products);
       }
 
       res.json({
@@ -309,6 +335,7 @@ function setupShopProductsAPI(app) {
   /**
    * GET /api/shop-products/:shopId/for-recount
    * Получить товары для пересчёта (только с остатком > 0)
+   * Названия ВСЕГДА подставляются из мастер-каталога если товар там найден
    */
   app.get('/api/shop-products/:shopId/for-recount', (req, res) => {
     try {
@@ -323,7 +350,10 @@ function setupShopProductsAPI(app) {
         products = products.filter((p) => p.group === group);
       }
 
-      // Сортировка по названию
+      // Подставляем названия из мастер-каталога (для пересчёта ОБЯЗАТЕЛЬНО)
+      products = enrichProductsWithMasterNames(products);
+
+      // Сортировка по названию (уже с подставленными названиями)
       products.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
       res.json({

@@ -149,6 +149,27 @@ function isCodeInMasterCatalog(kod) {
 }
 
 /**
+ * Получить название товара из мастер-каталога по barcode (kod)
+ * Возвращает название из мастер-каталога или null если не найден
+ */
+function getMasterNameByBarcode(barcode) {
+  if (!barcode) return null;
+  const products = loadProducts();
+  const product = products.find((p) => p.barcode === barcode);
+  return product ? product.name : null;
+}
+
+/**
+ * Получить товар из мастер-каталога по barcode (kod)
+ * Возвращает весь объект товара или null если не найден
+ */
+function getMasterProductByBarcode(barcode) {
+  if (!barcode) return null;
+  const products = loadProducts();
+  return products.find((p) => p.barcode === barcode) || null;
+}
+
+/**
  * Проверить, есть ли код в pending
  */
 function isCodeInPending(kod) {
@@ -963,4 +984,6 @@ module.exports = {
   addPendingCode,
   isCodeInMasterCatalog,
   isCodeInPending,
+  getMasterNameByBarcode,
+  getMasterProductByBarcode,
 };
