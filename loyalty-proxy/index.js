@@ -57,6 +57,8 @@ const { startRecountAutomationScheduler } = require("./api/recount_automation_sc
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
+const { setupShopProductsAPI } = require("./api/shop_products_api");
+const { setupMasterCatalogAPI } = require("./api/master_catalog_api");
 
 // Rate Limiting - защита от DDoS и brute-force атак
 let rateLimit;
@@ -7243,6 +7245,8 @@ setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
 setupZReportAPI(app);
 setupCigaretteVisionAPI(app);
 setupDataCleanupAPI(app);
+setupShopProductsAPI(app);
+setupMasterCatalogAPI(app);
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();

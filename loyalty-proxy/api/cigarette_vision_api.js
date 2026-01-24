@@ -264,7 +264,7 @@ function setupCigaretteVisionAPI(app) {
   // Обновить настройки
   app.put('/api/cigarette-vision/settings', (req, res) => {
     try {
-      const { requiredRecountPhotos, requiredDisplayPhotos } = req.body;
+      const { requiredRecountPhotos, requiredDisplayPhotos, catalogSource } = req.body;
 
       const newSettings = {};
       if (requiredRecountPhotos !== undefined) {
@@ -272,6 +272,13 @@ function setupCigaretteVisionAPI(app) {
       }
       if (requiredDisplayPhotos !== undefined) {
         newSettings.requiredDisplayPhotos = Math.max(1, Math.min(50, parseInt(requiredDisplayPhotos) || 10));
+      }
+      // Источник каталога: recount-questions или master-catalog
+      if (catalogSource !== undefined) {
+        const validSources = ['recount-questions', 'master-catalog'];
+        if (validSources.includes(catalogSource)) {
+          newSettings.catalogSource = catalogSource;
+        }
       }
 
       const updated = cigaretteVision.updateSettings(newSettings);

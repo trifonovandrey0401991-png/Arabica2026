@@ -1,0 +1,15 @@
+{
+  "shopId": "shop_1",
+  "shopName": "ТЦ Весна",
+  "dbfPath": "C:\\Database\\tov.dbf",
+  "serverUrl": "https://arabica26.ru",
+  "apiKey": "arabica-sync-2025",
+  "syncIntervalSeconds": 60,
+  "encoding": "cp866",
+  "fields": {
+    "kod": "KOD",
+    "name": "NAME",
+    "group": "ГРУППА",
+    "stock": "ОСТ"
+  }
+}

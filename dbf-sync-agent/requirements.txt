@@ -1,0 +1,2 @@
+# DBF Sync Agent Requirements
+requests>=2.25.0

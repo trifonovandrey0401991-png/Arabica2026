@@ -26,6 +26,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
   int _requiredRecountPhotos = 10;
   int _requiredDisplayPhotos = 10;
+  String _catalogSource = 'recount-questions';
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         if (settings != null) {
           _requiredRecountPhotos = settings.requiredRecountPhotos;
           _requiredDisplayPhotos = settings.requiredDisplayPhotos;
+          _catalogSource = settings.catalogSource;
         }
         _isLoading = false;
       });
@@ -56,6 +58,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
     final updated = await CigaretteVisionService.updateSettings(
       requiredRecountPhotos: _requiredRecountPhotos,
       requiredDisplayPhotos: _requiredDisplayPhotos,
+      catalogSource: _catalogSource,
     );
 
     if (mounted) {
@@ -90,6 +93,10 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         : ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // Секция источника каталога
+              _buildCatalogSourceSection(),
+              const SizedBox(height: 24),
+
               // Секция настроек количества фото
               _buildSettingsSection(),
               const SizedBox(height: 24),
@@ -115,6 +122,175 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
     }
 
     return content;
+  }
+
+  Widget _buildCatalogSourceSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.folder_copy, color: Color(0xFF004D40)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Источник каталога товаров',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Выберите откуда брать список товаров для обучения',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Опция: Вопросы пересчёта (текущий)
+            _buildCatalogSourceOption(
+              value: 'recount-questions',
+              title: 'Вопросы пересчёта',
+              subtitle: 'Текущий каталог (список из пересчёта)',
+              icon: Icons.quiz,
+              iconColor: Colors.blue,
+            ),
+            const SizedBox(height: 8),
+
+            // Опция: Мастер-каталог (новый)
+            _buildCatalogSourceOption(
+              value: 'master-catalog',
+              title: 'Мастер-каталог',
+              subtitle: 'Единый каталог для всех магазинов (в разработке)',
+              icon: Icons.inventory_2,
+              iconColor: Colors.orange,
+              isDisabled: true, // Пока недоступен
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCatalogSourceOption({
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    bool isDisabled = false,
+  }) {
+    final isSelected = _catalogSource == value;
+
+    return InkWell(
+      onTap: isDisabled
+          ? null
+          : () {
+              setState(() => _catalogSource = value);
+            },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF004D40)
+                : (isDisabled ? Colors.grey[300]! : Colors.grey[400]!),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          color: isSelected
+              ? const Color(0xFF004D40).withOpacity(0.05)
+              : (isDisabled ? Colors.grey[100] : null),
+        ),
+        child: Row(
+          children: [
+            // Radio button
+            Radio<String>(
+              value: value,
+              groupValue: _catalogSource,
+              onChanged: isDisabled
+                  ? null
+                  : (val) {
+                      if (val != null) setState(() => _catalogSource = val);
+                    },
+              activeColor: const Color(0xFF004D40),
+            ),
+
+            // Icon
+            Icon(
+              icon,
+              color: isDisabled ? Colors.grey : iconColor,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+
+            // Title and subtitle
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDisabled ? Colors.grey : null,
+                        ),
+                      ),
+                      if (isDisabled) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Скоро',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.orange[800],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDisabled ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Checkmark for selected
+            if (isSelected)
+              const Icon(
+                Icons.check_circle,
+                color: Color(0xFF004D40),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSettingsSection() {

@@ -307,6 +307,7 @@ class CigaretteVisionService {
   static Future<TrainingSettings?> updateSettings({
     int? requiredRecountPhotos,
     int? requiredDisplayPhotos,
+    String? catalogSource,
   }) async {
     try {
       final body = <String, dynamic>{};
@@ -315,6 +316,9 @@ class CigaretteVisionService {
       }
       if (requiredDisplayPhotos != null) {
         body['requiredDisplayPhotos'] = requiredDisplayPhotos;
+      }
+      if (catalogSource != null) {
+        body['catalogSource'] = catalogSource;
       }
 
       final response = await http.put(
@@ -372,18 +376,30 @@ class CigaretteVisionService {
 class TrainingSettings {
   final int requiredRecountPhotos;
   final int requiredDisplayPhotos;
+  /// Источник каталога товаров:
+  /// - "recount-questions" - текущий каталог (вопросы пересчёта)
+  /// - "master-catalog" - единый мастер-каталог (новый)
+  final String catalogSource;
 
   TrainingSettings({
     required this.requiredRecountPhotos,
     required this.requiredDisplayPhotos,
+    this.catalogSource = 'recount-questions',
   });
 
   factory TrainingSettings.fromJson(Map<String, dynamic> json) {
     return TrainingSettings(
       requiredRecountPhotos: json['requiredRecountPhotos'] ?? 10,
       requiredDisplayPhotos: json['requiredDisplayPhotos'] ?? 10,
+      catalogSource: json['catalogSource'] ?? 'recount-questions',
     );
   }
+
+  /// Проверка: используется ли текущий каталог (вопросы пересчёта)
+  bool get useRecountQuestions => catalogSource == 'recount-questions';
+
+  /// Проверка: используется ли мастер-каталог
+  bool get useMasterCatalog => catalogSource == 'master-catalog';
 }
 
 /// Ответ с образцами

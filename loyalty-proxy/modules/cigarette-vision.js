@@ -22,6 +22,10 @@ const IMAGES_DIR = path.join(DATA_DIR, 'cigarette-training-images');
 const DEFAULT_SETTINGS = {
   requiredRecountPhotos: 10,  // Крупный план пачки (10 шаблонов)
   requiredDisplayPhotos: 10,  // Фото выкладки
+  // Источник каталога товаров:
+  // "recount-questions" - текущий каталог (вопросы пересчёта)
+  // "master-catalog" - единый мастер-каталог (новый)
+  catalogSource: 'recount-questions',
 };
 
 // Кэш настроек
