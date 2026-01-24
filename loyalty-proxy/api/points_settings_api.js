@@ -81,6 +81,8 @@ const DEFAULT_RECOUNT_POINTS_SETTINGS = {
   eveningEndTime: '23:00',     // Дедлайн вечернего пересчёта
   // Штраф за пропуск пересчёта
   missedPenalty: -3,           // Баллы за пропуск
+  // Время на проверку админом (в часах: 1-24)
+  adminReviewTimeout: 2,       // Дефолт: 2 часа
   createdAt: null,
   updatedAt: null
 };
@@ -586,7 +588,7 @@ function setupPointsSettingsAPI(app) {
       const {
         minPoints, zeroThreshold, maxPoints,
         morningStartTime, morningEndTime, eveningStartTime, eveningEndTime,
-        missedPenalty
+        missedPenalty, adminReviewTimeout
       } = req.body;
 
       // Validation
@@ -638,6 +640,7 @@ function setupPointsSettingsAPI(app) {
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
       if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
 
