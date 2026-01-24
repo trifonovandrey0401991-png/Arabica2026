@@ -5338,36 +5338,58 @@ app.put('/api/shift-reports/:id', async (req, res) => {
 // Helper function to send push notification when shift report is confirmed
 async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
   try {
-    // Find employee by ID or name to get FCM token
-    const employeesFile = '/var/www/employees/employees.json';
-    if (!fs.existsSync(employeesFile)) return;
+    console.log(`[ShiftNotification] Поиск сотрудника: ${employeeIdentifier}`);
 
-    const employeesData = JSON.parse(fs.readFileSync(employeesFile, 'utf8'));
-    const employees = employeesData.employees || [];
+    // Find employee in individual files (employee_*.json)
+    const employeesDir = '/var/www/employees';
+    if (!fs.existsSync(employeesDir)) {
+      console.log('[ShiftNotification] Директория сотрудников не найдена');
+      return;
+    }
 
-    const employee = employees.find(e =>
-      e.id === employeeIdentifier ||
-      e.name === employeeIdentifier ||
-      e.phone === employeeIdentifier
-    );
+    const files = fs.readdirSync(employeesDir).filter(f => f.startsWith('employee_') && f.endsWith('.json'));
+    let foundEmployee = null;
 
-    if (!employee || !employee.fcmToken) {
-      console.log(`[ShiftNotification] Сотрудник ${employeeIdentifier} не найден или нет FCM токена`);
+    for (const file of files) {
+      try {
+        const filePath = path.join(employeesDir, file);
+        const employee = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+        if (employee.id === employeeIdentifier ||
+            employee.name === employeeIdentifier ||
+            employee.phone === employeeIdentifier) {
+          foundEmployee = employee;
+          break;
+        }
+      } catch (e) {
+        // Skip invalid files
+      }
+    }
+
+    if (!foundEmployee) {
+      console.log(`[ShiftNotification] Сотрудник ${employeeIdentifier} не найден`);
+      return;
+    }
+
+    if (!foundEmployee.fcmToken) {
+      console.log(`[ShiftNotification] У сотрудника ${foundEmployee.name} нет FCM токена`);
       return;
     }
 
     // Send via Firebase
     const message = {
       notification: {
-        title: 'Пересменка - оценка',
+        title: 'Пересменка оценена',
         body: `Ваш отчёт оценён на ${rating} баллов`
       },
-      token: employee.fcmToken
+      token: foundEmployee.fcmToken
     };
 
     if (admin && admin.messaging) {
       await admin.messaging().send(message);
-      console.log(`[ShiftNotification] ✅ Push отправлен ${employee.name}: оценка ${rating}`);
+      console.log(`[ShiftNotification] ✅ Push отправлен ${foundEmployee.name}: оценка ${rating}`);
+    } else {
+      console.log('[ShiftNotification] Firebase Admin не инициализирован');
     }
   } catch (error) {
     console.error('[ShiftNotification] Ошибка отправки push:', error.message);
