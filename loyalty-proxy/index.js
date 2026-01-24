@@ -512,6 +512,51 @@ app.get('/api/recount-reports', async (req, res) => {
   }
 });
 
+// Эндпоинт для получения просроченных/failed/rejected отчетов пересчета
+app.get('/api/recount-reports/expired', async (req, res) => {
+  try {
+    console.log('GET /api/recount-reports/expired');
+
+    const reportsDir = '/var/www/recount-reports';
+    const reports = [];
+
+    if (fs.existsSync(reportsDir)) {
+      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+
+      for (const file of files) {
+        try {
+          const filePath = path.join(reportsDir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const report = JSON.parse(content);
+
+          // Фильтруем только просроченные статусы: expired, failed, rejected
+          const status = report.status;
+          if (status === 'expired' || status === 'failed' || status === 'rejected') {
+            reports.push(report);
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e.message);
+        }
+      }
+
+      // Сортируем по дате (новые сначала)
+      reports.sort((a, b) => {
+        const dateA = new Date(a.expiredAt || a.failedAt || a.rejectedAt || a.completedAt || 0);
+        const dateB = new Date(b.expiredAt || b.failedAt || b.rejectedAt || b.completedAt || 0);
+        return dateB - dateA;
+      });
+
+      console.log(`Найдено просроченных отчетов: ${reports.length}`);
+      return res.json({ success: true, reports });
+    }
+
+    res.json({ success: true, reports: [] });
+  } catch (error) {
+    console.error('Ошибка получения просроченных отчетов:', error);
+    res.json({ success: true, reports: [] });
+  }
+});
+
 // Эндпоинт для оценки отчета
 app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
   try {
