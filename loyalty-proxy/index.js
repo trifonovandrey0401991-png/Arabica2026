@@ -48,7 +48,7 @@ const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = r
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
-const { setupPointsSettingsAPI, calculateRecountPoints } = require("./api/points_settings_api");
+const { setupPointsSettingsAPI, calculateRecountPoints, calculateShiftPoints } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
@@ -5493,12 +5493,76 @@ app.put('/api/shift-reports/:id', async (req, res) => {
     // If rating is provided and confirmedAt is set, mark as confirmed
     if (req.body.rating !== undefined && req.body.confirmedAt) {
       updatedReport.status = 'confirmed';
+      const rating = req.body.rating;
+
+      // Начисление баллов эффективности
+      try {
+        // Загружаем настройки баллов пересменки
+        const settingsFile = '/var/www/points-settings/shift_points_settings.json';
+        let settings = {
+          minPoints: -3,
+          zeroThreshold: 7,
+          maxPoints: 1,
+          minRating: 1,
+          maxRating: 10
+        };
+        if (fs.existsSync(settingsFile)) {
+          const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+          settings = { ...settings, ...JSON.parse(settingsContent) };
+        }
+
+        // Рассчитываем баллы эффективности
+        const efficiencyPoints = calculateShiftPoints(rating, settings);
+        console.log(`📊 Пересменка: баллы эффективности: ${efficiencyPoints} (оценка: ${rating})`);
+
+        // Сохраняем баллы в efficiency-penalties
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const today = now.toISOString().split('T')[0];
+        const efficiencyDir = '/var/www/efficiency-penalties';
+
+        if (!fs.existsSync(efficiencyDir)) {
+          fs.mkdirSync(efficiencyDir, { recursive: true });
+        }
+
+        const penaltiesFile = path.join(efficiencyDir, `${monthKey}.json`);
+        let penalties = [];
+        if (fs.existsSync(penaltiesFile)) {
+          penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+        }
+
+        // Проверяем дубликат
+        const sourceId = `shift_rating_${reportId}`;
+        const exists = penalties.some(p => p.sourceId === sourceId);
+        if (!exists) {
+          const employeePhone = existingReport.employeePhone || existingReport.phone;
+          const penalty = {
+            id: `ep_${Date.now()}`,
+            employeeId: employeePhone || existingReport.employeeId,
+            employeeName: existingReport.employeeName,
+            category: 'shift',
+            categoryName: 'Пересменка',
+            date: today,
+            points: Math.round(efficiencyPoints * 100) / 100,
+            reason: `Оценка пересменки: ${rating}/10`,
+            sourceId: sourceId,
+            sourceType: 'shift_report',
+            createdAt: now.toISOString()
+          };
+
+          penalties.push(penalty);
+          fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+          console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
+        }
+      } catch (effError) {
+        console.error('⚠️ Ошибка начисления баллов эффективности:', effError.message);
+      }
 
       // Send push notification to employee
       if (existingReport.employeeId || existingReport.employeeName) {
         try {
           const employeeIdentifier = existingReport.employeeId || existingReport.employeeName;
-          await sendShiftConfirmationNotification(employeeIdentifier, req.body.rating);
+          await sendShiftConfirmationNotification(employeeIdentifier, rating);
         } catch (notifError) {
           console.error('Ошибка отправки уведомления сотруднику:', notifError);
         }
