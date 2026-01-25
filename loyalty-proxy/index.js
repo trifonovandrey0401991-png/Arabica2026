@@ -54,6 +54,7 @@ const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_p
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
 const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
 const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
+const { startRkoAutomationScheduler, getPendingReports: getPendingRkoReports, getFailedReports: getFailedRkoReports } = require("./api/rko_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
@@ -2636,6 +2637,46 @@ function convertAmountToWords(amount) {
   const kopecksStr = kopecks.toString().padStart(2, '0');
   return `${rublesWord} ${rubleWord} ${kopecksStr} копеек`;
 }
+
+// ========== API для pending/failed РКО отчетов ==========
+
+// Получить pending РКО отчеты
+app.get('/api/rko/pending', (req, res) => {
+  try {
+    console.log('📋 GET /api/rko/pending');
+    const reports = getPendingRkoReports();
+    res.json({
+      success: true,
+      items: reports,
+      count: reports.length
+    });
+  } catch (error) {
+    console.error('Ошибка получения pending РКО:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении pending РКО'
+    });
+  }
+});
+
+// Получить failed РКО отчеты
+app.get('/api/rko/failed', (req, res) => {
+  try {
+    console.log('📋 GET /api/rko/failed');
+    const reports = getFailedRkoReports();
+    res.json({
+      success: true,
+      items: reports,
+      count: reports.length
+    });
+  } catch (error) {
+    console.error('Ошибка получения failed РКО:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении failed РКО'
+    });
+  }
+});
 
 // Endpoint для редактора координат
 app.get('/rko_coordinates_editor.html', (req, res) => {
@@ -7256,6 +7297,9 @@ startShiftAutomationScheduler();
 
 // Start recount automation scheduler (auto-create reports, check deadlines, penalties)
 startRecountAutomationScheduler();
+
+// Start RKO automation scheduler (auto-create reports, check deadlines, penalties)
+startRkoAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
