@@ -55,6 +55,7 @@ const { setupOrderTimeoutAPI } = require("./order_timeout_api");
 const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
 const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
 const { startRkoAutomationScheduler, getPendingReports: getPendingRkoReports, getFailedReports: getFailedRkoReports } = require("./api/rko_automation_scheduler");
+const { startShiftHandoverAutomationScheduler, getPendingReports: getPendingShiftHandoverReports, getFailedReports: getFailedShiftHandoverReports, markPendingAsCompleted: markShiftHandoverPendingCompleted, sendAdminNewReportNotification: sendShiftHandoverNewReportNotification } = require("./api/shift_handover_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
@@ -6470,6 +6471,17 @@ app.post('/api/shift-handover-reports', async (req, res) => {
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${report.id}.json`);
     fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
 
+    // Определяем тип смены по времени создания
+    const createdAt = new Date(report.createdAt || Date.now());
+    const createdHour = createdAt.getHours();
+    const shiftType = createdHour >= 14 ? 'evening' : 'morning';
+
+    // Отмечаем pending как выполненный
+    markShiftHandoverPendingCompleted(report.shopAddress, shiftType, report.employeeName);
+
+    // Отправляем push-уведомление админу о новом отчёте
+    sendShiftHandoverNewReportNotification(report);
+
     res.json({ success: true, message: 'Отчет сохранен' });
   } catch (error) {
     console.error('Ошибка сохранения отчета сдачи смены:', error);
@@ -6497,6 +6509,38 @@ app.delete('/api/shift-handover-reports/:id', async (req, res) => {
     res.json({ success: true, message: 'Отчет успешно удален' });
   } catch (error) {
     console.error('Ошибка удаления отчета сдачи смены:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/shift-handover/pending - получить pending отчёты (не сданные смены)
+app.get('/api/shift-handover/pending', (req, res) => {
+  try {
+    const pending = getPendingShiftHandoverReports();
+    console.log(`GET /api/shift-handover/pending: found ${pending.length} pending`);
+    res.json({
+      success: true,
+      items: pending,
+      count: pending.length
+    });
+  } catch (error) {
+    console.error('Error getting pending shift handover reports:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/shift-handover/failed - получить failed отчёты (не в срок)
+app.get('/api/shift-handover/failed', (req, res) => {
+  try {
+    const failed = getFailedShiftHandoverReports();
+    console.log(`GET /api/shift-handover/failed: found ${failed.length} failed`);
+    res.json({
+      success: true,
+      items: failed,
+      count: failed.length
+    });
+  } catch (error) {
+    console.error('Error getting failed shift handover reports:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -7300,6 +7344,9 @@ startRecountAutomationScheduler();
 
 // Start RKO automation scheduler (auto-create reports, check deadlines, penalties)
 startRkoAutomationScheduler();
+
+// Start Shift Handover automation scheduler (auto-create reports, check deadlines, admin timeout)
+startShiftHandoverAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
