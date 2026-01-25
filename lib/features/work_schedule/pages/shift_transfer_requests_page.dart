@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/shift_transfer_model.dart';
 import '../models/work_schedule_model.dart';
 import '../services/shift_transfer_service.dart';
-import '../services/work_schedule_service.dart';
-import '../../shops/models/shop_model.dart';
-import '../../shops/services/shop_service.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница заявок на передачу смен (для раздела Отчёты)
@@ -197,25 +194,86 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'Принимает:',
+                          request.acceptedBy.length > 1 ? 'Принявшие:' : 'Принимает:',
                           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          request.acceptedByEmployeeName ?? 'Неизвестно',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                        if (request.acceptedBy.length > 1)
+                          Text(
+                            '${request.acceptedBy.length} чел.',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.orange[700],
+                            ),
+                            textAlign: TextAlign.right,
+                          )
+                        else
+                          Text(
+                            request.acceptedBy.isNotEmpty
+                                ? request.acceptedBy.first.employeeName
+                                : (request.acceptedByEmployeeName ?? 'Неизвестно'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                        ),
                       ],
                     ),
                   ),
                 ],
               ),
+
+              // Список принявших (если несколько)
+              if (request.acceptedBy.length > 1) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.people, size: 16, color: Colors.orange[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Готовы принять смену:',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...request.acceptedBy.map((accepted) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                accepted.employeeName,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
 
               // Детали смены
@@ -338,6 +396,20 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
   }
 
   Future<void> _approveRequest(ShiftTransferRequest request) async {
+    // Если несколько принявших - показать диалог выбора
+    if (request.acceptedBy.length > 1) {
+      await _showSelectEmployeeDialog(request);
+      return;
+    }
+
+    // Если один принявший - стандартный диалог подтверждения
+    final employeeName = request.acceptedBy.isNotEmpty
+        ? request.acceptedBy.first.employeeName
+        : (request.acceptedByEmployeeName ?? 'Неизвестно');
+    final employeeId = request.acceptedBy.isNotEmpty
+        ? request.acceptedBy.first.employeeId
+        : request.acceptedByEmployeeId;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -345,7 +417,7 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         content: SingleChildScrollView(
           child: Text(
             'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
-            'будет передана от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName}.\n\n'
+            'будет передана от ${request.fromEmployeeName} к $employeeName.\n\n'
             'График будет обновлен автоматически.',
           ),
         ),
@@ -364,7 +436,10 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     );
 
     if (confirmed == true) {
-      final success = await ShiftTransferService.approveRequest(request.id);
+      final success = await ShiftTransferService.approveRequest(
+        request.id,
+        selectedEmployeeId: employeeId,
+      );
       if (success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -388,15 +463,176 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
     }
   }
 
+  /// Диалог выбора сотрудника при множественном принятии
+  Future<void> _showSelectEmployeeDialog(ShiftTransferRequest request) async {
+    final selectedEmployee = await showDialog<AcceptedByEmployee>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выберите сотрудника'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Смену ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
+                'готовы взять ${request.acceptedBy.length} сотрудника.\n\n'
+                'Выберите кому передать смену:',
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 16),
+              ...request.acceptedBy.map((accepted) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: () => Navigator.pop(context, accepted),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.green[100],
+                          child: Icon(Icons.person, color: Colors.green[700], size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            accepted.employeeName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+              const SizedBox(height: 8),
+              Text(
+                'Остальным сотрудникам придёт уведомление об отклонении.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500], fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedEmployee == null) return;
+
+    // Подтверждение выбора
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Подтвердите выбор'),
+        content: SingleChildScrollView(
+          child: Text(
+            'Смена ${request.shiftDate.day}.${request.shiftDate.month} (${request.shiftType.label}) '
+            'будет передана от ${request.fromEmployeeName} к ${selectedEmployee.employeeName}.\n\n'
+            'Остальные ${request.acceptedBy.length - 1} сотрудника получат уведомление об отклонении.\n\n'
+            'График будет обновлен автоматически.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Подтвердить', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await ShiftTransferService.approveRequest(
+        request.id,
+        selectedEmployeeId: selectedEmployee.employeeId,
+      );
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Смена передана ${selectedEmployee.employeeName}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _loadNotifications();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка одобрения заявки'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _declineRequest(ShiftTransferRequest request) async {
+    // Формируем текст о принявших
+    String acceptedText;
+    if (request.acceptedBy.length > 1) {
+      final names = request.acceptedBy.map((a) => a.employeeName).join(', ');
+      acceptedText = '$names (${request.acceptedBy.length} чел.)';
+    } else if (request.acceptedBy.isNotEmpty) {
+      acceptedText = request.acceptedBy.first.employeeName;
+    } else {
+      acceptedText = request.acceptedByEmployeeName ?? 'Неизвестно';
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Отклонить заявку?'),
         content: SingleChildScrollView(
-          child: Text(
-            'Заявка на передачу смены ${request.shiftDate.day}.${request.shiftDate.month} '
-            'от ${request.fromEmployeeName} к ${request.acceptedByEmployeeName} будет отклонена.',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Заявка на передачу смены ${request.shiftDate.day}.${request.shiftDate.month} '
+                'от ${request.fromEmployeeName} будет отклонена.',
+              ),
+              if (request.acceptedBy.length > 1) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Следующие сотрудники получат уведомление об отклонении:',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                ...request.acceptedBy.map((a) => Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 4),
+                  child: Text('• ${a.employeeName}', style: const TextStyle(fontSize: 13)),
+                )),
+              ] else ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Принявший: $acceptedText',
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                ),
+              ],
+            ],
           ),
         ),
         actions: [

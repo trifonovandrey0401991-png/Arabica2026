@@ -2792,17 +2792,24 @@ app.post('/api/attendance/gps-check', async (req, res) => {
       return res.json({ success: true, notified: false, reason: 'missing_params' });
     }
 
-    // 1. Загружаем список магазинов
-    const shopsFile = path.join(SHOPS_DIR, 'shops.json');
+    // 1. Загружаем список магазинов с координатами из отдельных файлов
     let shops = [];
-    if (fs.existsSync(shopsFile)) {
-      try {
-        const data = fs.readFileSync(shopsFile, 'utf8');
-        const parsed = JSON.parse(data);
-        shops = parsed.shops || parsed || [];
-      } catch (e) {
-        console.error('[GPS-Check] Error loading shops:', e.message);
+    try {
+      const shopFiles = fs.readdirSync(SHOPS_DIR).filter(f => f.startsWith('shop_') && f.endsWith('.json'));
+      for (const file of shopFiles) {
+        try {
+          const data = fs.readFileSync(path.join(SHOPS_DIR, file), 'utf8');
+          const shop = JSON.parse(data);
+          if (shop.latitude && shop.longitude) {
+            shops.push(shop);
+          }
+        } catch (e) {
+          console.error(`[GPS-Check] Error loading shop ${file}:`, e.message);
+        }
       }
+      console.log(`[GPS-Check] Loaded ${shops.length} shops with coordinates`);
+    } catch (e) {
+      console.error('[GPS-Check] Error reading shops directory:', e.message);
     }
 
     if (shops.length === 0) {
@@ -2837,6 +2844,27 @@ app.post('/api/attendance/gps-check', async (req, res) => {
     const monthKey = today.substring(0, 7); // YYYY-MM
     const scheduleFile = path.join('/var/www/work-schedules', `${monthKey}.json`);
 
+    // Сначала ищем сотрудника по телефону в базе employees
+    let employeeId = null;
+    const employeesDir = '/var/www/employees';
+    try {
+      const empFiles = fs.readdirSync(employeesDir).filter(f => f.endsWith('.json'));
+      for (const file of empFiles) {
+        try {
+          const empData = JSON.parse(fs.readFileSync(path.join(employeesDir, file), 'utf8'));
+          const empPhone = (empData.phone || '').replace(/\D/g, '');
+          const checkPhone = phone.replace(/\D/g, '');
+          if (empPhone && (empPhone === checkPhone || empPhone.endsWith(checkPhone.slice(-10)) || checkPhone.endsWith(empPhone.slice(-10)))) {
+            employeeId = empData.id;
+            console.log(`[GPS-Check] Found employee: ${empData.name} (${employeeId})`);
+            break;
+          }
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.error('[GPS-Check] Error loading employees:', e.message);
+    }
+
     let hasShiftToday = false;
     if (fs.existsSync(scheduleFile)) {
       try {
@@ -2844,14 +2872,17 @@ app.post('/api/attendance/gps-check', async (req, res) => {
         const schedule = JSON.parse(data);
         const entries = schedule.entries || [];
 
-        // Ищем смену по телефону и адресу магазина
+        // Ищем смену по employeeId и адресу магазина
         hasShiftToday = entries.some(entry => {
-          const entryPhone = (entry.employeePhone || '').replace(/\D/g, '');
-          const checkPhone = phone.replace(/\D/g, '');
-          return (entryPhone === checkPhone || entryPhone.endsWith(checkPhone.slice(-10))) &&
+          const idMatch = employeeId && entry.employeeId === employeeId;
+          return idMatch &&
                  entry.shopAddress === nearestShop.address &&
                  entry.date === today;
         });
+
+        if (hasShiftToday) {
+          console.log(`[GPS-Check] Found shift for ${employeeId} at ${nearestShop.address}`);
+        }
       } catch (e) {
         console.error('[GPS-Check] Error loading schedule:', e.message);
       }

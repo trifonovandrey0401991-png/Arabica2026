@@ -1,0 +1,15 @@
+{
+  "shopId": "shop_1765708207571",
+  "shopName": "Лермонтов,Комсомольская 1 (На Площади)",
+  "dbfPath": "C:\\Users\\Admin\\arabica2026\\TOV.DBF",
+  "serverUrl": "https://arabica26.ru",
+  "apiKey": "arabica-sync-2025",
+  "syncIntervalSeconds": 60,
+  "encoding": "cp1251",
+  "fields": {
+    "kod": "KOD",
+    "name": "NAME",
+    "group": "ГРУППА",
+    "stock": "ОСТ"
+  }
+}

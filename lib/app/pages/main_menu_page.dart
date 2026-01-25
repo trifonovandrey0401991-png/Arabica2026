@@ -30,6 +30,7 @@ import '../../shared/dialogs/notification_required_dialog.dart';
 import 'my_dialogs_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
+import '../services/my_dialogs_counter_service.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -45,6 +46,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   bool _isLoadingRole = false; // Флаг для предотвращения параллельных запросов
   int _totalUnviewedReports = 0; // Счётчик непросмотренных отчётов
   int _unconfirmedWithdrawalsCount = 0; // Счётчик неподтвержденных выемок
+  int _myDialogsUnreadCount = 0; // Счётчик непрочитанных в "Мои диалоги"
 
   @override
   void initState() {
@@ -61,6 +63,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _loadReportCounts();
     // Загружаем счётчик неподтвержденных выемок
     _loadUnconfirmedWithdrawalsCount();
+    // Загружаем счётчик "Мои диалоги"
+    _loadMyDialogsCount();
   }
 
   Future<void> _loadReportCounts() async {
@@ -83,6 +87,19 @@ class _MainMenuPageState extends State<MainMenuPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки счетчика неподтвержденных выемок', e);
+    }
+  }
+
+  Future<void> _loadMyDialogsCount() async {
+    try {
+      final count = await MyDialogsCounterService.getTotalUnreadCount();
+      if (mounted) {
+        setState(() {
+          _myDialogsUnreadCount = count;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счетчика "Мои диалоги"', e);
     }
   }
 
@@ -498,11 +515,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }));
 
     // Мои диалоги - видно всем (клиентам, сотрудникам и админам)
-    items.add(_tileMyDialogs(context, 'Мои диалоги', () {
-      Navigator.push(
+    items.add(_tileMyDialogs(context, 'Мои диалоги', _myDialogsUnreadCount, () async {
+      await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MyDialogsPage()),
       );
+      // Обновляем счётчик после возврата
+      _loadMyDialogsCount();
     }));
 
 
@@ -1243,46 +1262,71 @@ class _MainMenuPageState extends State<MainMenuPage> {
     );
   }
 
-  /// Плитка "Мои диалоги" с кастомной иконкой чата
-  Widget _tileMyDialogs(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
+  /// Плитка "Мои диалоги" с кастомной иконкой чата и счётчиком
+  Widget _tileMyDialogs(BuildContext ctx, String label, int badgeCount, VoidCallback onTap) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ElevatedButton(
+          onPressed: onTap,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.all(12),
+            backgroundColor: Colors.white.withOpacity(0.2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: Colors.white.withOpacity(0.5),
+                width: 1,
+              ),
+            ),
+            elevation: 4,
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/images/chat_icon.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
+        if (badgeCount > 0)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red,
                 borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/chat_icon.png',
-                  fit: BoxFit.contain,
+              ),
+              child: Text(
+                badgeCount > 99 ? '99+' : badgeCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+      ],
     );
   }
 

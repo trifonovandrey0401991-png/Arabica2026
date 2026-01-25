@@ -49,20 +49,26 @@ class ShiftTransferService {
   }
 
   /// Сотрудник отклоняет запрос
-  static Future<bool> rejectRequest(String requestId) async {
-    Logger.debug('Отклонение запроса $requestId');
+  static Future<bool> rejectRequest(String requestId, {String? employeeId, String? employeeName}) async {
+    Logger.debug('Отклонение запроса $requestId сотрудником ${employeeName ?? 'unknown'}');
     return await BaseHttpService.simplePut(
       endpoint: '$baseEndpoint/$requestId/reject',
-      body: {},
+      body: {
+        if (employeeId != null) 'employeeId': employeeId,
+        if (employeeName != null) 'employeeName': employeeName,
+      },
     );
   }
 
   /// Администратор одобряет запрос
-  static Future<bool> approveRequest(String requestId) async {
-    Logger.debug('Одобрение запроса $requestId администратором');
+  /// [selectedEmployeeId] - ID выбранного сотрудника (обязателен если несколько принявших)
+  static Future<bool> approveRequest(String requestId, {String? selectedEmployeeId}) async {
+    Logger.debug('Одобрение запроса $requestId администратором (selected: $selectedEmployeeId)');
     return await BaseHttpService.simplePut(
       endpoint: '$baseEndpoint/$requestId/approve',
-      body: {},
+      body: {
+        if (selectedEmployeeId != null) 'selectedEmployeeId': selectedEmployeeId,
+      },
     );
   }
 

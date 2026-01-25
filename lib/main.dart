@@ -58,12 +58,13 @@ void main() async {
   
   await NotificationService.initialize();
 
-  // Инициализация фоновой проверки GPS (для уведомлений "Я на работе")
+  // Инициализация геозон для уведомлений "Я на работе"
   try {
     await BackgroundGpsService.initialize();
-    Logger.success('BackgroundGpsService инициализирован');
+    await BackgroundGpsService.start();
+    Logger.success('Geofence сервис запущен');
   } catch (e) {
-    Logger.warning('Ошибка инициализации BackgroundGpsService: $e');
+    Logger.warning('Ошибка инициализации Geofence: $e');
   }
 
   // Синхронизация отчетов пересменки в фоне (не блокирует запуск)

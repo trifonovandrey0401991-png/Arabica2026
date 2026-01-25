@@ -298,7 +298,7 @@ class AttendanceReportService {
     final result = await BaseHttpService.getList<PendingAttendanceReport>(
       endpoint: '/api/attendance/pending',
       fromJson: (json) => PendingAttendanceReport.fromJson(json),
-      itemKey: 'items',
+      listKey: 'items',
     );
 
     return result ?? [];
@@ -311,7 +311,7 @@ class AttendanceReportService {
     final result = await BaseHttpService.getList<PendingAttendanceReport>(
       endpoint: '/api/attendance/failed',
       fromJson: (json) => PendingAttendanceReport.fromJson(json),
-      itemKey: 'items',
+      listKey: 'items',
     );
 
     return result ?? [];
@@ -325,6 +325,7 @@ class AttendanceReportService {
       final result = await BaseHttpService.get<Map<String, dynamic>>(
         endpoint: '/api/attendance/can-mark?shopAddress=${Uri.encodeComponent(shopAddress)}',
         fromJson: (json) => json,
+        itemKey: 'result',
       );
 
       return result?['canMark'] == true;

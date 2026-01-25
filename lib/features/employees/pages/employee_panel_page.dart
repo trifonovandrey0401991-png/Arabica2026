@@ -21,6 +21,7 @@ import '../../work_schedule/services/work_schedule_service.dart';
 import '../../work_schedule/models/work_schedule_model.dart';
 import '../../loyalty/pages/loyalty_scanner_page.dart';
 import '../../work_schedule/pages/my_schedule_page.dart';
+import '../../work_schedule/services/shift_transfer_service.dart';
 import '../../product_questions/pages/product_questions_management_page.dart';
 import '../../product_questions/services/product_question_service.dart';
 import '../../efficiency/pages/my_efficiency_page.dart';
@@ -48,6 +49,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
   int _pendingOrdersCount = 0;
   int _unreadProductQuestionsCount = 0;
   int _activeTasksCount = 0;
+  int _shiftTransferUnreadCount = 0;
 
   @override
   void initState() {
@@ -57,6 +59,7 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     _loadPendingOrdersCount();
     _loadUnreadProductQuestionsCount();
     _loadActiveTasksCount();
+    _loadShiftTransferUnreadCount();
   }
 
   Future<void> _loadUserData() async {
@@ -163,6 +166,22 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки счётчика задач', e);
+    }
+  }
+
+  Future<void> _loadShiftTransferUnreadCount() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final count = await ShiftTransferService.getUnreadCount(employeeId);
+        if (mounted) {
+          setState(() {
+            _shiftTransferUnreadCount = count;
+          });
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика пересменок', e);
     }
   }
 
@@ -436,13 +455,16 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
           _buildScheduleButton(
             context,
             title: 'Мой график',
-            onTap: () {
-              Navigator.push(
+            badgeCount: _shiftTransferUnreadCount,
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const MySchedulePage(),
                 ),
               );
+              // Обновить счётчик после возврата
+              _loadShiftTransferUnreadCount();
             },
           ),
           const SizedBox(height: 8),
@@ -1403,10 +1425,11 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
     );
   }
 
-  /// Кнопка "Мой график" с кастомной иконкой
+  /// Кнопка "Мой график" с кастомной иконкой и опциональным бейджем
   Widget _buildScheduleButton(BuildContext context, {
     required String title,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
     return Card(
       elevation: 3,
@@ -1418,14 +1441,46 @@ class _EmployeePanelPageState extends State<EmployeePanelPage> {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/schedule_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
+              // Иконка с бейджем
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/images/schedule_icon.png',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Center(
+                          child: Text(
+                            badgeCount > 9 ? '9+' : badgeCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 16),
               Expanded(

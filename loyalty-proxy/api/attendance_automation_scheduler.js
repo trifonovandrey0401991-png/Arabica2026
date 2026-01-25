@@ -32,6 +32,7 @@ const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
 const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
 const POINTS_SETTINGS_DIR = '/var/www/points-settings';
 const ATTENDANCE_AUTOMATION_STATE_DIR = '/var/www/attendance-automation-state';
+const EMPLOYEES_DIR = '/var/www/employees';
 const STATE_FILE = path.join(ATTENDANCE_AUTOMATION_STATE_DIR, 'state.json');
 
 // Constants
@@ -435,7 +436,7 @@ async function checkPendingDeadlines() {
       console.log(`[AttendanceScheduler] Attendance FAILED: ${report.shopName} (${report.shiftType}), deadline was ${report.deadline}`);
 
       // Assign penalty to employee from work schedule
-      assignPenaltyFromSchedule(report);
+      await assignPenaltyFromSchedule(report);
     }
   }
 
@@ -450,7 +451,7 @@ async function checkPendingDeadlines() {
 // ============================================
 // 3. Assign Penalty from Work Schedule
 // ============================================
-function assignPenaltyFromSchedule(report) {
+async function assignPenaltyFromSchedule(report) {
   const settings = getAttendanceSettings();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7); // YYYY-MM
@@ -476,8 +477,8 @@ function assignPenaltyFromSchedule(report) {
     return;
   }
 
-  // Create penalty
-  createPenalty({
+  // Create penalty and send notification to employee
+  await createPenalty({
     employeeId: entry.employeeId,
     employeeName: entry.employeeName,
     shopAddress: report.shopAddress,
@@ -490,7 +491,7 @@ function assignPenaltyFromSchedule(report) {
 // ============================================
 // 4. Create Penalty
 // ============================================
-function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
+async function createPenalty({ employeeId, employeeName, shopAddress, points, reason, sourceId }) {
   const now = new Date();
   const today = getMoscowDateString();
   const monthKey = today.substring(0, 7);
@@ -527,6 +528,68 @@ function createPenalty({ employeeId, employeeName, shopAddress, points, reason, 
   saveJsonFile(penaltiesFile, penalties);
 
   console.log(`[AttendanceScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
+
+  // Отправляем push-уведомление сотруднику о штрафе
+  await sendEmployeePenaltyNotification(employeeId, employeeName, points, shopAddress);
+}
+
+// ============================================
+// 4.1 Send Penalty Notification to Employee
+// ============================================
+async function sendEmployeePenaltyNotification(employeeId, employeeName, points, shopAddress) {
+  if (!sendPushToPhone) {
+    console.log('[AttendanceScheduler] sendPushToPhone not available, skipping employee notification');
+    return;
+  }
+
+  // Найти телефон сотрудника по employeeId
+  let employeePhone = null;
+  try {
+    if (fs.existsSync(EMPLOYEES_DIR)) {
+      const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const empData = JSON.parse(fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8'));
+          if (empData.id === employeeId && empData.phone) {
+            employeePhone = empData.phone;
+            break;
+          }
+        } catch (e) {
+          // Skip invalid files
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[AttendanceScheduler] Error finding employee phone:', e.message);
+  }
+
+  if (!employeePhone) {
+    console.log(`[AttendanceScheduler] Phone not found for employee ${employeeId}, skipping push notification`);
+    return;
+  }
+
+  // Форматируем адрес магазина (сокращаем если длинный)
+  let shortAddress = shopAddress;
+  if (shopAddress && shopAddress.length > 30) {
+    // Берём название города/населенного пункта
+    const parts = shopAddress.split(',');
+    shortAddress = parts[0].trim();
+  }
+
+  const title = 'Штраф за посещаемость';
+  const body = `Вам начислен штраф ${points} баллов за пропуск смены (${shortAddress})`;
+
+  try {
+    await sendPushToPhone(employeePhone, title, body, {
+      type: 'attendance_penalty',
+      employeeId: employeeId,
+      points: String(points),
+      shopAddress: shopAddress
+    });
+    console.log(`[AttendanceScheduler] Penalty notification sent to ${employeeName} (${employeePhone})`);
+  } catch (e) {
+    console.error(`[AttendanceScheduler] Error sending penalty notification to ${employeePhone}:`, e.message);
+  }
 }
 
 // ============================================

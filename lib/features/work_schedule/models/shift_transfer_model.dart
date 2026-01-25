@@ -2,12 +2,42 @@ import 'work_schedule_model.dart';
 
 /// Статус запроса на передачу смены
 enum ShiftTransferStatus {
-  pending,   // Ожидает ответа сотрудника
-  accepted,  // Сотрудник принял, ждет одобрения админа
-  rejected,  // Сотрудник отклонил
-  approved,  // Админ одобрил, график обновлен
-  declined,  // Админ отклонил
-  expired,   // Истек срок (30 дней)
+  pending,          // Ожидает ответа сотрудника
+  hasAcceptances,   // Есть принявшие, ожидает выбора админа
+  accepted,         // Сотрудник принял (legacy)
+  rejected,         // Сотрудник отклонил
+  approved,         // Админ одобрил, график обновлен
+  declined,         // Админ отклонил
+  expired,          // Истек срок (30 дней)
+}
+
+/// Модель принявшего сотрудника
+class AcceptedByEmployee {
+  final String employeeId;
+  final String employeeName;
+  final DateTime acceptedAt;
+
+  AcceptedByEmployee({
+    required this.employeeId,
+    required this.employeeName,
+    required this.acceptedAt,
+  });
+
+  factory AcceptedByEmployee.fromJson(Map<String, dynamic> json) {
+    return AcceptedByEmployee(
+      employeeId: json['employeeId'] ?? '',
+      employeeName: json['employeeName'] ?? '',
+      acceptedAt: DateTime.parse(json['acceptedAt']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'employeeId': employeeId,
+      'employeeName': employeeName,
+      'acceptedAt': acceptedAt.toIso8601String(),
+    };
+  }
 }
 
 extension ShiftTransferStatusExtension on ShiftTransferStatus {
@@ -15,6 +45,8 @@ extension ShiftTransferStatusExtension on ShiftTransferStatus {
     switch (this) {
       case ShiftTransferStatus.pending:
         return 'pending';
+      case ShiftTransferStatus.hasAcceptances:
+        return 'has_acceptances';
       case ShiftTransferStatus.accepted:
         return 'accepted';
       case ShiftTransferStatus.rejected:
@@ -32,6 +64,8 @@ extension ShiftTransferStatusExtension on ShiftTransferStatus {
     switch (this) {
       case ShiftTransferStatus.pending:
         return 'Ожидает ответа';
+      case ShiftTransferStatus.hasAcceptances:
+        return 'Есть принявшие';
       case ShiftTransferStatus.accepted:
         return 'Принято';
       case ShiftTransferStatus.rejected:
@@ -49,6 +83,8 @@ extension ShiftTransferStatusExtension on ShiftTransferStatus {
     switch (value.toLowerCase()) {
       case 'pending':
         return ShiftTransferStatus.pending;
+      case 'has_acceptances':
+        return ShiftTransferStatus.hasAcceptances;
       case 'accepted':
         return ShiftTransferStatus.accepted;
       case 'rejected':
@@ -81,6 +117,9 @@ class ShiftTransferRequest {
   final ShiftTransferStatus status;
   final String? acceptedByEmployeeId;
   final String? acceptedByEmployeeName;
+  final List<AcceptedByEmployee> acceptedBy;
+  final String? approvedEmployeeId;
+  final String? approvedEmployeeName;
   final DateTime createdAt;
   final DateTime? acceptedAt;
   final DateTime? resolvedAt;
@@ -102,6 +141,9 @@ class ShiftTransferRequest {
     this.status = ShiftTransferStatus.pending,
     this.acceptedByEmployeeId,
     this.acceptedByEmployeeName,
+    this.acceptedBy = const [],
+    this.approvedEmployeeId,
+    this.approvedEmployeeName,
     required this.createdAt,
     this.acceptedAt,
     this.resolvedAt,
@@ -113,10 +155,16 @@ class ShiftTransferRequest {
   bool get isBroadcast => toEmployeeId == null;
 
   /// Запрос активен (можно принять/отклонить)
-  bool get isActive => status == ShiftTransferStatus.pending;
+  bool get isActive => status == ShiftTransferStatus.pending || status == ShiftTransferStatus.hasAcceptances;
+
+  /// Есть ли принявшие сотрудники
+  bool get hasAcceptances => acceptedBy.isNotEmpty;
+
+  /// Количество принявших сотрудников
+  int get acceptedCount => acceptedBy.length;
 
   /// Запрос ожидает одобрения админа
-  bool get isPendingApproval => status == ShiftTransferStatus.accepted;
+  bool get isPendingApproval => status == ShiftTransferStatus.accepted || status == ShiftTransferStatus.hasAcceptances;
 
   /// Запрос завершен
   bool get isCompleted =>
@@ -126,6 +174,14 @@ class ShiftTransferRequest {
       status == ShiftTransferStatus.expired;
 
   factory ShiftTransferRequest.fromJson(Map<String, dynamic> json) {
+    // Parse acceptedBy array
+    List<AcceptedByEmployee> acceptedByList = [];
+    if (json['acceptedBy'] != null) {
+      acceptedByList = (json['acceptedBy'] as List)
+          .map((e) => AcceptedByEmployee.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
     return ShiftTransferRequest(
       id: json['id'] ?? '',
       fromEmployeeId: json['fromEmployeeId'] ?? '',
@@ -141,6 +197,9 @@ class ShiftTransferRequest {
       status: ShiftTransferStatusExtension.fromString(json['status'] ?? 'pending'),
       acceptedByEmployeeId: json['acceptedByEmployeeId'],
       acceptedByEmployeeName: json['acceptedByEmployeeName'],
+      acceptedBy: acceptedByList,
+      approvedEmployeeId: json['approvedEmployeeId'],
+      approvedEmployeeName: json['approvedEmployeeName'],
       createdAt: DateTime.parse(json['createdAt']),
       acceptedAt: json['acceptedAt'] != null ? DateTime.parse(json['acceptedAt']) : null,
       resolvedAt: json['resolvedAt'] != null ? DateTime.parse(json['resolvedAt']) : null,
@@ -165,6 +224,9 @@ class ShiftTransferRequest {
       'status': status.name,
       'acceptedByEmployeeId': acceptedByEmployeeId,
       'acceptedByEmployeeName': acceptedByEmployeeName,
+      'acceptedBy': acceptedBy.map((e) => e.toJson()).toList(),
+      'approvedEmployeeId': approvedEmployeeId,
+      'approvedEmployeeName': approvedEmployeeName,
       'createdAt': createdAt.toIso8601String(),
       'acceptedAt': acceptedAt?.toIso8601String(),
       'resolvedAt': resolvedAt?.toIso8601String(),
@@ -188,6 +250,9 @@ class ShiftTransferRequest {
     ShiftTransferStatus? status,
     String? acceptedByEmployeeId,
     String? acceptedByEmployeeName,
+    List<AcceptedByEmployee>? acceptedBy,
+    String? approvedEmployeeId,
+    String? approvedEmployeeName,
     DateTime? createdAt,
     DateTime? acceptedAt,
     DateTime? resolvedAt,
@@ -209,6 +274,9 @@ class ShiftTransferRequest {
       status: status ?? this.status,
       acceptedByEmployeeId: acceptedByEmployeeId ?? this.acceptedByEmployeeId,
       acceptedByEmployeeName: acceptedByEmployeeName ?? this.acceptedByEmployeeName,
+      acceptedBy: acceptedBy ?? this.acceptedBy,
+      approvedEmployeeId: approvedEmployeeId ?? this.approvedEmployeeId,
+      approvedEmployeeName: approvedEmployeeName ?? this.approvedEmployeeName,
       createdAt: createdAt ?? this.createdAt,
       acceptedAt: acceptedAt ?? this.acceptedAt,
       resolvedAt: resolvedAt ?? this.resolvedAt,

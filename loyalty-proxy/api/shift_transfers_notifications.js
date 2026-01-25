@@ -307,9 +307,15 @@ async function notifyTransferCreated(transfer) {
  * 2. Уведомление при принятии запроса сотрудником (accept)
  * - Уведомить отправителя (fromEmployeeId)
  * - Уведомить ВСЕХ админов
+ * @param {Object} transfer - Данные запроса
+ * @param {string} acceptedByEmployeeId - ID принявшего сотрудника
+ * @param {string} acceptedByEmployeeName - Имя принявшего сотрудника
  */
-async function notifyTransferAccepted(transfer) {
-  console.log(`✅ Уведомление о принятии запроса: ${transfer.id}`);
+async function notifyTransferAccepted(transfer, acceptedByEmployeeId, acceptedByEmployeeName) {
+  console.log(`✅ Уведомление о принятии запроса: ${transfer.id} сотрудником ${acceptedByEmployeeName}`);
+
+  // Используем переданные параметры или данные из transfer (для обратной совместимости)
+  const employeeName = acceptedByEmployeeName || transfer.acceptedByEmployeeName;
 
   let sentCount = 0;
 
@@ -317,7 +323,7 @@ async function notifyTransferAccepted(transfer) {
   const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
   if (fromEmployee && fromEmployee.phone) {
     const title = 'Ваш запрос принят';
-    const body = `${transfer.acceptedByEmployeeName} согласился взять вашу смену`;
+    const body = `${employeeName} согласился взять вашу смену`;
     const data = {
       type: 'shift_transfer_accepted',
       transferId: transfer.id,
@@ -333,7 +339,7 @@ async function notifyTransferAccepted(transfer) {
   if (admins.length > 0) {
     const title = 'Замена смены требует одобрения';
     const dateText = formatDate(transfer.shiftDate);
-    const body = `${transfer.acceptedByEmployeeName} принял смену от ${transfer.fromEmployeeName} на ${dateText}`;
+    const body = `${employeeName} принял смену от ${transfer.fromEmployeeName} на ${dateText}`;
     const data = {
       type: 'shift_transfer_pending_approval',
       transferId: transfer.id,
@@ -350,8 +356,11 @@ async function notifyTransferAccepted(transfer) {
 /**
  * 3. Уведомление при отклонении запроса сотрудником (reject)
  * - Уведомить ТОЛЬКО отправителя (fromEmployeeId)
+ * @param {Object} transfer - Данные запроса
+ * @param {string} rejectedByEmployeeId - ID отклонившего сотрудника
+ * @param {string} rejectedByEmployeeName - Имя отклонившего сотрудника
  */
-async function notifyTransferRejected(transfer) {
+async function notifyTransferRejected(transfer, rejectedByEmployeeId, rejectedByEmployeeName) {
   console.log(`❌ Уведомление об отклонении запроса: ${transfer.id}`);
 
   const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
@@ -360,9 +369,14 @@ async function notifyTransferRejected(transfer) {
     return 0;
   }
 
+  // Используем переданное имя, или данные из transfer, или fallback
+  const rejecterName = rejectedByEmployeeName ||
+                       transfer.rejectedByEmployeeName ||
+                       transfer.toEmployeeName ||
+                       'Сотрудник';
+
   const title = 'Запрос отклонен';
-  const toName = transfer.toEmployeeName || 'Сотрудник';
-  const body = `${toName} отклонил ваш запрос на замену смены`;
+  const body = `${rejecterName} отклонил ваш запрос на замену смены`;
   const data = {
     type: 'shift_transfer_rejected',
     transferId: transfer.id,
@@ -375,14 +389,15 @@ async function notifyTransferRejected(transfer) {
 
 /**
  * 4. Уведомление при одобрении админом (approve)
- * - Уведомить обоих: fromEmployeeId и acceptedByEmployeeId
+ * - Уведомить обоих: fromEmployeeId и одобренного сотрудника
+ * @param {Object} transfer - Данные запроса
+ * @param {Object} approvedEmployee - Данные одобренного сотрудника {employeeId, employeeName}
  */
-async function notifyTransferApproved(transfer) {
+async function notifyTransferApproved(transfer, approvedEmployee) {
   console.log(`✅ Уведомление об одобрении админом: ${transfer.id}`);
 
   const title = 'Замена смены одобрена';
   const dateText = formatDate(transfer.shiftDate);
-  const body = `Ваша замена смены на ${dateText} одобрена администратором`;
   const data = {
     type: 'shift_transfer_approved',
     transferId: transfer.id,
@@ -391,16 +406,21 @@ async function notifyTransferApproved(transfer) {
 
   let sentCount = 0;
 
+  // Используем переданного сотрудника или данные из transfer
+  const approvedEmployeeId = approvedEmployee?.employeeId || transfer.acceptedByEmployeeId;
+
   // 1. Уведомить отправителя
   const fromEmployee = getEmployeeById(transfer.fromEmployeeId);
   if (fromEmployee && fromEmployee.phone) {
+    const body = `Ваша замена смены на ${dateText} одобрена администратором`;
     const success = await sendPushToPhone(fromEmployee.phone, title, body, data);
     if (success) sentCount++;
   }
 
-  // 2. Уведомить принявшего
-  const acceptedEmployee = getEmployeeById(transfer.acceptedByEmployeeId);
+  // 2. Уведомить одобренного сотрудника
+  const acceptedEmployee = getEmployeeById(approvedEmployeeId);
   if (acceptedEmployee && acceptedEmployee.phone) {
+    const body = `Вам назначена смена ${formatShiftType(transfer.shiftType)} на ${dateText} в ${transfer.shopName}`;
     const success = await sendPushToPhone(acceptedEmployee.phone, title, body, data);
     if (success) sentCount++;
   }
@@ -445,6 +465,42 @@ async function notifyTransferDeclined(transfer) {
   return sentCount;
 }
 
+/**
+ * 6. Уведомление другим принявшим когда админ выбрал одного (declined)
+ * - Уведомить всех кто принял, но не был выбран
+ * @param {Object} transfer - Данные запроса
+ * @param {Array} declinedEmployees - Массив сотрудников которые были отклонены [{employeeId, employeeName}]
+ */
+async function notifyOthersDeclined(transfer, declinedEmployees) {
+  console.log(`❌ Уведомление остальным принявшим (${declinedEmployees.length} чел.): ${transfer.id}`);
+
+  if (!declinedEmployees || declinedEmployees.length === 0) {
+    return 0;
+  }
+
+  const title = 'Заявка на смену отклонена';
+  const dateText = formatDate(transfer.shiftDate);
+  const body = `Администратор выбрал другого сотрудника для смены ${formatShiftType(transfer.shiftType)} на ${dateText}`;
+  const data = {
+    type: 'shift_transfer_declined',
+    transferId: transfer.id,
+    action: 'view_request',
+  };
+
+  let sentCount = 0;
+
+  for (const declined of declinedEmployees) {
+    const employee = getEmployeeById(declined.employeeId);
+    if (employee && employee.phone) {
+      const success = await sendPushToPhone(employee.phone, title, body, data);
+      if (success) sentCount++;
+    }
+  }
+
+  console.log(`✅ Отправлено ${sentCount}/${declinedEmployees.length} уведомлений отклонённым`);
+  return sentCount;
+}
+
 // ==================== ЭКСПОРТ ====================
 
 module.exports = {
@@ -453,4 +509,5 @@ module.exports = {
   notifyTransferRejected,
   notifyTransferApproved,
   notifyTransferDeclined,
+  notifyOthersDeclined,
 };

@@ -998,6 +998,12 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
         statusText = 'Ожидает ответа';
         statusGradient = [Colors.orange, Colors.amber];
         break;
+      case ShiftTransferStatus.hasAcceptances:
+        statusColor = Colors.blue;
+        statusIcon = Icons.people;
+        statusText = 'Есть принявшие (${request.acceptedBy.length})';
+        statusGradient = [Colors.blue, Colors.lightBlue];
+        break;
       case ShiftTransferStatus.accepted:
         statusColor = Colors.blue;
         statusIcon = Icons.schedule;
@@ -1184,8 +1190,35 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
               _buildInfoRow(Icons.comment, 'Комментарий', request.comment!),
             ],
             const SizedBox(height: 16),
-            // Кнопки
-            if (request.status == ShiftTransferStatus.pending)
+            // Показываем сколько человек уже приняли (если есть)
+            if (request.acceptedBy.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people, size: 16, color: Colors.orange[700]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Уже приняли: ${request.acceptedBy.length} чел.',
+                      style: TextStyle(
+                        color: Colors.orange[800],
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            // Кнопки - показываем если запрос активен (pending или has_acceptances)
+            if (request.isActive)
               Row(
                 children: [
                   Expanded(
@@ -1316,7 +1349,11 @@ class _MySchedulePageState extends State<MySchedulePage> with SingleTickerProvid
 
     if (confirm != true) return;
 
-    final success = await ShiftTransferService.rejectRequest(request.id);
+    final success = await ShiftTransferService.rejectRequest(
+      request.id,
+      employeeId: _employeeId,
+      employeeName: _employeeName,
+    );
 
     if (!mounted) return;
 

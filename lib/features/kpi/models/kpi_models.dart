@@ -6,11 +6,18 @@ class KPIDayData {
   final DateTime? attendanceTime; // Время прихода (самое раннее)
   final bool hasMorningAttendance; // Есть ли отметка до 15:00
   final bool hasEveningAttendance; // Есть ли отметка после 15:00
-  final bool hasShift; // Есть ли пересменка
+  final bool hasShift; // Есть ли отчёт о пересменке (НЕ запланированная смена!)
   final bool hasRecount; // Есть ли пересчет
   final bool hasRKO; // Есть ли РКО
   final bool hasEnvelope; // Есть ли конверт
   final bool hasShiftHandover; // Есть ли сдача смены
+
+  // Данные из графика работы (WorkSchedule)
+  final bool isScheduled; // Была ли запланирована смена на этот день
+  final String? scheduledShiftType; // Тип смены: morning/day/evening
+  final DateTime? scheduledStartTime; // Время начала смены по графику
+  final bool isLate; // Опоздал ли сотрудник
+  final int? lateMinutes; // На сколько минут опоздал
 
   KPIDayData({
     required this.date,
@@ -24,10 +31,19 @@ class KPIDayData {
     this.hasRKO = false,
     this.hasEnvelope = false,
     this.hasShiftHandover = false,
+    // Поля графика
+    this.isScheduled = false,
+    this.scheduledShiftType,
+    this.scheduledStartTime,
+    this.isLate = false,
+    this.lateMinutes,
   });
 
   /// Проверить, работал ли сотрудник в этот день
   bool get workedToday => attendanceTime != null || hasShift;
+
+  /// Пропустил ли смену (была в графике, но не пришёл)
+  bool get missedShift => isScheduled && !workedToday;
 
   Map<String, dynamic> toJson() => {
     'date': date.toIso8601String(),
@@ -41,6 +57,12 @@ class KPIDayData {
     'hasRKO': hasRKO,
     'hasEnvelope': hasEnvelope,
     'hasShiftHandover': hasShiftHandover,
+    // Поля графика
+    'isScheduled': isScheduled,
+    'scheduledShiftType': scheduledShiftType,
+    'scheduledStartTime': scheduledStartTime?.toIso8601String(),
+    'isLate': isLate,
+    'lateMinutes': lateMinutes,
   };
 
   factory KPIDayData.fromJson(Map<String, dynamic> json) => KPIDayData(
@@ -57,6 +79,14 @@ class KPIDayData {
     hasRKO: json['hasRKO'] ?? false,
     hasEnvelope: json['hasEnvelope'] ?? false,
     hasShiftHandover: json['hasShiftHandover'] ?? false,
+    // Поля графика
+    isScheduled: json['isScheduled'] ?? false,
+    scheduledShiftType: json['scheduledShiftType'],
+    scheduledStartTime: json['scheduledStartTime'] != null
+        ? DateTime.parse(json['scheduledStartTime'])
+        : null,
+    isLate: json['isLate'] ?? false,
+    lateMinutes: json['lateMinutes'],
   );
 
   /// Создать ключ для группировки по дате (без времени)
@@ -158,6 +188,100 @@ class KPIShopDayData {
   bool get hasWorkingEmployees {
     return employeesData.any((data) => data.workedToday);
   }
+
+  // ====== МЕТОДЫ ДЛЯ УТРЕННЕЙ/ВЕЧЕРНЕЙ СМЕНЫ ======
+
+  /// Сотрудники утренней смены:
+  /// - С отметкой до 15:00 (hasMorningAttendance)
+  /// - ИЛИ работали, но смена не определена (нет отметки прихода)
+  List<KPIDayData> get morningEmployees {
+    return employeesData.where((data) {
+      // Явно утренняя смена
+      if (data.hasMorningAttendance) return true;
+      // Работал, но смена не определена - считаем утренней по умолчанию
+      if (data.workedToday && !data.hasMorningAttendance && !data.hasEveningAttendance) return true;
+      return false;
+    }).toList();
+  }
+
+  /// Сотрудники вечерней смены (с отметкой после 15:00)
+  List<KPIDayData> get eveningEmployees {
+    return employeesData.where((data) => data.hasEveningAttendance).toList();
+  }
+
+  /// Есть ли хотя бы один сотрудник утренней смены
+  bool get hasMorningEmployees => morningEmployees.isNotEmpty;
+
+  /// Есть ли хотя бы один сотрудник вечерней смены
+  bool get hasEveningEmployees => eveningEmployees.isNotEmpty;
+
+  /// Статус утренней смены: 1 = всё выполнено, 0.5 = частично, 0 = ничего
+  double get morningCompletionStatus {
+    final employees = morningEmployees;
+    if (employees.isEmpty) return -1; // Нет данных
+
+    int fullyCompleted = 0;
+    int partiallyCompleted = 0;
+
+    for (final data in employees) {
+      final hasAttendance = data.attendanceTime != null;
+      final hasShift = data.hasShift;
+      final hasRecount = data.hasRecount;
+      final hasRKO = data.hasRKO;
+      final hasEnvelope = data.hasEnvelope;
+      final hasShiftHandover = data.hasShiftHandover;
+
+      final completedCount = [hasAttendance, hasShift, hasRecount, hasRKO, hasEnvelope, hasShiftHandover]
+          .where((v) => v).length;
+
+      if (completedCount == 6) {
+        fullyCompleted++;
+      } else if (completedCount > 0) {
+        partiallyCompleted++;
+      }
+    }
+
+    if (fullyCompleted == employees.length) {
+      return 1; // Все выполнено (зелёный)
+    } else if (fullyCompleted > 0 || partiallyCompleted > 0) {
+      return 0.5; // Частично выполнено (жёлтый)
+    }
+    return 0; // Ничего не выполнено (красный)
+  }
+
+  /// Статус вечерней смены: 1 = всё выполнено, 0.5 = частично, 0 = ничего
+  double get eveningCompletionStatus {
+    final employees = eveningEmployees;
+    if (employees.isEmpty) return -1; // Нет данных
+
+    int fullyCompleted = 0;
+    int partiallyCompleted = 0;
+
+    for (final data in employees) {
+      final hasAttendance = data.attendanceTime != null;
+      final hasShift = data.hasShift;
+      final hasRecount = data.hasRecount;
+      final hasRKO = data.hasRKO;
+      final hasEnvelope = data.hasEnvelope;
+      final hasShiftHandover = data.hasShiftHandover;
+
+      final completedCount = [hasAttendance, hasShift, hasRecount, hasRKO, hasEnvelope, hasShiftHandover]
+          .where((v) => v).length;
+
+      if (completedCount == 6) {
+        fullyCompleted++;
+      } else if (completedCount > 0) {
+        partiallyCompleted++;
+      }
+    }
+
+    if (fullyCompleted == employees.length) {
+      return 1; // Все выполнено (зелёный)
+    } else if (fullyCompleted > 0 || partiallyCompleted > 0) {
+      return 0.5; // Частично выполнено (жёлтый)
+    }
+    return 0; // Ничего не выполнено (красный)
+  }
 }
 
 /// Модель для отображения в таблице (для диалога дня)
@@ -208,7 +332,7 @@ class KPIEmployeeShopDayData {
   final String shopAddress;
   final String employeeName;
   final DateTime? attendanceTime; // Время прихода
-  final bool hasShift; // Есть ли пересменка
+  final bool hasShift; // Есть ли отчёт о пересменке (НЕ запланированная смена!)
   final bool hasRecount; // Есть ли пересчет
   final bool hasRKO; // Есть ли РКО
   final bool hasEnvelope; // Есть ли конверт
@@ -218,6 +342,13 @@ class KPIEmployeeShopDayData {
   final String? shiftReportId; // ID отчета пересменки (если есть)
   final String? envelopeReportId; // ID отчета конверта (если есть)
   final String? shiftHandoverReportId; // ID отчета сдачи смены (если есть)
+
+  // Данные из графика работы (WorkSchedule)
+  final bool isScheduled; // Была ли запланирована смена на этот день
+  final String? scheduledShiftType; // Тип смены: morning/day/evening
+  final DateTime? scheduledStartTime; // Время начала смены по графику
+  final bool isLate; // Опоздал ли сотрудник
+  final int? lateMinutes; // На сколько минут опоздал
 
   KPIEmployeeShopDayData({
     required this.date,
@@ -234,10 +365,19 @@ class KPIEmployeeShopDayData {
     this.shiftReportId,
     this.envelopeReportId,
     this.shiftHandoverReportId,
+    // Поля графика
+    this.isScheduled = false,
+    this.scheduledShiftType,
+    this.scheduledStartTime,
+    this.isLate = false,
+    this.lateMinutes,
   });
 
   /// Проверить, выполнены ли все условия
   bool get allConditionsMet => attendanceTime != null && hasShift && hasRecount && hasRKO && hasEnvelope && hasShiftHandover;
+
+  /// Пропустил ли смену (была в графике, но не пришёл)
+  bool get missedShift => isScheduled && attendanceTime == null && !hasShift;
 
   /// Получить форматированное время прихода
   String? get formattedAttendanceTime {
@@ -271,6 +411,12 @@ class KPIEmployeeShopDayData {
     'shiftReportId': shiftReportId,
     'envelopeReportId': envelopeReportId,
     'shiftHandoverReportId': shiftHandoverReportId,
+    // Поля графика
+    'isScheduled': isScheduled,
+    'scheduledShiftType': scheduledShiftType,
+    'scheduledStartTime': scheduledStartTime?.toIso8601String(),
+    'isLate': isLate,
+    'lateMinutes': lateMinutes,
   };
 
   factory KPIEmployeeShopDayData.fromJson(Map<String, dynamic> json) => KPIEmployeeShopDayData(
@@ -288,6 +434,14 @@ class KPIEmployeeShopDayData {
     shiftReportId: json['shiftReportId'],
     envelopeReportId: json['envelopeReportId'],
     shiftHandoverReportId: json['shiftHandoverReportId'],
+    // Поля графика
+    isScheduled: json['isScheduled'] ?? false,
+    scheduledShiftType: json['scheduledShiftType'],
+    scheduledStartTime: json['scheduledStartTime'] != null
+        ? DateTime.parse(json['scheduledStartTime'])
+        : null,
+    isLate: json['isLate'] ?? false,
+    lateMinutes: json['lateMinutes'],
   );
 }
 

@@ -3452,6 +3452,3542 @@ flowchart TB
 
 ---
 
+## 7. Система отчётности - РКО
+
+### 7.1 Обзор модуля
+
+**Назначение:** Модуль управления расходными кассовыми ордерами (РКО). Обеспечивает создание, загрузку и контроль сдачи РКО сотрудниками после смены. Включает автоматизацию создания pending-отчётов, контроль дедлайнов и начисление штрафов.
+
+**Файлы модуля:**
+```
+lib/features/rko/
+├── models/
+│   └── rko_report_model.dart         # Модель метаданных РКО
+├── pages/
+│   ├── rko_reports_page.dart         # Главная страница (4 вкладки)
+│   ├── rko_type_selection_page.dart  # Выбор типа РКО
+│   ├── rko_amount_input_page.dart    # Ввод суммы и генерация
+│   ├── rko_employee_reports_page.dart # Отчёты сотрудника
+│   ├── rko_shop_reports_page.dart    # Отчёты магазина
+│   └── rko_pdf_viewer_page.dart      # Просмотр PDF
+└── services/
+    ├── rko_service.dart              # Бизнес-логика (настройки, пересменки)
+    ├── rko_reports_service.dart      # API для работы с отчётами
+    └── rko_pdf_service.dart          # Генерация DOCX/PDF
+
+Серверная часть:
+loyalty-proxy/
+├── api/
+│   └── rko_automation_scheduler.js   # Scheduler для автоматизации
+└── index.js                          # API endpoints для РКО
+```
+
+---
+
+### 7.2 Модели данных
+
+```mermaid
+classDiagram
+    class RKOMetadata {
+        +String fileName
+        +String employeeName
+        +String shopAddress
+        +DateTime date
+        +double amount
+        +String rkoType
+        +DateTime createdAt
+        +String monthKey
+        +String yearMonth
+        +fromJson(Map) RKOMetadata
+        +toJson() Map
+    }
+
+    class RKOMetadataList {
+        +List~RKOMetadata~ items
+        +getLatestForEmployee(name, count) List
+        +getForEmployeeByMonth(name, month) List
+        +getForShopByMonth(address, month) List
+        +getMonthsForEmployee(name) List
+        +getMonthsForShop(address) List
+        +getUniqueEmployees() List
+        +getUniqueShops() List
+    }
+
+    class PendingRKO {
+        +String id
+        +String shopAddress
+        +String shopName
+        +String shiftType
+        +String status
+        +String rkoType
+        +DateTime createdAt
+        +DateTime deadline
+        +String? employeeName
+        +String? employeePhone
+        +double? amount
+        +DateTime? submittedAt
+        +DateTime? failedAt
+    }
+
+    class RkoPointsSettings {
+        +double hasRkoPoints
+        +double noRkoPoints
+        +String morningStartTime
+        +String morningEndTime
+        +String eveningStartTime
+        +String eveningEndTime
+        +double missedPenalty
+    }
+
+    RKOMetadataList "1" o-- "*" RKOMetadata
+    PendingRKO ..> RkoPointsSettings : использует настройки
+```
+
+---
+
+### 7.3 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph RKO["РКО (rko)"]
+        META[RKOMetadata]
+        PEND[PendingRKO]
+        PDF[PDF Service]
+        SCHED[RKO Scheduler]
+    end
+
+    subgraph SHOPS["МАГАЗИНЫ"]
+        SM[Shop Model]
+        SS[ShopSettings]
+    end
+
+    subgraph EMPLOYEES["СОТРУДНИКИ"]
+        EMP[Employee]
+        REG[EmployeeRegistration]
+    end
+
+    subgraph SHIFTS["ПЕРЕСМЕНКИ"]
+        SR[ShiftReport]
+    end
+
+    subgraph SCHEDULE["ГРАФИК РАБОТЫ"]
+        WS[WorkSchedule]
+    end
+
+    subgraph EFFICIENCY["ЭФФЕКТИВНОСТЬ"]
+        PTS[PointsSettings]
+        PEN[Penalties]
+    end
+
+    SM --> META
+    SS --> PDF
+    EMP --> META
+    REG --> PDF
+    SR --> RKO
+    WS --> SCHED
+    PTS --> SCHED
+    SCHED --> PEN
+
+    SS -.->|ИНН, директор, номер документа| PDF
+    SR -.->|последняя пересменка → адрес| RKO
+    WS -.->|кто работает → штраф| SCHED
+    PTS -.->|временные окна, штрафы| SCHED
+
+    style RKO fill:#6A1B9A,color:#fff
+    style META fill:#7B1FA2,color:#fff
+    style PEND fill:#7B1FA2,color:#fff
+    style PDF fill:#7B1FA2,color:#fff
+    style SCHED fill:#7B1FA2,color:#fff
+```
+
+---
+
+### 7.4 Детальные связи
+
+```mermaid
+flowchart LR
+    subgraph RKO_Input["Входные данные РКО"]
+        LAST_SHIFT[Последняя пересменка]
+        EMP_DATA[Данные сотрудника]
+        SHOP_SET[Настройки магазина]
+    end
+
+    subgraph RKO_Generate["Генерация документа"]
+        TYPE[Тип РКО]
+        AMOUNT[Сумма]
+        DOCX[DOCX документ]
+    end
+
+    subgraph RKO_Control["Контроль сдачи"]
+        PENDING[Pending отчёты]
+        DEADLINE[Дедлайн]
+        FAILED[Failed отчёты]
+        PENALTY[Штрафы]
+    end
+
+    LAST_SHIFT -->|shopAddress| TYPE
+    LAST_SHIFT -->|shiftCash| AMOUNT
+    EMP_DATA -->|ФИО, паспорт| DOCX
+    SHOP_SET -->|ИНН, директор| DOCX
+    SHOP_SET -->|lastDocNumber| DOCX
+
+    TYPE --> AMOUNT
+    AMOUNT --> DOCX
+
+    PENDING -->|deadline passed| FAILED
+    FAILED --> PENALTY
+```
+
+---
+
+### 7.5 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| POST | `/api/rko/upload` | Загрузить РКО (multipart: docx + metadata) |
+| GET | `/api/rko/list/employee/:name` | Получить РКО сотрудника |
+| GET | `/api/rko/list/shop/:address` | Получить РКО магазина |
+| GET | `/api/rko/file/:fileName` | Скачать файл РКО |
+| GET | `/api/rko/pending` | Получить pending РКО |
+| GET | `/api/rko/failed` | Получить failed РКО |
+
+**Настройки баллов:**
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/points-settings/rko` | Получить настройки РКО |
+| POST | `/api/points-settings/rko` | Сохранить настройки РКО |
+
+---
+
+### 7.6 Поток данных: Создание РКО
+
+```mermaid
+sequenceDiagram
+    participant EMP as Сотрудник
+    participant TYPE as RkoTypeSelectionPage
+    participant INPUT as RkoAmountInputPage
+    participant SVC as RkoService
+    participant PDF as RkoPdfService
+    participant API as Server API
+    participant DB as /var/www/rko-reports
+
+    EMP->>TYPE: Открывает РКО
+    TYPE->>TYPE: Выбор типа:<br/>"ЗП после смены" / "ЗП за месяц"
+
+    TYPE->>INPUT: Переход к вводу
+    INPUT->>SVC: getLastShift(employeeName)
+    SVC-->>INPUT: ShiftReport (shopAddress, shiftCash)
+
+    Input->>SVC: getShopSettings(shopAddress)
+    SVC-->>INPUT: ShopSettings (ИНН, директор, docNumber)
+
+    INPUT->>INPUT: Ввод суммы (autofill = shiftCash)
+    INPUT->>PDF: generateRKO(params)
+
+    Note over PDF: Генерация DOCX:<br/>- Реквизиты магазина<br/>- Паспорт сотрудника<br/>- Сумма прописью<br/>- Номер документа
+
+    PDF-->>INPUT: File (docx)
+
+    INPUT->>API: POST /api/rko/upload (docx + metadata)
+    API->>DB: save to rko-reports/
+    API->>DB: update rko_metadata.json
+    DB-->>API: success
+    API-->>INPUT: { success: true }
+
+    INPUT->>SVC: updateDocumentNumber(shopAddress, docNumber + 1)
+    INPUT->>EMP: Успех + предпросмотр
+```
+
+---
+
+### 7.7 Поток данных: Жизненный цикл Pending РКО
+
+```mermaid
+sequenceDiagram
+    participant SCHED as RKO Scheduler
+    participant SETTINGS as rko_points_settings.json
+    participant SHOPS as shops.json
+    participant PEND as /var/www/rko-pending
+    participant META as rko_metadata.json
+    participant WS as work-schedules/
+    participant EFF as efficiency-penalties/
+    participant PUSH as Push Notifications
+
+    Note over SCHED: Проверка каждые 5 минут
+
+    SCHED->>SETTINGS: getRkoSettings()
+    SETTINGS-->>SCHED: { morningStartTime, morningEndTime, ... }
+
+    alt Начало временного окна
+        SCHED->>SHOPS: getAllShops()
+        SHOPS-->>SCHED: [shops...]
+
+        loop Для каждого магазина
+            SCHED->>META: checkIfRkoSubmitted(shopAddress)
+            META-->>SCHED: false (не сдан)
+            SCHED->>PEND: createPendingReport(shop, shiftType, deadline)
+        end
+
+        Note over PEND: Создаётся pending_rko_*.json<br/>status: "pending"
+    end
+
+    alt Дедлайн прошёл
+        SCHED->>PEND: loadTodayPendingReports()
+        PEND-->>SCHED: [pending reports...]
+
+        loop Для каждого pending
+            SCHED->>META: checkIfRkoSubmitted(shopAddress)
+            alt РКО сдан
+                SCHED->>PEND: Удалить pending файл
+            else РКО НЕ сдан
+                SCHED->>PEND: status = "failed"
+
+                SCHED->>WS: Найти сотрудника по графику
+                WS-->>SCHED: { employeeId, employeeName }
+
+                SCHED->>EFF: createPenalty(employee, missedPenalty)
+            end
+        end
+
+        SCHED->>PUSH: sendAdminFailedNotification(count)
+    end
+
+    alt 23:59 - Очистка
+        SCHED->>PEND: cleanupFailedReports()
+        Note over PEND: Удаление ВСЕХ файлов<br/>Сброс state
+    end
+```
+
+---
+
+### 7.8 Структура страницы RKOReportsPage
+
+```mermaid
+flowchart TB
+    subgraph RKOReportsPage["RKOReportsPage (4 вкладки)"]
+        TAB1["👥 Сотрудники"]
+        TAB2["🏪 Магазины"]
+        TAB3["⏳ Ожидают"]
+        TAB4["❌ Не прошли"]
+    end
+
+    subgraph Tab1_Content["Вкладка Сотрудники"]
+        EMP_LIST[Список сотрудников]
+        EMP_SEARCH[Поиск]
+        EMP_CLICK[Клик → RkoEmployeeReportsPage]
+    end
+
+    subgraph Tab2_Content["Вкладка Магазины"]
+        SHOP_LIST[Список магазинов]
+        SHOP_SEARCH[Поиск]
+        SHOP_CLICK[Клик → RkoShopReportsPage]
+    end
+
+    subgraph Tab3_Content["Вкладка Ожидают"]
+        PEND_LIST[Pending РКО]
+        PEND_CARD[Карточка:<br/>Магазин, Смена, Дедлайн]
+        PEND_TIMER[Обратный отсчёт]
+    end
+
+    subgraph Tab4_Content["Вкладка Не прошли"]
+        FAIL_LIST[Failed РКО]
+        FAIL_CARD[Карточка:<br/>Магазин, Штраф]
+    end
+
+    TAB1 --> Tab1_Content
+    TAB2 --> Tab2_Content
+    TAB3 --> Tab3_Content
+    TAB4 --> Tab4_Content
+```
+
+---
+
+### 7.9 Статусы и состояния PendingRKO
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Начало временного окна
+
+    pending --> submitted: РКО загружен<br/>(удаляется из pending)
+    pending --> failed: Дедлайн прошёл
+
+    submitted --> [*]: Файл сохранён
+
+    failed --> penalty: Штраф назначен
+    penalty --> cleanup: 23:59
+
+    cleanup --> [*]: Файлы удалены
+
+    note right of pending: status: "pending"<br/>Ожидает сдачи
+    note right of failed: status: "failed"<br/>failedAt: timestamp
+    note right of penalty: В efficiency-penalties/<br/>category: rko_missed_penalty
+```
+
+---
+
+### 7.10 Временные окна
+
+```mermaid
+gantt
+    title Временные окна РКО (пример настроек)
+    dateFormat HH:mm
+    axisFormat %H:%M
+
+    section Утренняя смена
+    Окно сдачи (07:00-14:00)    :active, morning, 07:00, 14:00
+    Генерация pending           :milestone, m1, 07:00, 0m
+    Дедлайн + штрафы           :milestone, m2, 14:00, 0m
+
+    section Вечерняя смена
+    Окно сдачи (14:00-23:00)    :active, evening, 14:00, 23:00
+    Генерация pending           :milestone, m3, 14:00, 0m
+    Дедлайн + штрафы           :milestone, m4, 23:00, 0m
+
+    section Очистка
+    Cleanup (23:59)             :milestone, cleanup, 23:59, 0m
+```
+
+**Настройки в `/var/www/points-settings/rko_points_settings.json`:**
+```json
+{
+  "hasRkoPoints": 1,
+  "noRkoPoints": -3,
+  "morningStartTime": "07:00",
+  "morningEndTime": "14:00",
+  "eveningStartTime": "14:00",
+  "eveningEndTime": "23:00",
+  "missedPenalty": -3
+}
+```
+
+---
+
+### 7.11 Начисление баллов
+
+```mermaid
+flowchart TB
+    subgraph Points["Баллы за РКО"]
+        HAS["+1 балл<br/>РКО сдан вовремя"]
+        NO["-3 балла<br/>РКО не сдан"]
+    end
+
+    subgraph Penalty_Flow["Процесс начисления штрафа"]
+        P1[Дедлайн прошёл]
+        P2[Найти в графике<br/>кто работал]
+        P3[Создать penalty<br/>в efficiency-penalties]
+        P4[Push уведомление<br/>админу]
+    end
+
+    NO --> P1
+    P1 --> P2
+    P2 --> P3
+    P3 --> P4
+
+    style HAS fill:#4CAF50,color:#fff
+    style NO fill:#F44336,color:#fff
+```
+
+**Структура штрафа (в efficiency-penalties/YYYY-MM.json):**
+```json
+{
+  "id": "penalty_rko_1706187600000_abc123",
+  "type": "employee",
+  "entityId": "emp_123",
+  "entityName": "Иванов Иван",
+  "shopAddress": "ул. Ленина, 5",
+  "category": "rko_missed_penalty",
+  "categoryName": "Пропущенный РКО",
+  "date": "2026-01-25",
+  "points": -3,
+  "reason": "Не сдан утренний РКО",
+  "sourceId": "pending_rko_morning_...",
+  "sourceType": "rko_report",
+  "createdAt": "2026-01-25T14:00:00.000Z"
+}
+```
+
+---
+
+### 7.12 Таблица зависимостей
+
+| Модуль | Использует RKO | RKO Использует | Что берёт |
+|--------|----------------|----------------|-----------|
+| **Shops** | ❌ | ✅ | address, name для выбора |
+| **ShopSettings** | ❌ | ✅ | ИНН, директор, номер документа |
+| **Employees** | ❌ | ✅ | name для фильтрации |
+| **EmployeeRegistration** | ❌ | ✅ | ФИО, паспорт для DOCX |
+| **Shifts** | ❌ | ✅ | Последняя пересменка → адрес, сумма |
+| **WorkSchedule** | ❌ | ✅ | Кто работал → штраф |
+| **PointsSettings** | ❌ | ✅ | Временные окна, баллы |
+| **Efficiency** | ✅ | ❌ | Штрафы rko_missed_penalty |
+
+---
+
+### 7.13 Кэширование
+
+```mermaid
+flowchart TB
+    subgraph Cache["Стратегия кэширования"]
+        C1[ShopSettings<br/>TTL: AppConstants.cacheDuration]
+        C2[Pending/Failed РКО<br/>Без кэша - всегда свежие]
+        C3[Список магазинов/сотрудников<br/>TTL: 10 минут]
+    end
+
+    subgraph Actions["Действия очистки"]
+        A1[Pull-to-refresh]
+        A2[После загрузки РКО]
+        A3[Смена вкладки]
+    end
+
+    A1 --> C2
+    A2 --> C2
+    A3 --> C2
+```
+
+---
+
+### 7.14 Серверная автоматизация (RKO Scheduler)
+
+```mermaid
+flowchart TB
+    subgraph Scheduler["RKO Automation Scheduler"]
+        INIT[Инициализация<br/>CHECK_INTERVAL = 5 мин]
+        CHECK[runSchedulerCheck()]
+    end
+
+    subgraph Actions["Действия"]
+        A1[generatePendingReports<br/>Создание pending в начале окна]
+        A2[checkPendingDeadlines<br/>Проверка дедлайнов]
+        A3[cleanupFailedReports<br/>Очистка в 23:59]
+    end
+
+    subgraph State["Состояние (/var/www/rko-automation-state/)"]
+        S1[lastMorningGeneration]
+        S2[lastEveningGeneration]
+        S3[lastCleanup]
+        S4[lastCheck]
+    end
+
+    INIT --> CHECK
+    CHECK --> A1
+    CHECK --> A2
+    CHECK --> A3
+
+    A1 --> S1
+    A1 --> S2
+    A2 --> S4
+    A3 --> S3
+```
+
+**Алгоритм работы:**
+1. **Каждые 5 минут** проверяется текущее время (московское UTC+3)
+2. **В начале временного окна:**
+   - Загружается список всех магазинов
+   - Для каждого магазина без сданного РКО создаётся pending отчёт
+   - Записывается дедлайн (конец окна)
+3. **При прохождении дедлайна:**
+   - Pending с истёкшим дедлайном → status: "failed"
+   - По графику работы определяется сотрудник
+   - Создаётся штраф в efficiency-penalties
+   - Push уведомление админу
+4. **В 23:59:**
+   - Удаляются ВСЕ файлы из /var/www/rko-pending/
+   - Сбрасывается state для нового дня
+
+---
+
+### 7.15 Типы РКО
+
+```mermaid
+flowchart LR
+    subgraph RKO_Types["Типы РКО"]
+        T1["ЗП после смены"]
+        T2["ЗП за месяц"]
+    end
+
+    subgraph Automation["Автоматизация"]
+        AUTO_YES["✅ Scheduler<br/>Pending/Failed<br/>Штрафы"]
+        AUTO_NO["❌ Без контроля<br/>Ручная сдача"]
+    end
+
+    T1 --> AUTO_YES
+    T2 --> AUTO_NO
+
+    style T1 fill:#4CAF50,color:#fff
+    style T2 fill:#9E9E9E,color:#fff
+```
+
+**"ЗП после смены":**
+- Сдаётся каждую смену
+- Сумма = выручка из пересменки (shiftCash)
+- Контролируется scheduler-ом
+- Штрафы за несдачу
+
+**"ЗП за месяц":**
+- Сдаётся раз в месяц
+- Сумма вводится вручную
+- Без автоматического контроля
+
+---
+
+### 7.16 Хранение файлов на сервере
+
+```
+/var/www/
+├── rko-reports/
+│   ├── rko_metadata.json          # Метаданные всех РКО
+│   └── RKO_*.docx                 # Файлы документов
+├── rko-pending/
+│   └── pending_rko_*.json         # Pending/Failed отчёты
+├── rko-automation-state/
+│   └── state.json                 # Состояние scheduler-а
+└── points-settings/
+    └── rko_points_settings.json   # Настройки временных окон
+```
+
+---
+
+## 8. Система отчётности - СДАТЬ СМЕНУ (Shift Handover)
+
+### 8.1 Обзор модуля
+
+**Назначение:** Модуль для сдачи смены — процесс в конце рабочей смены, включающий ответы на контрольные вопросы и формирование конверта с выручкой. Работает параллельно с модулем пересменок (shifts), но имеет отдельную логику и вопросы.
+
+**Ключевые отличия от пересменок:**
+- **Пересменки (shifts)** — передача смены **между сотрудниками**, фокус на состоянии магазина
+- **Сдать смену (shift_handover)** — **завершение смены**, фокус на отчётности и формировании конверта с выручкой
+
+**Основные компоненты:**
+1. **Выбор роли** — сотрудник или заведующая (разные вопросы)
+2. **Вопросы сдачи смены** — контрольные вопросы по роли
+3. **Формирование конверта** — учёт выручки, расходов, итога
+4. **Отчёты** — история сдачи смен с оценками
+5. **Настройки баллов** — система начисления/штрафов
+
+**Файлы модуля:**
+```
+lib/features/shift_handover/
+├── models/
+│   ├── shift_handover_report_model.dart    # Модель отчёта + ShiftHandoverAnswer
+│   ├── shift_handover_question_model.dart  # Модель вопроса
+│   ├── pending_shift_handover_model.dart   # Краткая модель pending
+│   └── pending_shift_handover_report_model.dart  # Полная модель pending
+├── pages/
+│   ├── shift_handover_role_selection_page.dart     # Выбор типа: Конверт / Сотрудник / Заведующая
+│   ├── shift_handover_shop_selection_page.dart     # Выбор магазина
+│   ├── shift_handover_questions_page.dart          # Прохождение вопросов
+│   ├── shift_handover_questions_management_page.dart  # Управление вопросами (админ)
+│   ├── shift_handover_reports_list_page.dart       # Список отчётов (вкладки)
+│   └── shift_handover_report_view_page.dart        # Просмотр отчёта
+└── services/
+    ├── shift_handover_report_service.dart    # CRUD отчётов
+    ├── shift_handover_question_service.dart  # CRUD вопросов
+    └── pending_shift_handover_service.dart   # Pending/Failed отчёты
+
+lib/features/envelope/
+├── models/
+│   ├── envelope_report_model.dart      # Модель конверта
+│   └── envelope_question_model.dart    # Вопросы конверта (необязательные)
+├── pages/
+│   ├── envelope_form_page.dart         # Форма ввода конверта
+│   ├── envelope_reports_list_page.dart # Список конвертов
+│   ├── envelope_report_view_page.dart  # Просмотр конверта
+│   └── envelope_questions_management_page.dart  # Управление вопросами
+├── services/
+│   ├── envelope_report_service.dart    # CRUD конвертов
+│   └── envelope_question_service.dart  # CRUD вопросов
+└── widgets/
+    └── add_expense_dialog.dart         # Диалог добавления расхода
+```
+
+**Связанные модули (efficiency):**
+```
+lib/features/efficiency/
+├── models/
+│   └── points_settings_model.dart              # ShiftHandoverPointsSettings
+├── pages/settings_tabs/
+│   └── shift_handover_points_settings_page.dart  # Настройки баллов
+└── services/
+    └── points_settings_service.dart            # API настроек
+```
+
+**Серверные модули:**
+```
+loyalty-proxy/api/
+├── shift_handover_automation_scheduler.js   # Scheduler: pending/failed/штрафы
+├── shift_handover_api.js                    # CRUD отчётов и вопросов
+├── envelope_api.js                          # CRUD конвертов
+└── points_settings_api.js                   # Настройки баллов
+```
+
+---
+
+### 8.2 Модели данных
+
+```mermaid
+classDiagram
+    class ShiftHandoverReport {
+        +String id
+        +String employeeName
+        +String shopAddress
+        +DateTime createdAt
+        +List~ShiftHandoverAnswer~ answers
+        +bool isSynced
+        +DateTime? confirmedAt
+        +int? rating
+        +String? confirmedByAdmin
+        +String? status
+        +DateTime? expiredAt
+        +fromJson(Map) ShiftHandoverReport
+        +toJson() Map
+        +isConfirmed bool
+        +isExpired bool
+        +verificationStatus String
+    }
+
+    class ShiftHandoverAnswer {
+        +String question
+        +String? textAnswer
+        +double? numberAnswer
+        +String? photoPath
+        +String? photoUrl
+        +String? photoDriveId
+        +String? referencePhotoUrl
+        +fromJson(Map) ShiftHandoverAnswer
+        +toJson() Map
+    }
+
+    class ShiftHandoverQuestion {
+        +String id
+        +String question
+        +String? answerFormatB
+        +String? answerFormatC
+        +List~String~? shops
+        +Map~String,String~? referencePhotos
+        +String? targetRole
+        +isNumberOnly bool
+        +isPhotoOnly bool
+        +isYesNo bool
+        +isTextOnly bool
+        +fromJson(Map) ShiftHandoverQuestion
+        +toJson() Map
+    }
+
+    class PendingShiftHandoverReport {
+        +String id
+        +String shopAddress
+        +String shiftType
+        +String shiftLabel
+        +String date
+        +String deadline
+        +String status
+        +String? completedBy
+        +DateTime createdAt
+        +DateTime? completedAt
+        +isOverdue bool
+        +fromJson(Map) PendingShiftHandoverReport
+        +toJson() Map
+    }
+
+    class EnvelopeReport {
+        +String id
+        +String date
+        +String employeeName
+        +String shopAddress
+        +String shiftType
+        +double shiftCash
+        +double cashierExpenses
+        +double otherExpenses
+        +String? expenseComment
+        +double netTotal
+        +DateTime createdAt
+        +List~EnvelopeAnswer~? answers
+        +String? status
+        +fromJson(Map) EnvelopeReport
+        +toJson() Map
+    }
+
+    class ShiftHandoverPointsSettings {
+        +String id
+        +String category
+        +double minPoints
+        +int zeroThreshold
+        +double maxPoints
+        +String morningStartTime
+        +String morningEndTime
+        +String eveningStartTime
+        +String eveningEndTime
+        +double missedPenalty
+        +int adminReviewTimeout
+        +calculatePoints(rating) double
+    }
+
+    ShiftHandoverReport "1" *-- "*" ShiftHandoverAnswer
+    ShiftHandoverQuestion --> ShiftHandoverReport : questions for
+    PendingShiftHandoverReport --> ShiftHandoverReport : becomes
+    ShiftHandoverReport ..> ShiftHandoverPointsSettings : uses for scoring
+    EnvelopeReport ..> ShiftHandoverReport : linked via shiftType/date
+```
+
+---
+
+### 8.3 Архитектура модуля: три ветки сдачи смены
+
+```mermaid
+flowchart TB
+    subgraph Entry["Точка входа"]
+        ROLE[ShiftHandoverRoleSelectionPage]
+    end
+
+    subgraph Branch1["Ветка 1: Конверт"]
+        ENV[EnvelopeFormPage]
+        ENV_RPT[EnvelopeReport]
+    end
+
+    subgraph Branch2["Ветка 2: Сотрудник"]
+        EMP_Q[ShiftHandoverQuestionsPage<br/>targetRole: employee]
+        EMP_RPT[ShiftHandoverReport]
+    end
+
+    subgraph Branch3["Ветка 3: Заведующая"]
+        MGR_Q[ShiftHandoverQuestionsPage<br/>targetRole: manager]
+        MGR_RPT[ShiftHandoverReport]
+    end
+
+    subgraph Validation["Проверка доступности"]
+        PENDING[PendingShiftHandoverService]
+        CHECK{Есть pending<br/>отчёт?}
+    end
+
+    ROLE --> ENV
+    ROLE --> CHECK
+    CHECK -->|Да| EMP_Q
+    CHECK -->|Да| MGR_Q
+    CHECK -->|Нет| BLOCK[Показать диалог<br/>'Время истекло']
+
+    ENV --> ENV_RPT
+    EMP_Q --> EMP_RPT
+    MGR_Q --> MGR_RPT
+
+    style ROLE fill:#004D40,color:#fff
+    style ENV fill:#4CAF50,color:#fff
+    style EMP_Q fill:#2196F3,color:#fff
+    style MGR_Q fill:#9C27B0,color:#fff
+    style BLOCK fill:#f44336,color:#fff
+```
+
+**Логика блокировки:**
+- Конверт доступен **всегда** (нет блокировки)
+- Вопросы для сотрудника/заведующей — только если есть **pending отчёт** для магазина и текущей смены
+- Если pending отчёт перешёл в **failed** (истекло время) — показывается диалог "Время истекло"
+
+---
+
+### 8.4 Статусы отчёта сдачи смены
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Scheduler создаёт
+
+    pending --> review: Сотрудник отправил
+    pending --> failed: Дедлайн истёк
+
+    review --> confirmed: Админ оценил
+    review --> rejected: Админ не успел (таймаут)
+
+    failed --> [*]: Штраф начислен
+    rejected --> [*]: Штраф начислен
+    confirmed --> [*]: Баллы начислены
+
+    note right of pending: Ожидает прохождения<br/>Сотрудник может сдать
+    note right of review: На проверке у админа
+    note right of confirmed: Оценка 1-10 выставлена
+    note right of failed: Сотрудник не успел
+    note right of rejected: Админ не проверил вовремя
+```
+
+---
+
+### 8.5 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph SHIFT_HANDOVER["СДАТЬ СМЕНУ (shift_handover)"]
+        SHR[ShiftHandoverReport]
+        SHQ[ShiftHandoverQuestion]
+        PSHR[PendingShiftHandoverReport]
+        SHRS[ShiftHandoverReportService]
+    end
+
+    subgraph ENVELOPE["КОНВЕРТ (envelope)"]
+        ENV[EnvelopeReport]
+        ENVS[EnvelopeReportService]
+    end
+
+    subgraph DATA["ДАННЫЕ"]
+        SHOP[Shops<br/>Магазины]
+        EMP[Employees<br/>Сотрудники]
+    end
+
+    subgraph POINTS["БАЛЛЫ (efficiency)"]
+        SHPS[ShiftHandoverPointsSettings]
+        PSS[PointsSettingsService]
+        ECS[EfficiencyCalculationService]
+    end
+
+    subgraph SCHEDULE["ГРАФИК"]
+        WS[WorkSchedule<br/>График работы]
+    end
+
+    subgraph SERVER["СЕРВЕР"]
+        SCHED[Scheduler<br/>shift_handover_automation_scheduler.js]
+        FCM[Firebase Messaging]
+        PENALTY[efficiency-penalties/]
+    end
+
+    subgraph RKO["РКО"]
+        RKO_DOC[RKO Documents<br/>ЗП после смены]
+    end
+
+    SHOP --> SHR
+    SHOP --> ENV
+    EMP --> SHR
+    EMP --> ENV
+    SHPS --> SHR
+    WS --> PSHR
+
+    SHR --> ECS
+    SHPS --> ECS
+    ENV --> RKO_DOC
+
+    SCHED --> PSHR
+    SCHED --> FCM
+    SCHED --> PENALTY
+    SHR --> FCM
+
+    ENV -.->|shiftCash → сумма| RKO_DOC
+    EMP -.->|employeeName| SHR
+    SHOP -.->|shopAddress| SHR
+    SHPS -.->|timeWindows, rating| SHR
+    WS -.->|кто работает сегодня| SCHED
+
+    style SHIFT_HANDOVER fill:#E91E63,color:#fff
+    style ENVELOPE fill:#4CAF50,color:#fff
+    style RKO fill:#FF9800,color:#fff
+    style POINTS fill:#9C27B0,color:#fff
+```
+
+---
+
+### 8.6 Детальные связи: Сдать смену ↔ Другие модули
+
+```mermaid
+flowchart LR
+    subgraph Shift_Handover["Сдать смену"]
+        SH_RPT[ShiftHandoverReport]
+        SH_Q[ShiftHandoverQuestion]
+        SH_PENDING[PendingShiftHandoverReport]
+    end
+
+    subgraph Envelope["Конверт"]
+        ENV_RPT[EnvelopeReport]
+        ENV_CASH[shiftCash]
+        ENV_EXP[expenses]
+    end
+
+    subgraph Shifts["Пересменки"]
+        SHIFT_RPT[ShiftReport]
+        SHIFT_Q[ShiftQuestion]
+    end
+
+    subgraph Efficiency["Эффективность"]
+        EFF_PTS[efficiency-penalties]
+        EFF_CALC[calculatePoints]
+    end
+
+    subgraph WorkSchedule["График работы"]
+        WS_ENTRY[WorkScheduleEntry]
+        WS_EMP[employeeName]
+        WS_SHOP[shopAddress]
+    end
+
+    subgraph RKO["РКО"]
+        RKO_DOC[RKO Document]
+        RKO_SUM[сумма]
+    end
+
+    %% Связи
+    ENV_CASH --> RKO_SUM
+    SH_RPT --> EFF_PTS
+    SH_PENDING --> WS_ENTRY
+    WS_EMP --> SH_PENDING
+    WS_SHOP --> SH_PENDING
+
+    %% Примечания
+    SH_RPT -.->|параллельно с| SHIFT_RPT
+    SH_Q -.->|отдельные вопросы от| SHIFT_Q
+```
+
+---
+
+### 8.7 API Endpoints
+
+#### Отчёты сдачи смены
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/shift-handover-reports` | Получить отчёты (фильтры: employeeName, shopAddress, date, status) |
+| POST | `/api/shift-handover-reports` | Создать/отправить отчёт |
+| PUT | `/api/shift-handover-reports/:id` | Обновить отчёт (оценка админом) |
+
+#### Вопросы сдачи смены
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/shift-handover-questions` | Получить вопросы (фильтры: shopAddress, targetRole) |
+| GET | `/api/shift-handover-questions/:id` | Получить вопрос по ID |
+| POST | `/api/shift-handover-questions` | Создать вопрос |
+| PUT | `/api/shift-handover-questions/:id` | Обновить вопрос |
+| DELETE | `/api/shift-handover-questions/:id` | Удалить вопрос |
+| POST | `/api/shift-handover-questions/:id/reference-photo` | Загрузить эталонное фото |
+
+#### Pending/Failed отчёты (автоматизация)
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/shift-handover/pending` | Получить ожидающие отчёты за сегодня |
+| GET | `/api/shift-handover/failed` | Получить просроченные отчёты за сегодня |
+
+#### Конверты
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/envelope-reports` | Получить конверты (фильтры: date, shopAddress) |
+| POST | `/api/envelope-reports` | Создать конверт |
+| GET | `/api/envelope-reports/:id` | Получить конверт по ID |
+
+#### Настройки баллов
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/points-settings/shift-handover` | Получить настройки баллов сдачи смены |
+| POST | `/api/points-settings/shift-handover` | Сохранить настройки баллов |
+
+---
+
+### 8.8 Поток данных: Автоматическое создание pending отчётов
+
+```mermaid
+sequenceDiagram
+    participant SCHED as Scheduler
+    participant SETTINGS as ShiftHandoverPointsSettings
+    participant SHOP as Shops
+    participant DB as shift-handover-pending/
+    participant FCM as Push
+
+    Note over SCHED: morningStartTime (07:00)
+
+    SCHED->>SETTINGS: getShiftHandoverSettings()
+    SETTINGS-->>SCHED: { morningStartTime, morningEndTime, ... }
+
+    SCHED->>SHOP: getAllShops()
+    SHOP-->>SCHED: List<Shop>
+
+    loop Для каждого магазина
+        SCHED->>DB: Создать pending_{shopId}_{date}_morning.json
+        Note over DB: status: 'pending'<br/>shiftType: 'morning'<br/>deadline: morningEndTime
+    end
+
+    Note over SCHED: eveningStartTime (14:00)
+
+    loop Для каждого магазина
+        SCHED->>DB: Создать pending_{shopId}_{date}_evening.json
+        Note over DB: status: 'pending'<br/>shiftType: 'evening'<br/>deadline: eveningEndTime
+    end
+```
+
+---
+
+### 8.9 Поток данных: Блокировка сдачи смены
+
+```mermaid
+sequenceDiagram
+    participant EMP as Сотрудник
+    participant APP as ShiftHandoverRoleSelectionPage
+    participant SVC as PendingShiftHandoverService
+    participant API as Server
+
+    EMP->>APP: Открыть "Сдать смену"
+
+    APP->>SVC: getPendingReports()
+    SVC->>API: GET /api/shift-handover/pending
+    API-->>SVC: { items: [...] }
+    SVC-->>APP: List<PendingShiftHandoverReport>
+
+    APP->>APP: _hasPendingReport(shopAddress, currentShift)
+
+    alt Есть pending отчёт
+        Note over APP: Показать карточки:<br/>✅ Конверт<br/>✅ Сотрудник<br/>✅ Заведующая
+        EMP->>APP: Выбрать "Сотрудник"
+        APP->>APP: ShiftHandoverQuestionsPage
+    else Нет pending отчёта
+        Note over APP: Показать карточки:<br/>✅ Конверт<br/>🔒 Сотрудник (disabled)<br/>🔒 Заведующая (disabled)
+        EMP->>APP: Нажать на заблокированную карточку
+        APP->>APP: _showNoPendingDialog()
+        Note over APP: Диалог: "Сдача смены недоступна"<br/>"Время истекло"
+    end
+```
+
+---
+
+### 8.10 Поток данных: Переход в failed + штраф
+
+```mermaid
+sequenceDiagram
+    participant SCHED as Scheduler
+    participant PENDING as shift-handover-pending/
+    participant WS as WorkSchedule
+    participant PENALTY as efficiency-penalties/
+    participant FCM as Push
+    participant EMP as Сотрудник
+
+    Note over SCHED: Каждые 5 минут
+
+    SCHED->>PENDING: loadTodayPendingReports()
+    PENDING-->>SCHED: List<PendingShiftHandoverReport>
+
+    loop Для каждого pending отчёта
+        SCHED->>SCHED: isDeadlinePassed(report.deadline)
+
+        alt Дедлайн истёк
+            SCHED->>PENDING: Обновить status: 'failed'
+            SCHED->>WS: findEmployeeForShift(shopAddress, date, shiftType)
+            WS-->>SCHED: { employeeName, phone }
+
+            SCHED->>PENALTY: createPenalty(employeeName, missedPenalty)
+            Note over PENALTY: { points: -3, reason: 'Не сдана утренняя смена' }
+
+            SCHED->>FCM: sendPushToPhone(phone)
+            FCM-->>EMP: "Штраф за пропуск сдачи смены: -3 балла"
+        end
+    end
+```
+
+---
+
+### 8.11 Расчёт баллов за сдачу смены
+
+```mermaid
+flowchart TB
+    subgraph Settings["ShiftHandoverPointsSettings"]
+        MIN[minPoints: -3<br/>оценка 1]
+        ZERO[zeroThreshold: 7<br/>оценка = 0 баллов]
+        MAX[maxPoints: +1<br/>оценка 10]
+        PENALTY[missedPenalty: -3<br/>не сдал]
+        TIMEOUT[adminReviewTimeout: 4<br/>часов на проверку]
+    end
+
+    subgraph Calculation["calculatePoints(rating)"]
+        R1[rating ≤ 1] --> P1[minPoints: -3]
+        R2[1 < rating ≤ zeroThreshold] --> P2[Интерполяция<br/>-3 → 0]
+        R3[zeroThreshold < rating < 10] --> P3[Интерполяция<br/>0 → +1]
+        R4[rating ≥ 10] --> P4[maxPoints: +1]
+    end
+
+    subgraph Examples["Примеры"]
+        E1[Оценка 1 → -3 балла]
+        E2[Оценка 4 → -1.5 балла]
+        E3[Оценка 7 → 0 баллов]
+        E4[Оценка 8.5 → +0.5 балла]
+        E5[Оценка 10 → +1 балл]
+        E6[Не сдал → -3 балла]
+    end
+
+    Settings --> Calculation --> Examples
+```
+
+---
+
+### 8.12 Настройки временных окон
+
+```mermaid
+gantt
+    title Временные окна сдачи смены
+    dateFormat HH:mm
+    axisFormat %H:%M
+
+    section Утренняя смена
+    morningStartTime - morningEndTime :active, morning, 07:00, 14:00
+
+    section Вечерняя смена
+    eveningStartTime - eveningEndTime :active, evening, 14:00, 23:00
+
+    section Таймаут проверки
+    adminReviewTimeout (4 часа) :crit, timeout, after morning, 4h
+```
+
+**Настраиваемые параметры:**
+
+| Параметр | По умолчанию | Описание |
+|----------|--------------|----------|
+| `morningStartTime` | 07:00 | Начало утренней смены (создание pending) |
+| `morningEndTime` | 14:00 | Дедлайн утренней сдачи |
+| `eveningStartTime` | 14:00 | Начало вечерней смены (создание pending) |
+| `eveningEndTime` | 23:00 | Дедлайн вечерней сдачи |
+| `missedPenalty` | -3 | Штраф за пропуск |
+| `adminReviewTimeout` | 4 часа | Время на проверку админом |
+
+---
+
+### 8.13 Связь с конвертом (Envelope)
+
+```mermaid
+flowchart LR
+    subgraph ShiftHandover["Сдать смену"]
+        ROLE[Выбор типа]
+    end
+
+    subgraph Envelope["Конверт"]
+        FORM[EnvelopeFormPage]
+        CASH[shiftCash<br/>Выручка смены]
+        EXP[expenses<br/>Расходы]
+        NET[netTotal<br/>К сдаче]
+    end
+
+    subgraph RKO["РКО"]
+        DOC[RKO Document<br/>ЗП после смены]
+        SUM[сумма = netTotal]
+    end
+
+    ROLE -->|"Формирование конверта"| FORM
+    FORM --> CASH
+    FORM --> EXP
+    CASH --> NET
+    EXP --> NET
+    NET --> SUM
+    SUM --> DOC
+
+    style ROLE fill:#E91E63,color:#fff
+    style FORM fill:#4CAF50,color:#fff
+    style DOC fill:#FF9800,color:#fff
+```
+
+**Связь EnvelopeReport → РКО:**
+- При создании РКО "ЗП после смены" сумма автоматически подтягивается из последнего конверта для магазина
+- Поле `shiftCash` конверта соответствует сумме РКО
+
+---
+
+### 8.14 Хранение файлов на сервере
+
+```
+/var/www/
+├── shift-handover-reports/
+│   └── handover_*.json              # Отчёты сдачи смены
+├── shift-handover-pending/
+│   └── pending_*.json               # Pending/Failed отчёты
+├── shift-handover-questions/
+│   └── question_*.json              # Вопросы сдачи смены
+├── shift-handover-automation-state/
+│   └── state.json                   # Состояние scheduler-а
+├── envelope-reports/
+│   └── envelope_*.json              # Конверты
+├── envelope-questions/
+│   └── question_*.json              # Вопросы конвертов
+├── work-schedules/
+│   └── {YYYY-MM}.json               # График работы (для штрафов)
+├── efficiency-penalties/
+│   └── {YYYY-MM}.json               # Начисленные баллы/штрафы
+└── points-settings/
+    └── shift_handover_points_settings.json  # Настройки баллов
+```
+
+---
+
+### 8.15 Вкладки отчётов сдачи смены
+
+```mermaid
+flowchart LR
+    subgraph Tabs["ShiftHandoverReportsListPage"]
+        T1["📥 Не пройдены<br/>(pending)"]
+        T2["⏳ Ожидают<br/>(review)"]
+        T3["✅ Подтверждены<br/>(confirmed)"]
+        T4["❌ Не в срок<br/>(failed)"]
+    end
+
+    subgraph Sources["Источники данных"]
+        S1["/api/shift-handover/pending"]
+        S2["/api/shift-handover-reports?status=review"]
+        S3["/api/shift-handover-reports?status=confirmed"]
+        S4["/api/shift-handover/failed"]
+    end
+
+    T1 --> S1
+    T2 --> S2
+    T3 --> S3
+    T4 --> S4
+
+    style T1 fill:#FFC107,color:#000
+    style T2 fill:#2196F3,color:#fff
+    style T3 fill:#4CAF50,color:#fff
+    style T4 fill:#f44336,color:#fff
+```
+
+---
+
+### 8.16 Сравнение: Пересменки vs Сдать смену
+
+| Аспект | Пересменки (shifts) | Сдать смену (shift_handover) |
+|--------|---------------------|------------------------------|
+| **Цель** | Передача смены **между сотрудниками** | **Завершение** смены с отчётностью |
+| **Когда** | В начале смены | В конце смены |
+| **Фокус** | Состояние магазина | Выручка + контрольные вопросы |
+| **Конверт** | Нет | Да (EnvelopeReport) |
+| **Роли** | Все сотрудники | Сотрудник / Заведующая |
+| **Связь с РКО** | Нет | Да (сумма конверта → РКО) |
+| **Scheduler** | shift_automation_scheduler.js | shift_handover_automation_scheduler.js |
+| **Вопросы** | ShiftQuestion | ShiftHandoverQuestion |
+
+---
+
+## 9. Система отчётности - ПОСЕЩАЕМОСТЬ (Я на работе)
+
+### 9.1 Обзор модуля
+
+**Назначение:** Модуль отслеживания и контроля посещаемости сотрудников. Позволяет фиксировать приход на работу по GPS-координатам с привязкой к конкретному магазину. Включает фоновое GPS-отслеживание для автоматических напоминаний.
+
+**Основные компоненты:**
+1. **Я на работе** — отметка прихода сотрудником (GPS + магазин)
+2. **Отчёт по приходам** — 4 вкладки: сотрудники, магазины, ожидание, не отмечены
+3. **Баллы посещаемости** — настройки баллов и временных окон
+4. **Фоновое GPS** — WorkManager для push-уведомлений "Не забудьте отметиться"
+5. **Автоматизация** — серверный scheduler для pending/failed/штрафов
+
+**Файлы модуля:**
+```
+lib/features/attendance/
+├── models/
+│   ├── attendance_model.dart           # AttendanceRecord - запись прихода
+│   ├── pending_attendance_model.dart   # PendingAttendanceReport - ожидающий отчёт
+│   └── shop_attendance_summary.dart    # Сводки по магазинам/месяцам
+├── pages/
+│   ├── attendance_shop_selection_page.dart  # Выбор магазина для отметки
+│   ├── attendance_reports_page.dart         # Список отчётов (4 вкладки)
+│   ├── attendance_month_page.dart           # Календарь за месяц
+│   ├── attendance_employee_detail_page.dart # Детали по сотруднику
+│   └── attendance_day_details_dialog.dart   # Детали дня (диалог)
+└── services/
+    ├── attendance_service.dart              # Отметка прихода (GPS)
+    └── attendance_report_service.dart       # CRUD отчётов
+```
+
+**Фоновое GPS (core):**
+```
+lib/core/services/
+└── background_gps_service.dart  # WorkManager + GPS для напоминаний
+```
+
+**Настройки баллов (efficiency):**
+```
+lib/features/efficiency/
+├── models/
+│   └── points_settings_model.dart                    # AttendancePointsSettings
+├── pages/settings_tabs/
+│   └── attendance_points_settings_page.dart          # UI настроек
+└── services/
+    └── points_settings_service.dart                  # API настроек
+```
+
+**Серверные модули:**
+```
+loyalty-proxy/
+├── index.js                                          # Endpoints: /api/attendance/*
+└── api/
+    └── attendance_automation_scheduler.js            # Scheduler: pending/failed/штрафы/push
+```
+
+---
+
+### 9.2 Модели данных
+
+```mermaid
+classDiagram
+    class AttendanceRecord {
+        +String id
+        +String employeeName
+        +String shopAddress
+        +DateTime timestamp
+        +double latitude
+        +double longitude
+        +double? distance
+        +bool? isOnTime
+        +String? shiftType
+        +int? lateMinutes
+        +toJson() Map
+        +fromJson(Map) AttendanceRecord
+        +generateId(name, timestamp) String
+    }
+
+    class PendingAttendanceReport {
+        +String id
+        +String shopAddress
+        +String shopName
+        +String shiftType
+        +String status
+        +DateTime createdAt
+        +DateTime deadline
+        +String? employeeName
+        +String? employeePhone
+        +DateTime? markedAt
+        +DateTime? failedAt
+        +bool? isOnTime
+        +int? lateMinutes
+        +bool isOverdue
+        +Duration timeUntilDeadline
+        +String shiftTypeDisplay
+    }
+
+    class AttendancePointsSettings {
+        +double onTimePoints
+        +double latePoints
+        +double missedPenalty
+        +String morningStartTime
+        +String morningEndTime
+        +String eveningStartTime
+        +String eveningEndTime
+    }
+
+    class ShopAttendanceSummary {
+        +String shopAddress
+        +int todayAttendanceCount
+        +MonthAttendanceSummary currentMonth
+        +MonthAttendanceSummary previousMonth
+        +int totalRecords
+        +int onTimeRecords
+        +bool isTodayComplete
+        +double onTimeRate
+    }
+
+    class MonthAttendanceSummary {
+        +int year
+        +int month
+        +int actualCount
+        +int plannedCount
+        +List~DayAttendanceSummary~ days
+        +String displayName
+        +double completionRate
+        +String status
+    }
+
+    class DayAttendanceSummary {
+        +DateTime date
+        +int attendanceCount
+        +bool hasMorning
+        +bool hasNight
+        +bool hasDay
+        +List~AttendanceRecord~ records
+        +bool isComplete
+        +String statusIcon
+    }
+
+    class EmployeeAttendanceSummary {
+        +String employeeName
+        +String? employeeId
+        +int totalMarks
+        +int onTimeMarks
+        +int lateMarks
+        +List~AttendanceRecord~ recentRecords
+        +double onTimeRate
+    }
+
+    ShopAttendanceSummary "1" *-- "2" MonthAttendanceSummary
+    MonthAttendanceSummary "1" *-- "*" DayAttendanceSummary
+    DayAttendanceSummary "1" *-- "*" AttendanceRecord
+    EmployeeAttendanceSummary "1" *-- "*" AttendanceRecord
+```
+
+---
+
+### 9.3 Статусы pending отчёта
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Начало временного окна
+
+    pending --> completed: Сотрудник отметился
+    pending --> failed: Дедлайн прошёл
+
+    completed --> [*]: Файл удаляется
+    failed --> [*]: Очистка в 23:59
+
+    note right of pending
+        Создаётся автоматически
+        при начале утреннего/вечернего окна
+    end note
+
+    note right of failed
+        Начисляется штраф сотруднику
+        из графика работы
+    end note
+```
+
+| Статус | Описание | Цвет | Действие |
+|--------|----------|------|----------|
+| `pending` | Ожидает отметки | 🟠 Оранжевый | Сотрудник может отметиться |
+| `failed` | Не отмечен (дедлайн прошёл) | 🔴 Красный | Штраф сотруднику |
+| (удалён) | Отметился вовремя | 🟢 Зелёный | Файл удаляется |
+
+---
+
+### 9.4 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph ATTENDANCE["ПОСЕЩАЕМОСТЬ"]
+        AR[AttendanceRecord<br/>Запись прихода]
+        PAR[PendingAttendanceReport<br/>Ожидающий отчёт]
+        APS[AttendancePointsSettings<br/>Настройки баллов]
+        GPS[BackgroundGpsService<br/>Фоновое GPS]
+    end
+
+    subgraph SHOPS["МАГАЗИНЫ"]
+        SM[Shop Model<br/>Координаты GPS]
+    end
+
+    subgraph EMPLOYEES["СОТРУДНИКИ"]
+        EM[Employee<br/>Телефон для push]
+    end
+
+    subgraph SCHEDULE["ГРАФИК РАБОТЫ"]
+        WS[WorkScheduleEntry<br/>Смены сотрудников]
+    end
+
+    subgraph EFFICIENCY["ЭФФЕКТИВНОСТЬ"]
+        PEN[Penalties<br/>Штрафы]
+    end
+
+    subgraph SERVER["СЕРВЕР"]
+        SCH[AttendanceScheduler<br/>Автоматизация]
+        PUSH[Push Notifications<br/>FCM]
+    end
+
+    SM -->|GPS координаты| AR
+    SM -->|Расстояние < 750м| GPS
+    EM -->|employeeName| AR
+    EM -->|phone| PUSH
+    WS -->|Кто работает сегодня| PAR
+    WS -->|employeeId| PEN
+    APS -->|временные окна| SCH
+    APS -->|баллы за приход| AR
+    APS -->|штраф за пропуск| PEN
+    PAR -->|deadline прошёл| PEN
+    SCH -->|pending → failed| PAR
+    SCH -->|push админам| PUSH
+    SCH -->|push сотруднику| PUSH
+    GPS -->|GPS рядом с магазином| PUSH
+
+    style ATTENDANCE fill:#11998e,color:#fff
+    style AR fill:#38ef7d,color:#000
+    style PAR fill:#38ef7d,color:#000
+    style APS fill:#38ef7d,color:#000
+    style GPS fill:#38ef7d,color:#000
+```
+
+---
+
+### 9.5 Детальные связи
+
+```mermaid
+flowchart LR
+    subgraph Attendance_Data["Данные отметки"]
+        EMP_NAME[employeeName]
+        SHOP_ADDR[shopAddress]
+        TIMESTAMP[timestamp]
+        LAT_LNG[latitude/longitude]
+        DISTANCE[distance]
+        ON_TIME[isOnTime]
+        SHIFT[shiftType]
+        LATE_MIN[lateMinutes]
+    end
+
+    subgraph Settings_Data["Настройки баллов"]
+        ON_TIME_PTS[onTimePoints<br/>+0.5]
+        LATE_PTS[latePoints<br/>-1.0]
+        MISSED_PEN[missedPenalty<br/>-2.0]
+        MORNING_WIN[morningStartTime/EndTime]
+        EVENING_WIN[eveningStartTime/EndTime]
+    end
+
+    subgraph Usage["Использование"]
+        U1[Начисление баллов<br/>при отметке]
+        U2[Проверка опоздания<br/>по интервалам смены]
+        U3[Автоматическое создание<br/>pending отчётов]
+        U4[Переход в failed<br/>+ штраф]
+        U5[Push-уведомление<br/>"Не забудьте отметиться"]
+        U6[Push-уведомление<br/>"Штраф за пропуск"]
+    end
+
+    EMP_NAME --> U1
+    SHOP_ADDR --> U2
+    LAT_LNG --> U5
+    ON_TIME_PTS --> U1
+    LATE_PTS --> U1
+    MISSED_PEN --> U4
+    MORNING_WIN --> U3
+    EVENING_WIN --> U3
+    DISTANCE --> U5
+```
+
+---
+
+### 9.6 Алгоритм проверки GPS (фоновый сервис)
+
+```mermaid
+flowchart TB
+    START[WorkManager<br/>каждые 15 минут] --> CHECK_TIME{Время 6:00-22:00?}
+    CHECK_TIME -->|Нет| SKIP1[Пропустить]
+    CHECK_TIME -->|Да| CHECK_ROLE{Пользователь<br/>сотрудник?}
+    CHECK_ROLE -->|Нет клиент| SKIP2[Пропустить]
+    CHECK_ROLE -->|Да| GET_GPS[Получить GPS]
+    GET_GPS --> SEND_SERVER[POST /api/attendance/gps-check]
+
+    SEND_SERVER --> CHECK_SHOP{Магазин<br/>рядом < 750м?}
+    CHECK_SHOP -->|Нет| RESP1[not_near_shop]
+    CHECK_SHOP -->|Да| CHECK_SHIFT{Есть смена<br/>сегодня?}
+    CHECK_SHIFT -->|Нет| RESP2[no_shift_here]
+    CHECK_SHIFT -->|Да| CHECK_PENDING{Есть pending<br/>отчёт?}
+    CHECK_PENDING -->|Нет| RESP3[no_pending_report]
+    CHECK_PENDING -->|Да| CHECK_CACHE{Уже отправляли<br/>push сегодня?}
+    CHECK_CACHE -->|Да| RESP4[already_notified]
+    CHECK_CACHE -->|Нет| SEND_PUSH[📲 Push: "Не забудьте отметиться!"]
+    SEND_PUSH --> RESP5[notified: true]
+
+    style SEND_PUSH fill:#4CAF50,color:#fff
+    style START fill:#2196F3,color:#fff
+```
+
+---
+
+### 9.7 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| `POST` | `/api/attendance` | Отметить приход на работу |
+| `GET` | `/api/attendance/:date` | Получить все отметки за дату |
+| `GET` | `/api/attendance/employees/summary` | Сводка по сотрудникам |
+| `GET` | `/api/attendance/shops/summary` | Сводка по магазинам |
+| `GET` | `/api/attendance/pending` | Список pending отчётов |
+| `GET` | `/api/attendance/failed` | Список failed отчётов |
+| `POST` | `/api/attendance/gps-check` | Фоновая проверка GPS (push) |
+| `GET` | `/api/points-settings/attendance` | Настройки баллов |
+| `POST` | `/api/points-settings/attendance` | Сохранить настройки баллов |
+
+---
+
+### 9.8 Поток данных: Отметка "Я на работе"
+
+```mermaid
+sequenceDiagram
+    participant E as Сотрудник
+    participant App as Flutter App
+    participant GPS as Geolocator
+    participant API as Server API
+    participant DB as /var/www/attendance/
+
+    E->>App: Нажимает "Я на работе"
+    App->>App: Выбор магазина
+    App->>GPS: getCurrentPosition()
+    GPS-->>App: {lat, lng}
+
+    App->>API: POST /api/attendance
+    Note right of App: {employeeName, shopAddress,<br/>lat, lng, timestamp}
+
+    API->>API: Рассчитать расстояние<br/>до магазина (Haversine)
+    API->>API: Проверить временное окно<br/>(settings)
+    API->>API: Определить isOnTime,<br/>shiftType, lateMinutes
+
+    alt Есть pending отчёт
+        API->>DB: Удалить pending файл
+    end
+
+    API->>DB: Сохранить attendance_*.json
+    API->>API: Начислить баллы<br/>(onTimePoints или latePoints)
+    API-->>App: {success, points, message}
+
+    App->>E: Показать результат
+```
+
+---
+
+### 9.9 Поток данных: Автоматизация (Scheduler)
+
+```mermaid
+sequenceDiagram
+    participant SCH as AttendanceScheduler
+    participant SET as PointsSettings
+    participant SHOPS as /var/www/shops/
+    participant PEND as /var/www/attendance-pending/
+    participant WS as /var/www/work-schedules/
+    participant EMP as /var/www/employees/
+    participant PEN as /var/www/efficiency-penalties/
+    participant PUSH as FCM Push
+
+    Note over SCH: Проверка каждые 5 минут
+
+    SCH->>SET: Загрузить настройки
+    SET-->>SCH: {morningStart, morningEnd,<br/>eveningStart, eveningEnd}
+
+    alt Начало временного окна (утро или вечер)
+        SCH->>SHOPS: Загрузить все магазины
+        loop Для каждого магазина
+            SCH->>PEND: Создать pending отчёт
+            Note right of SCH: {shopAddress, shiftType,<br/>deadline, status: pending}
+        end
+    end
+
+    alt Проверка дедлайнов
+        SCH->>PEND: Загрузить pending отчёты
+        loop Для каждого pending
+            alt Дедлайн прошёл
+                SCH->>PEND: status = failed
+                SCH->>WS: Найти сотрудника<br/>в графике на сегодня
+                SCH->>EMP: Найти телефон сотрудника
+                SCH->>PEN: Создать штраф<br/>(missedPenalty)
+                SCH->>PUSH: 📲 Push сотруднику:<br/>"Штраф за пропуск"
+            end
+        end
+        alt Есть failed отчёты
+            SCH->>PUSH: 📲 Push админам:<br/>"N магазинов не отметились"
+        end
+    end
+
+    alt 23:59 - Очистка
+        SCH->>PEND: Удалить все файлы
+    end
+```
+
+---
+
+### 9.10 Временные окна посещаемости
+
+```mermaid
+gantt
+    title Временные окна посещаемости (пример)
+    dateFormat HH:mm
+    axisFormat %H:%M
+
+    section Утро
+    Создание pending    :milestone, 07:00, 0m
+    Окно отметки        :active, 07:00, 09:00
+    Дедлайн (failed)    :crit, milestone, 09:00, 0m
+
+    section Вечер
+    Создание pending    :milestone, 19:00, 0m
+    Окно отметки        :active, 19:00, 21:00
+    Дедлайн (failed)    :crit, milestone, 21:00, 0m
+
+    section Ночь
+    Очистка отчётов     :milestone, 23:59, 0m
+```
+
+**Настраиваемые параметры:**
+- `morningStartTime` — начало утреннего окна (создание pending)
+- `morningEndTime` — дедлайн утреннего окна (переход в failed)
+- `eveningStartTime` — начало вечернего окна (создание pending)
+- `eveningEndTime` — дедлайн вечернего окна (переход в failed)
+
+---
+
+### 9.11 Расчёт баллов за посещаемость
+
+```mermaid
+flowchart TB
+    START[Сотрудник отмечается] --> CHECK_TIME{Время внутри<br/>окна смены?}
+
+    CHECK_TIME -->|Да| ON_TIME[✅ Вовремя]
+    CHECK_TIME -->|Нет, после начала| LATE[⚠️ Опоздал]
+    CHECK_TIME -->|Вне окна| NO_SHIFT[ℹ️ Вне смены]
+
+    ON_TIME --> CALC_ON[+ onTimePoints<br/>например +0.5]
+    LATE --> CALC_LATE[+ latePoints<br/>например -1.0]
+    NO_SHIFT --> CALC_NONE[Баллы не начисляются]
+
+    subgraph MISSED["Не отметился (failed)"]
+        DEADLINE[Дедлайн прошёл] --> FIND_EMP[Найти сотрудника<br/>в графике]
+        FIND_EMP --> PENALTY[+ missedPenalty<br/>например -2.0]
+        PENALTY --> PUSH_EMP[📲 Push сотруднику]
+    end
+
+    style ON_TIME fill:#4CAF50,color:#fff
+    style LATE fill:#FFC107,color:#000
+    style NO_SHIFT fill:#9E9E9E,color:#fff
+    style DEADLINE fill:#f44336,color:#fff
+```
+
+**Настраиваемые баллы:**
+
+| Событие | Поле | Значение по умолчанию |
+|---------|------|----------------------|
+| Пришёл вовремя | `onTimePoints` | +0.5 |
+| Опоздал | `latePoints` | -1.0 |
+| Не отметился | `missedPenalty` | -2.0 |
+
+---
+
+### 9.12 Структура страницы (4 вкладки)
+
+```mermaid
+flowchart LR
+    subgraph Tabs["AttendanceReportsPage"]
+        T1["👥 Сотрудники"]
+        T2["🏪 Магазины"]
+        T3["⏳ Ожидание<br/>(pending)"]
+        T4["❌ Не отмечены<br/>(failed)"]
+    end
+
+    subgraph Sources["Источники данных"]
+        S1["/api/attendance/employees/summary"]
+        S2["/api/attendance/shops/summary"]
+        S3["/api/attendance/pending"]
+        S4["/api/attendance/failed"]
+    end
+
+    T1 --> S1
+    T2 --> S2
+    T3 --> S3
+    T4 --> S4
+
+    style T1 fill:#2196F3,color:#fff
+    style T2 fill:#4CAF50,color:#fff
+    style T3 fill:#FFC107,color:#000
+    style T4 fill:#f44336,color:#fff
+```
+
+---
+
+### 9.13 Push-уведомления
+
+| Событие | Получатель | Заголовок | Текст |
+|---------|------------|-----------|-------|
+| GPS рядом с магазином | Сотрудник | "Не забудьте отметиться!" | "Я Вас вижу на магазине {shop}" |
+| Пропуск смены (failed) | Сотрудник | "Штраф за посещаемость" | "Вам начислен штраф {points} баллов за пропуск смены ({shop})" |
+| После всех failed | Админы | "Не отмечены на работе" | "{N} магазинов не отметились на {утренней/вечерней} смене" |
+
+---
+
+### 9.14 Таблица зависимостей
+
+| Модуль | Зависит от | Что использует |
+|--------|------------|----------------|
+| Attendance | Shops | GPS координаты магазинов для расчёта расстояния |
+| Attendance | Employees | Имя сотрудника, телефон для push |
+| Attendance | WorkSchedule | Определение кто работает на магазине сегодня |
+| Attendance | PointsSettings | Настройки баллов и временных окон |
+| Attendance | Efficiency | Запись штрафов в penalties |
+| BackgroundGPS | Shops | GPS координаты для сравнения |
+| BackgroundGPS | SharedPreferences | user_phone, user_role |
+
+---
+
+### 9.15 Кэширование
+
+```mermaid
+flowchart LR
+    subgraph Cache["Кэширование"]
+        C1[CacheManager<br/>shops_list<br/>10 минут]
+        C2[SharedPreferences<br/>user_phone<br/>user_role]
+        C3[Server Cache<br/>GPS notification<br/>1 раз в день]
+    end
+
+    subgraph Usage["Использование"]
+        U1[Список магазинов<br/>при отметке]
+        U2[Данные пользователя<br/>для фонового GPS]
+        U3[Предотвращение спама<br/>push-уведомлений]
+    end
+
+    C1 --> U1
+    C2 --> U2
+    C3 --> U3
+```
+
+---
+
+### 9.16 Серверная автоматизация (AttendanceScheduler)
+
+```
+loyalty-proxy/api/attendance_automation_scheduler.js
+
+Функции:
+├── getMoscowTime()                    # Текущее время в UTC+3
+├── getMoscowDateString()              # Дата в формате YYYY-MM-DD
+├── getAttendanceSettings()            # Загрузка настроек баллов
+├── generatePendingReports(shiftType)  # Создание pending для всех магазинов
+├── checkPendingDeadlines()            # Проверка дедлайнов → failed + штраф
+├── assignPenaltyFromSchedule(report)  # Поиск сотрудника в графике
+├── createPenalty({...})               # Создание штрафа + push сотруднику
+├── sendEmployeePenaltyNotification()  # Push сотруднику о штрафе
+├── sendAdminFailedNotification()      # Push админам о failed
+├── cleanupFailedReports()             # Очистка в 23:59
+├── canMarkAttendance()                # Проверка возможности отметки
+└── runScheduledChecks()               # Основной цикл (каждые 5 мин)
+```
+
+**Интервал проверки:** 5 минут
+
+**Хранение файлов:**
+```
+/var/www/
+├── attendance/                        # Записи отметок
+│   └── {YYYY-MM-DD}.json             # [AttendanceRecord, ...]
+├── attendance-pending/                # Pending и failed отчёты
+│   └── {shopAddress}_{shiftType}_{date}.json
+├── attendance-automation-state/       # Состояние scheduler
+│   └── state.json                    # lastGeneration, lastCheck
+├── points-settings/
+│   └── attendance_points_settings.json
+└── efficiency-penalties/
+    └── {YYYY-MM}.json                # Штрафы за пропуск
+```
+
+---
+
+### 9.17 Фоновое GPS отслеживание (Flutter)
+
+```
+lib/core/services/background_gps_service.dart
+
+Технология: WorkManager
+Интервал: 15 минут (минимум Android)
+
+Алгоритм:
+1. Проверить время (6:00-22:00)
+2. Проверить роль (только сотрудники)
+3. Получить GPS координаты
+4. Отправить на сервер: POST /api/attendance/gps-check
+5. Сервер проверяет:
+   - Ближайший магазин (< 750м)
+   - Расписание сотрудника на сегодня
+   - Наличие pending отчёта
+   - Кэш уведомлений (не спамить)
+6. Если всё ОК → push "Не забудьте отметиться!"
+
+Разрешения Android:
+- ACCESS_FINE_LOCATION
+- ACCESS_COARSE_LOCATION
+- ACCESS_BACKGROUND_LOCATION
+```
+
+---
+
+### 9.18 Связь Attendance ↔ Другие модули
+
+```mermaid
+flowchart TB
+    subgraph INPUT["ВХОДНЫЕ ДАННЫЕ"]
+        SHOP[Shop<br/>GPS координаты]
+        EMP[Employee<br/>Имя, телефон]
+        WS[WorkSchedule<br/>Кто работает]
+        SETTINGS[PointsSettings<br/>Баллы, окна]
+    end
+
+    subgraph ATTENDANCE["ATTENDANCE"]
+        MARK[Отметка прихода]
+        PENDING[Pending отчёты]
+        FAILED[Failed отчёты]
+        GPS_BG[Фоновый GPS]
+    end
+
+    subgraph OUTPUT["ВЫХОДНЫЕ ДАННЫЕ"]
+        RECORD[AttendanceRecord]
+        PENALTY[Efficiency Penalty]
+        PUSH1[Push: Напоминание]
+        PUSH2[Push: Штраф]
+        PUSH3[Push: Админам]
+    end
+
+    SHOP -->|координаты| MARK
+    SHOP -->|координаты| GPS_BG
+    EMP -->|имя| MARK
+    EMP -->|телефон| PUSH1
+    EMP -->|телефон| PUSH2
+    WS -->|смены| PENDING
+    WS -->|employeeId| PENALTY
+    SETTINGS -->|баллы| MARK
+    SETTINGS -->|окна| PENDING
+
+    MARK --> RECORD
+    PENDING -->|deadline| FAILED
+    FAILED --> PENALTY
+    FAILED --> PUSH2
+    FAILED --> PUSH3
+    GPS_BG --> PUSH1
+
+    style ATTENDANCE fill:#11998e,color:#fff
+    style MARK fill:#38ef7d,color:#000
+    style PENDING fill:#FFC107,color:#000
+    style FAILED fill:#f44336,color:#fff
+```
+
+---
+
+## 10. Система передачи смен - ПЕРЕДАТЬ СМЕНУ (Shift Transfer)
+
+### 10.1 Обзор модуля
+
+**Назначение:** Система для передачи смен между сотрудниками с поддержкой множественных принятий, выбором администратора и автоматическим обновлением графика.
+
+**Ключевые особенности:**
+- Broadcast-запросы (всем сотрудникам) или адресные (конкретному)
+- Множественное принятие - несколько сотрудников могут откликнуться
+- Админ выбирает одного из принявших
+- Автоматическое обновление графика работы
+- Push-уведомления на всех этапах
+- Счётчики непрочитанных запросов
+
+**Файлы модуля:**
+```
+lib/features/work_schedule/
+├── models/
+│   └── shift_transfer_model.dart       # Модели: ShiftTransferRequest, AcceptedByEmployee, ShiftTransferStatus
+├── pages/
+│   ├── my_schedule_page.dart           # Интерфейс сотрудника (вкладка "Входящие")
+│   └── shift_transfer_requests_page.dart   # Интерфейс админа
+└── services/
+    └── shift_transfer_service.dart     # API сервис
+
+loyalty-proxy/api/
+├── shift_transfers_api.js              # REST API endpoints
+└── shift_transfers_notifications.js    # Push-уведомления
+```
+
+---
+
+### 10.2 Модели данных
+
+```mermaid
+classDiagram
+    class ShiftTransferRequest {
+        +String id
+        +String fromEmployeeId
+        +String fromEmployeeName
+        +String? toEmployeeId
+        +String? toEmployeeName
+        +String scheduleEntryId
+        +DateTime shiftDate
+        +String shopAddress
+        +String shopName
+        +ShiftType shiftType
+        +String? comment
+        +ShiftTransferStatus status
+        +String? acceptedByEmployeeId
+        +String? acceptedByEmployeeName
+        +List~AcceptedByEmployee~ acceptedBy
+        +String? approvedEmployeeId
+        +String? approvedEmployeeName
+        +DateTime createdAt
+        +DateTime? acceptedAt
+        +DateTime? resolvedAt
+        +bool isReadByRecipient
+        +bool isReadByAdmin
+        +bool isBroadcast
+        +bool isActive
+        +bool hasAcceptances
+        +int acceptedCount
+        +bool isPendingApproval
+        +bool isCompleted
+    }
+
+    class AcceptedByEmployee {
+        +String employeeId
+        +String employeeName
+        +DateTime acceptedAt
+        +fromJson(Map) AcceptedByEmployee
+        +toJson() Map
+    }
+
+    class ShiftTransferStatus {
+        <<enumeration>>
+        pending
+        hasAcceptances
+        accepted
+        rejected
+        approved
+        declined
+        expired
+    }
+
+    ShiftTransferRequest "1" *-- "*" AcceptedByEmployee : acceptedBy
+    ShiftTransferRequest --> ShiftTransferStatus
+    ShiftTransferRequest --> ShiftType
+```
+
+---
+
+### 10.3 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph TRANSFER["ПЕРЕДАЧА СМЕН (shift_transfer)"]
+        STR[ShiftTransferRequest]
+        ABE[AcceptedByEmployee]
+        STS[ShiftTransferStatus]
+        SVC[ShiftTransferService]
+        API[shift_transfers_api.js]
+        NOTIF[shift_transfers_notifications.js]
+    end
+
+    subgraph DATA["ДАННЫЕ"]
+        EMP[Employees<br/>Сотрудники]
+        WS[WorkSchedule<br/>График работы]
+        SHOP[Shops<br/>Магазины]
+    end
+
+    subgraph UI["ИНТЕРФЕЙС"]
+        MSP[MySchedulePage<br/>Мой график]
+        STRP[ShiftTransferRequestsPage<br/>Заявки для админа]
+        EPP[EmployeePanelPage<br/>Панель сотрудника]
+    end
+
+    subgraph NOTIFICATIONS["УВЕДОМЛЕНИЯ"]
+        FCM[Firebase Cloud Messaging]
+        FCMT[FCM Tokens<br/>fcm-tokens.json]
+    end
+
+    subgraph STORAGE["ХРАНИЛИЩЕ"]
+        JSON[shift-transfers.json]
+        WSJSON[work-schedules/YYYY-MM.json]
+    end
+
+    EMP -->|employeeId, name, phone| STR
+    EMP -->|phone| NOTIF
+    WS -->|scheduleEntryId| STR
+    SHOP -->|address, name| STR
+
+    SVC --> API
+    API --> JSON
+    API --> WSJSON
+    API --> NOTIF
+    NOTIF --> FCMT
+    NOTIF --> FCM
+
+    MSP --> SVC
+    STRP --> SVC
+    EPP -->|badge count| SVC
+
+    STR --> ABE
+    STR --> STS
+
+    style TRANSFER fill:#FF6F00,color:#fff
+    style STR fill:#FF8F00,color:#fff
+    style ABE fill:#FF8F00,color:#fff
+    style SVC fill:#FF8F00,color:#fff
+    style API fill:#FF8F00,color:#fff
+    style NOTIF fill:#FF8F00,color:#fff
+```
+
+---
+
+### 10.4 Машина состояний (с множественными принятиями)
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: createRequest()
+
+    pending --> hasAcceptances: Сотрудник 1 принял
+    pending --> rejected: Адресный запрос отклонён
+    pending --> expired: 30 дней истекли
+
+    hasAcceptances --> hasAcceptances: Сотрудник N принял
+    hasAcceptances --> approved: Админ выбрал сотрудника
+    hasAcceptances --> declined: Админ отклонил всю заявку
+    hasAcceptances --> expired: 30 дней истекли
+
+    rejected --> [*]
+    expired --> [*]
+    approved --> [*]: График обновлён
+    declined --> [*]
+
+    note right of hasAcceptances
+        acceptedBy: [
+            {employeeId, employeeName, acceptedAt},
+            {employeeId, employeeName, acceptedAt},
+            ...
+        ]
+    end note
+
+    note right of approved
+        approvedEmployeeId = выбранный
+        Остальные получают "Declined"
+        График автоматически обновлён
+    end note
+```
+
+---
+
+### 10.5 API Endpoints
+
+| Метод | Endpoint | Описание | Параметры |
+|-------|----------|----------|-----------|
+| POST | `/api/shift-transfers` | Создать запрос | `{fromEmployeeId, fromEmployeeName, toEmployeeId?, shiftDate, shopAddress, shopName, shiftType, scheduleEntryId, comment?}` |
+| GET | `/api/shift-transfers/employee/:id` | Входящие запросы (pending + has_acceptances, не принятые этим сотрудником) | - |
+| GET | `/api/shift-transfers/employee/:id/outgoing` | Исходящие запросы | - |
+| GET | `/api/shift-transfers/employee/:id/unread-count` | Счётчик непрочитанных | - |
+| GET | `/api/shift-transfers/admin` | Запросы для админа (has_acceptances + accepted) | - |
+| GET | `/api/shift-transfers/admin/unread-count` | Счётчик для админа | - |
+| PUT | `/api/shift-transfers/:id/accept` | Сотрудник принимает | `{employeeId, employeeName}` → добавляется в `acceptedBy[]` |
+| PUT | `/api/shift-transfers/:id/reject` | Сотрудник отклоняет | `{employeeId?, employeeName?}` |
+| PUT | `/api/shift-transfers/:id/approve` | Админ одобряет | `{selectedEmployeeId?}` → обязателен если `acceptedBy.length > 1` |
+| PUT | `/api/shift-transfers/:id/decline` | Админ отклоняет | - |
+| PUT | `/api/shift-transfers/:id/read` | Отметить прочитанным | `{isAdmin: bool}` |
+
+---
+
+### 10.6 Поток: Множественное принятие
+
+```mermaid
+sequenceDiagram
+    participant EMP1 as Сотрудник 1<br/>(передаёт)
+    participant API as Server API
+    participant EMP2 as Сотрудник 2
+    participant EMP3 as Сотрудник 3
+    participant EMP4 as Сотрудник 4
+    participant ADMIN as Админ
+    participant WS as WorkSchedule
+
+    EMP1->>API: POST /shift-transfers<br/>{toEmployeeId: null} broadcast
+    Note over API: status: pending<br/>acceptedBy: []
+    API-->>EMP2: Push "Запрос на смену"
+    API-->>EMP3: Push "Запрос на смену"
+    API-->>EMP4: Push "Запрос на смену"
+
+    par Параллельные принятия
+        EMP2->>API: PUT /accept {employeeId: 2}
+        Note over API: acceptedBy: [{emp2}]<br/>status: has_acceptances
+        API-->>EMP1: Push "Сотрудник 2 принял"
+        API-->>ADMIN: Push "Требует одобрения"
+    and
+        EMP3->>API: PUT /accept {employeeId: 3}
+        Note over API: acceptedBy: [{emp2}, {emp3}]
+        API-->>EMP1: Push "Сотрудник 3 принял"
+        API-->>ADMIN: Push "Требует одобрения"
+    and
+        EMP4->>API: PUT /reject {employeeId: 4}
+        Note over API: rejectedBy: [{emp4}]<br/>Запрос остаётся активным
+        API-->>EMP1: Push "Сотрудник 4 отклонил"
+    end
+
+    Note over ADMIN: Видит 2 принявших:<br/>- Сотрудник 2<br/>- Сотрудник 3
+
+    ADMIN->>API: PUT /approve<br/>{selectedEmployeeId: emp3}
+    Note over API: status: approved<br/>approvedEmployeeId: emp3
+    API->>WS: updateWorkSchedule()<br/>emp1 → emp3
+    API-->>EMP1: Push "Смена передана"
+    API-->>EMP3: Push "Вам назначена смена"
+    API-->>EMP2: Push "Выбран другой сотрудник"
+```
+
+---
+
+### 10.7 Обновление графика (updateWorkSchedule)
+
+```mermaid
+flowchart TB
+    subgraph INPUT["Входные данные"]
+        TR[transfer: ShiftTransferRequest]
+        NEW_EMP[newEmployeeId, newEmployeeName]
+    end
+
+    subgraph PROCESS["Обработка"]
+        FIND[Найти запись в графике<br/>по scheduleEntryId или<br/>(date + shop + shift + fromEmployeeId)]
+        UPDATE[Обновить запись:<br/>employeeId → newEmployeeId<br/>employeeName → newEmployeeName<br/>+ transferredFrom: {...}]
+        SAVE[Сохранить в<br/>work-schedules/YYYY-MM.json]
+    end
+
+    subgraph OUTPUT["Результат"]
+        OLD[Было: Сотрудник 1]
+        NEW[Стало: Сотрудник 3<br/>+ transferredFrom]
+    end
+
+    INPUT --> FIND
+    FIND --> UPDATE
+    UPDATE --> SAVE
+    SAVE --> OUTPUT
+```
+
+**Структура transferredFrom:**
+```json
+{
+  "employeeId": "original_employee_id",
+  "employeeName": "Иванов Иван",
+  "transferId": "transfer_xxx",
+  "transferredAt": "2026-01-25T18:00:00.000Z"
+}
+```
+
+---
+
+### 10.8 Система уведомлений
+
+```mermaid
+flowchart TB
+    subgraph EVENTS["События"]
+        E1[createRequest]
+        E2[accept]
+        E3[reject]
+        E4[approve]
+        E5[decline]
+    end
+
+    subgraph NOTIFICATIONS["Уведомления"]
+        N1[notifyTransferCreated]
+        N2[notifyTransferAccepted]
+        N3[notifyTransferRejected]
+        N4[notifyTransferApproved]
+        N5[notifyTransferDeclined]
+        N6[notifyOthersDeclined]
+    end
+
+    subgraph RECIPIENTS["Получатели"]
+        R1[Все сотрудники<br/>или адресат]
+        R2[Отправитель +<br/>Все админы]
+        R3[Только отправитель]
+        R4[Отправитель +<br/>Одобренный сотрудник]
+        R5[Отправитель +<br/>Все принявшие]
+        R6[Не выбранные<br/>сотрудники]
+    end
+
+    E1 --> N1 --> R1
+    E2 --> N2 --> R2
+    E3 --> N3 --> R3
+    E4 --> N4 --> R4
+    E4 --> N6 --> R6
+    E5 --> N5 --> R5
+
+    style N6 fill:#f44336,color:#fff
+```
+
+**Функции уведомлений:**
+
+| Функция | Триггер | Получатели | Сообщение |
+|---------|---------|------------|-----------|
+| `notifyTransferCreated` | POST /shift-transfers | toEmployeeId или все | "Запрос на передачу смены" |
+| `notifyTransferAccepted` | PUT /accept | fromEmployee + все админы | "Ваш запрос принят" / "Требует одобрения" |
+| `notifyTransferRejected` | PUT /reject | fromEmployee | "{name} отклонил запрос" |
+| `notifyTransferApproved` | PUT /approve | fromEmployee + approved | "Замена смены одобрена" |
+| `notifyTransferDeclined` | PUT /decline | fromEmployee + все принявшие | "Замена смены отклонена" |
+| `notifyOthersDeclined` | PUT /approve | acceptedBy - approved | "Выбран другой сотрудник" |
+
+---
+
+### 10.9 Интерфейс сотрудника (MySchedulePage)
+
+```mermaid
+flowchart TB
+    subgraph TAB1["Вкладка 'Расписание'"]
+        CAL[Календарь с моими сменами]
+        BTN[Кнопка 'Передать смену']
+    end
+
+    subgraph TAB2["Вкладка 'Входящие'"]
+        LIST[Список запросов<br/>status: pending | has_acceptances]
+        BADGE[Бейдж с количеством]
+        CARD[Карточка запроса]
+        INFO[Инфо: уже приняли X чел.]
+        BTNS[Кнопки: Принять | Отклонить]
+    end
+
+    subgraph TAB3["Вкладка 'Заявки'"]
+        OUT[Исходящие запросы]
+        STATUS[Статус моих заявок]
+    end
+
+    BTN --> |Создать запрос| TAB3
+    LIST --> CARD
+    CARD --> INFO
+    CARD --> BTNS
+
+    BADGE -.->|_unreadCount| LIST
+
+    style BADGE fill:#f44336,color:#fff
+    style INFO fill:#FF9800,color:#fff
+```
+
+**Условие показа кнопок:**
+```dart
+if (request.isActive)  // pending || hasAcceptances
+    Row(
+        children: [
+            OutlinedButton("Отклонить"),
+            ElevatedButton("Принять"),
+        ],
+    )
+```
+
+---
+
+### 10.10 Интерфейс админа (ShiftTransferRequestsPage)
+
+```mermaid
+flowchart TB
+    subgraph LIST["Список заявок"]
+        REQ[Запрос на передачу]
+        FROM[От: Сотрудник 1]
+        ACCEPT[Принявшие: N чел.]
+    end
+
+    subgraph SINGLE["Один принявший"]
+        CONFIRM[Диалог подтверждения]
+        APPROVE1[Одобрить]
+        DECLINE1[Отклонить]
+    end
+
+    subgraph MULTIPLE["Несколько принявших"]
+        SELECT[Диалог выбора сотрудника]
+        EMP1[○ Сотрудник 2]
+        EMP2[○ Сотрудник 3]
+        EMP3[○ Сотрудник 4]
+        APPROVE2[Подтвердить выбор]
+    end
+
+    REQ --> |acceptedBy.length == 1| SINGLE
+    REQ --> |acceptedBy.length > 1| MULTIPLE
+
+    SINGLE --> CONFIRM
+    CONFIRM --> APPROVE1
+    CONFIRM --> DECLINE1
+
+    MULTIPLE --> SELECT
+    SELECT --> EMP1
+    SELECT --> EMP2
+    SELECT --> EMP3
+    EMP1 --> APPROVE2
+    EMP2 --> APPROVE2
+    EMP3 --> APPROVE2
+
+    style MULTIPLE fill:#FF9800,color:#fff
+```
+
+---
+
+### 10.11 Бейдж на панели сотрудника
+
+```mermaid
+flowchart LR
+    subgraph EPP["EmployeePanelPage"]
+        INIT[initState]
+        LOAD[_loadShiftTransferUnreadCount]
+        STATE[_shiftTransferUnreadCount]
+    end
+
+    subgraph BUTTON["Кнопка 'Мой график'"]
+        ICON[schedule_icon.png]
+        BADGE[Красный бейдж<br/>с числом]
+    end
+
+    subgraph SERVICE["ShiftTransferService"]
+        API[getUnreadCount]
+    end
+
+    INIT --> LOAD
+    LOAD --> API
+    API --> STATE
+    STATE --> BADGE
+
+    style BADGE fill:#f44336,color:#fff
+```
+
+---
+
+### 10.12 Таблица зависимостей
+
+| Модуль | Направление | Что использует |
+|--------|-------------|----------------|
+| **Employee** | → | employeeId, employeeName, phone для уведомлений |
+| **WorkSchedule** | → ← | scheduleEntryId для привязки; обновление при approve |
+| **Shop** | → | address, name для отображения |
+| **Firebase FCM** | → | Токены для push-уведомлений |
+| **MySchedulePage** | ← | Интерфейс сотрудника (вкладка "Входящие") |
+| **ShiftTransferRequestsPage** | ← | Интерфейс админа |
+| **EmployeePanelPage** | ← | Бейдж на кнопке "Мой график" |
+
+---
+
+### 10.13 Серверные файлы данных
+
+| Файл | Путь | Описание |
+|------|------|----------|
+| shift-transfers.json | `/var/www/shift-transfers.json` | Все запросы на передачу |
+| work-schedules | `/var/www/work-schedules/YYYY-MM.json` | Графики по месяцам |
+| employees.json | `/var/www/employees.json` | Данные сотрудников |
+| fcm-tokens.json | `/var/www/fcm-tokens.json` | FCM токены по телефонам |
+| users.json | `/var/www/users.json` | Роли пользователей (для админов) |
+
+---
+
+### 10.14 Структура данных запроса (JSON)
+
+```json
+{
+  "id": "transfer_1769363947223_w8nqn6xtb",
+  "fromEmployeeId": "employee_123",
+  "fromEmployeeName": "Иванов Иван",
+  "toEmployeeId": null,
+  "toEmployeeName": null,
+  "scheduleEntryId": "entry_456",
+  "shiftDate": "2026-01-26",
+  "shopAddress": "ул. Примерная, 1",
+  "shopName": "Кофейня на Примерной",
+  "shiftType": "morning",
+  "comment": "Не могу выйти",
+  "status": "has_acceptances",
+  "acceptedBy": [
+    {
+      "employeeId": "employee_234",
+      "employeeName": "Петров Пётр",
+      "acceptedAt": "2026-01-25T17:59:55.305Z"
+    },
+    {
+      "employeeId": "employee_345",
+      "employeeName": "Сидоров Сидор",
+      "acceptedAt": "2026-01-25T18:05:12.100Z"
+    }
+  ],
+  "acceptedByEmployeeId": "employee_234",
+  "acceptedByEmployeeName": "Петров Пётр",
+  "approvedEmployeeId": null,
+  "approvedEmployeeName": null,
+  "createdAt": "2026-01-25T17:50:00.000Z",
+  "acceptedAt": "2026-01-25T17:59:55.305Z",
+  "resolvedAt": null,
+  "isReadByRecipient": true,
+  "isReadByAdmin": false
+}
+```
+
+---
+
+## 11. Аналитика - KPI (Ключевые показатели эффективности)
+
+### 11.1 Обзор модуля
+
+**Назначение:** Модуль аналитики для отслеживания ключевых показателей эффективности сотрудников и магазинов. Агрегирует данные из всех модулей отчётности (посещаемость, пересменки, пересчёты, РКО, конверты, сдачи смен) и интегрируется с графиком работы для анализа дисциплины.
+
+**Файлы модуля:**
+```
+lib/features/kpi/
+├── models/
+│   ├── kpi_models.dart              # Основные модели (KPIDayData, KPIShopDayData, etc.)
+│   ├── kpi_employee_month_stats.dart # Месячная статистика сотрудника
+│   └── kpi_shop_month_stats.dart     # Месячная статистика магазина
+├── pages/
+│   ├── kpi_type_selection_page.dart  # Выбор типа KPI (Сотрудники/Магазины)
+│   ├── kpi_employees_list_page.dart  # Список сотрудников с индикаторами
+│   ├── kpi_employee_detail_page.dart # Детали сотрудника за месяц
+│   ├── kpi_employee_day_detail_page.dart # Детали дня сотрудника
+│   ├── kpi_shops_list_page.dart      # Список магазинов с индикаторами
+│   ├── kpi_shop_calendar_page.dart   # Календарь магазина (утро/вечер)
+│   └── kpi_shop_day_detail_dialog.dart # Диалог деталей дня магазина
+└── services/
+    ├── kpi_service.dart              # Главный сервис-координатор
+    ├── kpi_cache_service.dart        # Кэширование данных
+    ├── kpi_filters.dart              # Фильтрация по датам/магазинам
+    ├── kpi_aggregation_service.dart  # Агрегация данных
+    ├── kpi_normalizers.dart          # Нормализация дат и данных
+    └── kpi_schedule_integration_service.dart # Интеграция с графиком работы
+```
+
+---
+
+### 11.2 Модели данных
+
+```mermaid
+classDiagram
+    class KPIDayData {
+        +DateTime date
+        +String employeeName
+        +String shopAddress
+        +DateTime? attendanceTime
+        +bool hasMorningAttendance
+        +bool hasEveningAttendance
+        +bool hasShift
+        +bool hasRecount
+        +bool hasRKO
+        +bool hasEnvelope
+        +bool hasShiftHandover
+        +bool isScheduled
+        +String? scheduledShiftType
+        +DateTime? scheduledStartTime
+        +bool isLate
+        +int? lateMinutes
+        +workedToday() bool
+        +missedShift() bool
+    }
+
+    class KPIShopDayData {
+        +DateTime date
+        +String shopAddress
+        +List~KPIDayData~ employeesData
+        +morningEmployees() List
+        +eveningEmployees() List
+        +morningCompletionStatus() double
+        +eveningCompletionStatus() double
+    }
+
+    class KPIEmployeeMonthStats {
+        +String employeeName
+        +int year
+        +int month
+        +int daysWorked
+        +int attendanceCount
+        +int shiftsCount
+        +int recountsCount
+        +int rkosCount
+        +int envelopesCount
+        +int shiftHandoversCount
+        +int scheduledDays
+        +int missedDays
+        +int lateArrivals
+        +int totalLateMinutes
+        +baseDays() int
+        +attendanceFraction() String
+        +attendancePercentage() double
+    }
+
+    class KPIShopMonthStats {
+        +String shopAddress
+        +int year
+        +int month
+        +int daysWorked
+        +int attendanceCount
+        +int shiftsCount
+        +int recountsCount
+        +int rkosCount
+        +int envelopesCount
+        +int shiftHandoversCount
+        +int scheduledDays
+        +int missedDays
+        +int lateArrivals
+        +int totalEmployeesScheduled
+        +baseDays() int
+        +hasScheduleData() bool
+    }
+
+    class KPIEmployeeShopDayData {
+        +DateTime date
+        +String shopAddress
+        +String employeeName
+        +DateTime? attendanceTime
+        +bool hasShift
+        +bool hasRecount
+        +bool hasRKO
+        +bool hasEnvelope
+        +bool hasShiftHandover
+        +String? rkoFileName
+        +bool isScheduled
+        +bool isLate
+        +int? lateMinutes
+        +allConditionsMet() bool
+    }
+
+    KPIShopDayData "1" *-- "*" KPIDayData : employeesData
+    KPIEmployeeMonthStats --|> KPIDayData : агрегация
+    KPIShopMonthStats --|> KPIShopDayData : агрегация
+```
+
+---
+
+### 11.3 Архитектура сервисов
+
+```mermaid
+flowchart TB
+    subgraph KPI_SERVICE["KPIService (координатор)"]
+        GSD[getShopDayData]
+        GED[getEmployeeData]
+        GEMS[getEmployeeMonthlyStats]
+        GSMS[getShopMonthlyStats]
+        GAEP[getAllEmployees]
+    end
+
+    subgraph CACHE["KPICacheService"]
+        SC[shopDayCache]
+        EC[employeeCache]
+        AL[allEmployeesCache]
+    end
+
+    subgraph FILTERS["KPIFilters"]
+        FAD[filterAttendanceByDateAndShop]
+        FAM[filterAttendanceByMonths]
+        FSM[filterShiftsByMonths]
+        FRM[filterRecountsByMonths]
+        FRK[filterRKOsByMonths]
+    end
+
+    subgraph AGGREGATION["KPIAggregationService"]
+        ASD[aggregateShopDayData]
+        AED[aggregateEmployeeDaysData]
+        AESD[aggregateEmployeeShopDaysData]
+        CES[calculateEmployeeStats]
+    end
+
+    subgraph SCHEDULE["KPIScheduleIntegrationService"]
+        GSF[getScheduleForMonth]
+        CES2[checkEmployeeSchedule]
+        GESS[getEmployeeMonthScheduleStats]
+        GSSS[getShopMonthScheduleStats]
+        CL[calculateLateness]
+    end
+
+    subgraph NORMALIZERS["KPINormalizers"]
+        ND[normalizeDate]
+        NDFQ[normalizeDateForQuery]
+    end
+
+    GSD --> CACHE
+    GSD --> FILTERS
+    GSD --> AGGREGATION
+    GEMS --> SCHEDULE
+    GSMS --> SCHEDULE
+
+    style KPI_SERVICE fill:#004D40,color:#fff
+    style CACHE fill:#00695C,color:#fff
+    style FILTERS fill:#00796B,color:#fff
+    style AGGREGATION fill:#00897B,color:#fff
+    style SCHEDULE fill:#009688,color:#fff
+```
+
+---
+
+### 11.4 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph KPI["KPI (Аналитика)"]
+        KPIS[KPIService]
+        KPIC[KPICacheService]
+        KPISCH[KPIScheduleIntegration]
+    end
+
+    subgraph DATA_SOURCES["ИСТОЧНИКИ ДАННЫХ"]
+        ATT[Attendance<br/>Посещаемость]
+        SH[Shifts<br/>Пересменки]
+        RC[Recount<br/>Пересчёты]
+        RKO[RKO<br/>Кассовые документы]
+        ENV[Envelope<br/>Конверты]
+        SHO[ShiftHandover<br/>Сдачи смен]
+    end
+
+    subgraph SCHEDULE["ГРАФИК"]
+        WS[WorkSchedule<br/>График работы]
+    end
+
+    subgraph MASTER_DATA["МАСТЕР-ДАННЫЕ"]
+        SHOP[Shop<br/>Магазины]
+        EMP[Employee<br/>Сотрудники]
+    end
+
+    ATT --> KPIS
+    SH --> KPIS
+    RC --> KPIS
+    RKO --> KPIS
+    ENV --> KPIS
+    SHO --> KPIS
+
+    WS --> KPISCH
+    KPISCH --> KPIS
+
+    SHOP --> KPIS
+    EMP --> KPIS
+
+    style KPI fill:#004D40,color:#fff
+    style KPIS fill:#00695C,color:#fff
+```
+
+---
+
+### 11.5 Потоки данных
+
+#### 11.5.1 Загрузка месячной статистики магазина
+
+```mermaid
+sequenceDiagram
+    participant Page as KPIShopsListPage
+    participant Service as KPIService
+    participant Att as AttendanceService
+    participant Shift as ShiftReportService
+    participant Rec as RecountService
+    participant RKO as RKOReportsService
+    participant Env as EnvelopeReportService
+    participant SH as ShiftHandoverService
+    participant Sch as KPIScheduleIntegration
+
+    Page->>Service: getShopMonthlyStats(shopAddress)
+
+    par Параллельная загрузка
+        Service->>Att: getAttendanceRecords(shopAddress)
+        Service->>Shift: getReports(shopAddress)
+        Service->>Rec: getReports(shopAddress)
+        Service->>RKO: getShopRKOs(shopAddress)
+        Service->>Env: getReports()
+        Service->>SH: getReports(shopAddress)
+        Service->>Sch: getShopMonthScheduleStats(×3 месяца)
+    end
+
+    Att-->>Service: List<AttendanceRecord>
+    Shift-->>Service: List<ShiftReport>
+    Rec-->>Service: List<RecountReport>
+    RKO-->>Service: Map<String, dynamic>
+    Env-->>Service: List<EnvelopeReport>
+    SH-->>Service: List<ShiftHandoverReport>
+    Sch-->>Service: ShopMonthScheduleStats ×3
+
+    Service->>Service: _buildShopMonthStatsFromData (×3 месяца)
+    Service-->>Page: List<KPIShopMonthStats>
+```
+
+#### 11.5.2 Загрузка статистики сотрудника
+
+```mermaid
+sequenceDiagram
+    participant Page as KPIEmployeesListPage
+    participant Service as KPIService
+    participant Cache as KPICacheService
+    participant Data as DataServices
+    participant Sch as KPIScheduleIntegration
+
+    Page->>Service: getEmployeeMonthlyStats(employeeName)
+    Service->>Service: getEmployeeShopDaysData()
+
+    Service->>Cache: check cache
+    alt Есть в кэше
+        Cache-->>Service: cached data
+    else Нет в кэше
+        par Параллельная загрузка
+            Service->>Data: AttendanceService
+            Service->>Data: ShiftReportService
+            Service->>Data: RecountService
+            Service->>Data: RKOReportsService
+            Service->>Data: EnvelopeReportService
+            Service->>Data: ShiftHandoverService
+        end
+
+        Service->>Service: aggregateEmployeeShopDaysData
+        Service->>Service: _enrichWithScheduleData
+        Service->>Sch: checkEmployeeSchedule (×N дней)
+        Service->>Cache: save to cache
+    end
+
+    Service->>Sch: getEmployeeMonthScheduleStats (×3 месяца)
+    Service->>Service: _buildMonthStatsWithSchedule
+    Service-->>Page: List<KPIEmployeeMonthStats>
+```
+
+---
+
+### 11.6 UI компоненты
+
+#### 11.6.1 Страница выбора типа KPI
+
+```
+┌─────────────────────────────────────┐
+│           KPI Аналитика             │
+├─────────────────────────────────────┤
+│                                     │
+│   ┌─────────────┐ ┌─────────────┐   │
+│   │  👤         │ │  🏪         │   │
+│   │ Сотрудники  │ │  Магазины   │   │
+│   │             │ │             │   │
+│   └─────────────┘ └─────────────┘   │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+#### 11.6.2 Список магазинов с индикаторами
+
+```
+┌─────────────────────────────────────┐
+│ [🔍 Поиск магазина...]              │
+├─────────────────────────────────────┤
+│ 🏪 Лермонтов, Комсомольская 1       │
+│    ⏰ 5/62  🤝 4/62  📊 3/62       │
+│    📄 2/62  ✉️ 1/62  💰 0/62    ▼  │
+├─────────────────────────────────────┤
+│ 🏪 Иноземцево, ул Гагарина 1        │
+│    ⏰ 8/62  🤝 7/62  📊 6/62       │
+│    📄 5/62  ✉️ 4/62  💰 3/62    ▼  │
+├─────────────────────────────────────┤
+│   └─ Прошлый месяц (Декабрь 2025)  │
+│      ⏰ 20/31 🤝 18/31 📊 15/31    │
+│   └─ Позапрошлый (Ноябрь 2025)     │
+│      ⏰ 25/30 🤝 22/30 📊 20/30    │
+└─────────────────────────────────────┘
+
+Индикаторы:
+⏰ - Посещаемость (attendance)
+🤝 - Пересменки (shifts)
+📊 - Пересчёты (recounts)
+📄 - РКО (rkos)
+✉️ - Конверты (envelopes)
+💰 - Сдачи смен (shiftHandovers)
+```
+
+#### 11.6.3 Календарь магазина (разделение утро/вечер)
+
+```
+┌─────────────────────────────────────┐
+│ [Магазины ▼] [Календарь]            │
+├─────────────────────────────────────┤
+│      Январь 2026                    │
+│  Пн  Вт  Ср  Чт  Пт  Сб  Вс        │
+├─────────────────────────────────────┤
+│ ┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐       │
+│ │🟢││🟢││🟡││🟢││🔴││  ││  │       │
+│ │1 ││2 ││3 ││4 ││5 ││6 ││7 │       │
+│ │🟡││🟢││🔴││🟢││⬜││  ││  │       │
+│ └──┘└──┘└──┘└──┘└──┘└──┘└──┘       │
+├─────────────────────────────────────┤
+│ Легенда:                            │
+│ 🟢 Всё выполнено                    │
+│ 🟡 Частично выполнено               │
+│ 🔴 Не выполнено                     │
+│ ⬜ Нет данных                       │
+│                                     │
+│ Верх ячейки = Утренняя смена        │
+│ Низ ячейки = Вечерняя смена         │
+└─────────────────────────────────────┘
+```
+
+---
+
+### 11.7 Цветовая индикация
+
+| Процент выполнения | Цвет | Описание |
+|-------------------|------|----------|
+| >= 100% | 🟢 Зелёный | Норма выполнена или перевыполнена |
+| 50-99% | 🟠 Оранжевый | Частичное выполнение |
+| < 50% | 🔴 Красный | Критически низкий показатель |
+| Нет данных | ⬜ Серый | Данные отсутствуют |
+
+---
+
+### 11.8 Интеграция с графиком работы
+
+```mermaid
+flowchart LR
+    subgraph SCHEDULE_DATA["Данные графика"]
+        SD[scheduledDays<br/>Запланировано смен]
+        MD[missedDays<br/>Пропущенные дни]
+        LA[lateArrivals<br/>Опоздания]
+        TL[totalLateMinutes<br/>Минут опоздания]
+    end
+
+    subgraph CALCULATIONS["Расчёты"]
+        BD[baseDays = scheduledDays > 0<br/>? scheduledDays : daysWorked]
+        LP[latePercentage =<br/>lateArrivals / baseDays]
+        MP[missedPercentage =<br/>missedDays / scheduledDays]
+        AL[avgLateMinutes =<br/>totalLateMinutes / lateArrivals]
+    end
+
+    subgraph UI["Отображение"]
+        SB[Schedule Badge<br/>Бейдж с опозданиями/пропусками]
+        FI[Fraction Indicators<br/>Дроби X/Y]
+    end
+
+    SD --> BD
+    MD --> MP
+    LA --> LP
+    TL --> AL
+
+    BD --> FI
+    LP --> SB
+    MP --> SB
+```
+
+---
+
+### 11.9 Кэширование
+
+| Тип кэша | Ключ | TTL | Описание |
+|----------|------|-----|----------|
+| shopDayCache | `{shopAddress}_{date}` | 5 мин | Данные магазина за день |
+| employeeCache | `{employeeName}` | 5 мин | Данные сотрудника |
+| employeeShopDaysCache | `{employeeName}` | 5 мин | Данные по магазинам/дням |
+| allEmployeesCache | `all_employees` | 5 мин | Список всех сотрудников |
+| scheduleCache | `{year}-{month}` | 5 мин | График работы за месяц |
+
+---
+
+### 11.10 Оптимизации производительности
+
+1. **Batch loading** - Все данные загружаются одним пакетом `Future.wait()` вместо N+1 запросов
+2. **Ленивая загрузка** - Статистика магазинов загружается только для видимых элементов списка
+3. **Последовательная предзагрузка** - Первые 3 магазина загружаются последовательно, чтобы не вызвать HTTP 429
+4. **Кэширование графиков** - Графики работы кэшируются отдельно и переиспользуются
+5. **Параллельная обработка** - После предзагрузки графиков, проверки опозданий выполняются параллельно
+
+---
+
+### 11.11 Формулы расчёта
+
+```
+# Базовые дни для расчёта процентов
+baseDays = scheduledDays > 0 ? scheduledDays : daysWorked
+
+# Процент посещаемости
+attendancePercentage = attendanceCount / baseDays
+
+# Процент выполнения пересменок
+shiftsPercentage = shiftsCount / baseDays
+
+# Процент опозданий
+lateArrivalsPercentage = lateArrivals / baseDays
+
+# Процент пропусков
+missedDaysPercentage = missedDays / scheduledDays
+
+# Средняя продолжительность опоздания
+averageLateMinutes = totalLateMinutes / lateArrivals
+
+# Статус смены в календаре
+if (все 6 показателей выполнены) → 1.0 (зелёный)
+else if (хотя бы 1 показатель выполнен) → 0.5 (жёлтый)
+else → 0.0 (красный)
+if (нет данных) → -1 (серый)
+```
+
+---
+
+### 11.12 Таблица зависимостей
+
+| Модуль | Направление | Что использует |
+|--------|-------------|----------------|
+| **Attendance** | → | Данные посещаемости, время прихода |
+| **Shifts** | → | Отчёты пересменок |
+| **Recount** | → | Отчёты пересчётов |
+| **RKO** | → | Кассовые документы |
+| **Envelope** | → | Отчёты по конвертам |
+| **ShiftHandover** | → | Сдачи смен |
+| **WorkSchedule** | → | Запланированные смены, типы смен |
+| **Shop** | → | Список магазинов, адреса |
+| **Employee** | → | Список сотрудников |
+
+---
+
+### 11.13 Показатели KPI
+
+| Показатель | Иконка | Описание |
+|------------|--------|----------|
+| Посещаемость | ⏰ | Отметки "Я на работе" |
+| Пересменки | 🤝 | Заполненные отчёты пересменок |
+| Пересчёты | 📊 | Выполненные пересчёты товаров |
+| РКО | 📄 | Кассовые документы |
+| Конверты | ✉️ | Отчёты по денежным конвертам |
+| Сдачи смен | 💰 | Отчёты сдачи смены |
+| Опоздания | ⏱️ | Приход позже времени по графику |
+| Пропуски | 📅 | Неявки в запланированные дни |
+
+---
+
+### 11.14 Типы смен
+
+| Тип | Время | Описание |
+|-----|-------|----------|
+| morning | до 15:00 | Утренняя смена |
+| evening | после 15:00 | Вечерняя смена |
+
+Разделение на смены используется для:
+- Календаря магазина (верх/низ ячейки)
+- Диалога деталей дня (группировка сотрудников)
+- Расчёта статуса выполнения по сменам
+
+---
+
+## 12. Клиентский модуль - ОТЗЫВЫ
+
+### 12.1 Обзор модуля
+
+**Назначение:** Система сбора и управления отзывами клиентов с диалоговым интерфейсом и интеграцией в систему эффективности магазинов.
+
+**Файлы модуля:**
+```
+lib/features/reviews/
+├── models/
+│   └── review_model.dart              # Модели Review и ReviewMessage
+├── pages/
+│   ├── review_type_selection_page.dart    # Выбор типа отзыва (+/-)
+│   ├── review_shop_selection_page.dart    # Выбор магазина
+│   ├── review_text_input_page.dart        # Ввод текста отзыва
+│   ├── review_detail_page.dart            # Диалог отзыва (клиент-админ)
+│   ├── reviews_list_page.dart             # Список отзывов (админ)
+│   ├── reviews_shop_detail_page.dart      # Отзывы по магазину (админ)
+│   └── client_reviews_list_page.dart      # Список отзывов клиента
+└── services/
+    └── review_service.dart                # API сервис
+
+lib/features/efficiency/pages/settings_tabs/
+└── reviews_points_settings_page.dart      # Настройка баллов за отзывы
+
+lib/app/
+├── pages/
+│   └── my_dialogs_page.dart               # "Мои диалоги" - интеграция отзывов
+└── services/
+    └── my_dialogs_counter_service.dart    # Счётчик непрочитанных диалогов
+
+loyalty-proxy/
+└── index.js                               # API endpoints: /api/reviews/*
+```
+
+---
+
+### 12.2 Модели данных
+
+```mermaid
+classDiagram
+    class Review {
+        +String id
+        +DateTime createdAt
+        +String clientPhone
+        +String clientName
+        +String shopAddress
+        +String reviewType
+        +String reviewText
+        +List~ReviewMessage~ messages
+        +bool hasUnreadFromClient
+        +bool hasUnreadFromAdmin
+        +fromJson(Map) Review
+        +toJson() Map
+        +getUnreadCountForClient() int
+        +getLastMessage() ReviewMessage?
+        +hasUnreadForClient() bool
+    }
+
+    class ReviewMessage {
+        +String id
+        +String sender
+        +String senderName
+        +String text
+        +DateTime createdAt
+        +bool isRead
+        +fromJson(Map) ReviewMessage
+        +toJson() Map
+    }
+
+    class ReviewsPointsSettings {
+        +double positivePoints
+        +double negativePoints
+        +calculatePoints(bool isPositive) double
+    }
+
+    Review "1" *-- "0..*" ReviewMessage : messages
+    Review --> ReviewsPointsSettings : "баллы"
+```
+
+---
+
+### 12.3 Типы отзывов
+
+| Тип | Значение | Emoji | Баллы (по умолчанию) |
+|-----|----------|-------|---------------------|
+| positive | `'positive'` | 👍 | +3.0 |
+| negative | `'negative'` | 👎 | -5.0 |
+
+---
+
+### 12.4 Архитектура сервиса
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["📱 КЛИЕНТ"]
+        RT[ReviewTypeSelectionPage<br/>Выбор типа]
+        RS[ReviewShopSelectionPage<br/>Выбор магазина]
+        RI[ReviewTextInputPage<br/>Ввод текста]
+        RD[ReviewDetailPage<br/>Диалог]
+        CRL[ClientReviewsListPage<br/>Мои отзывы]
+    end
+
+    subgraph ADMIN["👨‍💼 АДМИН"]
+        RL[ReviewsListPage<br/>Все отзывы]
+        RSD[ReviewsShopDetailPage<br/>По магазину]
+        RPS[ReviewsPointsSettingsPage<br/>Настройки баллов]
+    end
+
+    subgraph SERVICE["⚙️ СЕРВИСЫ"]
+        RVS[ReviewService]
+        PTS[PointsSettingsService]
+        ECS[EfficiencyCalculationService]
+        EDS[EfficiencyDataService]
+        MDCS[MyDialogsCounterService]
+    end
+
+    subgraph SERVER["🖥️ СЕРВЕР"]
+        API["/api/reviews/*"]
+        PUSH[Push Notifications]
+        FS[File Storage]
+    end
+
+    RT --> RS --> RI --> RVS
+    RVS --> API --> FS
+    API --> PUSH
+
+    RL --> RVS
+    RSD --> RVS
+    RPS --> PTS
+
+    CRL --> RVS
+    RD --> RVS
+
+    EDS --> RVS
+    EDS --> ECS
+    ECS --> PTS
+
+    MDCS --> RVS
+```
+
+---
+
+### 12.5 Flow создания отзыва
+
+```mermaid
+sequenceDiagram
+    participant C as Клиент
+    participant RT as ReviewTypePage
+    participant RS as ShopSelectPage
+    participant RI as TextInputPage
+    participant RVS as ReviewService
+    participant API as Server API
+    participant PUSH as Push Service
+    participant A as Админ
+
+    C->>RT: Нажимает "Отзывы"
+    RT->>C: Показать выбор: 👍/👎
+    C->>RT: Выбирает тип
+    RT->>RS: Переход к выбору магазина
+    RS->>C: Показать список магазинов
+    C->>RS: Выбирает магазин
+    RS->>RI: Переход к вводу текста
+    RI->>C: Показать форму ввода
+    C->>RI: Вводит текст и отправляет
+    RI->>RVS: createReview()
+    RVS->>API: POST /api/reviews
+    API->>API: Сохранить в файл
+    API->>PUSH: sendPushNotification()
+    PUSH-->>A: "Новый 👍 отзыв"
+    API-->>RVS: { review }
+    RVS-->>RI: Success
+    RI->>C: "Отзыв отправлен!"
+```
+
+---
+
+### 12.6 Flow диалога
+
+```mermaid
+sequenceDiagram
+    participant C as Клиент
+    participant RD as ReviewDetailPage
+    participant RVS as ReviewService
+    participant API as Server
+    participant A as Админ
+
+    Note over C,A: Клиент отправляет сообщение
+    C->>RD: Пишет сообщение
+    RD->>RVS: addMessage(sender: 'client')
+    RVS->>API: POST /api/reviews/:id/messages
+    API->>API: hasUnreadFromClient = true
+    API-->>A: Push: "Новое сообщение в отзыве"
+
+    Note over C,A: Админ отвечает
+    A->>API: POST /api/reviews/:id/messages (sender: 'admin')
+    API->>API: hasUnreadFromAdmin = true
+    API-->>C: Push: "Ответ на ваш отзыв"
+
+    Note over C,A: Клиент открывает диалог
+    C->>RD: Открывает отзыв
+    RD->>RVS: markDialogRead(readerType: 'client')
+    RVS->>API: POST /api/reviews/:id/mark-read
+    API->>API: hasUnreadFromAdmin = false
+```
+
+---
+
+### 12.7 Интеграция с "Мои диалоги"
+
+```mermaid
+flowchart LR
+    subgraph MY_DIALOGS["📋 Мои диалоги"]
+        NET[Сообщения от сети]
+        MGT[Связь с руководством]
+        REV[Отзывы]
+        PQ[Поиск товара]
+        PPD[Персональные диалоги]
+    end
+
+    subgraph COUNTER["🔢 Счётчик"]
+        MDCS[MyDialogsCounterService]
+        NCS[Network unread]
+        MCS[Management unread]
+        RCS[Reviews unread]
+        PQCS[ProductQuestion unread]
+        PPCS[PersonalDialogs unread]
+    end
+
+    subgraph MENU["📱 Главное меню"]
+        BTN[Кнопка 'Мои диалоги']
+        BADGE[Badge счётчик]
+    end
+
+    NET --> NCS
+    MGT --> MCS
+    REV --> RCS
+    PQ --> PQCS
+    PPD --> PPCS
+
+    NCS --> MDCS
+    MCS --> MDCS
+    RCS --> MDCS
+    PQCS --> MDCS
+    PPCS --> MDCS
+
+    MDCS --> BADGE
+    BTN --- BADGE
+```
+
+**Формула расчёта общего счётчика:**
+```
+totalUnread =
+    networkData.unreadCount +
+    managementData.unreadCount +
+    Σ review.getUnreadCountForClient() +
+    productQuestionData.unreadCount +
+    Σ (personalDialog.hasUnreadFromEmployee ? 1 : 0)
+```
+
+---
+
+### 12.8 Интеграция с Эффективностью
+
+```mermaid
+flowchart TB
+    subgraph REVIEWS["📝 ОТЗЫВЫ"]
+        R[Review]
+        RT[reviewType: positive/negative]
+    end
+
+    subgraph SETTINGS["⚙️ НАСТРОЙКИ"]
+        RPS[ReviewsPointsSettings]
+        PP[positivePoints: +3.0]
+        NP[negativePoints: -5.0]
+    end
+
+    subgraph EFFICIENCY["📊 ЭФФЕКТИВНОСТЬ"]
+        EDS[EfficiencyDataService]
+        LRR[_loadReviewRecords]
+        ECS[EfficiencyCalculationService]
+        CRR[createReviewRecord]
+        CRP[calculateReviewsPoints]
+    end
+
+    subgraph OUTPUT["📈 РЕЗУЛЬТАТ"]
+        ER[EfficiencyRecord]
+        SHOP[По магазину]
+        SUM[Общая сумма баллов]
+    end
+
+    R --> RT
+    RT --> EDS
+    EDS --> LRR
+    LRR --> ECS
+    ECS --> CRR
+    CRR --> CRP
+    CRP --> RPS
+    RPS --> PP
+    RPS --> NP
+    CRR --> ER
+    ER --> SHOP
+    SHOP --> SUM
+```
+
+**Код интеграции:**
+```dart
+// efficiency_data_service.dart
+static Future<List<EfficiencyRecord>> _loadReviewRecords(
+  DateTime start, DateTime end
+) async {
+  final reviews = await ReviewService.getAllReviews();
+  final records = <EfficiencyRecord>[];
+
+  for (final review in reviews) {
+    if (review.createdAt.isBefore(start) || review.createdAt.isAfter(end)) {
+      continue;
+    }
+    final isPositive = review.reviewType == 'positive';
+    final record = await EfficiencyCalculationService.createReviewRecord(
+      id: review.id,
+      shopAddress: review.shopAddress,
+      date: review.createdAt,
+      isPositive: isPositive,
+    );
+    records.add(record);
+  }
+  return records;
+}
+```
+
+---
+
+### 12.9 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/reviews` | Все отзывы |
+| GET | `/api/reviews?phone=X` | Отзывы клиента |
+| POST | `/api/reviews` | Создать отзыв |
+| GET | `/api/reviews/:id` | Отзыв по ID |
+| POST | `/api/reviews/:id/messages` | Добавить сообщение |
+| POST | `/api/reviews/:id/messages/:msgId/read` | Отметить сообщение прочитанным |
+| POST | `/api/reviews/:id/mark-read` | Отметить диалог прочитанным |
+
+---
+
+### 12.10 Push-уведомления
+
+| Событие | Получатель | Заголовок | Тело |
+|---------|------------|-----------|------|
+| Новый отзыв | Админы | "Новый 👍/👎 отзыв" | "{clientName} - {shopAddress}" |
+| Сообщение от клиента | Админы | "Новое сообщение в отзыве" | "{clientName}: {text}" |
+| Ответ от админа | Клиент | "Ответ на ваш отзыв" | "{senderName}: {text}" |
+
+---
+
+### 12.11 Хранение данных
+
+**Серверное хранилище:**
+```
+loyalty-proxy/data/reviews/
+├── review_1769372434542.json
+├── review_1769372445123.json
+└── ...
+```
+
+**Структура файла:**
+```json
+{
+  "id": "review_1769372434542",
+  "createdAt": "2026-01-25T10:30:42.000Z",
+  "clientPhone": "79054443224",
+  "clientName": "Андрей В",
+  "shopAddress": "Лермонтов,Комсомольская 1",
+  "reviewType": "positive",
+  "reviewText": "Отличный кофе!",
+  "messages": [
+    {
+      "id": "message_1769372544384",
+      "sender": "admin",
+      "senderName": "Менеджер",
+      "text": "Спасибо за отзыв!",
+      "createdAt": "2026-01-25T10:32:24.000Z",
+      "isRead": true
+    }
+  ],
+  "hasUnreadFromClient": false,
+  "hasUnreadFromAdmin": false
+}
+```
+
+---
+
+### 12.12 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph REVIEWS["📝 ОТЗЫВЫ"]
+        RM[Review Model]
+        RS[ReviewService]
+    end
+
+    subgraph SHOPS["🏪 МАГАЗИНЫ"]
+        SM[Shop Model]
+        SL[Список магазинов]
+    end
+
+    subgraph EFFICIENCY["📊 ЭФФЕКТИВНОСТЬ"]
+        EDS[EfficiencyDataService]
+        ECS[EfficiencyCalculationService]
+        PTS[PointsSettingsService]
+    end
+
+    subgraph DIALOGS["💬 МОИ ДИАЛОГИ"]
+        MDP[MyDialogsPage]
+        MDCS[MyDialogsCounterService]
+        CRL[ClientReviewsListPage]
+    end
+
+    subgraph MENU["📱 ГЛАВНОЕ МЕНЮ"]
+        MMR[Кнопка Отзывы]
+        MMD[Кнопка Мои диалоги]
+    end
+
+    subgraph NOTIFICATIONS["🔔 УВЕДОМЛЕНИЯ"]
+        FCM[Firebase Cloud Messaging]
+        PUSH[Push Service]
+    end
+
+    SM --> RS
+    RS --> EDS
+    EDS --> ECS
+    ECS --> PTS
+
+    RS --> MDP
+    RS --> MDCS
+    MDP --> CRL
+
+    MMR --> RS
+    MMD --> MDP
+    MDCS --> MMD
+
+    RS --> PUSH
+    PUSH --> FCM
+```
+
+---
+
+### 12.13 Таблица зависимостей
+
+| Модуль | Направление | Что использует |
+|--------|-------------|----------------|
+| **Shop** | → | Список магазинов для выбора |
+| **Efficiency** | ← | Отзывы как источник баллов |
+| **PointsSettings** | → | Настройки баллов за отзывы |
+| **MyDialogs** | ← | Отзывы клиента в списке диалогов |
+| **MyDialogsCounter** | ← | Подсчёт непрочитанных отзывов |
+| **MainMenu** | ← | Кнопка "Отзывы", счётчик "Мои диалоги" |
+| **Firebase/Push** | → | Push-уведомления о новых отзывах |
+
+---
+
+### 12.14 UI компоненты
+
+| Страница | Роль | Описание |
+|----------|------|----------|
+| ReviewTypeSelectionPage | Клиент | Два варианта: 👍 Положительный / 👎 Отрицательный |
+| ReviewShopSelectionPage | Клиент | Список магазинов для выбора |
+| ReviewTextInputPage | Клиент | Форма ввода текста отзыва |
+| ReviewDetailPage | Оба | Диалоговый интерфейс клиент-админ |
+| ClientReviewsListPage | Клиент | Список своих отзывов (из "Мои диалоги") |
+| ReviewsListPage | Админ | Все отзывы, группировка по магазинам |
+| ReviewsShopDetailPage | Админ | Отзывы конкретного магазина |
+| ReviewsPointsSettingsPage | Админ | Слайдеры настройки баллов |
+
+---
+
+### 12.15 Флаги непрочитанности
+
+| Флаг | Кто устанавливает | Кто сбрасывает | Назначение |
+|------|-------------------|----------------|------------|
+| hasUnreadFromClient | Сообщение от клиента | Админ открывает диалог | Счётчик для админа |
+| hasUnreadFromAdmin | Сообщение от админа | Клиент открывает диалог | Счётчик для клиента |
+
+---
+
 ## Следующие разделы (TODO)
 
 - [x] 2. Управление данными - СОТРУДНИКИ
@@ -3459,6 +6995,10 @@ flowchart TB
 - [x] 4. Система отчётности - ПЕРЕСМЕНКИ
 - [x] 5. Система отчётности - ПЕРЕСЧЁТЫ
 - [x] 6. ИИ-интеллект - РАСПОЗНАВАНИЕ ТОВАРОВ
-- [ ] 7. Система отчётности - РКО
-- [ ] 8. Аналитика - KPI
-- [ ] 9. Аналитика - ЭФФЕКТИВНОСТЬ
+- [x] 7. Система отчётности - РКО
+- [x] 8. Система отчётности - СДАТЬ СМЕНУ
+- [x] 9. Система отчётности - ПОСЕЩАЕМОСТЬ
+- [x] 10. Система передачи смен - ПЕРЕДАТЬ СМЕНУ
+- [x] 11. Аналитика - KPI
+- [x] 12. Клиентский модуль - ОТЗЫВЫ
+- [ ] 13. Аналитика - ЭФФЕКТИВНОСТЬ

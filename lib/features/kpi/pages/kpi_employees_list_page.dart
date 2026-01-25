@@ -23,6 +23,9 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
   // Кэш месячной статистики
   final Map<String, List<KPIEmployeeMonthStats>> _monthlyStatsCache = {};
 
+  // Отслеживание загружаемых сотрудников (для предотвращения дублирования)
+  final Set<String> _loadingEmployees = {};
+
   @override
   void initState() {
     super.initState();
@@ -33,10 +36,7 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     setState(() => _isLoading = true);
 
     try {
-      Logger.debug('Загрузка списка сотрудников для KPI...');
       final employees = await KPIService.getAllEmployees();
-      Logger.debug('Загружено сотрудников: ${employees.length}');
-      Logger.debug('Список: $employees');
 
       if (mounted) {
         setState(() {
@@ -44,13 +44,10 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
           _isLoading = false;
         });
 
-        if (employees.isEmpty) {
-          Logger.debug('⚠️ Список сотрудников пуст!');
-        }
-
-        // Предзагрузка статистики текущего месяца для всех сотрудников
-        for (final employee in employees) {
-          _loadMonthlyStats(employee);
+        // Ленивая загрузка: предзагружаем только первые 10 видимых сотрудников
+        final preloadCount = employees.length > 10 ? 10 : employees.length;
+        for (var i = 0; i < preloadCount; i++) {
+          _loadMonthlyStats(employees[i]);
         }
       }
     } catch (e) {
@@ -67,10 +64,14 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
       if (mounted) {
         setState(() {
           _monthlyStatsCache[employeeName] = stats;
+          _loadingEmployees.remove(employeeName);
         });
       }
     } catch (e) {
       Logger.error('Ошибка загрузки месячной статистики', e);
+      if (mounted) {
+        _loadingEmployees.remove(employeeName);
+      }
     }
   }
 
@@ -90,6 +91,11 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Индикатор графика (если есть данные из графика)
+          if (stats.hasScheduleData) ...[
+            _buildScheduleBadge(stats),
+            const SizedBox(width: 6),
+          ],
           _buildIndicatorWithFraction(
             Icons.access_time,
             stats.attendanceFraction,
@@ -130,6 +136,49 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
     );
   }
 
+  /// Бейдж с информацией о графике (опоздания и пропуски)
+  Widget _buildScheduleBadge(KPIEmployeeMonthStats stats) {
+    final hasProblems = stats.lateArrivals > 0 || stats.missedDays > 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: hasProblems ? Colors.red.shade50 : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: hasProblems ? Colors.red.shade200 : Colors.green.shade200,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Опоздания
+          if (stats.lateArrivals > 0) ...[
+            Icon(Icons.schedule, size: 10, color: Colors.orange.shade700),
+            const SizedBox(width: 2),
+            Text(
+              '${stats.lateArrivals}',
+              style: TextStyle(fontSize: 8, color: Colors.orange.shade700, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 4),
+          ],
+          // Пропуски
+          if (stats.missedDays > 0) ...[
+            Icon(Icons.event_busy, size: 10, color: Colors.red.shade700),
+            const SizedBox(width: 2),
+            Text(
+              '${stats.missedDays}',
+              style: TextStyle(fontSize: 8, color: Colors.red.shade700, fontWeight: FontWeight.bold),
+            ),
+          ],
+          // Если нет проблем - показываем галочку
+          if (!hasProblems)
+            Icon(Icons.check_circle, size: 12, color: Colors.green.shade700),
+        ],
+      ),
+    );
+  }
+
   Widget _buildIndicatorWithFraction(IconData icon, String fraction, double percentage) {
     Color fractionColor;
     if (percentage >= 1.0) {
@@ -162,15 +211,9 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
 
   Widget _buildMonthRow(String employeeName, KPIEmployeeMonthStats stats, String label) {
     return Card(
-      margin: const EdgeInsets.only(left: 32, right: 8, top: 4, bottom: 4),
+      margin: const EdgeInsets.only(left: 40, right: 8, top: 2, bottom: 2),
       color: Colors.grey[100],
-      child: ListTile(
-        dense: true,
-        title: Text(
-          label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-        ),
-        trailing: _buildMonthIndicators(stats),
+      child: InkWell(
         onTap: () {
           Navigator.push(
             context,
@@ -183,6 +226,22 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
             ),
           );
         },
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 2),
+              _buildMonthIndicators(stats),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -248,37 +307,18 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                           final isExpanded = _expandedEmployees.contains(employee);
                           final monthlyStats = _monthlyStatsCache[employee];
 
+                          // Ленивая загрузка: загружаем статистику когда элемент становится видимым
+                          if (monthlyStats == null && !_loadingEmployees.contains(employee)) {
+                            _loadingEmployees.add(employee);
+                            _loadMonthlyStats(employee);
+                          }
+
                           return Column(
                             children: [
                               // Главная строка сотрудника
                               Card(
-                                margin: const EdgeInsets.symmetric(vertical: 4),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFF004D40),
-                                    child: Text(
-                                      employee.isNotEmpty
-                                          ? employee[0].toUpperCase()
-                                          : '?',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  title: Text(
-                                    employee,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  trailing: monthlyStats != null && monthlyStats.isNotEmpty
-                                      ? _buildMonthIndicators(monthlyStats[0])
-                                      : const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        ),
+                                margin: const EdgeInsets.symmetric(vertical: 2),
+                                child: InkWell(
                                   onTap: () {
                                     setState(() {
                                       if (isExpanded) {
@@ -291,6 +331,64 @@ class _KPIEmployeesListPageState extends State<KPIEmployeesListPage> {
                                       }
                                     });
                                   },
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    child: Row(
+                                      children: [
+                                        // Аватар
+                                        CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: const Color(0xFF004D40),
+                                          child: Text(
+                                            employee.isNotEmpty
+                                                ? employee[0].toUpperCase()
+                                                : '?',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // ФИО и показатели
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              // ФИО в одну строку
+                                              Text(
+                                                employee,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              // Показатели под ФИО
+                                              monthlyStats != null && monthlyStats.isNotEmpty
+                                                  ? _buildMonthIndicators(monthlyStats[0])
+                                                  : const SizedBox(
+                                                      width: 16,
+                                                      height: 16,
+                                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                                    ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Стрелка раскрытия
+                                        Icon(
+                                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                                          color: Colors.grey[600],
+                                          size: 20,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
 

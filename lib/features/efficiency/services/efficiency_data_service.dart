@@ -6,6 +6,7 @@ import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../tasks/services/task_service.dart';
 import '../../tasks/models/task_model.dart';
+import '../../reviews/services/review_service.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
@@ -65,6 +66,7 @@ class EfficiencyDataService {
       _loadAttendanceRecords(start, end),
       _loadPenaltyRecords(start, end),
       _loadTaskRecords(start, end),
+      _loadReviewRecords(start, end),
     ]);
 
     // Объединяем все записи
@@ -136,6 +138,7 @@ class EfficiencyDataService {
       // Загружаем остальные типы отдельно (пока не добавлены в batch API)
       final penaltyRecords = await _loadPenaltyRecords(start, end);
       final taskRecords = await _loadTaskRecords(start, end);
+      final reviewRecords = await _loadReviewRecords(start, end);
 
       // Парсим отчёты и конвертируем в EfficiencyRecord
       final shiftRecords = await _parseShiftReportsFromBatch(result['shifts'] as List<dynamic>? ?? [], start, end);
@@ -151,6 +154,7 @@ class EfficiencyDataService {
         ...attendanceRecords,
         ...penaltyRecords,
         ...taskRecords,
+        ...reviewRecords,
       ];
 
       Logger.debug('Total efficiency records from BATCH API: ${allRecords.length}');
@@ -776,6 +780,41 @@ class EfficiencyDataService {
       return records;
     } catch (e) {
       Logger.error('Error loading task records', e);
+      return [];
+    }
+  }
+
+  /// Загрузить записи по отзывам
+  static Future<List<EfficiencyRecord>> _loadReviewRecords(
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      Logger.debug('Loading review records...');
+      final reviews = await ReviewService.getAllReviews();
+
+      final records = <EfficiencyRecord>[];
+      for (final review in reviews) {
+        // Проверяем период
+        if (review.createdAt.isBefore(start) || review.createdAt.isAfter(end)) {
+          continue;
+        }
+
+        final isPositive = review.reviewType == 'positive';
+        final record = await EfficiencyCalculationService.createReviewRecord(
+          id: review.id,
+          shopAddress: review.shopAddress,
+          date: review.createdAt,
+          isPositive: isPositive,
+        );
+
+        records.add(record);
+      }
+
+      Logger.debug('Loaded ${records.length} review efficiency records');
+      return records;
+    } catch (e) {
+      Logger.error('Error loading review records', e);
       return [];
     }
   }

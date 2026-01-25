@@ -23,7 +23,12 @@ void callbackDispatcher() {
   });
 }
 
-/// Сервис для фоновой проверки GPS и отправки уведомлений
+/// Сервис для фоновой проверки GPS и отправки уведомлений "Я на работе"
+///
+/// Оптимизирован для экономии батареи:
+/// - Проверяет только в рабочие часы (6:00 - 22:00)
+/// - Проверяет только для сотрудников (не клиентов)
+/// - Сервер дополнительно проверяет расписание и pending отчёты
 class BackgroundGpsService {
   static bool _isInitialized = false;
 
@@ -60,15 +65,29 @@ class BackgroundGpsService {
   /// Проверить GPS и отправить на сервер
   static Future<void> checkGpsAndNotify() async {
     try {
+      // Проверка времени: работаем только с 6:00 до 22:00
+      final now = DateTime.now();
+      if (now.hour < 6 || now.hour >= 22) {
+        Logger.debug('[BackgroundGPS] Вне рабочих часов (${now.hour}:${now.minute}), пропускаем');
+        return;
+      }
+
       Logger.debug('[BackgroundGPS] Начало проверки GPS...');
 
       // Получаем сохранённые данные пользователя
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('user_phone');
       final employeeName = prefs.getString('user_name');
+      final userRole = prefs.getString('user_role');
 
       if (phone == null || phone.isEmpty) {
         Logger.debug('[BackgroundGPS] Телефон не найден, пропускаем');
+        return;
+      }
+
+      // Проверяем только для сотрудников (не клиентов)
+      if (userRole == 'client') {
+        Logger.debug('[BackgroundGPS] Пользователь - клиент, пропускаем');
         return;
       }
 
@@ -95,7 +114,12 @@ class BackgroundGpsService {
 
       Logger.debug('[BackgroundGPS] GPS: ${position.latitude}, ${position.longitude}');
 
-      // Отправляем на сервер
+      // Отправляем на сервер для проверки всех условий:
+      // - Ближайший магазин (< 750м)
+      // - Расписание сотрудника на сегодня
+      // - Pending отчёты
+      // - Настройки времени
+      // - Кэш уведомлений (не спамить)
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/attendance/gps-check'),
         headers: {'Content-Type': 'application/json'},
@@ -136,5 +160,11 @@ class BackgroundGpsService {
   /// Запустить проверку вручную (для тестирования)
   static Future<void> runOnce() async {
     await checkGpsAndNotify();
+  }
+
+  /// Заглушка для совместимости с предыдущим кодом
+  static Future<void> start() async {
+    // WorkManager запускается автоматически после initialize()
+    Logger.debug('[BackgroundGPS] Фоновая проверка уже запущена');
   }
 }

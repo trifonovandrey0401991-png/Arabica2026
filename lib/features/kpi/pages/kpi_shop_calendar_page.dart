@@ -351,6 +351,14 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     }
   }
 
+  /// Получить цвет по статусу выполнения
+  Color _getStatusColor(double status) {
+    if (status == 1) return Colors.green; // Всё выполнено
+    if (status == 0.5) return Colors.yellow; // Частично
+    if (status == 0) return Colors.red; // Ничего не выполнено
+    return Colors.grey.shade300; // Нет данных
+  }
+
   Widget _buildDayCell({
     required BuildContext context,
     required DateTime date,
@@ -359,77 +367,95 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
     required bool isToday,
     KPIShopDayData? dayData,
   }) {
-    // Определяем статус выполнения всех действий
-    bool allCompleted = false;
-    bool hasWorking = false;
+    // Получаем статусы утренней и вечерней смены
+    double morningStatus = -1;
+    double eveningStatus = -1;
 
     if (dayData != null) {
-      allCompleted = dayData.allActionsCompleted;
-      hasWorking = dayData.hasWorkingEmployees;
+      morningStatus = dayData.morningCompletionStatus;
+      eveningStatus = dayData.eveningCompletionStatus;
     } else if (events.isNotEmpty) {
-      allCompleted = events.first.allActionsCompleted;
-      hasWorking = events.first.hasWorkingEmployees;
+      morningStatus = events.first.morningCompletionStatus;
+      eveningStatus = events.first.eveningCompletionStatus;
     }
 
-    // Определяем цвет круга
-    Color circleColor = Colors.transparent;
-    if (hasWorking) {
-      if (allCompleted) {
-        circleColor = Colors.green; // Все выполнено - зеленый
-      } else {
-        circleColor = Colors.yellow; // Что-то не выполнено - желтый
-      }
-    }
+    // Определяем цвета для утра и вечера
+    final morningColor = _getStatusColor(morningStatus);
+    final eveningColor = _getStatusColor(eveningStatus);
 
-    // Определяем цвета фона и текста
-    Color backgroundColor = Colors.white;
+    // Есть ли данные
+    final hasData = morningStatus >= 0 || eveningStatus >= 0;
+
+    // Определяем цвет текста
     Color textColor = Colors.black;
-
     if (isSelected) {
-      backgroundColor = const Color(0xFF004D40);
       textColor = Colors.white;
-    } else if (isToday) {
-      backgroundColor = Colors.blue.withOpacity(0.3);
     }
 
-    // Создаем контейнер с кругом
+    // Бордер для выбранного/сегодня
+    Border? border;
+    if (isSelected) {
+      border = Border.all(color: const Color(0xFF004D40), width: 3);
+    } else if (isToday) {
+      border = Border.all(color: Colors.blue, width: 2);
+    }
+
+    // Создаем контейнер разделённый на 2 части
     return Container(
-      margin: const EdgeInsets.all(6.0),
+      margin: const EdgeInsets.all(4.0),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: circleColor != Colors.transparent ? circleColor : Colors.grey.shade300,
-          width: circleColor != Colors.transparent ? 2 : 1,
-        ),
+        borderRadius: BorderRadius.circular(8),
+        border: border,
       ),
-      child: circleColor != Colors.transparent
-          ? Container(
-              decoration: BoxDecoration(
-                color: circleColor,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: hasData
+            ? Column(
+                children: [
+                  // Утренняя смена (верх)
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      color: morningColor,
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: Text(
+                          '${date.day}',
+                          style: TextStyle(
+                            color: morningStatus >= 0 ? Colors.black87 : Colors.grey[600],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Вечерняя смена (низ)
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      color: eveningColor,
+                    ),
+                  ),
+                ],
+              )
+            : Container(
+                color: isSelected
+                    ? const Color(0xFF004D40)
+                    : (isToday ? Colors.blue.withOpacity(0.2) : Colors.white),
+                child: Center(
+                  child: Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
-            )
-          : Center(
-              child: Text(
-                '${date.day}',
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
+      ),
     );
   }
 
@@ -599,40 +625,99 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
                         ),
                       ),
                       const SizedBox(height: 16),
+                      // Пример ячейки
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white54),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        color: Colors.green,
+                                        alignment: Alignment.bottomCenter,
+                                        child: const Padding(
+                                          padding: EdgeInsets.only(bottom: 1),
+                                          child: Text('1', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(child: Container(color: Colors.yellow)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Flexible(
+                              child: Text(
+                                'Верх - утро, низ - вечер',
+                                style: TextStyle(fontSize: 12, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Легенда цветов
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Wrap(
-                          spacing: 24,
+                          spacing: 16,
                           runSpacing: 8,
                           children: [
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
                                     color: Colors.green,
-                                    shape: BoxShape.circle,
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                const Text('Все выполнено', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                const SizedBox(width: 6),
+                                const Text('Всё выполнено', style: TextStyle(fontSize: 11, color: Colors.white)),
                               ],
                             ),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
                                     color: Colors.yellow,
-                                    shape: BoxShape.circle,
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                const Text('Что-то не выполнено', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                const SizedBox(width: 6),
+                                const Text('Частично', style: TextStyle(fontSize: 11, color: Colors.white)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text('Не выполнено', style: TextStyle(fontSize: 11, color: Colors.white)),
                               ],
                             ),
                           ],
