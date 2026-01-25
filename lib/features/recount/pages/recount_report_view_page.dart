@@ -587,47 +587,277 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                             ),
                             const SizedBox(height: 8),
                             if (answer.answer == 'сходится')
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Ответ: Сходится',
-                                    style: TextStyle(
-                                      color: Colors.green[700],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  if (answer.quantity != null)
-                                    Text('Количество: ${answer.quantity}'),
-                                ],
-                              )
-                            else if (answer.answer == 'не сходится')
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Ответ: Не сходится',
-                                    style: TextStyle(
-                                      color: Colors.red[700],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  if (answer.programBalance != null)
-                                    Text('Остаток по программе: ${answer.programBalance}'),
-                                  if (answer.actualBalance != null)
-                                    Text('Фактический остаток: ${answer.actualBalance}'),
-                                  if (answer.difference != null)
-                                    Text(
-                                      'Разница: ${answer.difference! > 0 ? '+' : ''}${answer.difference}',
-                                      style: TextStyle(
-                                        color: answer.difference! > 0
-                                            ? Colors.red
-                                            : Colors.green,
-                                        fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Сходится',
+                                            style: TextStyle(
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          if (answer.quantity != null)
+                                            Text(
+                                              'Количество: ${answer.quantity} шт',
+                                              style: const TextStyle(fontSize: 14),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                ],
+                                  ],
+                                ),
+                              )
+                            else if (answer.answer == 'не сходится')
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.cancel, color: Colors.red, size: 24),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Не сходится',
+                                          style: TextStyle(
+                                            color: Colors.red[700],
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Строка с данными: По программе | По факту | Разница
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              const Text(
+                                                'По программе',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                              Text(
+                                                '${answer.programBalance ?? '-'} шт',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              const Text(
+                                                'По факту',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                              Text(
+                                                '${answer.actualBalance ?? '-'} шт',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              const Text(
+                                                'Разница',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                              if (answer.difference != null)
+                                                Text(
+                                                  answer.difference! > 0
+                                                      ? '-${answer.difference}' // Недостача
+                                                      : '+${answer.difference!.abs()}', // Излишек
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: answer.difference! > 0
+                                                        ? Colors.red // Недостача - красный
+                                                        : Colors.blue, // Излишек - синий
+                                                  ),
+                                                )
+                                              else
+                                                const Text('-'),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    // Подсказка: что означает разница
+                                    if (answer.difference != null && answer.difference != 0) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        answer.difference! > 0
+                                            ? 'Недостача: меньше на ${answer.difference} шт'
+                                            : 'Излишек: больше на ${answer.difference!.abs()} шт',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: answer.difference! > 0 ? Colors.red[700] : Colors.blue[700],
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
+                            // Блок ИИ проверки
+                            if (answer.aiVerified == true) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: answer.aiMismatch == true
+                                      ? Colors.orange.withOpacity(0.1)
+                                      : Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: answer.aiMismatch == true ? Colors.orange : Colors.blue,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          answer.aiMismatch == true ? Icons.warning_amber : Icons.check_circle,
+                                          color: answer.aiMismatch == true ? Colors.orange : Colors.blue,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          Icons.smart_toy,
+                                          color: answer.aiMismatch == true ? Colors.orange : Colors.blue,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '✓ Проверено ИИ',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: answer.aiMismatch == true ? Colors.orange[700] : Colors.blue[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Сотрудник:',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                              Text(
+                                                '${answer.actualBalance ?? answer.quantity ?? '-'} шт',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'ИИ насчитал:',
+                                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                              Text(
+                                                '${answer.aiQuantity ?? '-'} шт',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: answer.aiMismatch == true ? Colors.orange[700] : Colors.blue[700],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (answer.aiConfidence != null)
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Уверенность:',
+                                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                                ),
+                                                Text(
+                                                  '${(answer.aiConfidence! * 100).toInt()}%',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    if (answer.aiMismatch == true) ...[
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.warning, color: Colors.red, size: 16),
+                                            const SizedBox(width: 8),
+                                            const Expanded(
+                                              child: Text(
+                                                '⚠️ Расхождение между сотрудником и ИИ!',
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                             // Фото
                             if (answer.photoUrl != null || answer.photoPath != null) ...[
                               const SizedBox(height: 12),

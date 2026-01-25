@@ -35,11 +35,37 @@ class CigaretteVisionService {
     }
   }
 
+  /// Обновить статус ИИ проверки для товара
+  static Future<bool> updateProductAiStatus({
+    required String productId,
+    required bool isAiActive,
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${ApiConstants.serverUrl}/api/master-catalog/$productId/ai-status'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({'isAiActive': isAiActive}),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        Logger.info('AI статус для товара $productId: ${isAiActive ? 'активна' : 'неактивна'}');
+        return true;
+      } else {
+        Logger.error('Ошибка изменения AI статуса: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      Logger.error('Ошибка изменения AI статуса', e);
+      return false;
+    }
+  }
+
   /// Получить список групп товаров
   static Future<List<String>> getProductGroups() async {
     try {
+      // Используем endpoint мастер-каталога для групп
       final response = await http.get(
-        Uri.parse('${ApiConstants.serverUrl}${ApiConstants.cigaretteProductsEndpoint}/groups'),
+        Uri.parse('${ApiConstants.serverUrl}/api/master-catalog/groups/list'),
         headers: ApiConstants.jsonHeaders,
       ).timeout(ApiConstants.defaultTimeout);
 

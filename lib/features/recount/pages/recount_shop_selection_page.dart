@@ -3,6 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
 import '../../shops/models/shop_model.dart';
+import '../../shops/services/shop_products_service.dart';
+import '../../efficiency/services/points_settings_service.dart';
+import '../../efficiency/models/points_settings_model.dart';
+import '../models/pending_recount_report_model.dart';
+import '../services/pending_recount_service.dart';
 import 'recount_questions_page.dart';
 
 /// Страница выбора магазина для пересчета
@@ -17,11 +22,192 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   bool _isLoading = true;
   String? _employeeName;
   String? _employeePhone;
+  Set<String> _shopsWithProducts = {}; // ID магазинов с синхронизированными товарами
+  List<PendingRecountReport> _pendingRecounts = []; // Ожидающие пересчёты
+  RecountPointsSettings? _recountSettings; // Настройки интервалов
 
   @override
   void initState() {
     super.initState();
-    _loadEmployeeData();
+    _loadData();
+  }
+
+  /// Загрузить все данные параллельно
+  Future<void> _loadData() async {
+    // Запускаем все запросы параллельно
+    await Future.wait([
+      _loadEmployeeData(),
+      _loadShopsWithProducts(),
+      _loadPendingRecounts(),
+      _loadRecountSettings(),
+    ]);
+
+    // Только после завершения всех запросов убираем loading
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  /// Загрузить pending пересчёты
+  Future<void> _loadPendingRecounts() async {
+    try {
+      final pending = await PendingRecountService.getPendingReports();
+      _pendingRecounts = pending;
+      Logger.debug('📋 Ожидающие пересчёты: ${pending.length}');
+    } catch (e) {
+      Logger.error('Ошибка загрузки pending пересчётов', e);
+    }
+  }
+
+  /// Загрузить настройки интервалов
+  Future<void> _loadRecountSettings() async {
+    try {
+      final settings = await PointsSettingsService.getRecountPointsSettings();
+      _recountSettings = settings;
+    } catch (e) {
+      Logger.error('Ошибка загрузки настроек пересчёта', e);
+    }
+  }
+
+  /// Проверить есть ли pending пересчёт для магазина
+  bool _hasPendingRecount(String shopAddress) {
+    return _pendingRecounts.any((p) => p.shopAddress == shopAddress && p.status == 'pending');
+  }
+
+  /// Получить информацию о следующем интервале пересчёта
+  String _getNextIntervalInfo() {
+    final now = DateTime.now();
+    final settings = _recountSettings;
+
+    if (settings == null) {
+      return 'Настройки не загружены';
+    }
+
+    // Парсим время начала интервалов
+    final morningStart = _parseTime(settings.morningStartTime);
+    final eveningStart = _parseTime(settings.eveningStartTime);
+    final morningEnd = _parseTime(settings.morningEndTime);
+    final eveningEnd = _parseTime(settings.eveningEndTime);
+
+    final currentMinutes = now.hour * 60 + now.minute;
+    final morningStartMinutes = morningStart.hour * 60 + morningStart.minute;
+    final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
+    final morningEndMinutes = morningEnd.hour * 60 + morningEnd.minute;
+    final eveningEndMinutes = eveningEnd.hour * 60 + eveningEnd.minute;
+
+    String nextTime;
+    int minutesUntil;
+
+    if (currentMinutes < morningStartMinutes) {
+      // До начала утреннего интервала
+      nextTime = settings.morningStartTime;
+      minutesUntil = morningStartMinutes - currentMinutes;
+    } else if (currentMinutes >= morningStartMinutes && currentMinutes < morningEndMinutes) {
+      // Внутри утреннего интервала
+      return 'Сейчас утренний интервал (${settings.morningStartTime} - ${settings.morningEndTime})';
+    } else if (currentMinutes < eveningStartMinutes) {
+      // Между интервалами
+      nextTime = settings.eveningStartTime;
+      minutesUntil = eveningStartMinutes - currentMinutes;
+    } else if (currentMinutes >= eveningStartMinutes && currentMinutes < eveningEndMinutes) {
+      // Внутри вечернего интервала
+      return 'Сейчас вечерний интервал (${settings.eveningStartTime} - ${settings.eveningEndTime})';
+    } else {
+      // После вечернего интервала - следующий утренний завтра
+      nextTime = settings.morningStartTime;
+      minutesUntil = (24 * 60 - currentMinutes) + morningStartMinutes;
+    }
+
+    final hours = minutesUntil ~/ 60;
+    final mins = minutesUntil % 60;
+    final untilStr = hours > 0 ? '$hours ч $mins мин' : '$mins мин';
+
+    return 'Следующий интервал в $nextTime (через $untilStr)';
+  }
+
+  /// Парсить время из строки "HH:MM"
+  TimeOfDay _parseTime(String timeStr) {
+    final parts = timeStr.split(':');
+    return TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: parts.length > 1 ? int.parse(parts[1]) : 0,
+    );
+  }
+
+  /// Показать диалог "Нет активных пересчётов"
+  void _showNoActiveRecountsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.schedule, color: Colors.orange, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Нет активных пересчётов',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Для этого магазина сейчас нет ожидающих пересчётов.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getNextIntervalInfo(),
+                      style: const TextStyle(fontSize: 13, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Понятно'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Загрузить список магазинов с синхронизированными товарами (DBF)
+  Future<void> _loadShopsWithProducts() async {
+    try {
+      final syncedShops = await ShopProductsService.getShopsWithProducts();
+      _shopsWithProducts = syncedShops.map((s) => s.shopId).toSet();
+      Logger.debug('📦 Магазины с DBF товарами: $_shopsWithProducts');
+    } catch (e) {
+      Logger.error('Ошибка загрузки магазинов с товарами', e);
+    }
   }
 
   /// Загрузить данные сотрудника
@@ -35,16 +221,10 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
 
       Logger.debug('Загружены данные: displayName=$employeeName, phone=$employeePhone');
 
-      setState(() {
-        _employeeName = employeeName;
-        _employeePhone = employeePhone;
-        _isLoading = false;
-      });
+      _employeeName = employeeName;
+      _employeePhone = employeePhone;
     } catch (e) {
       Logger.error('Ошибка загрузки данных сотрудника', e);
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -192,6 +372,11 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                       child: InkWell(
                                         borderRadius: BorderRadius.circular(12),
                                         onTap: () {
+                                          // Проверяем есть ли pending пересчёт для магазина
+                                          if (!_hasPendingRecount(shop.address)) {
+                                            _showNoActiveRecountsDialog();
+                                            return;
+                                          }
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -208,8 +393,10 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(12),
                                             border: Border.all(
-                                              color: Colors.white.withOpacity(0.5),
-                                              width: 2,
+                                              color: _shopsWithProducts.contains(shop.id)
+                                                  ? Colors.green
+                                                  : Colors.white.withOpacity(0.5),
+                                              width: _shopsWithProducts.contains(shop.id) ? 3 : 2,
                                             ),
                                           ),
                                           child: Row(
@@ -217,15 +404,71 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                               const ShopIcon(size: 56),
                                               const SizedBox(width: 16),
                                               Expanded(
-                                                child: Text(
-                                                  shop.address,
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      shop.address,
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    if (_shopsWithProducts.contains(shop.id)) ...[
+                                                      const SizedBox(height: 4),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.green,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: const Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(Icons.inventory_2, color: Colors.white, size: 12),
+                                                            SizedBox(width: 4),
+                                                            Text(
+                                                              'Остатки из DBF',
+                                                              style: TextStyle(
+                                                                color: Colors.white,
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.bold,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    // Индикатор активного пересчёта
+                                                    if (_hasPendingRecount(shop.address)) ...[
+                                                      const SizedBox(height: 4),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.orange,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: const Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(Icons.schedule, color: Colors.white, size: 12),
+                                                            SizedBox(width: 4),
+                                                            Text(
+                                                              'Ожидает пересчёт',
+                                                              style: TextStyle(
+                                                                color: Colors.white,
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.bold,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
                                                 ),
                                               ),
                                               const Icon(

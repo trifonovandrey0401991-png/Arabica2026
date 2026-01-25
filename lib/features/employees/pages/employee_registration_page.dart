@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import '../models/employee_registration_model.dart';
 import '../services/employee_registration_service.dart';
 import '../services/employee_service.dart';
@@ -31,9 +31,10 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   final _issuedByController = TextEditingController();
   final _issueDateController = TextEditingController();
 
-  String? _passportFrontPhotoPath;
-  String? _passportRegistrationPhotoPath;
-  String? _additionalPhotoPath;
+  // Храним байты фото для надежной загрузки (работает с content:// URI на Android)
+  Uint8List? _passportFrontPhotoBytes;
+  Uint8List? _passportRegistrationPhotoBytes;
+  Uint8List? _additionalPhotoBytes;
 
   String? _passportFrontPhotoUrl;
   String? _passportRegistrationPhotoUrl;
@@ -135,20 +136,25 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       );
 
       if (image != null) {
+        // Сразу читаем байты через XFile (работает с content:// URI на Android)
+        final bytes = await image.readAsBytes();
+        Logger.debug('📷 Фото выбрано: ${image.path}, размер: ${bytes.length} байт');
+
         setState(() {
           if (photoType == 'front') {
-            _passportFrontPhotoPath = image.path;
-            _passportFrontPhotoUrl = null; // Сбрасываем URL, так как загружаем новое фото
+            _passportFrontPhotoBytes = bytes;
+            _passportFrontPhotoUrl = null;
           } else if (photoType == 'registration') {
-            _passportRegistrationPhotoPath = image.path;
+            _passportRegistrationPhotoBytes = bytes;
             _passportRegistrationPhotoUrl = null;
           } else if (photoType == 'additional') {
-            _additionalPhotoPath = image.path;
+            _additionalPhotoBytes = bytes;
             _additionalPhotoUrl = null;
           }
         });
       }
     } catch (e) {
+      Logger.error('Ошибка выбора фото: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -223,8 +229,8 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       return;
     }
 
-    // Проверяем обязательные фото
-    if (_passportFrontPhotoPath == null && _passportFrontPhotoUrl == null) {
+    // Проверяем обязательные фото (bytes для новых, url для существующих)
+    if (_passportFrontPhotoBytes == null && _passportFrontPhotoUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Пожалуйста, добавьте фото лицевой страницы паспорта'),
@@ -234,7 +240,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       return;
     }
 
-    if (_passportRegistrationPhotoPath == null && _passportRegistrationPhotoUrl == null) {
+    if (_passportRegistrationPhotoBytes == null && _passportRegistrationPhotoUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Пожалуйста, добавьте фото прописки'),
@@ -259,31 +265,40 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       String? registrationPhotoUrl = _passportRegistrationPhotoUrl;
       String? additionalPhotoUrl = _additionalPhotoUrl;
 
-      if (_passportFrontPhotoPath != null) {
-        frontPhotoUrl = await EmployeeRegistrationService.uploadPhoto(
-          _passportFrontPhotoPath!,
+      // Загружаем фото из сохраненных байтов (более надежно для Android)
+      if (_passportFrontPhotoBytes != null) {
+        debugPrint('📤 Загрузка фото front из байтов: ${_passportFrontPhotoBytes!.length} байт');
+
+        frontPhotoUrl = await EmployeeRegistrationService.uploadPhotoFromBytes(
+          _passportFrontPhotoBytes!,
           phone,
           'front',
         );
         if (frontPhotoUrl == null) {
-          throw Exception('Ошибка загрузки фото лицевой страницы');
+          final error = EmployeeRegistrationService.lastUploadError ?? 'Неизвестная ошибка';
+          throw Exception('Ошибка загрузки фото лицевой страницы: $error');
         }
       }
 
-      if (_passportRegistrationPhotoPath != null) {
-        registrationPhotoUrl = await EmployeeRegistrationService.uploadPhoto(
-          _passportRegistrationPhotoPath!,
+      if (_passportRegistrationPhotoBytes != null) {
+        debugPrint('📤 Загрузка фото registration из байтов: ${_passportRegistrationPhotoBytes!.length} байт');
+
+        registrationPhotoUrl = await EmployeeRegistrationService.uploadPhotoFromBytes(
+          _passportRegistrationPhotoBytes!,
           phone,
           'registration',
         );
         if (registrationPhotoUrl == null) {
-          throw Exception('Ошибка загрузки фото прописки');
+          final error = EmployeeRegistrationService.lastUploadError ?? 'Неизвестная ошибка';
+          throw Exception('Ошибка загрузки фото прописки: $error');
         }
       }
 
-      if (_additionalPhotoPath != null) {
-        additionalPhotoUrl = await EmployeeRegistrationService.uploadPhoto(
-          _additionalPhotoPath!,
+      if (_additionalPhotoBytes != null) {
+        debugPrint('📤 Загрузка дополнительного фото из байтов: ${_additionalPhotoBytes!.length} байт');
+
+        additionalPhotoUrl = await EmployeeRegistrationService.uploadPhotoFromBytes(
+          _additionalPhotoBytes!,
           phone,
           'additional',
         );
@@ -358,7 +373,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
   Widget _buildPhotoField({
     required String label,
     required String photoType,
-    String? photoPath,
+    Uint8List? photoBytes,
     String? photoUrl,
   }) {
     return Column(
@@ -401,7 +416,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             ),
           ],
         ),
-        if (photoPath != null || photoUrl != null) ...[
+        if (photoBytes != null || photoUrl != null) ...[
           const SizedBox(height: 8),
           Container(
             height: 150,
@@ -412,9 +427,9 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: photoPath != null
-                  ? Image.file(
-                      File(photoPath),
+              child: photoBytes != null
+                  ? Image.memory(
+                      photoBytes,
                       fit: BoxFit.cover,
                     )
                   : photoUrl != null
@@ -621,7 +636,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             _buildPhotoField(
               label: 'Добавьте фото Паспорта (Лицевая Страница)',
               photoType: 'front',
-              photoPath: _passportFrontPhotoPath,
+              photoBytes: _passportFrontPhotoBytes,
               photoUrl: _passportFrontPhotoUrl,
             ),
 
@@ -629,7 +644,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             _buildPhotoField(
               label: 'Добавьте фото Паспорта (Прописка)',
               photoType: 'registration',
-              photoPath: _passportRegistrationPhotoPath,
+              photoBytes: _passportRegistrationPhotoBytes,
               photoUrl: _passportRegistrationPhotoUrl,
             ),
 
@@ -637,7 +652,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
             _buildPhotoField(
               label: 'Добавьте Доп Фото если нужно',
               photoType: 'additional',
-              photoPath: _additionalPhotoPath,
+              photoBytes: _additionalPhotoBytes,
               photoUrl: _additionalPhotoUrl,
             ),
 

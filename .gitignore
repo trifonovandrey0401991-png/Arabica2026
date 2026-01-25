@@ -44,3 +44,6 @@ app.*.map.json
 .claude/
 nul
 */nul
+
+# MCP config with API keys
+.mcp.json

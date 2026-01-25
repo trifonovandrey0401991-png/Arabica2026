@@ -199,6 +199,38 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  // Процент приходов вовремя
+                  if (summary.totalRecords > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _getOnTimeColor(summary.onTimeRate).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _getOnTimeColor(summary.onTimeRate),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 12,
+                            color: _getOnTimeColor(summary.onTimeRate),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${summary.onTimeRate.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              color: _getOnTimeColor(summary.onTimeRate),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -298,6 +330,13 @@ class _AttendanceReportsPageState extends State<AttendanceReportsPage> {
       default:
         return Colors.red;
     }
+  }
+
+  /// Цвет для процента приходов вовремя
+  Color _getOnTimeColor(double rate) {
+    if (rate >= 90) return Colors.green;
+    if (rate >= 70) return Colors.orange;
+    return Colors.red;
   }
 
   String _getEnding(int count) {

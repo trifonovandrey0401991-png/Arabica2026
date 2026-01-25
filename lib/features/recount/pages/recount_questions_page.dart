@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +14,9 @@ import '../models/recount_answer_model.dart';
 import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
 import '../services/recount_points_service.dart';
+import '../services/recount_question_service.dart';
+import '../../shops/services/shop_service.dart';
+import '../../ai_training/services/cigarette_vision_service.dart';
 
 /// Страница с вопросами пересчета
 class RecountQuestionsPage extends StatefulWidget {
@@ -38,12 +42,13 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   bool _isLoading = true;
   List<RecountAnswer> _answers = [];
   int _currentQuestionIndex = 0;
-  final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _programBalanceController = TextEditingController();
-  final TextEditingController _actualBalanceController = TextEditingController();
+  // Контроллеры для полей "Больше на" и "Меньше на"
+  final TextEditingController _moreByController = TextEditingController();
+  final TextEditingController _lessByController = TextEditingController();
   String? _selectedAnswer; // "сходится" или "не сходится"
   String? _photoPath;
   bool _isSubmitting = false;
+  bool _isVerifyingAI = false; // Флаг проверки ИИ
   DateTime? _startedAt;
   DateTime? _completedAt;
   bool _answerSaved = false; // Флаг, что ответ сохранен и заблокирован для изменения
@@ -57,7 +62,42 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
   Future<void> _loadQuestions() async {
     try {
-      final allQuestions = await RecountQuestion.loadQuestions();
+      // Пытаемся найти магазин по адресу и загрузить с остатками из DBF
+      List<RecountQuestion> allQuestions;
+
+      Logger.debug('📦 [RECOUNT] ========================================');
+      Logger.debug('📦 [RECOUNT] Начало загрузки, адрес: "${widget.shopAddress}"');
+
+      final shopId = await ShopService.findShopIdByAddress(widget.shopAddress);
+      Logger.debug('📦 [RECOUNT] Результат поиска shopId: $shopId');
+
+      if (shopId != null) {
+        // Проверяем, есть ли синхронизированные товары для этого магазина
+        final hasProducts = await RecountQuestionService.hasShopProducts(shopId);
+        Logger.debug('📦 [RECOUNT] hasShopProducts($shopId) = $hasProducts');
+
+        if (hasProducts) {
+          Logger.debug('📦 [RECOUNT] Загружаем товары из DBF каталога магазина...');
+          // Используем товары напрямую из DBF (реальные баркоды, названия, остатки)
+          // onlyWithStock: true - показываем только товары с остатком > 0
+          allQuestions = await RecountQuestionService.getQuestionsFromShopProducts(
+            shopId: shopId,
+            onlyWithStock: true,
+          );
+
+          // Статистика по остаткам
+          final withStock = allQuestions.where((q) => q.stock > 0).length;
+          Logger.debug('📦 [RECOUNT] Загружено из DBF: ${allQuestions.length} товаров, с остатком > 0: $withStock');
+        } else {
+          Logger.debug('📦 [RECOUNT] Нет синхронизированных товаров, загружаем из общего каталога');
+          allQuestions = await RecountQuestion.loadQuestions();
+        }
+      } else {
+        Logger.debug('📦 [RECOUNT] Магазин НЕ НАЙДЕН по адресу, загружаем из общего каталога');
+        allQuestions = await RecountQuestion.loadQuestions();
+      }
+
+      Logger.debug('📦 [RECOUNT] ========================================');
 
       // Получаем настройки для определения кол-ва вопросов и фото
       int requiredPhotos = 3; // По умолчанию
@@ -87,7 +127,17 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       }
 
       // Выбираем вопросы по алгоритму с учетом настройки
+      Logger.debug('📦 [RECOUNT] Вызов selectQuestions с totalCount=$questionsCount, всего вопросов: ${allQuestions.length}');
       final selectedQuestions = RecountQuestion.selectQuestions(allQuestions, totalCount: questionsCount);
+      Logger.debug('📦 [RECOUNT] После selectQuestions: ${selectedQuestions.length} вопросов');
+
+      // Логируем остатки выбранных товаров и статус AI
+      int aiActiveQuestions = selectedQuestions.where((q) => q.isAiActive).length;
+      Logger.info('🤖 [RECOUNT] Вопросов с AI активным: $aiActiveQuestions из ${selectedQuestions.length}');
+      for (var i = 0; i < min(5, selectedQuestions.length); i++) {
+        final q = selectedQuestions[i];
+        Logger.info('📦 [RECOUNT] Вопрос $i: "${q.productName}" stock=${q.stock} isAiActive=${q.isAiActive}');
+      }
 
       // Случайно выбираем нужное количество вопросов для фото
       final random = Random();
@@ -131,9 +181,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
   @override
   void dispose() {
-    _quantityController.dispose();
-    _programBalanceController.dispose();
-    _actualBalanceController.dispose();
+    _moreByController.dispose();
+    _lessByController.dispose();
     super.dispose();
   }
 
@@ -187,31 +236,31 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
 
     final question = _selectedQuestions![_currentQuestionIndex];
     final isPhotoRequired = _photoRequiredIndices.contains(_currentQuestionIndex);
+    // Остаток из DBF
+    final stockFromDbf = question.stock;
 
     RecountAnswer answer;
 
     if (_selectedAnswer == 'сходится') {
-      final quantity = int.tryParse(_quantityController.text.trim());
-      answer = RecountAnswer(
+      // При "Сходится" количество берётся автоматически из DBF
+      answer = RecountAnswer.matching(
         question: question.question,
         grade: question.grade,
-        answer: 'сходится',
-        quantity: quantity,
+        stockFromDbf: stockFromDbf,
         photoPath: _photoPath,
         photoRequired: isPhotoRequired,
       );
     } else if (_selectedAnswer == 'не сходится') {
-      final programBalance = int.tryParse(_programBalanceController.text.trim());
-      final actualBalance = int.tryParse(_actualBalanceController.text.trim());
-      final difference = (programBalance ?? 0) - (actualBalance ?? 0);
-      
-      answer = RecountAnswer(
+      // При "Не сходится" - указываем расхождение
+      final moreBy = int.tryParse(_moreByController.text.trim());
+      final lessBy = int.tryParse(_lessByController.text.trim());
+
+      answer = RecountAnswer.notMatching(
         question: question.question,
         grade: question.grade,
-        answer: 'не сходится',
-        programBalance: programBalance,
-        actualBalance: actualBalance,
-        difference: difference,
+        stockFromDbf: stockFromDbf,
+        moreBy: moreBy != null && moreBy > 0 ? moreBy : null,
+        lessBy: lessBy != null && lessBy > 0 ? lessBy : null,
         photoPath: _photoPath,
         photoRequired: isPhotoRequired,
       );
@@ -227,6 +276,147 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     });
   }
 
+  /// Проверка ответа с помощью ИИ
+  Future<void> _verifyWithAI(int questionIndex) async {
+    if (_selectedQuestions == null || questionIndex >= _selectedQuestions!.length) return;
+
+    final question = _selectedQuestions![questionIndex];
+    final answer = _answers[questionIndex];
+
+    // Проверяем что товар активен для ИИ и есть фото
+    if (!question.isAiActive || answer.photoPath == null) {
+      Logger.debug('ИИ проверка пропущена: isAiActive=${question.isAiActive}, hasPhoto=${answer.photoPath != null}');
+      return;
+    }
+
+    setState(() {
+      _isVerifyingAI = true;
+    });
+
+    try {
+      // Загружаем фото
+      Uint8List imageBytes;
+      if (kIsWeb) {
+        // Для веба - декодируем base64
+        final base64Data = answer.photoPath!.split(',').last;
+        imageBytes = base64Decode(base64Data);
+      } else {
+        // Для мобильных - читаем файл
+        imageBytes = await File(answer.photoPath!).readAsBytes();
+      }
+
+      // Отправляем на ИИ
+      Logger.info('🤖 Отправка фото на ИИ проверку для товара: ${question.productName}');
+      final result = await CigaretteVisionService.detectAndCount(
+        imageBytes: imageBytes,
+        productId: question.barcode,
+      );
+
+      if (!mounted) return;
+
+      if (result.success) {
+        // Получаем количество которое указал сотрудник
+        final humanCount = answer.actualBalance ?? answer.quantity ?? 0;
+        final aiCount = result.count;
+        final mismatchThreshold = 2; // Порог расхождения
+        final mismatch = (humanCount - aiCount).abs() > mismatchThreshold;
+
+        Logger.info('🤖 ИИ насчитал: $aiCount, сотрудник: $humanCount, расхождение: $mismatch');
+
+        // Обновляем ответ с данными ИИ
+        _answers[questionIndex] = answer.copyWith(
+          aiVerified: true,
+          aiQuantity: aiCount,
+          aiConfidence: result.confidence,
+          aiMismatch: mismatch,
+          aiAnnotatedImageUrl: result.annotatedImageUrl,
+        );
+
+        // Показываем предупреждение при расхождении
+        if (mismatch) {
+          _showAIMismatchDialog(humanCount, aiCount);
+        } else {
+          // Если расхождения нет - показываем короткое сообщение
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.smart_toy, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Text('✓ ИИ подтвердил: $aiCount шт'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        Logger.warning('Ошибка ИИ проверки: ${result.error}');
+        // Помечаем что ИИ не смог проверить
+        _answers[questionIndex] = answer.copyWith(
+          aiVerified: false,
+        );
+      }
+    } catch (e) {
+      Logger.error('Ошибка ИИ проверки', e);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isVerifyingAI = false;
+        });
+      }
+    }
+  }
+
+  /// Показать диалог о расхождении с ИИ
+  void _showAIMismatchDialog(int humanCount, int aiCount) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber, color: Colors.orange, size: 28),
+            const SizedBox(width: 8),
+            const Flexible(child: Text('Расхождение с ИИ')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ваш подсчёт: $humanCount шт',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.smart_toy, size: 20, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  'ИИ насчитал: $aiCount шт',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Проверьте ещё раз количество товара.',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Понятно'),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _canProceed() {
     if (_selectedQuestions == null || _currentQuestionIndex >= _selectedQuestions!.length) {
       return false;
@@ -239,16 +429,24 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       }
 
       if (_selectedAnswer == 'сходится') {
-        final quantity = int.tryParse(_quantityController.text.trim());
-        if (quantity == null || quantity < 0 || quantity > 1000) {
-          return false;
-        }
+        // При "Сходится" ничего вводить не нужно - количество берётся из DBF
+        return true;
       } else if (_selectedAnswer == 'не сходится') {
-        final programBalance = int.tryParse(_programBalanceController.text.trim());
-        final actualBalance = int.tryParse(_actualBalanceController.text.trim());
-        if (programBalance == null || actualBalance == null) {
-          return false;
+        // При "Не сходится" должно быть заполнено ОДНО из полей (но не оба)
+        final moreBy = int.tryParse(_moreByController.text.trim());
+        final lessBy = int.tryParse(_lessByController.text.trim());
+
+        final hasMoreBy = moreBy != null && moreBy > 0;
+        final hasLessBy = lessBy != null && lessBy > 0;
+
+        // Должно быть заполнено ровно одно поле
+        if (hasMoreBy && hasLessBy) {
+          return false; // Оба заполнены - ошибка
         }
+        if (!hasMoreBy && !hasLessBy) {
+          return false; // Ни одно не заполнено - ошибка
+        }
+        return true;
       }
       return true;
     }
@@ -304,29 +502,25 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     // Обновляем фото в сохраненном ответе
     if (_answerSaved && _photoPath != null) {
       final answer = _answers[_currentQuestionIndex];
-      _answers[_currentQuestionIndex] = RecountAnswer(
-        question: answer.question,
-        grade: answer.grade,
-        answer: answer.answer,
-        quantity: answer.quantity,
-        programBalance: answer.programBalance,
-        actualBalance: answer.actualBalance,
-        difference: answer.difference,
-        photoPath: _photoPath,
-        photoRequired: answer.photoRequired,
-      );
+      _answers[_currentQuestionIndex] = answer.copyWith(photoPath: _photoPath);
+    }
+
+    // Вызываем ИИ проверку если товар активен и есть фото
+    final currentQuestion = _selectedQuestions![_currentQuestionIndex];
+    final currentAnswer = _answers[_currentQuestionIndex];
+    if (currentQuestion.isAiActive && currentAnswer.photoPath != null && currentAnswer.aiVerified == null) {
+      await _verifyWithAI(_currentQuestionIndex);
     }
 
     if (_currentQuestionIndex < _selectedQuestions!.length - 1) {
       setState(() {
         _currentQuestionIndex++;
         _selectedAnswer = null;
-        _quantityController.clear();
-        _programBalanceController.clear();
-        _actualBalanceController.clear();
+        _moreByController.clear();
+        _lessByController.clear();
         _photoPath = null;
         _answerSaved = false; // Сбрасываем флаг для нового вопроса
-        
+
         // Загружаем сохраненный ответ, если есть
         if (_currentQuestionIndex < _answers.length) {
           final savedAnswer = _answers[_currentQuestionIndex];
@@ -334,11 +528,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             // Если ответ уже сохранен, показываем его как заблокированный
             _selectedAnswer = savedAnswer.answer;
             _answerSaved = true; // Помечаем как сохраненный
-            if (savedAnswer.answer == 'сходится') {
-              _quantityController.text = savedAnswer.quantity?.toString() ?? '';
-            } else if (savedAnswer.answer == 'не сходится') {
-              _programBalanceController.text = savedAnswer.programBalance?.toString() ?? '';
-              _actualBalanceController.text = savedAnswer.actualBalance?.toString() ?? '';
+            if (savedAnswer.answer == 'не сходится') {
+              _moreByController.text = savedAnswer.moreBy?.toString() ?? '';
+              _lessByController.text = savedAnswer.lessBy?.toString() ?? '';
             }
             _photoPath = savedAnswer.photoPath;
           }
@@ -541,6 +733,38 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                                 ),
                               ],
                             ),
+                            // Остаток из DBF - крупно показываем
+                            const SizedBox(height: 16),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF004D40).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFF004D40).withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.inventory_2,
+                                    color: Color(0xFF004D40),
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'По программе: ${question.stock} шт',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF004D40),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               question.question,
@@ -632,37 +856,31 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Поля ввода в зависимости от ответа
+                    // При "Сходится" - ничего вводить не нужно, количество берётся автоматически
                     if (_selectedAnswer == 'сходится')
                       Card(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.green.withOpacity(0.1),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                          child: Row(
                             children: [
-                              const Text(
-                                'Количество:',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF004D40),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _quantityController,
-                                keyboardType: TextInputType.number,
-                                enabled: !_answerSaved, // Блокируем после сохранения
-                                decoration: const InputDecoration(
-                                  hintText: 'Введите количество (0-1000)',
-                                  border: OutlineInputBorder(),
+                              const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Количество ${question.stock} шт подтверждено',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
+                    // При "Не сходится" - показываем поля "Больше на" и "Меньше на"
                     if (_selectedAnswer == 'не сходится')
                       Card(
                         color: Colors.white.withOpacity(0.95),
@@ -672,42 +890,122 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               const Text(
-                                'Остаток по программе:',
+                                'Укажите расхождение (заполните ОДНО поле):',
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF004D40),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _programBalanceController,
-                                keyboardType: TextInputType.number,
-                                enabled: !_answerSaved, // Блокируем после сохранения
-                                decoration: const InputDecoration(
-                                  hintText: 'Введите число',
-                                  border: OutlineInputBorder(),
+                                  fontSize: 14,
+                                  color: Colors.grey,
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
-                                'Фактический остаток:',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF004D40),
-                                ),
+                              // Поле "Больше на"
+                              Row(
+                                children: [
+                                  const Icon(Icons.add_circle, color: Colors.blue, size: 24),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      'Больше на:',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF004D40),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextField(
+                                      controller: _moreByController,
+                                      keyboardType: TextInputType.number,
+                                      enabled: !_answerSaved,
+                                      textAlign: TextAlign.center,
+                                      decoration: InputDecoration(
+                                        hintText: '0',
+                                        border: const OutlineInputBorder(),
+                                        suffixText: 'шт',
+                                        filled: _moreByController.text.isNotEmpty,
+                                        fillColor: Colors.blue.withOpacity(0.1),
+                                      ),
+                                      onChanged: (value) {
+                                        // Очищаем поле "Меньше на" если вводим сюда
+                                        if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
+                                          _lessByController.clear();
+                                        }
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _actualBalanceController,
-                                keyboardType: TextInputType.number,
-                                enabled: !_answerSaved, // Блокируем после сохранения
-                                decoration: const InputDecoration(
-                                  hintText: 'Введите число',
-                                  border: OutlineInputBorder(),
-                                ),
+                              const SizedBox(height: 16),
+                              // Поле "Меньше на"
+                              Row(
+                                children: [
+                                  const Icon(Icons.remove_circle, color: Colors.red, size: 24),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      'Меньше на:',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF004D40),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextField(
+                                      controller: _lessByController,
+                                      keyboardType: TextInputType.number,
+                                      enabled: !_answerSaved,
+                                      textAlign: TextAlign.center,
+                                      decoration: InputDecoration(
+                                        hintText: '0',
+                                        border: const OutlineInputBorder(),
+                                        suffixText: 'шт',
+                                        filled: _lessByController.text.isNotEmpty,
+                                        fillColor: Colors.red.withOpacity(0.1),
+                                      ),
+                                      onChanged: (value) {
+                                        // Очищаем поле "Больше на" если вводим сюда
+                                        if (value.isNotEmpty && int.tryParse(value) != null && int.parse(value) > 0) {
+                                          _moreByController.clear();
+                                        }
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
+                              // Предпросмотр результата
+                              if (_moreByController.text.isNotEmpty || _lessByController.text.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final moreBy = int.tryParse(_moreByController.text) ?? 0;
+                                      final lessBy = int.tryParse(_lessByController.text) ?? 0;
+                                      final actualBalance = question.stock + moreBy - lessBy;
+                                      return Text(
+                                        'По факту: $actualBalance шт',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -798,22 +1096,19 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                           setState(() {
                             _currentQuestionIndex--;
                             _selectedAnswer = null;
-                            _quantityController.clear();
-                            _programBalanceController.clear();
-                            _actualBalanceController.clear();
+                            _moreByController.clear();
+                            _lessByController.clear();
                             _photoPath = null;
                             _answerSaved = false; // Сбрасываем флаг
-                            
+
                             if (_currentQuestionIndex < _answers.length) {
                               final savedAnswer = _answers[_currentQuestionIndex];
                               if (savedAnswer.answer.isNotEmpty) {
                                 _selectedAnswer = savedAnswer.answer;
                                 _answerSaved = true; // Помечаем как сохраненный
-                                if (savedAnswer.answer == 'сходится') {
-                                  _quantityController.text = savedAnswer.quantity?.toString() ?? '';
-                                } else if (savedAnswer.answer == 'не сходится') {
-                                  _programBalanceController.text = savedAnswer.programBalance?.toString() ?? '';
-                                  _actualBalanceController.text = savedAnswer.actualBalance?.toString() ?? '';
+                                if (savedAnswer.answer == 'не сходится') {
+                                  _moreByController.text = savedAnswer.moreBy?.toString() ?? '';
+                                  _lessByController.text = savedAnswer.lessBy?.toString() ?? '';
                                 }
                                 _photoPath = savedAnswer.photoPath;
                               }
@@ -827,21 +1122,30 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _nextQuestion,
+                      onPressed: (_isSubmitting || _isVerifyingAI) ? null : _nextQuestion,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _answerSaved && _photoRequiredIndices.contains(_currentQuestionIndex) && _photoPath == null
                             ? Colors.orange
                             : const Color(0xFF004D40),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
+                      child: (_isSubmitting || _isVerifyingAI)
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                ),
+                                if (_isVerifyingAI) ...[
+                                  const SizedBox(width: 8),
+                                  const Text('ИИ проверяет...'),
+                                ],
+                              ],
                             )
                           : Text(
                               !_answerSaved

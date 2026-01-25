@@ -31,6 +31,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   String? _error;
   bool _isAdmin = false;
 
+  // Поиск по наименованию
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   // Цвета и градиенты
   static const _greenGradient = [Color(0xFF10B981), Color(0xFF34D399)];
   static const _blueGradient = [Color(0xFF3B82F6), Color(0xFF60A5FA)];
@@ -65,6 +69,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   @override
   void dispose() {
     _tabController?.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -334,9 +339,14 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Вкладка списка товаров
   Widget _buildProductsTab() {
+    // Фильтруем по поиску
+    var filteredProducts = _products.where((product) {
+      if (_searchQuery.isEmpty) return true;
+      return product.productName.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
     // Сортируем: сначала с меньшим прогрессом
-    final sortedProducts = List<CigaretteProduct>.from(_products)
-      ..sort((a, b) => a.trainingProgress.compareTo(b.trainingProgress));
+    filteredProducts.sort((a, b) => a.trainingProgress.compareTo(b.trainingProgress));
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -345,15 +355,80 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Поиск по наименованию
+          _buildSearchField(),
+          const SizedBox(height: 12),
+
           // Фильтр по группе
           if (_productGroups.isNotEmpty) ...[
             _buildGroupDropdown(),
             const SizedBox(height: 16),
           ],
 
+          // Счётчик найденных товаров
+          if (_searchQuery.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Найдено: ${filteredProducts.length} из ${_products.length}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ),
+          ],
+
           // Список товаров
-          ...sortedProducts.map((product) => _buildProductCard(product)),
+          ...filteredProducts.map((product) => _buildProductCard(product)),
         ],
+      ),
+    );
+  }
+
+  /// Поле поиска по наименованию
+  Widget _buildSearchField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Поиск по наименованию...',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          prefixIcon: Icon(
+            Icons.search,
+            color: Colors.white.withOpacity(0.5),
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.clear,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
       ),
     );
   }
@@ -917,6 +992,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                       size: 22,
                     ),
                   ),
+
+                // Toggle ИИ проверки (только на вкладке Товары)
+                if (!forUpload && _isAdmin)
+                  _buildAiToggle(product),
               ],
             ),
           ),
@@ -976,6 +1055,126 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
         ],
       ],
     );
+  }
+
+  /// Toggle для включения/выключения ИИ проверки товара
+  Widget _buildAiToggle(CigaretteProduct product) {
+    return Column(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: product.isAiActive
+                ? _greenGradient[0].withOpacity(0.2)
+                : Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: product.isAiActive
+                  ? _greenGradient[0].withOpacity(0.5)
+                  : Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: IconButton(
+            onPressed: () => _toggleAiStatus(product),
+            icon: Icon(
+              product.isAiActive ? Icons.smart_toy : Icons.smart_toy_outlined,
+              color: product.isAiActive ? _greenGradient[0] : Colors.white.withOpacity(0.4),
+              size: 24,
+            ),
+            tooltip: product.isAiActive ? 'ИИ проверка включена' : 'ИИ проверка выключена',
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'ИИ',
+          style: TextStyle(
+            fontSize: 9,
+            color: product.isAiActive ? _greenGradient[0] : Colors.white.withOpacity(0.4),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Переключить статус ИИ проверки
+  Future<void> _toggleAiStatus(CigaretteProduct product) async {
+    final newStatus = !product.isAiActive;
+
+    // Показываем индикатор загрузки
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(newStatus ? 'Включаю ИИ проверку...' : 'Выключаю ИИ проверку...'),
+          ],
+        ),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF1A1A2E),
+      ),
+    );
+
+    final success = await CigaretteVisionService.updateProductAiStatus(
+      productId: product.id,
+      isAiActive: newStatus,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                newStatus ? Icons.check_circle : Icons.cancel,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  newStatus
+                      ? 'ИИ проверка включена для "${product.productName}"'
+                      : 'ИИ проверка выключена для "${product.productName}"',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: newStatus ? _greenGradient[0] : Colors.grey[700],
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Перезагружаем данные
+      _loadData();
+    } else {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: 12),
+              Text('Ошибка изменения статуса ИИ'),
+            ],
+          ),
+          backgroundColor: _redGradient[0],
+        ),
+      );
+    }
   }
 
   List<Color> _getProgressGradient(double progress) {

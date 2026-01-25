@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/employee_registration_model.dart';
 import '../../../core/services/base_http_service.dart';
@@ -46,43 +47,34 @@ class EmployeeRegistrationService {
     }
   }
 
-  /// Загрузить фото на сервер (multipart upload)
-  static Future<String?> uploadPhoto(
-    String photoPath,
+  /// Результат загрузки фото с детальной ошибкой
+  static String? _lastUploadError;
+  static String? get lastUploadError => _lastUploadError;
+
+  /// Загрузить фото из байтов (более надежно для Android content:// URI)
+  static Future<String?> uploadPhotoFromBytes(
+    Uint8List bytes,
     String phone,
     String photoType,
   ) async {
-    try {
-      List<int> bytes;
+    _lastUploadError = null;
 
-      if (kIsWeb) {
-        if (photoPath.startsWith('data:image/')) {
-          final base64Index = photoPath.indexOf(',');
-          if (base64Index != -1) {
-            final base64Image = photoPath.substring(base64Index + 1);
-            bytes = base64Decode(base64Image);
-          } else {
-            return null;
-          }
-        } else {
-          return null;
-        }
-      } else {
-        final file = File(photoPath);
-        if (!await file.exists()) {
-          Logger.warning('⚠️ Файл не найден: $photoPath');
-          return null;
-        }
-        bytes = await file.readAsBytes();
+    try {
+      Logger.debug('📤 Загрузка фото из байтов: type=$photoType, phone=$phone, размер=${bytes.length}');
+
+      if (bytes.isEmpty) {
+        _lastUploadError = 'Файл пустой (0 байт)';
+        Logger.warning('⚠️ $_lastUploadError');
+        return null;
       }
 
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
-
       final uri = Uri.parse('${ApiConstants.serverUrl}/upload-employee-photo');
-      final request = http.MultipartRequest('POST', uri);
+      Logger.debug('   URI: $uri');
 
+      final request = http.MultipartRequest('POST', uri);
       final fileName = '${normalizedPhone}_$photoType.jpg';
-      Logger.debug('📤 Загрузка фото: $fileName');
+      Logger.debug('📤 Загрузка фото: $fileName (${bytes.length} байт)');
 
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -94,23 +86,151 @@ class EmployeeRegistrationService {
       request.fields['phone'] = normalizedPhone;
       request.fields['photoType'] = photoType;
 
-      final streamedResponse = await request.send().timeout(ApiConstants.uploadTimeout);
-      final response = await http.Response.fromStream(streamedResponse);
+      Logger.debug('   Отправка запроса...');
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success'] == true) {
-          final url = result['url'] as String?;
-          Logger.debug('   ✅ Фото загружено, URL: $url');
-          return url;
+      try {
+        final streamedResponse = await request.send().timeout(ApiConstants.uploadTimeout);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        Logger.debug('   Статус ответа: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+          if (result['success'] == true) {
+            final url = result['url'] as String?;
+            Logger.debug('   ✅ Фото загружено, URL: $url');
+            return url;
+          } else {
+            _lastUploadError = 'Сервер вернул ошибку: ${result['error']}';
+            Logger.error('   ❌ $_lastUploadError');
+          }
         } else {
-          Logger.error('   ❌ Ошибка загрузки: ${result['error']}');
+          _lastUploadError = 'HTTP ${response.statusCode}: ${response.body}';
+          Logger.error('   ❌ $_lastUploadError');
         }
+      } catch (networkError) {
+        _lastUploadError = 'Сетевая ошибка: $networkError';
+        Logger.error('❌ $_lastUploadError');
       }
 
       return null;
-    } catch (e) {
-      Logger.error('❌ Ошибка загрузки фото', e);
+    } catch (e, stackTrace) {
+      _lastUploadError = 'Неожиданная ошибка: $e';
+      Logger.error('❌ Ошибка загрузки фото: $e');
+      Logger.debug('   Stack trace: $stackTrace');
+      return null;
+    }
+  }
+
+  /// Загрузить фото на сервер (multipart upload)
+  static Future<String?> uploadPhoto(
+    String photoPath,
+    String phone,
+    String photoType,
+  ) async {
+    _lastUploadError = null;
+
+    try {
+      Logger.debug('📤 Начало загрузки фото: type=$photoType, phone=$phone');
+      Logger.debug('   Путь к файлу: $photoPath');
+
+      List<int> bytes;
+
+      if (kIsWeb) {
+        if (photoPath.startsWith('data:image/')) {
+          final base64Index = photoPath.indexOf(',');
+          if (base64Index != -1) {
+            final base64Image = photoPath.substring(base64Index + 1);
+            bytes = base64Decode(base64Image);
+          } else {
+            _lastUploadError = 'Web: неверный формат base64 изображения';
+            return null;
+          }
+        } else {
+          _lastUploadError = 'Web: путь не является base64 изображением';
+          return null;
+        }
+      } else {
+        final file = File(photoPath);
+        Logger.debug('   Проверка существования файла...');
+
+        final exists = await file.exists();
+        Logger.debug('   Файл существует: $exists');
+
+        if (!exists) {
+          _lastUploadError = 'Файл не найден: $photoPath';
+          Logger.warning('⚠️ $_lastUploadError');
+          return null;
+        }
+
+        try {
+          bytes = await file.readAsBytes();
+          Logger.debug('   Файл прочитан, размер: ${bytes.length} байт');
+        } catch (readError) {
+          _lastUploadError = 'Ошибка чтения файла: $readError';
+          Logger.error('❌ $_lastUploadError');
+          return null;
+        }
+
+        if (bytes.isEmpty) {
+          _lastUploadError = 'Файл пустой (0 байт)';
+          Logger.warning('⚠️ $_lastUploadError');
+          return null;
+        }
+      }
+
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+
+      final uri = Uri.parse('${ApiConstants.serverUrl}/upload-employee-photo');
+      Logger.debug('   URI: $uri');
+
+      final request = http.MultipartRequest('POST', uri);
+
+      final fileName = '${normalizedPhone}_$photoType.jpg';
+      Logger.debug('📤 Загрузка фото: $fileName (${bytes.length} байт)');
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName,
+        ),
+      );
+      request.fields['phone'] = normalizedPhone;
+      request.fields['photoType'] = photoType;
+
+      Logger.debug('   Отправка запроса на ${uri.toString()}...');
+
+      try {
+        final streamedResponse = await request.send().timeout(ApiConstants.uploadTimeout);
+        final response = await http.Response.fromStream(streamedResponse);
+
+        Logger.debug('   Статус ответа: ${response.statusCode}');
+
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+          if (result['success'] == true) {
+            final url = result['url'] as String?;
+            Logger.debug('   ✅ Фото загружено, URL: $url');
+            return url;
+          } else {
+            _lastUploadError = 'Сервер вернул ошибку: ${result['error']}';
+            Logger.error('   ❌ $_lastUploadError');
+          }
+        } else {
+          _lastUploadError = 'HTTP ${response.statusCode}: ${response.body}';
+          Logger.error('   ❌ $_lastUploadError');
+        }
+      } catch (networkError) {
+        _lastUploadError = 'Сетевая ошибка: $networkError';
+        Logger.error('❌ $_lastUploadError');
+      }
+
+      return null;
+    } catch (e, stackTrace) {
+      _lastUploadError = 'Неожиданная ошибка: $e';
+      Logger.error('❌ Ошибка загрузки фото: $e');
+      Logger.debug('   Stack trace: $stackTrace');
       return null;
     }
   }

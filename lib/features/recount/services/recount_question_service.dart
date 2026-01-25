@@ -5,11 +5,40 @@ import '../models/recount_question_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../shops/services/shop_products_service.dart';
 
 // http и dart:convert оставлены для multipart загрузки эталонных фото и bulk операций
 
 class RecountQuestionService {
   static const String baseEndpoint = ApiConstants.recountQuestionsEndpoint;
+
+  /// Загрузить статусы isAiActive из мастер-каталога
+  /// Возвращает Map<barcode, isAiActive>
+  static Future<Map<String, bool>> _loadMasterCatalogAiStatus() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/master-catalog'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final products = data['products'] as List? ?? [];
+
+        final Map<String, bool> result = {};
+        for (final p in products) {
+          final barcode = p['barcode']?.toString();
+          if (barcode != null && barcode.isNotEmpty) {
+            result[barcode] = p['isAiActive'] ?? false;
+          }
+        }
+        return result;
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки мастер-каталога для isAiActive', e);
+    }
+    return {};
+  }
 
   /// Получить все вопросы
   static Future<List<RecountQuestion>> getQuestions() async {
@@ -20,6 +49,99 @@ class RecountQuestionService {
       fromJson: (json) => RecountQuestion.fromJson(json),
       listKey: 'questions',
     );
+  }
+
+  /// Получить вопросы из DBF каталога магазина (реальные товары с остатками)
+  /// [shopId] - ID магазина
+  /// [onlyWithStock] - если true, возвращает только товары с остатком > 0
+  static Future<List<RecountQuestion>> getQuestionsFromShopProducts({
+    required String shopId,
+    bool onlyWithStock = false,
+  }) async {
+    Logger.debug('📥 Загрузка товаров из DBF для магазина: $shopId');
+
+    // Загружаем товары магазина из DBF
+    final products = await ShopProductsService.getShopProducts(shopId);
+    Logger.debug('📦 Загружено товаров из DBF: ${products.length}');
+
+    // Статистика по грейдам
+    int grade1Count = 0;
+    int grade2Count = 0;
+    int grade3Count = 0;
+
+    // Загружаем данные из мастер-каталога для получения isAiActive
+    final masterCatalogMap = await _loadMasterCatalogAiStatus();
+    Logger.info('📊 [AI-DEBUG] Загружено ${masterCatalogMap.length} товаров из мастер-каталога');
+
+    // Debug: показать сколько товаров с AI активным
+    final aiActiveCount = masterCatalogMap.values.where((v) => v).length;
+    Logger.info('🤖 [AI-DEBUG] Товаров с AI активным: $aiActiveCount');
+
+    // Debug: показать примеры баркодов из мастер-каталога
+    if (masterCatalogMap.isNotEmpty) {
+      final sampleBarcodes = masterCatalogMap.keys.take(5).toList();
+      Logger.info('🏷️ [AI-DEBUG] Примеры баркодов мастер-каталога: $sampleBarcodes');
+    }
+
+    // Debug: показать примеры kod из DBF
+    if (products.isNotEmpty) {
+      final sampleKods = products.take(5).map((p) => p.kod).toList();
+      Logger.info('🏷️ [AI-DEBUG] Примеры kod из DBF: $sampleKods');
+    }
+
+    // Подсчёт сколько совпало и сколько из них с AI
+    int matchedCount = 0;
+    int matchedWithAiCount = 0;
+    for (final p in products) {
+      if (masterCatalogMap.containsKey(p.kod)) {
+        matchedCount++;
+        if (masterCatalogMap[p.kod] == true) {
+          matchedWithAiCount++;
+        }
+      }
+    }
+    Logger.info('🔗 [AI-DEBUG] Совпавших баркодов: $matchedCount из ${products.length}');
+    Logger.info('🤖 [AI-DEBUG] Из них с AI активным: $matchedWithAiCount');
+
+    // Конвертируем ShopProduct в RecountQuestion
+    // Грейд рассчитывается динамически на основе продаж и остатков
+    List<RecountQuestion> questions = products.map((p) {
+      final grade = p.calculateGrade();
+
+      // Считаем статистику
+      if (grade == 1) grade1Count++;
+      else if (grade == 2) grade2Count++;
+      else grade3Count++;
+
+      // Получаем isAiActive из мастер-каталога
+      final isAiActive = masterCatalogMap[p.kod] ?? false;
+
+      return RecountQuestion(
+        id: 'dbf_${p.kod}',
+        barcode: p.kod,
+        productGroup: p.group,
+        productName: p.name,
+        grade: grade, // Грейд рассчитывается по продажам и остаткам
+        stock: p.stock,
+        isAiActive: isAiActive,
+      );
+    }).toList();
+
+    Logger.debug('📊 Распределение грейдов: G1=$grade1Count, G2=$grade2Count, G3=$grade3Count');
+
+    // Фильтруем по остатку если нужно
+    if (onlyWithStock) {
+      questions = questions.where((q) => q.hasStock).toList();
+      Logger.debug('📦 После фильтрации (stock > 0): ${questions.length}');
+    }
+
+    return questions;
+  }
+
+  /// Проверить есть ли синхронизированные товары для магазина
+  static Future<bool> hasShopProducts(String shopId) async {
+    final shops = await ShopProductsService.getShopsWithProducts();
+    return shops.any((s) => s.shopId == shopId);
   }
 
   /// Создать новый вопрос

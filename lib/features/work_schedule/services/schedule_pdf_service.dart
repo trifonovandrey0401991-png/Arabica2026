@@ -6,10 +6,10 @@ import '../models/work_schedule_model.dart';
 
 /// Сервис для генерации PDF графика работы
 class SchedulePdfService {
-  // Цвета для смен (как в приложении)
-  static const _morningColor = PdfColor.fromInt(0xFF4CAF50); // Зелёный
-  static const _dayColor = PdfColor.fromInt(0xFF2196F3); // Синий
-  static const _eveningColor = PdfColor.fromInt(0xFFFF9800); // Оранжевый
+  // Цвета для смен (фоновые цвета как в приложении)
+  static const _morningColor = PdfColor.fromInt(0xFFB9F6CA); // Салатовый - утро
+  static const _dayColor = PdfColor.fromInt(0xFFFFF59D); // Светло-жёлтый - день
+  static const _eveningColor = PdfColor.fromInt(0xFFE0E0E0); // Светло-серый - вечер
   static const _headerColor = PdfColor.fromInt(0xFF004D40); // Тёмно-зелёный
 
   /// Генерирует PDF с графиком работы (один горизонтальный лист)
@@ -243,7 +243,7 @@ class SchedulePdfService {
               margin: const pw.EdgeInsets.all(1),
               padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1),
               decoration: pw.BoxDecoration(
-                color: color.shade(0.9),
+                color: color,
                 borderRadius: pw.BorderRadius.circular(2),
               ),
               child: pw.Text(
@@ -251,7 +251,7 @@ class SchedulePdfService {
                 style: pw.TextStyle(
                   font: fontBold,
                   fontSize: 5.5,
-                  color: color,
+                  color: PdfColors.black, // чёрный текст
                 ),
               ),
             );
@@ -340,12 +340,12 @@ class SchedulePdfService {
           height: 12,
           alignment: pw.Alignment.center,
           decoration: pw.BoxDecoration(
-            color: color.shade(0.9),
+            color: color,
             borderRadius: pw.BorderRadius.circular(2),
           ),
           child: pw.Text(
             abbr,
-            style: pw.TextStyle(font: font, fontSize: 6, color: color),
+            style: pw.TextStyle(font: font, fontSize: 6, color: PdfColors.black),
           ),
         ),
         pw.SizedBox(width: 3),

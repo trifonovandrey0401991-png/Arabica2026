@@ -93,7 +93,8 @@ class ApiConstants {
   static const String loyaltyPromoEndpoint = '/api/loyalty-promo';
 
   // Endpoints - Cigarette Vision (AI Training)
-  static const String cigaretteProductsEndpoint = '/api/cigarette-vision/products';
+  // Теперь товары берутся из мастер-каталога
+  static const String cigaretteProductsEndpoint = '/api/master-catalog/for-training';
   static const String cigaretteTrainingSamplesEndpoint = '/api/cigarette-vision/samples';
   static const String cigaretteStatsEndpoint = '/api/cigarette-vision/stats';
   static const String cigaretteDetectEndpoint = '/api/cigarette-vision/detect';

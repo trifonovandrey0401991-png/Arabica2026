@@ -5,7 +5,6 @@ import 'employee_registration_view_page.dart';
 import 'employee_registration_page.dart';
 import '../services/employee_service.dart';
 import 'unverified_employees_page.dart';
-import '../../shops/pages/shops_management_page.dart';
 import '../../../core/utils/logger.dart';
 
 /// Модель сотрудника
@@ -287,7 +286,7 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _employeesFuture = _loadEmployees();
     _loadVerificationStatuses();
     _animationController.forward();
@@ -383,8 +382,6 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                     _buildEmployeesTab(),
                     // Вкладка "Регистрация"
                     _buildRegistrationTab(),
-                    // Вкладка "Магазины"
-                    const ShopsManagementPage(),
                   ],
                 ),
               ),
@@ -518,22 +515,6 @@ class _EmployeesPageState extends State<EmployeesPage> with TickerProviderStateM
                 Flexible(
                   child: Text(
                     'Новые',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.store, size: 16),
-                SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    'Магазины',
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

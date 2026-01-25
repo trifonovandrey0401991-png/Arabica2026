@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/recount_report_model.dart';
 import '../models/recount_answer_model.dart';
+import '../models/recount_pivot_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -360,5 +361,129 @@ class RecountService {
       Logger.error('❌ Ошибка загрузки просроченных пересчётов', e);
       return [];
     }
+  }
+
+  /// Получить pivot-таблицу отчётов за указанную дату
+  /// Возвращает таблицу: строки = товары, столбцы = магазины, значения = разница (факт - программа)
+  static Future<RecountPivotTable> getPivotTableForDate(DateTime date) async {
+    try {
+      Logger.debug('📊 Загрузка pivot-таблицы за ${date.day}.${date.month}.${date.year}...');
+
+      // Загружаем все отчёты за указанную дату
+      final allReports = await getReports(date: date);
+
+      // Фильтруем только завершённые отчёты (review, confirmed, failed)
+      // Не берём pending (ещё не пройден) и rejected (отклонён без данных)
+      final completedReports = allReports.where((r) {
+        final status = r.statusEnum;
+        return status == RecountReportStatus.review ||
+               status == RecountReportStatus.confirmed ||
+               status == RecountReportStatus.failed;
+      }).toList();
+
+      Logger.debug('   Найдено отчётов: ${completedReports.length}');
+
+      if (completedReports.isEmpty) {
+        return RecountPivotTable.empty(date);
+      }
+
+      // Собираем уникальные магазины
+      final shopsMap = <String, RecountPivotShop>{};
+      for (final report in completedReports) {
+        final shopId = report.shopAddress;
+        if (!shopsMap.containsKey(shopId)) {
+          shopsMap[shopId] = RecountPivotShop(
+            shopId: shopId,
+            shopName: _extractShopName(shopId),
+            shopAddress: shopId,
+          );
+        }
+      }
+      final shops = shopsMap.values.toList()
+        ..sort((a, b) => a.shopName.compareTo(b.shopName));
+
+      // Собираем данные: Map<productName, Map<shopId, difference>>
+      final pivotData = <String, Map<String, int?>>{};
+      final productBarcodes = <String, String>{}; // productName -> barcode (если есть)
+
+      for (final report in completedReports) {
+        final shopId = report.shopAddress;
+
+        for (final answer in report.answers) {
+          final productName = answer.question;
+
+          // Инициализируем строку если нужно
+          if (!pivotData.containsKey(productName)) {
+            pivotData[productName] = {};
+          }
+
+          // Записываем разницу
+          // difference: положительная = недостача, отрицательная = излишек
+          // Но пользователь хочет видеть (факт - программа), то есть:
+          // если lessBy=3, то факт = программа - 3, разница = -3
+          // если moreBy=2, то факт = программа + 2, разница = +2
+          int? diff;
+          if (answer.isMatching) {
+            diff = 0; // Сходится = разница 0
+          } else if (answer.moreBy != null && answer.moreBy! > 0) {
+            diff = answer.moreBy; // Больше на X = +X
+          } else if (answer.lessBy != null && answer.lessBy! > 0) {
+            diff = -(answer.lessBy!); // Меньше на X = -X
+          } else if (answer.difference != null) {
+            // Старый формат - инвертируем знак
+            diff = -(answer.difference!);
+          }
+
+          pivotData[productName]![shopId] = diff;
+        }
+      }
+
+      // Строим строки таблицы
+      final rows = <RecountPivotRow>[];
+      final sortedProducts = pivotData.keys.toList()..sort();
+
+      for (final productName in sortedProducts) {
+        final shopDifferences = <String, int?>{};
+
+        // Для каждого магазина заполняем значение
+        for (final shop in shops) {
+          shopDifferences[shop.shopId] = pivotData[productName]?[shop.shopId];
+        }
+
+        rows.add(RecountPivotRow(
+          productName: productName,
+          productBarcode: productBarcodes[productName] ?? '',
+          shopDifferences: shopDifferences,
+        ));
+      }
+
+      Logger.debug('   Товаров: ${rows.length}, Магазинов: ${shops.length}');
+
+      return RecountPivotTable(
+        date: date,
+        shops: shops,
+        rows: rows,
+      );
+    } catch (e) {
+      Logger.error('❌ Ошибка загрузки pivot-таблицы', e);
+      return RecountPivotTable.empty(date);
+    }
+  }
+
+  /// Извлечь короткое название магазина из адреса
+  static String _extractShopName(String shopAddress) {
+    // Если адрес длинный, берём первые слова
+    final parts = shopAddress.split(',');
+    if (parts.isNotEmpty) {
+      final firstPart = parts.first.trim();
+      // Ограничиваем длину
+      if (firstPart.length > 20) {
+        return '${firstPart.substring(0, 17)}...';
+      }
+      return firstPart;
+    }
+    return shopAddress.length > 20
+        ? '${shopAddress.substring(0, 17)}...'
+        : shopAddress;
   }
 }

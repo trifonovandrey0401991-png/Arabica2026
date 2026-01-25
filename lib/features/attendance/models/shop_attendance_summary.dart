@@ -6,16 +6,24 @@ class ShopAttendanceSummary {
   final int todayAttendanceCount;
   final MonthAttendanceSummary currentMonth;
   final MonthAttendanceSummary previousMonth;
+  final int totalRecords;   // Плановое количество (дни в месяце * 2)
+  final int onTimeRecords;  // Фактическое количество приходов вовремя
 
   ShopAttendanceSummary({
     required this.shopAddress,
     required this.todayAttendanceCount,
     required this.currentMonth,
     required this.previousMonth,
+    this.totalRecords = 0,
+    this.onTimeRecords = 0,
   });
 
   /// День считается выполненным если есть минимум 2 отметки (утро + ночь)
   bool get isTodayComplete => todayAttendanceCount >= 2;
+
+  /// Процент приходов вовремя (0-100)
+  /// onTimeRecords / totalRecords * 100, где totalRecords = дни в месяце * 2
+  double get onTimeRate => totalRecords > 0 ? (onTimeRecords / totalRecords) * 100 : 0;
 }
 
 /// Сводка по приходам за месяц

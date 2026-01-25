@@ -492,7 +492,14 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
   List<ShiftReport> get _awaitingReports {
     final now = DateTime.now();
     final pending = _allReports.where((r) {
+      // Исключаем подтверждённые
       if (r.isConfirmed) return false;
+      // Исключаем отчёты с пустым именем сотрудника (созданные scheduler'ом)
+      if (r.employeeName.isEmpty) return false;
+      // Исключаем pending/failed отчёты (созданные scheduler'ом для ожидания)
+      if (r.status == 'pending' || r.status == 'failed') return false;
+      // Показываем отчёты со статусом "review" или null (старые отчёты без статуса)
+      // status == null или status == 'review' - это реальные отчёты на проверке
       // Показываем только отчёты, которые ожидают менее 5 часов
       final hours = now.difference(r.createdAt).inHours;
       return hours < 5;
@@ -505,6 +512,10 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
     final now = DateTime.now();
     return _allReports.where((r) {
       if (r.isConfirmed) return false;
+      // Исключаем pending/failed отчёты (созданные scheduler'ом)
+      if (r.status == 'pending' || r.status == 'failed') return false;
+      // Исключаем отчёты с пустым именем сотрудника
+      if (r.employeeName.isEmpty) return false;
       final hours = now.difference(r.createdAt).inHours;
       return hours >= 5;
     }).toList();

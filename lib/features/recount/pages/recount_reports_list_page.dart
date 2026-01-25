@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../models/recount_report_model.dart';
+import '../models/recount_answer_model.dart';
 import '../models/pending_recount_model.dart';
+import '../models/recount_pivot_model.dart';
 import '../services/recount_service.dart';
 import '../../shops/models/shop_model.dart';
 import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
 import 'recount_report_view_page.dart';
+import 'recount_summary_report_page.dart';
 
 /// Модель строки сводного отчёта (дата + смена) - аналог ShiftSummaryItem
 class RecountSummaryItem {
@@ -76,7 +80,13 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   List<PendingRecount> _failedRecounts = []; // Просроченные непройденные пересчёты
   List<RecountReport> _expiredReports = [];
   int _failedRecountsBadgeCount = 0; // Badge для вкладки "Не прошли"
+  int _summaryBadgeCount = 0; // Badge для вкладки "Отчёт" (непросмотренные)
   List<RecountSummaryItem> _summaryItems = []; // Сводные данные за 30 дней
+
+  // Pivot-таблица для вкладки "Отчёт" (устаревшее, оставлено для совместимости)
+  DateTime _pivotDate = DateTime.now();
+  RecountPivotTable? _pivotTable;
+  bool _isPivotLoading = false;
 
   // Состояние раскрытия групп для иерархической группировки
   final Map<String, bool> _expandedGroups = {};
@@ -107,10 +117,52 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       setState(() {
         _failedRecountsBadgeCount = 0;
       });
+    } else if (_tabController.index == 5) {
+      // При открытии вкладки "Отчёт" обнуляем счётчик непросмотренных
+      if (_summaryBadgeCount > 0) {
+        setState(() {
+          _summaryBadgeCount = 0;
+        });
+      }
+      // При первом открытии загружаем pivot-таблицу
+      if (_pivotTable == null) {
+        _loadPivotTable();
+      }
     } else {
       // Обновляем UI для подсветки активной вкладки
       setState(() {});
     }
+  }
+
+  /// Загрузить pivot-таблицу для выбранной даты
+  Future<void> _loadPivotTable() async {
+    if (_isPivotLoading) return;
+
+    setState(() {
+      _isPivotLoading = true;
+    });
+
+    try {
+      final table = await RecountService.getPivotTableForDate(_pivotDate);
+      setState(() {
+        _pivotTable = table;
+        _isPivotLoading = false;
+      });
+    } catch (e) {
+      Logger.error('Ошибка загрузки pivot-таблицы', e);
+      setState(() {
+        _isPivotLoading = false;
+      });
+    }
+  }
+
+  /// Переключить дату pivot-таблицы
+  void _changePivotDate(int days) {
+    setState(() {
+      _pivotDate = _pivotDate.add(Duration(days: days));
+      _pivotTable = null;
+    });
+    _loadPivotTable();
   }
 
   /// Загрузить настройки пересчёта
@@ -277,13 +329,30 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
     final eveningEndMinutes = eveningEnd.hour * 60 + eveningEnd.minute;
 
-    if (currentMinutes >= morningStartMinutes && currentMinutes < morningEndMinutes) {
+    // Проверка утреннего интервала (дневной - конец > начала)
+    if (_isWithinTimeWindow(currentMinutes, morningStartMinutes, morningEndMinutes)) {
       return 'morning';
-    } else if (currentMinutes >= eveningStartMinutes && currentMinutes < eveningEndMinutes) {
+    }
+
+    // Проверка вечернего интервала (может быть ночным - конец < начала)
+    if (_isWithinTimeWindow(currentMinutes, eveningStartMinutes, eveningEndMinutes)) {
       return 'evening';
     }
 
     return null;
+  }
+
+  /// Проверяет, находится ли время внутри интервала.
+  /// Корректно обрабатывает ночные интервалы (когда end < start, например 20:00-06:58)
+  bool _isWithinTimeWindow(int currentMinutes, int startMinutes, int endMinutes) {
+    // Ночной интервал (конец раньше начала, например 20:00 - 06:58)
+    if (endMinutes < startMinutes) {
+      // Мы в интервале если: текущее время >= начала ИЛИ текущее время < конца
+      return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    }
+
+    // Дневной интервал (например 07:00 - 19:58)
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
   }
 
   /// Загрузить pending и failed пересчёты с сервера
@@ -350,11 +419,24 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
         // Проверяем вечернюю смену
         final eveningKey = '${shopKey}_evening';
         if (!completedRecounts.contains(eveningKey)) {
+          final eveningStart = _parseTime(_recountSettings?.eveningStartTime ?? '20:00');
           final eveningEnd = _parseTime(eveningDeadline);
+          final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
           final eveningEndMinutes = eveningEnd.hour * 60 + eveningEnd.minute;
           final currentMinutes = today.hour * 60 + today.minute;
 
-          if (currentMinutes > eveningEndMinutes) {
+          // Для ночных интервалов (конец < начала) проверяем иначе
+          final isNightInterval = eveningEndMinutes < eveningStartMinutes;
+          bool isExpired;
+          if (isNightInterval) {
+            // Ночной интервал: просрочено когда НЕ внутри окна (время >= конца И время < начала)
+            isExpired = currentMinutes >= eveningEndMinutes && currentMinutes < eveningStartMinutes;
+          } else {
+            // Дневной интервал: просрочено когда время > конца
+            isExpired = currentMinutes > eveningEndMinutes;
+          }
+
+          if (isExpired) {
             // Просрочено
             failedRecountsList.add(PendingRecount(
               shopAddress: shop.address,
@@ -458,7 +540,20 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       ));
     }
 
-    Logger.info('Сводных записей за 30 дней: ${_summaryItems.length}');
+    // Считаем непросмотренные (сегодняшние с проблемами - не все прошли)
+    // Но если пользователь уже на вкладке "Отчёт", не показываем badge
+    if (_tabController.index != 5) {
+      final today = DateTime(now.year, now.month, now.day);
+      _summaryBadgeCount = _summaryItems.where((item) {
+        final itemDay = DateTime(item.date.year, item.date.month, item.date.day);
+        // Считаем только сегодняшние смены, где есть данные и не все прошли
+        return itemDay == today &&
+               item.passedCount > 0 &&
+               item.passedCount < item.totalCount;
+      }).length;
+    }
+
+    Logger.info('Сводных записей за 30 дней: ${_summaryItems.length}, непросмотренных: $_summaryBadgeCount');
   }
 
   List<RecountReport> _applyFilters(List<RecountReport> reports) {
@@ -652,10 +747,10 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
             ],
           ),
           const SizedBox(height: 6),
-          // Третий ряд: 1 вкладка "Отчёт"
+          // Третий ряд: 1 вкладка "Отчёт" (pivot-таблица)
           Row(
             children: [
-              _buildTabButton(5, Icons.table_chart_rounded, 'Отчёт', _summaryItems.where((s) => s.passedCount > 0).length, Colors.deepPurple),
+              _buildTabButton(5, Icons.table_chart_rounded, 'Отчёт', _summaryItems.where((i) => i.passedCount > 0).length, Colors.deepPurple, badge: _summaryBadgeCount),
             ],
           ),
         ],
@@ -2361,7 +2456,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
   }
 
   // ============================================================
-  // СВОДНЫЙ ОТЧЁТ ЗА 30 ДНЕЙ
+  // СВОДНЫЙ ОТЧЁТ ЗА 30 ДНЕЙ (ИЕРАРХИЧЕСКИЙ СПИСОК)
   // ============================================================
 
   /// Проверить, является ли дата сегодняшней
@@ -2370,7 +2465,130 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
     return date.year == now.year && date.month == now.month && date.day == now.day;
   }
 
-  /// Построить список сводных отчётов за 30 дней
+  /// Группировка сводных отчётов по дате для иерархического отображения
+  List<RecountReportGroup> _groupSummaryItems(List<RecountSummaryItem> items, String prefix) {
+    if (items.isEmpty) return [];
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekAgo = today.subtract(const Duration(days: 7));
+
+    List<RecountReportGroup> result = [];
+
+    // Группируем по дням
+    Map<DateTime, List<RecountSummaryItem>> byDay = {};
+    for (final item in items) {
+      final day = DateTime(item.date.year, item.date.month, item.date.day);
+      byDay.putIfAbsent(day, () => []).add(item);
+    }
+
+    final sortedDays = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    // Сегодня (раскрыто по умолчанию)
+    if (byDay.containsKey(today)) {
+      final key = '${prefix}_today';
+      _expandedGroups.putIfAbsent(key, () => true);
+      result.add(RecountReportGroup(
+        type: RecountReportGroupType.today,
+        title: 'Сегодня',
+        key: key,
+        count: byDay[today]!.length,
+        startDate: today,
+        children: byDay[today]!,
+      ));
+    }
+
+    // Вчера (свёрнуто)
+    if (byDay.containsKey(yesterday)) {
+      final key = '${prefix}_yesterday';
+      _expandedGroups.putIfAbsent(key, () => false);
+      result.add(RecountReportGroup(
+        type: RecountReportGroupType.yesterday,
+        title: 'Вчера',
+        key: key,
+        count: byDay[yesterday]!.length,
+        startDate: yesterday,
+        children: byDay[yesterday]!,
+      ));
+    }
+
+    // Дни 2-6 дней назад (отдельные группы)
+    for (final day in sortedDays) {
+      if (day == today || day == yesterday) continue;
+      if (day.isAfter(weekAgo) || day.isAtSameMomentAs(weekAgo)) {
+        final key = '${prefix}_day_${day.toIso8601String()}';
+        _expandedGroups.putIfAbsent(key, () => false);
+        result.add(RecountReportGroup(
+          type: RecountReportGroupType.day,
+          title: _formatDayTitle(day),
+          key: key,
+          count: byDay[day]!.length,
+          startDate: day,
+          children: byDay[day]!,
+        ));
+      }
+    }
+
+    // Группируем старые записи по неделям
+    Map<DateTime, List<RecountSummaryItem>> byWeek = {};
+    for (final day in sortedDays) {
+      if (day.isBefore(weekAgo)) {
+        final weekStart = _getWeekStart(day);
+        byWeek.putIfAbsent(weekStart, () => []).addAll(byDay[day]!);
+      }
+    }
+
+    final sortedWeeks = byWeek.keys.toList()..sort((a, b) => b.compareTo(a));
+    final monthAgo = today.subtract(const Duration(days: 30));
+
+    for (final weekStart in sortedWeeks) {
+      if (weekStart.isAfter(monthAgo) || weekStart.isAtSameMomentAs(monthAgo)) {
+        final weekEnd = weekStart.add(const Duration(days: 6));
+        final key = '${prefix}_week_${weekStart.toIso8601String()}';
+        _expandedGroups.putIfAbsent(key, () => false);
+        result.add(RecountReportGroup(
+          type: RecountReportGroupType.week,
+          title: '${_formatDayTitle(weekStart)} - ${_formatDayTitle(weekEnd)}',
+          key: key,
+          count: byWeek[weekStart]!.length,
+          startDate: weekStart,
+          children: byWeek[weekStart]!,
+        ));
+      }
+    }
+
+    // Группируем очень старые записи по месяцам
+    Map<String, List<RecountSummaryItem>> byMonth = {};
+    for (final weekStart in sortedWeeks) {
+      if (weekStart.isBefore(monthAgo)) {
+        final monthKey = '${weekStart.year}-${weekStart.month}';
+        byMonth.putIfAbsent(monthKey, () => []).addAll(byWeek[weekStart]!);
+      }
+    }
+
+    final sortedMonths = byMonth.keys.toList()..sort((a, b) => b.compareTo(a));
+    for (final monthKey in sortedMonths) {
+      final parts = monthKey.split('-');
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final monthStart = DateTime(year, month, 1);
+      final key = '${prefix}_month_$monthKey';
+      _expandedGroups.putIfAbsent(key, () => false);
+      result.add(RecountReportGroup(
+        type: RecountReportGroupType.month,
+        title: '${_monthNamesGenitive[month].replaceFirst(_monthNamesGenitive[month][0], _monthNamesGenitive[month][0].toUpperCase())} $year',
+        key: key,
+        count: byMonth[monthKey]!.length,
+        startDate: monthStart,
+        children: byMonth[monthKey]!,
+      ));
+    }
+
+    return result;
+  }
+
+  /// Построить список сводных отчётов (иерархический)
   Widget _buildSummaryReportsList() {
     if (_summaryItems.isEmpty) {
       return _buildEmptyState(
@@ -2381,157 +2599,429 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _summaryItems.length,
-      itemBuilder: (context, index) {
-        final item = _summaryItems[index];
-        final isToday = _isToday(item.date);
-        final allPassed = item.passedCount == item.totalCount && item.totalCount > 0;
-        final nonePassed = item.passedCount == 0;
-        final isMorning = item.shiftType == 'morning';
+    final groups = _groupSummaryItems(_summaryItems, 'summary');
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: allPassed
-                  ? [Colors.green.shade50, Colors.white]
-                  : nonePassed
-                      ? [Colors.red.shade50, Colors.white]
-                      : [Colors.white, Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: allPassed
-                  ? Colors.green.withOpacity(0.4)
-                  : nonePassed
-                      ? Colors.red.withOpacity(0.3)
-                      : Colors.grey.withOpacity(0.2),
-              width: isToday ? 2 : 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => _openSummaryReport(item),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    // Иконка смены
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isMorning
-                              ? [Colors.orange.shade300, Colors.orange.shade600]
-                              : [Colors.indigo.shade300, Colors.indigo.shade600],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (isMorning ? Colors.orange : Colors.indigo).withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Информация
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.displayTitle,
-                            style: TextStyle(
-                              fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            allPassed
-                                ? 'Все магазины прошли'
-                                : nonePassed
-                                    ? 'Никто не прошёл'
-                                    : 'Не прошли: ${item.totalCount - item.passedCount}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: allPassed
-                                  ? Colors.green
-                                  : nonePassed
-                                      ? Colors.red
-                                      : Colors.orange,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Бейдж с количеством
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: allPassed
-                            ? Colors.green
-                            : nonePassed
-                                ? Colors.red.shade400
-                                : Colors.deepPurple,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${item.passedCount}/${item.totalCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: groups.length,
+        itemBuilder: (context, index) {
+          return _buildSummaryGroupTile(groups[index], 0);
+        },
+      ),
     );
   }
 
-  /// Открыть страницу сводного отчёта
-  void _openSummaryReport(RecountSummaryItem item) {
-    // TODO: Создать страницу RecountSummaryReportPage по аналогии с ShiftSummaryReportPage
-    // Пока показываем сообщение
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item.displayTitle}: ${item.passedCount} из ${item.totalCount} магазинов'),
-        duration: const Duration(seconds: 2),
+  /// Плитка группы сводных отчётов с дочерними элементами
+  Widget _buildSummaryGroupTile(RecountReportGroup group, int depth) {
+    final isExpanded = _expandedGroups[group.key] ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildGroupHeader(group, depth),
+        if (isExpanded)
+          ...group.children.map((child) {
+            if (child is RecountReportGroup) {
+              return _buildSummaryGroupTile(child, depth + 1);
+            } else if (child is RecountSummaryItem) {
+              return Padding(
+                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
+                child: _buildSummaryItemCard(child),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+      ],
+    );
+  }
+
+  /// Карточка сводного отчёта (смена за день)
+  Widget _buildSummaryItemCard(RecountSummaryItem item) {
+    final allPassed = item.passedCount == item.totalCount && item.totalCount > 0;
+    final nonePassed = item.passedCount == 0;
+    final isMorning = item.shiftType == 'morning';
+
+    return GestureDetector(
+      onTap: () => _openSummaryReport(item),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8, right: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: allPassed
+                ? [Colors.green.shade50, Colors.white]
+                : nonePassed
+                    ? [Colors.red.shade50, Colors.white]
+                    : [Colors.white, Colors.white],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: allPassed
+                ? Colors.green.withOpacity(0.4)
+                : nonePassed
+                    ? Colors.red.withOpacity(0.3)
+                    : Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Иконка смены
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isMorning
+                        ? [Colors.orange.shade300, Colors.orange.shade600]
+                        : [Colors.indigo.shade300, Colors.indigo.shade600],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isMorning ? Colors.orange : Colors.indigo).withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  isMorning ? Icons.wb_sunny : Icons.nights_stay,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Информация
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.shiftName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      allPassed
+                          ? 'Все магазины прошли'
+                          : nonePassed
+                              ? 'Никто не прошёл'
+                              : 'Не прошли: ${item.totalCount - item.passedCount}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: allPassed
+                            ? Colors.green
+                            : nonePassed
+                                ? Colors.red
+                                : Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Бейдж с количеством
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: allPassed
+                      ? Colors.green
+                      : nonePassed
+                          ? Colors.red.shade400
+                          : Colors.deepPurple,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${item.passedCount}/${item.totalCount}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  /// Открыть страницу сводного отчёта (pivot-таблица)
+  void _openSummaryReport(RecountSummaryItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecountSummaryReportPage(
+          date: item.date,
+          shiftType: item.shiftType,
+          shiftName: item.shiftName,
+          reports: item.reports,
+          allShops: _allShops,
+        ),
+      ),
+    );
+  }
+
+  /// Построить ячейку с разницей
+  Widget _buildDifferenceCell(int? difference) {
+    if (difference == null) {
+      return const Center(
+        child: Text('—', style: TextStyle(color: Colors.grey, fontSize: 14)),
+      );
+    }
+    if (difference == 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          '0',
+          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    final isPositive = difference > 0;
+    final color = isPositive ? Colors.blue : Colors.red;
+    final sign = isPositive ? '+' : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$sign$difference',
+        style: TextStyle(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  /// Показать диалог с деталями отчёта по товару и магазину
+  void _showReportDetailDialog(RecountPivotShop shop, String productName) async {
+    // Показываем индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Загружаем отчёты за выбранную дату
+      final allReports = await RecountService.getReports(date: _pivotDate);
+
+      // Фильтруем по магазину
+      final shopReports = allReports.where((r) => r.shopAddress == shop.shopId).toList();
+
+      // Находим ответ по товару
+      RecountAnswer? foundAnswer;
+      RecountReport? foundReport;
+
+      for (final report in shopReports) {
+        for (final answer in report.answers) {
+          if (answer.question == productName) {
+            foundAnswer = answer;
+            foundReport = report;
+            break;
+          }
+        }
+        if (foundAnswer != null) break;
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Закрываем индикатор загрузки
+
+      // Показываем диалог с деталями
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            productName,
+            style: const TextStyle(fontSize: 16),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Магазин
+                _buildDetailRow('Магазин', shop.shopAddress ?? shop.shopName),
+                const Divider(),
+
+                if (foundReport != null) ...[
+                  // Сотрудник
+                  _buildDetailRow('Сотрудник', foundReport.employeeName),
+                  _buildDetailRow('Время', DateFormat('HH:mm').format(foundReport.completedAt)),
+                  _buildDetailRow('Смена', foundReport.shiftType == 'morning' ? 'Утро' : 'Вечер'),
+                  _buildDetailRow('Статус', _getStatusLabel(foundReport.status ?? '')),
+                  const Divider(),
+                ],
+
+                if (foundAnswer != null) ...[
+                  // Результат
+                  _buildDetailRow('По программе', '${foundAnswer.programBalance ?? 0} шт'),
+                  _buildDetailRow('По факту', '${foundAnswer.actualBalance ?? foundAnswer.programBalance ?? 0} шт'),
+                  _buildDetailRow('Разница', _formatAnswerDifference(foundAnswer)),
+
+                  // Фото если есть
+                  if (foundAnswer.photoUrl != null && foundAnswer.photoUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        foundAnswer.photoUrl!,
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 60,
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ] else
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text('Данные не найдены', style: TextStyle(color: Colors.grey)),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Закрыть'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Закрываем индикатор загрузки
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка загрузки: $e')),
+      );
+    }
+  }
+
+  /// Построить строку деталей
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Форматировать разницу из ответа
+  String _formatAnswerDifference(RecountAnswer answer) {
+    if (answer.isMatching) return '0 (сходится)';
+    if (answer.moreBy != null && answer.moreBy! > 0) return '+${answer.moreBy} (больше)';
+    if (answer.lessBy != null && answer.lessBy! > 0) return '-${answer.lessBy} (меньше)';
+    if (answer.difference != null && answer.difference != 0) {
+      final sign = answer.difference! > 0 ? '+' : '';
+      return '$sign${answer.difference}';
+    }
+    return '0';
+  }
+
+  /// Получить текстовый статус
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'pending': return 'Ожидает';
+      case 'review': return 'На проверке';
+      case 'confirmed': return 'Проверено';
+      case 'failed': return 'Не прошёл';
+      case 'rejected': return 'Отклонён';
+      default: return status;
+    }
+  }
+
+  /// Построить элемент статистики
+  Widget _buildStatItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  /// Построить элемент легенды
+  Widget _buildLegendItem(String symbol, String label, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            symbol,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
     );
   }
 }

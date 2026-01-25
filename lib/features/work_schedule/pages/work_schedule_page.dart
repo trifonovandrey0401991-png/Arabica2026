@@ -22,6 +22,7 @@ import '../../../shared/dialogs/auto_fill_schedule_dialog.dart';
 import '../services/auto_fill_schedule_service.dart';
 import '../../../shared/dialogs/shift_edit_dialog.dart';
 import '../../../shared/dialogs/schedule_errors_dialog.dart';
+import 'employee_bulk_schedule_dialog.dart';
 
 /// Страница графика работы (для управления графиком сотрудников)
 class WorkSchedulePage extends StatefulWidget {
@@ -65,7 +66,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadData();
     _loadAdminUnreadCount();
@@ -101,9 +102,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
   }
 
   void _onTabChanged() {
-    if (_tabController.index == 2) {
-      _loadAdminNotifications();
-    }
+    // Вкладки: 0 - График, 1 - Сотрудники
   }
 
   Future<void> _loadAdminNotifications() async {
@@ -393,6 +392,78 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             duration: const Duration(seconds: 5),
           ),
         );
+      }
+    }
+  }
+
+  /// Открывает диалог массового редактирования смен для сотрудника
+  Future<void> _showEmployeeBulkScheduleDialog(Employee employee) async {
+    Logger.info('Открытие диалога массового редактирования смен для: ${employee.name}');
+
+    final result = await showDialog<List<WorkScheduleEntry>>(
+      context: context,
+      builder: (context) => EmployeeBulkScheduleDialog(
+        employee: employee,
+        selectedMonth: _selectedMonth,
+        startDay: _startDay,
+        endDay: _endDay,
+        shops: _shops,
+        currentSchedule: _schedule,
+        shopSettingsCache: _shopSettingsCache,
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      Logger.info('Сохранение ${result.length} смен для ${employee.name}');
+
+      setState(() => _isLoading = true);
+
+      try {
+        // Сначала удаляем все старые смены сотрудника в этом периоде
+        if (_schedule != null) {
+          final oldEntries = _schedule!.entries.where((e) =>
+            e.employeeId == employee.id &&
+            e.date.month == _selectedMonth.month &&
+            e.date.year == _selectedMonth.year &&
+            e.date.day >= _startDay &&
+            e.date.day <= _endDay
+          ).toList();
+
+          for (final oldEntry in oldEntries) {
+            await WorkScheduleService.deleteShift(oldEntry.id, oldEntry.date);
+          }
+        }
+
+        // Сохраняем все новые смены
+        for (final entry in result) {
+          await WorkScheduleService.saveShift(entry);
+        }
+
+        // Обновляем график
+        await _loadData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Сохранено ${result.length} смен для ${employee.name}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        Logger.error('Ошибка сохранения смен', e);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка сохранения: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -1028,16 +1099,15 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             ),
             child: TabBar(
               controller: _tabController,
-              isScrollable: true,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white60,
               labelStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 14,
               ),
               unselectedLabelStyle: const TextStyle(
                 fontWeight: FontWeight.w400,
-                fontSize: 13,
+                fontSize: 14,
               ),
               indicator: BoxDecoration(
                 gradient: const LinearGradient(
@@ -1058,12 +1128,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               dividerColor: Colors.transparent,
               splashBorderRadius: BorderRadius.circular(10),
               padding: const EdgeInsets.all(4),
-              tabAlignment: TabAlignment.start,
               tabs: [
                 _buildStyledTab(Icons.calendar_month, 'График'),
                 _buildStyledTab(Icons.people_alt, 'Сотрудники'),
-                _buildStyledTabWithBadge(Icons.inbox, 'Заявки', _adminUnreadCount),
-                _buildStyledTab(Icons.cleaning_services, 'Очистка'),
               ],
             ),
           ),
@@ -1071,12 +1138,7 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _loadData();
-              if (_tabController.index == 2) {
-                _loadAdminNotifications();
-              }
-            },
+            onPressed: _loadData,
             tooltip: 'Обновить',
           ),
         ],
@@ -1112,10 +1174,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                               : _buildCalendarGrid(),
                           // Вкладка "По сотрудникам"
                           _buildByEmployeesTab(),
-                          // Вкладка "Заявки на передачу смен"
-                          _buildAdminNotificationsTab(),
-                          // Вкладка "Очистить график"
-                          _buildClearScheduleTab(),
                         ],
                       ),
                     ),
@@ -1141,13 +1199,20 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF004D40).withOpacity(0.05),
+        color: Colors.white,
         border: Border(
           bottom: BorderSide(
             color: Colors.grey[300]!,
             width: 1,
           ),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -1181,18 +1246,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
             ],
           ),
           const SizedBox(height: 8),
-          // Ряд 2: Сотрудники | PDF | Очистка
+          // Ряд 2: PDF | Очистка (по центру)
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: _buildToolbarChip(
-                  icon: Icons.people,
-                  label: 'Сотрудники',
-                  onTap: () => _tabController.animateTo(1),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
+              SizedBox(
+                width: 120,
                 child: _buildToolbarChip(
                   icon: Icons.picture_as_pdf,
                   label: 'PDF',
@@ -1200,13 +1259,14 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   enabled: _schedule != null,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 120,
                 child: _buildToolbarChip(
                   icon: Icons.cleaning_services,
                   label: 'Очистка',
-                  onTap: () => _tabController.animateTo(3),
-                  color: Colors.orange,
+                  onTap: _schedule != null ? _confirmClearSchedule : null,
+                  enabled: _schedule != null,
                 ),
               ),
             ],
@@ -1227,37 +1287,46 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     final effectiveColor = color ?? const Color(0xFF004D40);
     final isEnabled = enabled && onTap != null;
 
-    return Material(
-      color: isEnabled ? effectiveColor.withOpacity(0.1) : Colors.grey[200],
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: isEnabled ? onTap : null,
+    return Container(
+      decoration: BoxDecoration(
+        color: isEnabled ? effectiveColor.withOpacity(0.15) : Colors.grey[200],
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: isEnabled ? effectiveColor : Colors.grey[400],
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isEnabled ? effectiveColor : Colors.grey[400],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+        border: Border.all(
+          color: isEnabled ? effectiveColor.withOpacity(0.3) : Colors.grey[300]!,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isEnabled ? onTap : null,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isEnabled ? effectiveColor : Colors.grey[400],
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isEnabled ? effectiveColor : Colors.grey[400],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1277,9 +1346,9 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
     return Column(
       children: [
-        // Заголовок с месяцем и периодом - стильный дизайн
+        // Компактный заголовок с месяцем и периодом
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -1289,79 +1358,39 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF004D40).withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.calendar_month,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Период: $_startDay - $_endDay число',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              const Icon(
+                Icons.calendar_month,
+                color: Colors.white,
+                size: 20,
               ),
-              const SizedBox(height: 16),
-              // Статистика
-              Row(
-                children: [
-                  _buildStatsChip(
-                    icon: Icons.people,
-                    label: '${_employees.length}',
-                    subtitle: 'сотрудников',
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatsChip(
-                    icon: Icons.event_available,
-                    label: '$totalShifts',
-                    subtitle: 'смен',
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatsChip(
-                    icon: Icons.store,
-                    label: '${_shops.length}',
-                    subtitle: 'магазинов',
-                  ),
-                ],
+              const SizedBox(width: 10),
+              Text(
+                '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                'Период: $_startDay - $_endDay',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+              const Spacer(),
+              // Компактная статистика
+              Text(
+                '${_employees.length} сотр. | $totalShifts смен | ${_shops.length} маг.',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.7),
+                ),
               ),
             ],
           ),
@@ -1404,22 +1433,25 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                             final index = entry.key;
                             final employee = entry.value;
                             final isEven = index % 2 == 0;
-                            return Container(
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isEven ? Colors.white : Colors.grey[50],
-                                border: Border(
-                                  bottom: BorderSide(color: Colors.grey[300]!),
-                                  right: BorderSide(color: Colors.grey[400]!, width: 2),
+                            return InkWell(
+                              onTap: () => _showEmployeeBulkScheduleDialog(employee),
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isEven ? Colors.white : Colors.grey[50],
+                                  border: Border(
+                                    bottom: BorderSide(color: Colors.grey[300]!),
+                                    right: BorderSide(color: Colors.grey[400]!, width: 2),
+                                  ),
                                 ),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                employee.name,
-                                style: const TextStyle(fontSize: 12),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  employee.name,
+                                  style: const TextStyle(fontSize: 12),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             );
                           }).toList(),
@@ -1709,6 +1741,18 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
     }
 
+    // Цвета фона для смен: салатовый для утра, желтый для дня, серый для вечера
+    Color getCellBackgroundColor(ShiftType type) {
+      switch (type) {
+        case ShiftType.morning:
+          return const Color(0xFFB9F6CA); // салатовый/светло-зелёный
+        case ShiftType.day:
+          return const Color(0xFFFFF59D); // светло-жёлтый
+        case ShiftType.evening:
+          return const Color(0xFFE0E0E0); // светло-серый
+      }
+    }
+
     return InkWell(
       onTap: () {
         Logger.debug('Клик по клетке: ${employee.name}, ${date.day}.${date.month}.${date.year}');
@@ -1720,11 +1764,11 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         decoration: BoxDecoration(
           color: isEmpty
               ? (isEven ? Colors.white : Colors.grey[50])
-              : entry!.shiftType.color.withOpacity(0.2),
+              : getCellBackgroundColor(entry!.shiftType),
           border: Border.all(
             color: hasError
                 ? borderColor!
-                : (isEmpty ? Colors.grey[300]! : entry.shiftType.color),
+                : (isEmpty ? Colors.grey[300]! : entry!.shiftType.color.withOpacity(0.5)),
             width: hasError ? 2.0 : (isEmpty ? 0.5 : 1.0),
           ),
         ),
@@ -1737,10 +1781,10 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                       padding: const EdgeInsets.symmetric(horizontal: 2.0),
                       child: Text(
                         abbreviation ?? entry.shiftType.label,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: entry.shiftType.color,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black, // чёрный текст
                         ),
                         textAlign: TextAlign.center,
                         maxLines: 2,

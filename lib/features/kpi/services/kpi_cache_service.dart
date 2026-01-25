@@ -112,4 +112,21 @@ class KPICacheService {
     CacheManager.set(cacheKey, employees, duration: AppConstants.cacheDuration);
     Logger.debug('💾 Список сотрудников сохранен в кэш: ${employees.length} записей');
   }
+
+  /// Получить список всех магазинов из кэша
+  static List<String>? getAllShops() {
+    const cacheKey = 'kpi_all_shops';
+    final cached = CacheManager.get<List<String>>(cacheKey);
+    if (cached != null) {
+      Logger.debug('Список магазинов загружен из кэша');
+    }
+    return cached;
+  }
+
+  /// Сохранить список всех магазинов в кэш
+  static void saveAllShops(List<String> shops) {
+    const cacheKey = 'kpi_all_shops';
+    CacheManager.set(cacheKey, shops, duration: AppConstants.cacheDuration);
+    Logger.debug('💾 Список магазинов сохранен в кэш: ${shops.length} записей');
+  }
 }

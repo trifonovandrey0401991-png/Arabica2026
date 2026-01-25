@@ -8,6 +8,9 @@ class CigaretteProduct {
   final String productName;
   final int grade;
 
+  // Статус ИИ проверки при пересчёте
+  final bool isAiActive; // Если true - ИИ проверяет фото при пересчёте
+
   // Общая статистика
   final int trainingPhotosCount;
   final int requiredPhotosCount;
@@ -30,6 +33,7 @@ class CigaretteProduct {
     required this.productGroup,
     required this.productName,
     required this.grade,
+    this.isAiActive = false,
     this.trainingPhotosCount = 0,
     this.requiredPhotosCount = 20,
     this.isTrainingComplete = false,
@@ -54,9 +58,11 @@ class CigaretteProduct {
     return CigaretteProduct(
       id: json['id'] ?? '',
       barcode: json['barcode']?.toString() ?? '',
-      productGroup: json['productGroup']?.toString() ?? '',
-      productName: json['productName']?.toString() ?? json['question']?.toString() ?? '',
+      // Поддержка обоих полей: productGroup (старое) и group (мастер-каталог)
+      productGroup: json['productGroup']?.toString() ?? json['group']?.toString() ?? '',
+      productName: json['productName']?.toString() ?? json['name']?.toString() ?? json['question']?.toString() ?? '',
       grade: json['grade'] is int ? json['grade'] : int.tryParse(json['grade'].toString()) ?? 1,
+      isAiActive: json['isAiActive'] ?? false,
       trainingPhotosCount: json['trainingPhotosCount'] ?? (recountPhotos + displayPhotos),
       requiredPhotosCount: json['requiredPhotosCount'] ?? 20,
       isTrainingComplete: json['isTrainingComplete'] ?? false,
@@ -76,6 +82,7 @@ class CigaretteProduct {
     'productGroup': productGroup,
     'productName': productName,
     'grade': grade,
+    'isAiActive': isAiActive,
     'trainingPhotosCount': trainingPhotosCount,
     'requiredPhotosCount': requiredPhotosCount,
     'isTrainingComplete': isTrainingComplete,

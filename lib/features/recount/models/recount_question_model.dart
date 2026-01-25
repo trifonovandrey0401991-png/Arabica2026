@@ -10,6 +10,8 @@ class RecountQuestion {
   final String productGroup;  // Группа товара
   final String productName;   // Наименование товара
   final int grade;            // 1 - очень важный, 2 - средней важности, 3 - не очень важный
+  final int stock;            // Остаток товара из DBF (0 = нет в наличии)
+  final bool isAiActive;      // Активна ли ИИ проверка для этого товара
 
   RecountQuestion({
     required this.id,
@@ -17,7 +19,12 @@ class RecountQuestion {
     required this.productGroup,
     required this.productName,
     required this.grade,
+    this.stock = 0,
+    this.isAiActive = false,
   });
+
+  /// Есть ли товар в наличии
+  bool get hasStock => stock > 0;
 
   /// Геттер для обратной совместимости с кодом, использующим question
   String get question => productName.isNotEmpty ? productName : barcode;
@@ -36,6 +43,8 @@ class RecountQuestion {
           ? (json['productName']?.toString() ?? '')
           : (json['question']?.toString() ?? ''),  // Для старого формата используем question как productName
       grade: json['grade'] is int ? json['grade'] : int.tryParse(json['grade'].toString()) ?? 1,
+      stock: json['stock'] is int ? json['stock'] : int.tryParse(json['stock']?.toString() ?? '0') ?? 0,
+      isAiActive: json['isAiActive'] ?? false,
     );
   }
 
@@ -47,7 +56,43 @@ class RecountQuestion {
       'productGroup': productGroup,
       'productName': productName,
       'grade': grade,
+      'stock': stock,
+      'isAiActive': isAiActive,
     };
+  }
+
+  /// Создать копию с новым остатком
+  RecountQuestion copyWithStock(int newStock) {
+    return RecountQuestion(
+      id: id,
+      barcode: barcode,
+      productGroup: productGroup,
+      productName: productName,
+      grade: grade,
+      stock: newStock,
+      isAiActive: isAiActive,
+    );
+  }
+
+  /// Создать копию с указанным isAiActive
+  RecountQuestion copyWith({
+    String? id,
+    String? barcode,
+    String? productGroup,
+    String? productName,
+    int? grade,
+    int? stock,
+    bool? isAiActive,
+  }) {
+    return RecountQuestion(
+      id: id ?? this.id,
+      barcode: barcode ?? this.barcode,
+      productGroup: productGroup ?? this.productGroup,
+      productName: productName ?? this.productName,
+      grade: grade ?? this.grade,
+      stock: stock ?? this.stock,
+      isAiActive: isAiActive ?? this.isAiActive,
+    );
   }
 
   /// Загрузить вопросы с сервера
@@ -62,29 +107,61 @@ class RecountQuestion {
 
   /// Выбрать вопросы по алгоритму: 50% грейд 1, 30% грейд 2, 20% грейд 3
   /// [totalCount] - общее количество вопросов для выбора (по умолчанию 30)
+  /// Если в какой-то категории не хватает товаров, добираем из других категорий
   static List<RecountQuestion> selectQuestions(List<RecountQuestion> allQuestions, {int totalCount = 30}) {
     // Разделяем по грейдам
-    final grade1Questions = allQuestions.where((q) => q.grade == 1).toList();
-    final grade2Questions = allQuestions.where((q) => q.grade == 2).toList();
-    final grade3Questions = allQuestions.where((q) => q.grade == 3).toList();
+    final grade1Questions = allQuestions.where((q) => q.grade == 1).toList()..shuffle();
+    final grade2Questions = allQuestions.where((q) => q.grade == 2).toList()..shuffle();
+    final grade3Questions = allQuestions.where((q) => q.grade == 3).toList()..shuffle();
+
+    Logger.debug('📊 Распределение по грейдам: G1=${grade1Questions.length}, G2=${grade2Questions.length}, G3=${grade3Questions.length}');
 
     // Распределяем по пропорциям: 50% грейд 1, 30% грейд 2, 20% грейд 3
-    final neededGrade1 = (totalCount * 0.5).round();
-    final neededGrade2 = (totalCount * 0.3).round();
-    final neededGrade3 = totalCount - neededGrade1 - neededGrade2; // остаток
+    int neededGrade1 = (totalCount * 0.5).round();
+    int neededGrade2 = (totalCount * 0.3).round();
+    int neededGrade3 = totalCount - neededGrade1 - neededGrade2;
 
-    // Выбираем вопросы (если недостаточно, берем все доступные)
-    final selectedGrade1 = grade1Questions.length >= neededGrade1
-        ? (grade1Questions..shuffle()).take(neededGrade1).toList()
-        : grade1Questions;
+    // Выбираем вопросы с учётом доступных
+    final selectedGrade1 = grade1Questions.take(neededGrade1).toList();
+    final selectedGrade2 = grade2Questions.take(neededGrade2).toList();
+    final selectedGrade3 = grade3Questions.take(neededGrade3).toList();
 
-    final selectedGrade2 = grade2Questions.length >= neededGrade2
-        ? (grade2Questions..shuffle()).take(neededGrade2).toList()
-        : grade2Questions;
+    // Подсчитываем сколько не хватает
+    int missing = totalCount - selectedGrade1.length - selectedGrade2.length - selectedGrade3.length;
 
-    final selectedGrade3 = grade3Questions.length >= neededGrade3
-        ? (grade3Questions..shuffle()).take(neededGrade3).toList()
-        : grade3Questions;
+    // Если не хватает, добираем из оставшихся товаров в порядке приоритета
+    if (missing > 0) {
+      Logger.debug('📊 Не хватает $missing вопросов, добираем из других грейдов...');
+
+      // Создаём пул оставшихся товаров (которые ещё не выбраны)
+      final usedIds = <String>{
+        ...selectedGrade1.map((q) => q.id),
+        ...selectedGrade2.map((q) => q.id),
+        ...selectedGrade3.map((q) => q.id),
+      };
+
+      // Приоритет добора: грейд 1 > грейд 2 > грейд 3
+      final remainingPool = [
+        ...grade1Questions.where((q) => !usedIds.contains(q.id)),
+        ...grade2Questions.where((q) => !usedIds.contains(q.id)),
+        ...grade3Questions.where((q) => !usedIds.contains(q.id)),
+      ];
+
+      final additional = remainingPool.take(missing).toList();
+      Logger.debug('📊 Добрано ${additional.length} вопросов из других грейдов');
+
+      // Объединяем и перемешиваем
+      final selected = [
+        ...selectedGrade1,
+        ...selectedGrade2,
+        ...selectedGrade3,
+        ...additional,
+      ]..shuffle();
+
+      Logger.info('Выбрано вопросов (всего запрошено: $totalCount): Грейд 1: ${selectedGrade1.length}, Грейд 2: ${selectedGrade2.length}, Грейд 3: ${selectedGrade3.length}, Добор: ${additional.length}, Всего: ${selected.length}');
+
+      return selected;
+    }
 
     // Объединяем и перемешиваем
     final selected = [

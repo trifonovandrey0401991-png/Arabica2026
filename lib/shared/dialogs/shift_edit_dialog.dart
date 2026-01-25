@@ -295,28 +295,34 @@ class _ShiftEditDialogState extends State<ShiftEditDialog>
           const SizedBox(height: 32),
 
           // Кнопки действий
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
             children: [
               if (widget.existingEntry != null)
                 TextButton.icon(
                   onPressed: _deleteShift,
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  label: const Text('Удалить смену', style: TextStyle(color: Colors.red)),
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                  label: const Text('Удалить смену', style: TextStyle(color: Colors.red, fontSize: 13)),
                 ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Отмена'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: _saveShift,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Сохранить'),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Отмена'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _saveShift,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF004D40),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Сохранить'),
+                  ),
+                ],
               ),
             ],
           ),

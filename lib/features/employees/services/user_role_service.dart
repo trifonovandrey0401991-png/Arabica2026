@@ -3,6 +3,7 @@ import '../models/user_role_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import 'employee_registration_service.dart';
 
 /// Сервис для работы с ролями пользователей
 class UserRoleService {
@@ -41,6 +42,17 @@ class UserRoleService {
             Logger.debug('   ID: ${emp['id']}');
             Logger.debug('   Имя: $employeeName');
             Logger.debug('   Админ: $isAdmin');
+
+            // Проверяем верификацию сотрудника
+            // Если сотрудник не верифицирован - он видит приложение как клиент
+            final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+            final isVerified = registration?.isVerified ?? false;
+            Logger.debug('   Верификация: $isVerified');
+
+            if (!isVerified) {
+              Logger.debug('⚠️ Сотрудник не верифицирован, будет показан как клиент');
+              return null;
+            }
 
             // Сохраняем employeeId для последующего использования
             if (emp['id'] != null) {
@@ -105,19 +117,36 @@ class UserRoleService {
       String displayName = result['clientName'] ?? ''; // Имя из столбца A
       String? employeeName = result['employeeName']; // Имя из столбца G
 
-      // Проверяем столбец H (админ)
+      // Проверяем столбец H (админ) или столбец G (сотрудник)
       final adminValue = result['isAdmin'];
-      if (adminValue == 1 || adminValue == '1') {
-        role = UserRole.admin;
-        // Если есть имя в столбце G, используем его
-        if (employeeName != null && employeeName.isNotEmpty) {
-          displayName = employeeName;
+      final isAdminFromServer = adminValue == 1 || adminValue == '1';
+      final isEmployeeFromServer = employeeName != null && employeeName.isNotEmpty;
+
+      // Если пользователь определён как сотрудник/админ, проверяем верификацию
+      if (isAdminFromServer || isEmployeeFromServer) {
+        final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+        final isVerified = registration?.isVerified ?? false;
+        Logger.debug('   Верификация: $isVerified');
+
+        if (!isVerified) {
+          Logger.debug('⚠️ Сотрудник не верифицирован, будет показан как клиент');
+          return UserRoleData(
+            role: UserRole.client,
+            displayName: displayName,
+            phone: normalizedPhone,
+          );
         }
-      }
-      // Проверяем столбец G (сотрудник)
-      else if (employeeName != null && employeeName.isNotEmpty) {
-        role = UserRole.employee;
-        displayName = employeeName;
+
+        // Сотрудник верифицирован - устанавливаем роль
+        if (isAdminFromServer) {
+          role = UserRole.admin;
+          if (employeeName != null && employeeName.isNotEmpty) {
+            displayName = employeeName;
+          }
+        } else {
+          role = UserRole.employee;
+          displayName = employeeName!;
+        }
       }
 
       Logger.debug('✅ Роль определена через сервер: ${role.name}');
@@ -130,7 +159,7 @@ class UserRoleService {
         role: role,
         displayName: displayName,
         phone: normalizedPhone,
-        employeeName: employeeName,
+        employeeName: role != UserRole.client ? employeeName : null,
       );
     } catch (e) {
       Logger.debug('❌ Ошибка получения роли: $e');

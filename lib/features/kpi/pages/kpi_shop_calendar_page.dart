@@ -4,6 +4,7 @@ import '../../shops/models/shop_model.dart';
 import '../services/kpi_service.dart';
 import '../models/kpi_models.dart';
 import 'kpi_shop_day_detail_dialog.dart';
+import 'kpi_shops_list_page.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/widgets/shop_icon.dart';
 
@@ -11,7 +12,7 @@ bool isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-/// Страница календаря KPI по магазину
+/// Страница KPI по магазинам с двумя вкладками: Все магазины и Магазин (календарь)
 class KPIShopCalendarPage extends StatefulWidget {
   const KPIShopCalendarPage({super.key});
 
@@ -19,7 +20,11 @@ class KPIShopCalendarPage extends StatefulWidget {
   State<KPIShopCalendarPage> createState() => _KPIShopCalendarPageState();
 }
 
-class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
+class _KPIShopCalendarPageState extends State<KPIShopCalendarPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // Состояние для вкладки "Магазин" (календарь)
   Shop? _selectedShop;
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
@@ -31,7 +36,27 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadShops();
+  }
+
+  void _onTabChanged() {
+    // При переключении на вкладку "Магазин" показываем диалог выбора, если магазин не выбран
+    if (_tabController.index == 1 && _selectedShop == null && _shops.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedShop == null) {
+          _showShopSelection();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadShops() async {
@@ -43,9 +68,6 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
           _shops = shops;
           _isLoading = false;
         });
-        if (shops.isNotEmpty && _selectedShop == null) {
-          _showShopSelection();
-        }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов', e);
@@ -156,7 +178,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
 
       // Собираем все даты для загрузки
       final datesToLoad = <DateTime>[];
-      
+
       // Добавляем даты текущего месяца
       for (int day = 1; day <= 31; day++) {
         final date = DateTime(currentMonth.year, currentMonth.month, day);
@@ -170,40 +192,37 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
         if (date.month != previousMonth.month) break;
         datesToLoad.add(date);
       }
-      
-      // Очищаем кэш KPIService для всех дат, которые будем загружать
-      for (final date in datesToLoad) {
-        KPIService.clearCacheForDate(_selectedShop!.address, date);
-      }
 
-      // Загружаем данные параллельно (пакетами по 5 для снижения нагрузки)
-      const batchSize = 5;
+      // НЕ очищаем кэш - используем существующие данные где возможно
+      // Кэш очищается только при явном обновлении (кнопка refresh)
+
+      // Загружаем данные последовательно (по 2 за раз) с задержкой для избежания HTTP 429
+      const batchSize = 2;
       for (int i = 0; i < datesToLoad.length; i += batchSize) {
         final batch = datesToLoad.skip(i).take(batchSize).toList();
-        final results = await Future.wait(
-          batch.map((date) => KPIService.getShopDayData(
-            _selectedShop!.address,
-            date,
-          ).catchError((e) {
-            Logger.warning('Ошибка загрузки данных за ${date.year}-${date.month}-${date.day}');
-            return null;
-          })),
+        final results = await Future.wait<KPIShopDayData?>(
+          batch.map((date) async {
+            try {
+              return await KPIService.getShopDayData(
+                _selectedShop!.address,
+                date,
+              );
+            } catch (e) {
+              Logger.warning('Ошибка загрузки данных за ${date.year}-${date.month}-${date.day}: $e');
+              return null;
+            }
+          }),
         );
 
-        // Сохраняем результаты в кэш
+        // Сохраняем результаты в локальный кэш
         for (int j = 0; j < batch.length; j++) {
-          if (results[j] != null) {
+          final dayData = results[j];
+          if (dayData != null) {
             final date = batch[j];
-            final isTargetDate = date.year == 2025 && date.month == 12 && date.day == 12;
             final normalizedDate = DateTime(date.year, date.month, date.day);
-            _dayDataCache[normalizedDate] = results[j]!;
-            if (isTargetDate) {
-              Logger.debug('🔍 === Сохранение в кэш для 12.12.2025 ===');
-              Logger.debug('   Ключ в кэше: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
-              Logger.debug('   employeesWorkedCount: ${results[j]!.employeesWorkedCount}');
-              Logger.debug('   hasMorningAttendance: ${results[j]!.hasMorningAttendance}');
-              Logger.debug('   hasEveningAttendance: ${results[j]!.hasEveningAttendance}');
-              Logger.debug('   === КОНЕЦ сохранения в кэш для 12.12.2025 ===');
+            _dayDataCache[normalizedDate] = dayData;
+            if (dayData.employeesWorkedCount > 0) {
+              Logger.debug('📅 Кэш: ${normalizedDate.day}.${normalizedDate.month}, сотр: ${dayData.employeesWorkedCount}, hasWorking: ${dayData.hasWorkingEmployees}');
             }
           }
         }
@@ -212,7 +231,14 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
         if (mounted) {
           setState(() {});
         }
+
+        // Задержка между пакетами для избежания HTTP 429
+        if (i + batchSize < datesToLoad.length) {
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
       }
+
+      Logger.debug('📅 Всего дат в локальном кэше: ${_dayDataCache.length}');
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -225,27 +251,21 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     }
   }
 
-  List<DateTime> _getWorkedDays() {
-    return _dayDataCache.entries
-        .where((entry) => entry.value.employeesWorkedCount > 0)
-        .map((entry) => entry.key)
-        .toList();
-  }
-
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (!mounted) return;
+
+    Logger.debug('_onDaySelected вызван: ${selectedDay.year}-${selectedDay.month}-${selectedDay.day}');
 
     setState(() {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
     });
 
-    // Загружаем данные за день, если их нет в кэше
-    if (!_dayDataCache.containsKey(selectedDay)) {
-      _loadDayData(selectedDay);
-    } else {
-      _showDayDetail(selectedDay);
-    }
+    // Нормализуем дату для поиска в кэше
+    final normalizedDate = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+
+    // Всегда показываем диалог с актуальными данными
+    _showDayDetail(normalizedDate);
   }
 
   Future<void> _loadDayData(DateTime date) async {
@@ -269,15 +289,6 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       );
 
       if (mounted) {
-        final isTargetDate = normalizedDate.year == 2025 && normalizedDate.month == 12 && normalizedDate.day == 12;
-        if (isTargetDate) {
-          Logger.debug('🔍 === Сохранение в кэш при загрузке дня для 12.12.2025 ===');
-          Logger.debug('   Ключ в кэше: ${normalizedDate.year}-${normalizedDate.month}-${normalizedDate.day}');
-          Logger.debug('   employeesWorkedCount: ${dayData.employeesWorkedCount}');
-          Logger.debug('   hasMorningAttendance: ${dayData.hasMorningAttendance}');
-          Logger.debug('   hasEveningAttendance: ${dayData.hasEveningAttendance}');
-          Logger.debug('   === КОНЕЦ сохранения в кэш для 12.12.2025 ===');
-        }
         setState(() {
           _dayDataCache[normalizedDate] = dayData;
           _isLoading = false;
@@ -295,27 +306,35 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
   }
 
   void _showDayDetail(DateTime date) async {
-    // Всегда перезагружаем данные при открытии диалога, чтобы получить актуальные данные с РКО
-    Logger.debug('🔍 Открытие диалога для даты: ${date.year}-${date.month}-${date.day}');
+    Logger.debug('Открытие диалога для даты: ${date.year}-${date.month}-${date.day}');
     if (_selectedShop == null) return;
-    
-    // Очищаем кэш для этой даты перед загрузкой
-    KPIService.clearCacheForDate(_selectedShop!.address, date);
+
     final normalizedDate = DateTime(date.year, date.month, date.day);
-    _dayDataCache.remove(normalizedDate);
-    
+
+    // Сначала проверяем локальный кэш - если данные есть, показываем сразу
+    final cachedDayData = _dayDataCache[normalizedDate];
+    if (cachedDayData != null) {
+      Logger.debug('Показываем данные из кэша для ${date.year}-${date.month}-${date.day}');
+      showDialog(
+        context: context,
+        builder: (context) => KPIShopDayDetailDialog(dayData: cachedDayData),
+      );
+      return;
+    }
+
+    // Если данных нет в кэше - загружаем
     try {
-      // Загружаем свежие данные
+      Logger.debug('Загружаем данные с сервера для ${date.year}-${date.month}-${date.day}');
       final dayData = await KPIService.getShopDayData(
         _selectedShop!.address,
         date,
       );
-      
+
       if (mounted) {
         setState(() {
           _dayDataCache[normalizedDate] = dayData;
         });
-        
+
         showDialog(
           context: context,
           builder: (context) => KPIShopDayDetailDialog(dayData: dayData),
@@ -323,12 +342,10 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки данных для диалога', e);
-      // Показываем диалог с данными из кэша, если они есть
-      final cachedDayData = _dayDataCache[normalizedDate];
-      if (cachedDayData != null && mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => KPIShopDayDetailDialog(dayData: cachedDayData),
+      // Показываем пустой диалог при ошибке
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка загрузки данных')),
         );
       }
     }
@@ -345,41 +362,13 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     // Определяем статус выполнения всех действий
     bool allCompleted = false;
     bool hasWorking = false;
-    
-    final isTargetDate = date.year == 2025 && date.month == 12 && date.day == 12;
-    
+
     if (dayData != null) {
       allCompleted = dayData.allActionsCompleted;
       hasWorking = dayData.hasWorkingEmployees;
-      if (isTargetDate) {
-        Logger.debug('🔍 === ОТРИСОВКА 12.12.2025 ===');
-        Logger.debug('   dayData не null');
-        Logger.debug('   Сотрудников: ${dayData.employeesWorkedCount}');
-        Logger.debug('   Все действия выполнены: $allCompleted');
-        Logger.debug('   Есть работающие сотрудники: $hasWorking');
-        Logger.debug('   Всего записей сотрудников: ${dayData.employeesData.length}');
-        for (var emp in dayData.employeesData) {
-          Logger.debug('      - ${emp.employeeName}: приход=${emp.attendanceTime != null}, пересменка=${emp.hasShift}, пересчет=${emp.hasRecount}, РКО=${emp.hasRKO}');
-        }
-        Logger.debug('   === КОНЕЦ ОТРИСОВКИ 12.12.2025 ===');
-      }
-      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: все выполнено=$allCompleted, есть работающие=$hasWorking, сотрудников=${dayData.employeesWorkedCount}');
     } else if (events.isNotEmpty) {
       allCompleted = events.first.allActionsCompleted;
       hasWorking = events.first.hasWorkingEmployees;
-      if (isTargetDate) {
-        Logger.debug('🔍 === ОТРИСОВКА 12.12.2025 (через events) ===');
-        Logger.debug('   events не пуст');
-        Logger.debug('   Все действия выполнены: $allCompleted');
-        Logger.debug('   Есть работающие сотрудники: $hasWorking');
-        Logger.debug('   === КОНЕЦ ОТРИСОВКИ 12.12.2025 ===');
-      }
-      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: используем events, все выполнено=$allCompleted, есть работающие=$hasWorking');
-    } else {
-      if (isTargetDate) {
-        Logger.debug('🔍 === ОТРИСОВКА 12.12.2025: НЕТ ДАННЫХ ===');
-      }
-      Logger.debug('🎨 _buildDayCell для ${date.year}-${date.month}-${date.day}: нет данных');
     }
 
     // Определяем цвет круга
@@ -395,7 +384,7 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     // Определяем цвета фона и текста
     Color backgroundColor = Colors.white;
     Color textColor = Colors.black;
-    
+
     if (isSelected) {
       backgroundColor = const Color(0xFF004D40);
       textColor = Colors.white;
@@ -403,11 +392,6 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
       backgroundColor = Colors.blue.withOpacity(0.3);
     }
 
-    // Логирование для отладки
-    if (hasWorking) {
-      Logger.debug('🎨 Отрисовка ячейки ${date.year}-${date.month}-${date.day}: все выполнено=$allCompleted, цвет=${circleColor == Colors.green ? "зеленый" : circleColor == Colors.yellow ? "желтый" : "прозрачный"}');
-    }
-    
     // Создаем контейнер с кругом
     return Container(
       margin: const EdgeInsets.all(6.0),
@@ -449,12 +433,237 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
     );
   }
 
+  Widget _buildCalendarView() {
+    if (_selectedShop == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.store, size: 64, color: Colors.white54),
+              const SizedBox(height: 16),
+              const Text(
+                'Выберите магазин для просмотра календаря',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _showShopSelection,
+                icon: const Icon(Icons.store),
+                label: const Text('Выбрать магазин'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF004D40),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Строка с выбранным магазином
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InkWell(
+            onTap: _showShopSelection,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.store, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _selectedShop!.address,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Календарь
+        Expanded(
+          child: _isLoading && _dayDataCache.isEmpty
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Card(
+                        margin: const EdgeInsets.all(8),
+                        child: TableCalendar<KPIShopDayData>(
+                          firstDay: DateTime.utc(2020, 1, 1),
+                          lastDay: DateTime.utc(2030, 12, 31),
+                          focusedDay: _focusedDay,
+                          selectedDayPredicate: (day) {
+                            return isSameDay(_selectedDay, day);
+                          },
+                          eventLoader: (day) {
+                            final normalizedDay = DateTime(day.year, day.month, day.day);
+                            final dayData = _dayDataCache[normalizedDay];
+                            if (dayData != null && dayData.employeesWorkedCount > 0) {
+                              return [dayData];
+                            }
+                            return [];
+                          },
+                          calendarFormat: _calendarFormat,
+                          startingDayOfWeek: StartingDayOfWeek.monday,
+                          calendarBuilders: CalendarBuilders<KPIShopDayData>(
+                            defaultBuilder: (context, date, focusedDay) {
+                              final normalizedDay = DateTime(date.year, date.month, date.day);
+                              final dayData = _dayDataCache[normalizedDay];
+                              final eventsList = dayData != null && dayData.employeesWorkedCount > 0
+                                  ? [dayData]
+                                  : <KPIShopDayData>[];
+
+                              return _buildDayCell(
+                                context: context,
+                                date: date,
+                                events: eventsList,
+                                isSelected: false,
+                                isToday: false,
+                                dayData: dayData,
+                              );
+                            },
+                            todayBuilder: (context, date, focusedDay) {
+                              final normalizedDay = DateTime(date.year, date.month, date.day);
+                              final dayData = _dayDataCache[normalizedDay];
+                              final isSelected = isSameDay(_selectedDay, date);
+                              final eventsList = dayData != null && dayData.employeesWorkedCount > 0
+                                  ? [dayData]
+                                  : <KPIShopDayData>[];
+                              return _buildDayCell(
+                                context: context,
+                                date: date,
+                                events: eventsList,
+                                isSelected: isSelected,
+                                isToday: true,
+                                dayData: dayData,
+                              );
+                            },
+                            selectedBuilder: (context, date, focusedDay) {
+                              final normalizedDay = DateTime(date.year, date.month, date.day);
+                              final dayData = _dayDataCache[normalizedDay];
+                              final eventsList = dayData != null && dayData.employeesWorkedCount > 0
+                                  ? [dayData]
+                                  : <KPIShopDayData>[];
+                              return _buildDayCell(
+                                context: context,
+                                date: date,
+                                events: eventsList,
+                                isSelected: true,
+                                isToday: false,
+                                dayData: dayData,
+                              );
+                            },
+                            markerBuilder: (context, date, events) {
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                          calendarStyle: CalendarStyle(
+                            outsideDaysVisible: false,
+                            cellPadding: const EdgeInsets.all(8),
+                            cellMargin: const EdgeInsets.all(2),
+                          ),
+                          headerStyle: const HeaderStyle(
+                            formatButtonVisible: true,
+                            titleCentered: true,
+                          ),
+                          onDaySelected: _onDaySelected,
+                          onFormatChanged: (format) {
+                            setState(() => _calendarFormat = format);
+                          },
+                          onPageChanged: (focusedDay) {
+                            setState(() => _focusedDay = focusedDay);
+                            _loadMonthData();
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Wrap(
+                          spacing: 24,
+                          runSpacing: 8,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Все выполнено', style: TextStyle(fontSize: 12, color: Colors.white)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.yellow,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Что-то не выполнено', style: TextStyle(fontSize: 12, color: Colors.white)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedShop?.name ?? 'Выберите магазин'),
+        title: const Text('KPI - Магазины'),
         backgroundColor: const Color(0xFF004D40),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white60,
+          tabs: const [
+            Tab(text: 'Все магазины'),
+            Tab(text: 'Магазин'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -465,179 +674,35 @@ class _KPIShopCalendarPageState extends State<KPIShopCalendarPage> {
               if (_selectedShop != null) {
                 KPIService.clearCacheForShop(_selectedShop!.address);
               }
+              KPIService.clearCache();
               // Перезагружаем данные
-              _loadMonthData();
+              if (_tabController.index == 1 && _selectedShop != null) {
+                _loadMonthData();
+              } else {
+                setState(() {});
+              }
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.store),
-            onPressed: _showShopSelection,
           ),
         ],
       ),
-      body: _isLoading && _dayDataCache.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _selectedShop == null
-              ? Center(
-                  child: ElevatedButton(
-                    onPressed: _showShopSelection,
-                    child: const Text('Выбрать магазин'),
-                  ),
-                )
-              : Column(
-                  children: [
-                    TableCalendar<KPIShopDayData>(
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2030, 12, 31),
-                      focusedDay: _focusedDay,
-                      selectedDayPredicate: (day) {
-                        return isSameDay(_selectedDay, day);
-                      },
-                      eventLoader: (day) {
-                        // Нормализуем дату для поиска в кэше
-                        final normalizedDay = DateTime(day.year, day.month, day.day);
-                        final isTargetDate = normalizedDay.year == 2025 && normalizedDay.month == 12 && normalizedDay.day == 12;
-                        final dayData = _dayDataCache[normalizedDay];
-                        if (isTargetDate) {
-                          Logger.debug('🔍 === eventLoader для 12.12.2025 ===');
-                          Logger.debug('   normalizedDay: ${normalizedDay.year}-${normalizedDay.month}-${normalizedDay.day}');
-                          Logger.debug('   dayData в кэше: ${dayData != null}');
-                          if (dayData != null) {
-                            Logger.debug('   employeesWorkedCount: ${dayData.employeesWorkedCount}');
-                            Logger.debug('   hasMorningAttendance: ${dayData.hasMorningAttendance}');
-                            Logger.debug('   hasEveningAttendance: ${dayData.hasEveningAttendance}');
-                          }
-                          Logger.debug('   === КОНЕЦ eventLoader для 12.12.2025 ===');
-                        }
-                        if (dayData != null && dayData.employeesWorkedCount > 0) {
-                          return [dayData];
-                        }
-                        return [];
-                      },
-                      calendarFormat: _calendarFormat,
-                      startingDayOfWeek: StartingDayOfWeek.monday,
-                      calendarBuilders: CalendarBuilders<KPIShopDayData>(
-                        defaultBuilder: (context, date, focusedDay) {
-                          final normalizedDay = DateTime(date.year, date.month, date.day);
-                          final dayData = _dayDataCache[normalizedDay];
-                          // Получаем события из кэша (как в eventLoader)
-                          final eventsList = dayData != null && dayData.employeesWorkedCount > 0
-                              ? [dayData]
-                              : <KPIShopDayData>[];
-                          
-                          // Логирование для отладки
-                          if (dayData != null && dayData.employeesWorkedCount > 0) {
-                            Logger.debug('📅 Календарь: ${date.year}-${date.month}-${date.day}, утро=${dayData.hasMorningAttendance}, вечер=${dayData.hasEveningAttendance}, сотрудников=${dayData.employeesWorkedCount}');
-                          }
-                          
-                          return _buildDayCell(
-                            context: context,
-                            date: date,
-                            events: eventsList,
-                            isSelected: false,
-                            isToday: false,
-                            dayData: dayData,
-                          );
-                        },
-                        todayBuilder: (context, date, focusedDay) {
-                          final normalizedDay = DateTime(date.year, date.month, date.day);
-                          final dayData = _dayDataCache[normalizedDay];
-                          final isSelected = isSameDay(_selectedDay, date);
-                          // Получаем события из кэша (как в eventLoader)
-                          final eventsList = dayData != null && dayData.employeesWorkedCount > 0
-                              ? [dayData]
-                              : <KPIShopDayData>[];
-                          return _buildDayCell(
-                            context: context,
-                            date: date,
-                            events: eventsList,
-                            isSelected: isSelected,
-                            isToday: true,
-                            dayData: dayData,
-                          );
-                        },
-                        selectedBuilder: (context, date, focusedDay) {
-                          final normalizedDay = DateTime(date.year, date.month, date.day);
-                          final dayData = _dayDataCache[normalizedDay];
-                          // Получаем события из кэша (как в eventLoader)
-                          final eventsList = dayData != null && dayData.employeesWorkedCount > 0
-                              ? [dayData]
-                              : <KPIShopDayData>[];
-                          return _buildDayCell(
-                            context: context,
-                            date: date,
-                            events: eventsList,
-                            isSelected: true,
-                            isToday: false,
-                            dayData: dayData,
-                          );
-                        },
-                        markerBuilder: (context, date, events) {
-                          // Маркеры не нужны, используем цветные круги
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                      calendarStyle: CalendarStyle(
-                        outsideDaysVisible: false,
-                        cellPadding: const EdgeInsets.all(8),
-                        cellMargin: const EdgeInsets.all(2),
-                      ),
-                      headerStyle: const HeaderStyle(
-                        formatButtonVisible: true,
-                        titleCentered: true,
-                      ),
-                      onDaySelected: _onDaySelected,
-                      onFormatChanged: (format) {
-                        setState(() => _calendarFormat = format);
-                      },
-                      onPageChanged: (focusedDay) {
-                        setState(() => _focusedDay = focusedDay);
-                        _loadMonthData();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Wrap(
-                        spacing: 24,
-                        runSpacing: 8,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Все выполнено', style: TextStyle(fontSize: 12)),
-                            ],
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Colors.yellow,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Что-то не выполнено', style: TextStyle(fontSize: 12)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF004D40), Color(0xFF00695C)],
+          ),
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            // Вкладка 1: Список всех магазинов
+            const KPIShopsListPage(),
+            // Вкладка 2: Календарь
+            _buildCalendarView(),
+          ],
+        ),
+      ),
     );
   }
 }
-

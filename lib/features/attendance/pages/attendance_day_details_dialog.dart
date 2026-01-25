@@ -160,7 +160,12 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
         ),
         subtitle: Row(
           children: [
-            Text(time),
+            const Icon(Icons.access_time, size: 14, color: Colors.grey),
+            const SizedBox(width: 4),
+            Text(
+              time,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -178,13 +183,28 @@ class AttendanceDayDetailsDialog extends StatelessWidget {
               ),
             ),
             if (record.isOnTime == false && record.lateMinutes != null) ...[
-              const SizedBox(width: 4),
-              Text(
-                '+${record.lateMinutes} мин',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.orange,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.red),
+                    const SizedBox(width: 2),
+                    Text(
+                      '+${record.lateMinutes} мин',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

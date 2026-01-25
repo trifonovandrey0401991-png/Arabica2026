@@ -58,11 +58,21 @@ class AttendanceReportService {
         r.timestamp.year == prevMonth.year && r.timestamp.month == prevMonth.month
     ).toList();
 
+    // Считаем приходы вовремя для текущего месяца
+    // Плановое количество = дни в месяце * 2 (утро + вечер)
+    final daysInCurrentMonth = DateTime(now.year, now.month + 1, 0).day;
+    final plannedRecords = daysInCurrentMonth * 2;
+
+    // Приходы вовремя - записи с isOnTime == true
+    final onTimeCount = currentMonthRecords.where((r) => r.isOnTime == true).length;
+
     return ShopAttendanceSummary(
       shopAddress: shopAddress,
       todayAttendanceCount: todayRecords.length,
       currentMonth: _buildMonthSummary(now.year, now.month, currentMonthRecords),
       previousMonth: _buildMonthSummary(prevMonth.year, prevMonth.month, prevMonthRecords),
+      totalRecords: plannedRecords,  // Плановое количество (62 для января)
+      onTimeRecords: onTimeCount,    // Фактическое количество приходов вовремя
     );
   }
 

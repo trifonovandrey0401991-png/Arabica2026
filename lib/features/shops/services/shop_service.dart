@@ -82,6 +82,28 @@ class ShopService {
     );
   }
 
+  /// Найти магазин по адресу
+  /// Возвращает null если магазин не найден
+  static Future<Shop?> findShopByAddress(String address) async {
+    try {
+      final shops = await getShops();
+      return shops.firstWhere(
+        (shop) => shop.address == address,
+        orElse: () => throw Exception('Shop not found'),
+      );
+    } catch (e) {
+      Logger.warning('Магазин не найден по адресу: $address');
+      return null;
+    }
+  }
+
+  /// Найти ID магазина по адресу
+  /// Возвращает null если магазин не найден
+  static Future<String?> findShopIdByAddress(String address) async {
+    final shop = await findShopByAddress(address);
+    return shop?.id;
+  }
+
   // ============================================
   // Shop Settings API
   // ============================================

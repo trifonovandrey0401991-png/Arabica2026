@@ -247,16 +247,60 @@ function isTimeReached(timeStr) {
          (moscowHours === hours && moscowMinutes >= minutes);
 }
 
+/**
+ * Проверяет, находимся ли мы внутри временного окна.
+ * Корректно обрабатывает ночные интервалы (когда end < start, например 20:00-06:58)
+ */
+function isWithinTimeWindow(startTimeStr, endTimeStr) {
+  const moscow = getMoscowTime();
+  const start = parseTime(startTimeStr);
+  const end = parseTime(endTimeStr);
+
+  const moscowHours = moscow.getUTCHours();
+  const moscowMinutes = moscow.getUTCMinutes();
+  const currentMinutes = moscowHours * 60 + moscowMinutes;
+  const startMinutes = start.hours * 60 + start.minutes;
+  const endMinutes = end.hours * 60 + end.minutes;
+
+  // Ночной интервал (например 20:00 - 06:58)
+  if (endMinutes < startMinutes) {
+    // Мы в интервале если: текущее время >= начала ИЛИ текущее время < конца
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  }
+
+  // Дневной интервал (например 07:00 - 19:58)
+  return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+}
+
 function isSameDay(date1, date2) {
   const moscow1 = new Date(date1.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
   const moscow2 = new Date(date2.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
   return moscow1.toISOString().split('T')[0] === moscow2.toISOString().split('T')[0];
 }
 
-function getDeadlineTime(timeStr) {
+function getDeadlineTime(timeStr, startTimeStr = null) {
   const { hours, minutes } = parseTime(timeStr);
+  const moscow = getMoscowTime();
   const today = getMoscowDateString();
-  const deadlineStr = `${today}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+  // Проверяем, ночной ли это интервал (дедлайн раньше старта)
+  let isNightInterval = false;
+  if (startTimeStr) {
+    const start = parseTime(startTimeStr);
+    const endMinutes = hours * 60 + minutes;
+    const startMinutes = start.hours * 60 + start.minutes;
+    isNightInterval = endMinutes < startMinutes;
+  }
+
+  // Если ночной интервал - дедлайн завтра
+  let deadlineDate = today;
+  if (isNightInterval) {
+    const tomorrow = new Date(moscow);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    deadlineDate = tomorrow.toISOString().split('T')[0];
+  }
+
+  const deadlineStr = `${deadlineDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
   const deadlineLocal = new Date(deadlineStr);
   return new Date(deadlineLocal.getTime() - MOSCOW_OFFSET_HOURS * 60 * 60 * 1000);
 }
@@ -280,8 +324,14 @@ function generatePendingReports(shiftType) {
   const deadlineTime = shiftType === 'morning'
     ? settings.morningEndTime
     : settings.eveningEndTime;
+  const startTime = shiftType === 'morning'
+    ? settings.morningStartTime
+    : settings.eveningStartTime;
 
-  const deadline = getDeadlineTime(deadlineTime);
+  const deadline = getDeadlineTime(deadlineTime, startTime);
+
+  console.log(`[RecountScheduler] ${shiftType} deadline calculated: ${deadline.toISOString()}`);
+
 
   for (const shop of shops) {
     // Check if pending report already exists for this shop/shift
@@ -568,10 +618,11 @@ async function runScheduledChecks() {
 
   console.log(`\n[${now.toISOString()}] RecountScheduler: Running checks... (Moscow time: ${moscow.toISOString()})`);
 
-  // Check if morning window started
-  if (isTimeReached(settings.morningStartTime) && !isTimeReached(settings.morningEndTime)) {
+  // Check if morning window is active (using new function that handles night intervals)
+  if (isWithinTimeWindow(settings.morningStartTime, settings.morningEndTime)) {
     const lastGen = state.lastMorningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
+      console.log(`[RecountScheduler] Morning window active (${settings.morningStartTime} - ${settings.morningEndTime}), generating reports...`);
       const created = generatePendingReports('morning');
       if (created > 0) {
         state.lastMorningGeneration = now.toISOString();
@@ -579,10 +630,11 @@ async function runScheduledChecks() {
     }
   }
 
-  // Check if evening window started
-  if (isTimeReached(settings.eveningStartTime) && !isTimeReached(settings.eveningEndTime)) {
+  // Check if evening window is active (using new function that handles night intervals)
+  if (isWithinTimeWindow(settings.eveningStartTime, settings.eveningEndTime)) {
     const lastGen = state.lastEveningGeneration;
     if (!lastGen || !isSameDay(new Date(lastGen), now)) {
+      console.log(`[RecountScheduler] Evening window active (${settings.eveningStartTime} - ${settings.eveningEndTime}), generating reports...`);
       const created = generatePendingReports('evening');
       if (created > 0) {
         state.lastEveningGeneration = now.toISOString();

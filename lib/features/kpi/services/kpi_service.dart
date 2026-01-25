@@ -1,5 +1,7 @@
 import '../models/kpi_models.dart';
 import '../models/kpi_employee_month_stats.dart';
+import '../models/kpi_shop_month_stats.dart';
+import '../../shops/models/shop_model.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../shifts/services/shift_report_service.dart';
 import '../../recount/services/recount_service.dart';
@@ -661,5 +663,121 @@ class KPIService {
       Logger.error('Ошибка получения KPI данных сотрудника (по магазинам)', e);
       return [];
     }
+  }
+
+  /// Получить список всех магазинов
+  static Future<List<String>> getAllShops() async {
+    try {
+      // Проверяем кэш
+      final cached = KPICacheService.getAllShops();
+      if (cached != null) {
+        return cached;
+      }
+
+      Logger.debug('Загрузка списка всех магазинов');
+
+      final shops = await Shop.loadShopsFromServer();
+      final addresses = shops.map((s) => s.address).toList()..sort();
+
+      Logger.debug('Всего магазинов: ${addresses.length}');
+
+      // Сохраняем в кэш
+      KPICacheService.saveAllShops(addresses);
+
+      return addresses;
+    } catch (e) {
+      Logger.error('Ошибка получения списка магазинов', e);
+      return [];
+    }
+  }
+
+  /// Получить месячную статистику магазина (текущий, прошлый, позапрошлый месяц)
+  static Future<List<KPIShopMonthStats>> getShopMonthlyStats(String shopAddress) async {
+    try {
+      Logger.debug('Загрузка месячной статистики для магазина $shopAddress');
+
+      final now = DateTime.now();
+      final currentMonth = DateTime(now.year, now.month);
+
+      DateTime previousMonth;
+      if (now.month == 1) {
+        previousMonth = DateTime(now.year - 1, 12);
+      } else {
+        previousMonth = DateTime(now.year, now.month - 1);
+      }
+
+      DateTime twoMonthsAgo;
+      if (now.month <= 2) {
+        twoMonthsAgo = DateTime(now.year - 1, 12 + now.month - 2);
+      } else {
+        twoMonthsAgo = DateTime(now.year, now.month - 2);
+      }
+
+      Logger.debug('Текущий месяц: ${currentMonth.year}-${currentMonth.month}');
+      Logger.debug('Прошлый месяц: ${previousMonth.year}-${previousMonth.month}');
+      Logger.debug('Позапрошлый месяц: ${twoMonthsAgo.year}-${twoMonthsAgo.month}');
+
+      // Получить данные по каждому месяцу
+      final stats = <KPIShopMonthStats>[];
+
+      for (final monthDate in [currentMonth, previousMonth, twoMonthsAgo]) {
+        final monthStats = await _buildShopMonthStats(shopAddress, monthDate.year, monthDate.month);
+        stats.add(monthStats);
+      }
+
+      return stats;
+    } catch (e) {
+      Logger.error('Ошибка получения месячной статистики магазина', e);
+      return [];
+    }
+  }
+
+  /// Построить статистику магазина за месяц
+  static Future<KPIShopMonthStats> _buildShopMonthStats(
+    String shopAddress,
+    int year,
+    int month,
+  ) async {
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final now = DateTime.now();
+
+    int attendanceCount = 0;
+    int shiftsCount = 0;
+    int recountsCount = 0;
+    int rkosCount = 0;
+    int envelopesCount = 0;
+    int shiftHandoversCount = 0;
+    int daysWithActivity = 0;
+
+    for (int day = 1; day <= daysInMonth; day++) {
+      final date = DateTime(year, month, day);
+      // Пропускаем будущие даты
+      if (date.isAfter(now)) break;
+
+      final dayData = await getShopDayData(shopAddress, date);
+
+      if (dayData.employeesData.isNotEmpty) {
+        daysWithActivity++;
+        attendanceCount += dayData.employeesData.where((e) => e.hasMorningAttendance || e.hasEveningAttendance).length;
+        shiftsCount += dayData.employeesData.where((e) => e.hasShift).length;
+        recountsCount += dayData.employeesData.where((e) => e.hasRecount).length;
+        rkosCount += dayData.employeesData.where((e) => e.hasRKO).length;
+        envelopesCount += dayData.employeesData.where((e) => e.hasEnvelope).length;
+        shiftHandoversCount += dayData.employeesData.where((e) => e.hasShiftHandover).length;
+      }
+    }
+
+    return KPIShopMonthStats(
+      shopAddress: shopAddress,
+      year: year,
+      month: month,
+      daysWorked: daysWithActivity,
+      attendanceCount: attendanceCount,
+      shiftsCount: shiftsCount,
+      recountsCount: recountsCount,
+      rkosCount: rkosCount,
+      envelopesCount: envelopesCount,
+      shiftHandoversCount: shiftHandoversCount,
+    );
   }
 }

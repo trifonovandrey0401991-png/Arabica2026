@@ -370,6 +370,7 @@ function setupMasterCatalogAPI(app) {
         group: group?.trim() || '',
         barcode: barcode?.trim() || null,
         shopCodes: shopCodes || {},
+        isAiActive: false, // ИИ проверка отключена по умолчанию
         createdAt: new Date().toISOString(),
         createdBy: createdBy || 'admin',
         updatedAt: new Date().toISOString(),
@@ -749,6 +750,7 @@ function setupMasterCatalogAPI(app) {
         group: group?.trim() || pendingCode.sources[0]?.group || '',
         barcode: kod,
         shopCodes,
+        isAiActive: false, // ИИ проверка отключена по умолчанию
         createdAt: new Date().toISOString(),
         createdBy: 'admin',
         updatedAt: new Date().toISOString(),
@@ -857,6 +859,7 @@ function setupMasterCatalogAPI(app) {
           group: input.group?.trim() || '',
           barcode: input.barcode.trim(),
           shopCodes: {},
+          isAiActive: false, // ИИ проверка отключена по умолчанию
           createdAt: new Date().toISOString(),
           createdBy: 'bulk-import',
           updatedAt: new Date().toISOString(),
@@ -909,6 +912,44 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
+  // ============ AI STATUS ============
+
+  /**
+   * PATCH /api/master-catalog/:id/ai-status
+   * Изменить статус ИИ проверки для товара
+   *
+   * Body:
+   *   { "isAiActive": true/false }
+   */
+  app.patch('/api/master-catalog/:id/ai-status', (req, res) => {
+    try {
+      const { isAiActive } = req.body;
+
+      if (typeof isAiActive !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'isAiActive должен быть boolean' });
+      }
+
+      const products = loadProducts();
+      const product = products.find((p) => p.id === req.params.id);
+
+      if (!product) {
+        return res.status(404).json({ success: false, error: 'Продукт не найден' });
+      }
+
+      product.isAiActive = isAiActive;
+      product.updatedAt = new Date().toISOString();
+
+      saveProducts(products);
+
+      console.log(`[Master Catalog API] AI статус для ${product.name}: ${isAiActive ? 'активна' : 'неактивна'}`);
+
+      res.json({ success: true, product });
+    } catch (error) {
+      console.error('[Master Catalog API] Ошибка изменения AI статуса:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ ДЛЯ AI TRAINING ============
 
   /**
@@ -938,6 +979,7 @@ function setupMasterCatalogAPI(app) {
         requiredPhotos: 10,
         completionPercentage: 0,
         shopCodes: p.shopCodes,
+        isAiActive: p.isAiActive ?? false, // Статус ИИ проверки
       }));
 
       res.json({ success: true, products: trainingProducts });

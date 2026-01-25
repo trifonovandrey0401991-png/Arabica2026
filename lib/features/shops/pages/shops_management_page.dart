@@ -102,6 +102,427 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
     }
   }
 
+  /// Диалог добавления нового магазина (полная форма как при редактировании)
+  Future<void> _showAddShopDialog() async {
+    final nameController = TextEditingController();
+    final addressController = TextEditingController();
+    final innController = TextEditingController();
+    final directorController = TextEditingController();
+
+    // Инициализация времени для смен
+    TimeOfDay? morningStart;
+    TimeOfDay? morningEnd;
+    TimeOfDay? dayStart;
+    TimeOfDay? dayEnd;
+    TimeOfDay? nightStart;
+    TimeOfDay? nightEnd;
+
+    // Контроллеры для аббревиатур
+    final morningAbbreviationController = TextEditingController();
+    final dayAbbreviationController = TextEditingController();
+    final nightAbbreviationController = TextEditingController();
+
+    // Геолокация
+    double? latitude;
+    double? longitude;
+    bool isGettingLocation = false;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF004D40).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.add_business_rounded, color: Color(0xFF004D40)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Новый магазин',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Основные данные магазина
+                _buildSectionHeader('Основные данные', Icons.business_rounded),
+                const SizedBox(height: 12),
+                _buildStyledTextField(
+                  controller: nameController,
+                  label: 'Название магазина *',
+                  hint: 'Например: Арабика Лермонтов',
+                  icon: Icons.store_rounded,
+                ),
+                const SizedBox(height: 16),
+                _buildStyledTextField(
+                  controller: addressController,
+                  label: 'Адрес магазина *',
+                  hint: 'Лермонтов, ул. Ленина 10',
+                  icon: Icons.location_on_rounded,
+                ),
+                const SizedBox(height: 16),
+                _buildStyledTextField(
+                  controller: innController,
+                  label: 'ИНН',
+                  icon: Icons.numbers_rounded,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                _buildStyledTextField(
+                  controller: directorController,
+                  label: 'Руководитель организации',
+                  hint: 'Например: ИП Горовой Р. В.',
+                  icon: Icons.person_rounded,
+                ),
+                const SizedBox(height: 24),
+                // Интервалы времени для смен
+                _buildSectionHeader('Интервалы для отметки', Icons.schedule_rounded),
+                const SizedBox(height: 8),
+                Text(
+                  'Если интервал не заполнен, смена не учитывается',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                // Утренняя смена
+                _buildShiftTimeSection(
+                  context,
+                  'Утренняя смена',
+                  Icons.wb_sunny_rounded,
+                  Colors.orange,
+                  morningStart,
+                  morningEnd,
+                  (start, end) {
+                    setState(() {
+                      morningStart = start;
+                      morningEnd = end;
+                    });
+                  },
+                  morningAbbreviationController,
+                ),
+                const SizedBox(height: 16),
+                // Дневная смена
+                _buildShiftTimeSection(
+                  context,
+                  'Дневная смена',
+                  Icons.light_mode_rounded,
+                  Colors.amber,
+                  dayStart,
+                  dayEnd,
+                  (start, end) {
+                    setState(() {
+                      dayStart = start;
+                      dayEnd = end;
+                    });
+                  },
+                  dayAbbreviationController,
+                ),
+                const SizedBox(height: 16),
+                // Ночная смена
+                _buildShiftTimeSection(
+                  context,
+                  'Ночная смена',
+                  Icons.nightlight_round,
+                  Colors.indigo,
+                  nightStart,
+                  nightEnd,
+                  (start, end) {
+                    setState(() {
+                      nightStart = start;
+                      nightEnd = end;
+                    });
+                  },
+                  nightAbbreviationController,
+                ),
+                const SizedBox(height: 24),
+                // Геолокация
+                _buildSectionHeader('Геолокация', Icons.my_location_rounded),
+                const SizedBox(height: 8),
+                Text(
+                  'Координаты нужны для отметки прихода сотрудников',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 12),
+                // Показываем текущие координаты если они установлены
+                if (latitude != null && longitude != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'GPS: ${latitude!.toStringAsFixed(6)}, ${longitude!.toStringAsFixed(6)}',
+                            style: const TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Кнопка установки геолокации
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Colors.blue, Color(0xFF1E88E5)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: isGettingLocation ? null : () async {
+                        setState(() => isGettingLocation = true);
+                        try {
+                          final position = await AttendanceService.getCurrentLocation()
+                              .timeout(const Duration(seconds: 15), onTimeout: () {
+                            throw Exception('Таймаут получения геолокации');
+                          });
+                          setState(() {
+                            latitude = position.latitude;
+                            longitude = position.longitude;
+                            isGettingLocation = false;
+                          });
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, color: Colors.white),
+                                    SizedBox(width: 12),
+                                    Text('Геолокация установлена'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setState(() => isGettingLocation = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.error_rounded, color: Colors.white),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: Text('Ошибка: $e')),
+                                  ],
+                                ),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isGettingLocation)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            else
+                              const Icon(Icons.my_location_rounded, color: Colors.white),
+                            const SizedBox(width: 10),
+                            Text(
+                              isGettingLocation ? 'Получение...' : 'Установить текущую геолокацию',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF004D40), Color(0xFF00695C)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    // Валидация
+                    if (nameController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Введите название магазина'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+                    if (addressController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Введите адрес магазина'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context, {
+                      'name': nameController.text.trim(),
+                      'address': addressController.text.trim(),
+                      'inn': innController.text.trim(),
+                      'directorName': directorController.text.trim(),
+                      'latitude': latitude,
+                      'longitude': longitude,
+                      'morningShiftStart': morningStart,
+                      'morningShiftEnd': morningEnd,
+                      'dayShiftStart': dayStart,
+                      'dayShiftEnd': dayEnd,
+                      'nightShiftStart': nightStart,
+                      'nightShiftEnd': nightEnd,
+                      'morningAbbreviation': morningAbbreviationController.text.trim(),
+                      'dayAbbreviation': dayAbbreviationController.text.trim(),
+                      'nightAbbreviation': nightAbbreviationController.text.trim(),
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Text(
+                      'Создать',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      try {
+        // 1. Создаём магазин
+        final newShop = await ShopService.createShop(
+          name: result['name'] as String,
+          address: result['address'] as String,
+          latitude: result['latitude'] as double?,
+          longitude: result['longitude'] as double?,
+        );
+
+        if (newShop == null) {
+          throw Exception('Не удалось создать магазин');
+        }
+
+        // 2. Сохраняем настройки магазина
+        final settings = ShopSettings(
+          shopAddress: newShop.address,
+          address: result['address'] as String,
+          inn: result['inn'] as String? ?? '',
+          directorName: result['directorName'] as String? ?? '',
+          lastDocumentNumber: 0,
+          morningShiftStart: result['morningShiftStart'] as TimeOfDay?,
+          morningShiftEnd: result['morningShiftEnd'] as TimeOfDay?,
+          dayShiftStart: result['dayShiftStart'] as TimeOfDay?,
+          dayShiftEnd: result['dayShiftEnd'] as TimeOfDay?,
+          nightShiftStart: result['nightShiftStart'] as TimeOfDay?,
+          nightShiftEnd: result['nightShiftEnd'] as TimeOfDay?,
+          morningAbbreviation: result['morningAbbreviation']?.toString().isEmpty == true
+              ? null
+              : result['morningAbbreviation']?.toString(),
+          dayAbbreviation: result['dayAbbreviation']?.toString().isEmpty == true
+              ? null
+              : result['dayAbbreviation']?.toString(),
+          nightAbbreviation: result['nightAbbreviation']?.toString().isEmpty == true
+              ? null
+              : result['nightAbbreviation']?.toString(),
+        );
+
+        await _saveShopSettings(settings);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Магазин "${newShop.name}" создан')),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+          await _loadShops();
+        }
+      } catch (e) {
+        Logger.error('Ошибка создания магазина', e);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Ошибка: $e')),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<bool> _saveShopSettings(ShopSettings settings) async {
     try {
       Logger.debug('Сохранение настроек магазина: ${settings.shopAddress}');
@@ -170,6 +591,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 child: Text(
                   shop.name,
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -179,6 +602,53 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ID магазина (для синхронизации DBF)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tag, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'ID: ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      Expanded(
+                        child: SelectableText(
+                          shop.id,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 16),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: shop.id));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('ID скопирован'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 // Основные настройки
                 _buildSectionHeader('Основные данные', Icons.business_rounded),
                 const SizedBox(height: 12),
@@ -565,7 +1035,12 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Магазин: ${shop.name}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      'Магазин: ${shop.name}',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 8),
                     const Divider(height: 1),
                     const SizedBox(height: 8),
@@ -807,7 +1282,7 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -816,16 +1291,20 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              time != null
-                  ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
-                  : 'Не задано',
-              style: TextStyle(
-                color: time != null ? Colors.black87 : Colors.grey,
-                fontWeight: time != null ? FontWeight.w500 : FontWeight.normal,
+            Flexible(
+              child: Text(
+                time != null
+                    ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+                    : '—',
+                style: TextStyle(
+                  color: time != null ? Colors.black87 : Colors.grey,
+                  fontWeight: time != null ? FontWeight.w500 : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            Icon(Icons.access_time_rounded, size: 20, color: color),
+            const SizedBox(width: 4),
+            Icon(Icons.access_time_rounded, size: 18, color: color),
           ],
         ),
       ),
@@ -844,6 +1323,19 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         backgroundColor: const Color(0xFF004D40),
         elevation: 0,
         actions: [
+          // Кнопка добавления магазина
+          Container(
+            margin: const EdgeInsets.only(right: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.add_business_rounded),
+              onPressed: _showAddShopDialog,
+              tooltip: 'Добавить магазин',
+            ),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(

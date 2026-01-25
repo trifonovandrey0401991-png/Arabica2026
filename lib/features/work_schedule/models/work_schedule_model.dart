@@ -57,9 +57,9 @@ extension ShiftTypeExtension on ShiftType {
       case ShiftType.morning:
         return Colors.green;
       case ShiftType.day:
-        return Colors.blue;
+        return Colors.amber; // Желтый для дневных смен
       case ShiftType.evening:
-        return Colors.orange;
+        return Colors.grey; // Серый для вечерних смен
     }
   }
 

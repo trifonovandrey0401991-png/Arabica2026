@@ -148,10 +148,21 @@ def parse_dbf(dbf_path, encoding='cp866'):
                 for field in fields:
                     value = record_data[offset:offset + field['size']]
 
-                    try:
-                        value = value.decode(encoding, errors='ignore').strip()
-                    except:
-                        value = value.decode('latin-1', errors='ignore').strip()
+                    # Пробуем разные кодировки для кириллицы
+                    decoded = None
+                    for enc in [encoding, 'cp1251', 'cp866', 'utf-8']:
+                        try:
+                            decoded = value.decode(enc).strip()
+                            # Проверяем что декодирование корректно (нет символов замены)
+                            if '\ufffd' not in decoded:
+                                break
+                        except:
+                            continue
+
+                    if decoded is None:
+                        decoded = value.decode('latin-1', errors='ignore').strip()
+
+                    value = decoded
 
                     # Преобразуем числовые поля
                     if field['type'] == 'N':
