@@ -21,6 +21,12 @@ class _AttendancePointsSettingsPageState
   double _onTimePoints = 0.5;
   double _latePoints = -1;
 
+  // Time window settings
+  String _morningStartTime = '07:00';
+  String _morningEndTime = '09:00';
+  String _eveningStartTime = '19:00';
+  String _eveningEndTime = '21:00';
+
   // Gradient colors for this page
   static const _gradientColors = [Color(0xFF11998e), Color(0xFF38ef7d)];
 
@@ -40,6 +46,10 @@ class _AttendancePointsSettingsPageState
         _settings = settings;
         _onTimePoints = settings.onTimePoints;
         _latePoints = settings.latePoints;
+        _morningStartTime = settings.morningStartTime;
+        _morningEndTime = settings.morningEndTime;
+        _eveningStartTime = settings.eveningStartTime;
+        _eveningEndTime = settings.eveningEndTime;
         _isLoading = false;
       });
     } catch (e) {
@@ -62,6 +72,10 @@ class _AttendancePointsSettingsPageState
       final result = await PointsSettingsService.saveAttendancePointsSettings(
         onTimePoints: _onTimePoints,
         latePoints: _latePoints,
+        morningStartTime: _morningStartTime,
+        morningEndTime: _morningEndTime,
+        eveningStartTime: _eveningStartTime,
+        eveningEndTime: _eveningEndTime,
       );
 
       if (result != null) {
@@ -216,6 +230,12 @@ class _AttendancePointsSettingsPageState
                           accentColor: Colors.red,
                           icon: Icons.access_time_filled,
                         ),
+                        const SizedBox(height: 24),
+
+                        // Time windows section
+                        _buildSectionTitle('Временные окна посещаемости'),
+                        const SizedBox(height: 12),
+                        _buildTimeWindowsSection(),
                         const SizedBox(height: 24),
 
                         // Preview section
@@ -384,6 +404,191 @@ class _AttendancePointsSettingsPageState
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeWindowsSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          // Morning shift
+          _buildTimeWindowRow(
+            icon: Icons.wb_sunny_outlined,
+            iconColor: Colors.orange,
+            title: 'Утренняя смена',
+            startTime: _morningStartTime,
+            endTime: _morningEndTime,
+            onStartChanged: (time) => setState(() => _morningStartTime = time),
+            onEndChanged: (time) => setState(() => _morningEndTime = time),
+          ),
+          const SizedBox(height: 16),
+          Divider(color: Colors.grey[200]),
+          const SizedBox(height: 16),
+          // Evening shift
+          _buildTimeWindowRow(
+            icon: Icons.nights_stay_outlined,
+            iconColor: Colors.indigo,
+            title: 'Вечерняя смена',
+            startTime: _eveningStartTime,
+            endTime: _eveningEndTime,
+            onStartChanged: (time) => setState(() => _eveningStartTime = time),
+            onEndChanged: (time) => setState(() => _eveningEndTime = time),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeWindowRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String startTime,
+    required String endTime,
+    required ValueChanged<String> onStartChanged,
+    required ValueChanged<String> onEndChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D3436),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTimePickerButton(
+                label: 'Начало',
+                time: startTime,
+                onChanged: onStartChanged,
+                color: Colors.green,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(Icons.arrow_forward, color: Colors.grey[400], size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTimePickerButton(
+                label: 'Дедлайн',
+                time: endTime,
+                onChanged: onEndChanged,
+                color: Colors.red,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimePickerButton({
+    required String label,
+    required String time,
+    required ValueChanged<String> onChanged,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final parts = time.split(':');
+        final initialTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: initialTime,
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: _gradientColors[0],
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+                ),
+                child: child!,
+              ),
+            );
+          },
+        );
+
+        if (picked != null) {
+          final newTime = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+          onChanged(newTime);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.access_time, size: 18, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

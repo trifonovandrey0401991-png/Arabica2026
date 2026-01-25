@@ -8,14 +8,20 @@ import '../../employees/pages/employees_page.dart';
 import '../../kpi/services/kpi_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
+// Сервисы для проверки активности сотрудника
+import '../../attendance/services/attendance_service.dart';
+import '../../shift_handover/services/shift_handover_report_service.dart';
+import '../../recount/services/recount_service.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
   final String rkoType;
+  final Shop? preselectedShop; // Магазин, выбранный на предыдущем экране
 
   const RKOAmountInputPage({
     super.key,
     required this.rkoType,
+    this.preselectedShop,
   });
 
   @override
@@ -49,7 +55,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
       final employees = await EmployeesPage.loadEmployeesForNotifications();
       final prefs = await SharedPreferences.getInstance();
       final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
-      
+
       if (phone != null && employees.isNotEmpty) {
         // Нормализуем телефон для поиска
         final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
@@ -59,17 +65,26 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           orElse: () => employees.first,
         );
         _employeeName = currentEmployee.name;
-        
-        // Получаем магазин из последней пересменки
-        final shop = await RKOService.getShopFromLastShift(_employeeName!);
-        if (shop != null) {
-          _selectedShop = shop;
+
+        // Если магазин уже выбран на предыдущем экране, используем его
+        if (widget.preselectedShop != null) {
+          _selectedShop = widget.preselectedShop;
+        } else {
+          // Получаем магазин из последней пересменки
+          final shop = await RKOService.getShopFromLastShift(_employeeName!);
+          if (shop != null) {
+            _selectedShop = shop;
+          }
         }
       } else {
         // Fallback: получаем имя из меню "Сотрудники" (единый источник истины)
         final name = await EmployeesPage.getCurrentEmployeeName();
         _employeeName = name;
-        if (name != null) {
+
+        // Если магазин уже выбран на предыдущем экране, используем его
+        if (widget.preselectedShop != null) {
+          _selectedShop = widget.preselectedShop;
+        } else if (name != null) {
           final shop = await RKOService.getShopFromLastShift(name);
           if (shop != null) {
             _selectedShop = shop;
@@ -79,8 +94,8 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
 
       // Загружаем список всех магазинов для выбора
       final shops = await Shop.loadShopsFromGoogleSheets();
-      
-      // Если был выбран магазин из последней пересменки, находим его в списке по адресу
+
+      // Если был выбран магазин, находим его в списке по адресу
       Shop? selectedShopFromList;
       if (_selectedShop != null) {
         selectedShopFromList = shops.firstWhere(
@@ -88,7 +103,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
           orElse: () => shops.isNotEmpty ? shops.first : _selectedShop!,
         );
       }
-      
+
       setState(() {
         _shops = shops;
         _selectedShop = selectedShopFromList ?? (shops.isNotEmpty ? shops.first : null);
@@ -291,6 +306,160 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   void dispose() {
     _amountController.dispose();
     super.dispose();
+  }
+
+  /// Получить список магазинов где была активность сотрудника за последние 24 часа
+  Future<List<_ActivityRecord>> _getRecentActivityShops() async {
+    if (_employeeName == null) return [];
+
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(hours: 24));
+    final activities = <_ActivityRecord>[];
+
+    try {
+      // 1. Проверяем отметки "Я на работе"
+      final attendanceRecords = await AttendanceService.getAttendanceRecords(
+        employeeName: _employeeName,
+      );
+      for (final record in attendanceRecords) {
+        if (record.timestamp.isAfter(yesterday)) {
+          activities.add(_ActivityRecord(
+            shopAddress: record.shopAddress,
+            type: 'Отметка "Я на работе"',
+            timestamp: record.timestamp,
+          ));
+        }
+      }
+
+      // 2. Проверяем пересменки
+      final shiftReports = await ShiftHandoverReportService.getReports(
+        employeeName: _employeeName,
+      );
+      for (final report in shiftReports) {
+        if (report.createdAt.isAfter(yesterday)) {
+          activities.add(_ActivityRecord(
+            shopAddress: report.shopAddress,
+            type: 'Пересменка',
+            timestamp: report.createdAt,
+          ));
+        }
+      }
+
+      // 3. Проверяем пересчёты
+      final recountReports = await RecountService.getReports(
+        employeeName: _employeeName,
+      );
+      for (final report in recountReports) {
+        if (report.completedAt.isAfter(yesterday)) {
+          activities.add(_ActivityRecord(
+            shopAddress: report.shopAddress,
+            type: 'Пересчёт',
+            timestamp: report.completedAt,
+          ));
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка получения активности', e);
+    }
+
+    return activities;
+  }
+
+  /// Проверить выбор магазина и показать предупреждение если нужно
+  Future<bool> _validateShopSelection(Shop selectedShop) async {
+    final activities = await _getRecentActivityShops();
+
+    if (activities.isEmpty) return true; // Нет активности — разрешаем
+
+    // Находим активности НЕ на выбранном магазине
+    final otherShopActivities = activities.where(
+      (a) => a.shopAddress.toLowerCase().trim() != selectedShop.address.toLowerCase().trim()
+    ).toList();
+
+    if (otherShopActivities.isEmpty) return true; // Вся активность на выбранном магазине
+
+    // Группируем по магазинам
+    final shopActivities = <String, List<_ActivityRecord>>{};
+    for (final activity in otherShopActivities) {
+      shopActivities.putIfAbsent(activity.shopAddress, () => []).add(activity);
+    }
+
+    // Показываем диалог
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            const SizedBox(width: 12),
+            const Text('Внимание'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Вы уверены что ваш выбор правильный?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              const Text('За последние 24 часа у вас была активность на другом магазине:'),
+              const SizedBox(height: 12),
+              ...shopActivities.entries.map((entry) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.store, size: 18, color: Colors.orange[700]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            entry.key,
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange[800]),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ...entry.value.map((a) => Padding(
+                      padding: const EdgeInsets.only(left: 26),
+                      child: Text(
+                        '• ${a.type}',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                      ),
+                    )),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: _primaryColor),
+            child: const Text('Да, продолжить', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    return confirmed ?? false;
   }
 
   /// Иконка и цвет в зависимости от типа РКО
@@ -574,10 +743,27 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
                     ),
                   );
                 }).toList(),
-                onChanged: (shop) {
+                onChanged: (shop) async {
+                  if (shop == null) return;
+
+                  // Сохраняем предыдущий выбор
+                  final previousShop = _selectedShop;
+
+                  // Временно устанавливаем новый магазин
                   setState(() {
                     _selectedShop = shop;
                   });
+
+                  // Проверяем активность (только для "ЗП после смены")
+                  if (widget.rkoType.contains('смены')) {
+                    final confirmed = await _validateShopSelection(shop);
+                    if (!confirmed && previousShop != null) {
+                      // Отменяем выбор
+                      setState(() {
+                        _selectedShop = previousShop;
+                      });
+                    }
+                  }
                 },
                 isExpanded: true,
               ),
@@ -836,3 +1022,15 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   }
 }
 
+/// Запись об активности сотрудника
+class _ActivityRecord {
+  final String shopAddress;
+  final String type;
+  final DateTime timestamp;
+
+  _ActivityRecord({
+    required this.shopAddress,
+    required this.type,
+    required this.timestamp,
+  });
+}

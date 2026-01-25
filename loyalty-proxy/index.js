@@ -2764,6 +2764,159 @@ app.get('/api/attendance/can-mark', (req, res) => {
   }
 });
 
+// ==================== GPS ATTENDANCE NOTIFICATIONS ====================
+
+// Кэш отправленных GPS-уведомлений (phone_date -> { shopAddress, notifiedAt })
+const gpsNotificationCache = new Map();
+
+// Функция расчёта расстояния между координатами (Haversine formula)
+function calculateGpsDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Радиус Земли в метрах
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// POST /api/attendance/gps-check - Проверка GPS и отправка уведомления
+app.post('/api/attendance/gps-check', async (req, res) => {
+  try {
+    const { lat, lng, phone, employeeName } = req.body;
+
+    console.log(`[GPS-Check] Request: lat=${lat}, lng=${lng}, phone=${phone}, employee=${employeeName}`);
+
+    if (!lat || !lng || !phone) {
+      return res.json({ success: true, notified: false, reason: 'missing_params' });
+    }
+
+    // 1. Загружаем список магазинов
+    const shopsFile = path.join(SHOPS_DIR, 'shops.json');
+    let shops = [];
+    if (fs.existsSync(shopsFile)) {
+      try {
+        const data = fs.readFileSync(shopsFile, 'utf8');
+        const parsed = JSON.parse(data);
+        shops = parsed.shops || parsed || [];
+      } catch (e) {
+        console.error('[GPS-Check] Error loading shops:', e.message);
+      }
+    }
+
+    if (shops.length === 0) {
+      console.log('[GPS-Check] No shops found');
+      return res.json({ success: true, notified: false, reason: 'no_shops' });
+    }
+
+    // 2. Находим ближайший магазин (в пределах 750м)
+    let nearestShop = null;
+    let minDistance = Infinity;
+    const MAX_DISTANCE = 750; // метров
+
+    for (const shop of shops) {
+      if (shop.latitude && shop.longitude) {
+        const distance = calculateGpsDistance(lat, lng, shop.latitude, shop.longitude);
+        if (distance < minDistance && distance <= MAX_DISTANCE) {
+          minDistance = distance;
+          nearestShop = shop;
+        }
+      }
+    }
+
+    if (!nearestShop) {
+      console.log('[GPS-Check] Employee not near any shop');
+      return res.json({ success: true, notified: false, reason: 'not_near_shop' });
+    }
+
+    console.log(`[GPS-Check] Nearest shop: ${nearestShop.name} (${Math.round(minDistance)}m)`);
+
+    // 3. Проверяем расписание - есть ли смена сегодня на этом магазине
+    const today = new Date().toISOString().split('T')[0];
+    const monthKey = today.substring(0, 7); // YYYY-MM
+    const scheduleFile = path.join('/var/www/work-schedules', `${monthKey}.json`);
+
+    let hasShiftToday = false;
+    if (fs.existsSync(scheduleFile)) {
+      try {
+        const data = fs.readFileSync(scheduleFile, 'utf8');
+        const schedule = JSON.parse(data);
+        const entries = schedule.entries || [];
+
+        // Ищем смену по телефону и адресу магазина
+        hasShiftToday = entries.some(entry => {
+          const entryPhone = (entry.employeePhone || '').replace(/\D/g, '');
+          const checkPhone = phone.replace(/\D/g, '');
+          return (entryPhone === checkPhone || entryPhone.endsWith(checkPhone.slice(-10))) &&
+                 entry.shopAddress === nearestShop.address &&
+                 entry.date === today;
+        });
+      } catch (e) {
+        console.error('[GPS-Check] Error loading schedule:', e.message);
+      }
+    }
+
+    if (!hasShiftToday) {
+      console.log(`[GPS-Check] No shift today for ${phone} at ${nearestShop.address}`);
+      return res.json({ success: true, notified: false, reason: 'no_shift_here' });
+    }
+
+    // 4. Проверяем есть ли pending отчёт для этого магазина
+    const pendingReports = getPendingAttendanceReports();
+    const hasPending = pendingReports.some(r =>
+      r.shopAddress === nearestShop.address && r.status === 'pending'
+    );
+
+    if (!hasPending) {
+      console.log(`[GPS-Check] No pending attendance report for ${nearestShop.address}`);
+      return res.json({ success: true, notified: false, reason: 'no_pending' });
+    }
+
+    // 5. Проверяем кэш (чтобы не спамить)
+    const cacheKey = `${phone}_${today}`;
+    const cached = gpsNotificationCache.get(cacheKey);
+    if (cached && cached.shopAddress === nearestShop.address) {
+      console.log(`[GPS-Check] Already notified ${phone} for ${nearestShop.address} today`);
+      return res.json({ success: true, notified: false, reason: 'already_notified' });
+    }
+
+    // 6. Отправляем push-уведомление
+    const title = 'Не забудьте отметиться!';
+    const body = `Я Вас вижу на магазине ${nearestShop.name || nearestShop.address}`;
+
+    if (sendPushToPhone) {
+      try {
+        await sendPushToPhone(phone, title, body, {
+          type: 'attendance_reminder',
+          shopAddress: nearestShop.address
+        });
+        console.log(`[GPS-Check] Push sent to ${phone} for ${nearestShop.address}`);
+      } catch (e) {
+        console.error('[GPS-Check] Error sending push:', e.message);
+      }
+    }
+
+    // 7. Записываем в кэш
+    gpsNotificationCache.set(cacheKey, {
+      shopAddress: nearestShop.address,
+      notifiedAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      notified: true,
+      shop: nearestShop.address,
+      shopName: nearestShop.name,
+      distance: Math.round(minDistance)
+    });
+
+  } catch (error) {
+    console.error('[GPS-Check] Error:', error);
+    res.json({ success: true, notified: false, reason: 'error' });
+  }
+});
+
 // Endpoint для редактора координат
 app.get('/rko_coordinates_editor.html', (req, res) => {
   res.sendFile('/var/www/html/rko_coordinates_editor.html');

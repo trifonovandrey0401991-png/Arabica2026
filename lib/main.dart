@@ -6,6 +6,7 @@ import 'shared/providers/cart_provider.dart';
 import 'shared/providers/order_provider.dart';
 import 'shared/dialogs/notification_required_dialog.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/background_gps_service.dart';
 import 'features/loyalty/services/loyalty_service.dart';
 import 'features/loyalty/services/loyalty_storage.dart';
 import 'features/shifts/services/shift_sync_service.dart';
@@ -56,14 +57,22 @@ void main() async {
   }
   
   await NotificationService.initialize();
-  
+
+  // Инициализация фоновой проверки GPS (для уведомлений "Я на работе")
+  try {
+    await BackgroundGpsService.initialize();
+    Logger.success('BackgroundGpsService инициализирован');
+  } catch (e) {
+    Logger.warning('Ошибка инициализации BackgroundGpsService: $e');
+  }
+
   // Синхронизация отчетов пересменки в фоне (не блокирует запуск)
   Future.microtask(() {
     ShiftSyncService.syncAllReports().catchError((e) {
       Logger.warning('Ошибка синхронизации при запуске: $e');
     });
   });
-  
+
   runApp(const ArabicaApp());
 }
 

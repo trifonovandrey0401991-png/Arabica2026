@@ -132,4 +132,46 @@ class RKOReportsService {
       return [];
     }
   }
+
+  /// Получить список pending (ожидающих) РКО
+  static Future<List<dynamic>> getPendingRKOs() async {
+    try {
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/pending';
+      Logger.debug('Запрос pending РКО: $url');
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('Получено pending РКО: ${result['count']}');
+          return result['items'] ?? [];
+        }
+      }
+      return [];
+    } catch (e) {
+      Logger.error('Ошибка получения pending РКО', e);
+      return [];
+    }
+  }
+
+  /// Получить список failed (не прошедших) РКО
+  static Future<List<dynamic>> getFailedRKOs() async {
+    try {
+      final url = '${ApiConstants.serverUrl}$baseEndpoint/failed';
+      Logger.debug('Запрос failed РКО: $url');
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('Получено failed РКО: ${result['count']}');
+          return result['items'] ?? [];
+        }
+      }
+      return [];
+    } catch (e) {
+      Logger.error('Ошибка получения failed РКО', e);
+      return [];
+    }
+  }
 }

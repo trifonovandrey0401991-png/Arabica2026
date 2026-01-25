@@ -28,6 +28,7 @@ class _ShiftHandoverPointsSettingsPageState
   String _eveningStartTime = '14:00';
   String _eveningEndTime = '23:00';
   double _missedPenalty = -3.0;
+  int _adminReviewTimeout = 4; // Время на проверку админом (в часах)
 
   // Gradient colors for this page (pink theme)
   static const _gradientColors = [Color(0xFFf093fb), Color(0xFFf5576c)];
@@ -54,6 +55,7 @@ class _ShiftHandoverPointsSettingsPageState
         _eveningStartTime = settings.eveningStartTime;
         _eveningEndTime = settings.eveningEndTime;
         _missedPenalty = settings.missedPenalty;
+        _adminReviewTimeout = settings.adminReviewTimeout;
         _isLoading = false;
       });
     } catch (e) {
@@ -83,6 +85,7 @@ class _ShiftHandoverPointsSettingsPageState
         eveningStartTime: _eveningStartTime,
         eveningEndTime: _eveningEndTime,
         missedPenalty: _missedPenalty,
+        adminReviewTimeout: _adminReviewTimeout,
       );
 
       if (result != null) {
@@ -286,6 +289,12 @@ class _ShiftHandoverPointsSettingsPageState
                           accentColor: Colors.deepOrange,
                           icon: Icons.warning_amber_outlined,
                         ),
+                        const SizedBox(height: 24),
+
+                        // Admin review timeout section
+                        _buildSectionTitle('Время на проверку админом'),
+                        const SizedBox(height: 12),
+                        _buildAdminReviewTimeoutSection(),
                         const SizedBox(height: 24),
 
                         // Preview section
@@ -762,6 +771,159 @@ class _ShiftHandoverPointsSettingsPageState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAdminReviewTimeoutSection() {
+    // Форматирование часов для отображения
+    String formatHours(int hours) {
+      if (hours == 1 || hours == 21) return '$hours час';
+      if (hours >= 2 && hours <= 4 || hours >= 22 && hours <= 24) return '$hours часа';
+      return '$hours часов';
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.admin_panel_settings_outlined,
+                  color: Colors.purple,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Таймаут проверки',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D3436),
+                      ),
+                    ),
+                    const Text(
+                      'Время админу на оценку отчёта',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Текущее значение
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.purple, Colors.deepPurple],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  formatHours(_adminReviewTimeout),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Слайдер
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: Colors.purple,
+              inactiveTrackColor: Colors.purple.withOpacity(0.2),
+              thumbColor: Colors.purple,
+              overlayColor: Colors.purple.withOpacity(0.2),
+              trackHeight: 6,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+            ),
+            child: Slider(
+              value: _adminReviewTimeout.toDouble(),
+              min: 1,
+              max: 24,
+              divisions: 23,
+              onChanged: (value) {
+                setState(() => _adminReviewTimeout = value.round());
+              },
+            ),
+          ),
+          // Метки
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('1 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('6 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('12 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('18 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text('24 ч', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.amber[700], size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Если админ не оценит отчёт за ${formatHours(_adminReviewTimeout)}, статус изменится на "Отклонено" и сотрудник получит штраф',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber[900],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

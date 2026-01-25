@@ -539,26 +539,41 @@ async function sendAdminFailedNotification(count, failedShops) {
 }
 
 // ============================================
-// 6. Cleanup Failed Reports (at 23:59)
+// 6. Cleanup ALL Reports (at 23:59)
 // ============================================
 function cleanupFailedReports() {
-  const reports = loadTodayPendingReports();
+  // Удаляем ВСЕ файлы в папке pending (и failed, и оставшиеся pending)
   let removedCount = 0;
 
-  for (const report of reports) {
-    if (report.status === 'failed' && report._filePath) {
-      try {
-        fs.unlinkSync(report._filePath);
-        removedCount++;
-      } catch (e) {
-        console.error(`[RkoScheduler] Error removing file ${report._filePath}:`, e.message);
+  try {
+    const files = fs.readdirSync(RKO_PENDING_DIR);
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          fs.unlinkSync(path.join(RKO_PENDING_DIR, file));
+          removedCount++;
+        } catch (e) {
+          console.error(`[RkoScheduler] Error removing file ${file}:`, e.message);
+        }
       }
     }
+  } catch (e) {
+    console.error('[RkoScheduler] Error reading pending directory:', e.message);
   }
 
   if (removedCount > 0) {
-    console.log(`[RkoScheduler] Cleanup: removed ${removedCount} failed reports`);
+    console.log(`[RkoScheduler] Cleanup: removed ${removedCount} RKO files`);
   }
+
+  // Также сбрасываем state для нового дня
+  const emptyState = {
+    lastMorningGeneration: null,
+    lastEveningGeneration: null,
+    lastCleanup: new Date().toISOString(),
+    lastCheck: new Date().toISOString()
+  };
+  saveState(emptyState);
+  console.log('[RkoScheduler] State reset for new day');
 
   return removedCount;
 }
