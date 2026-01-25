@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/shift_handover_report_model.dart';
 import '../models/pending_shift_handover_model.dart';
+import '../models/pending_shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
+import '../services/pending_shift_handover_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
 import 'shift_handover_report_view_page.dart';
@@ -145,17 +147,74 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     }
   }
 
-  /// Вычислить непройденные и просроченные сдачи смен за сегодня
-  /// Логика: ВСЕ непройденные смены показываются в "Не пройдены",
-  /// а когда дедлайн (из настроек "Сдача Смены") проходит - переносятся в "Не в срок"
-  void _calculatePendingHandovers() {
+  /// Загрузить непройденные и просроченные сдачи смен с сервера
+  Future<void> _loadPendingHandovers() async {
+    Logger.info('Загрузка сдач смен с сервера...');
+
+    // Очищаем списки
+    _pendingHandovers = [];
+    _overdueHandovers = [];
+
+    try {
+      // Загружаем pending отчёты с сервера
+      final pendingReports = await PendingShiftHandoverService.getPendingReports();
+      Logger.info('Получено pending отчётов: ${pendingReports.length}');
+
+      for (final report in pendingReports) {
+        _pendingHandovers.add(PendingShiftHandover(
+          shopAddress: report.shopAddress,
+          shiftType: report.shiftType,
+          shiftName: report.shiftType == 'morning' ? 'Утренняя смена' : 'Вечерняя смена',
+        ));
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки pending отчётов', e);
+      // Fallback: локальное вычисление если сервер недоступен
+      _calculatePendingHandoversLocal();
+      return;
+    }
+
+    try {
+      // Загружаем failed отчёты с сервера
+      final failedReports = await PendingShiftHandoverService.getFailedReports();
+      Logger.info('Получено failed отчётов: ${failedReports.length}');
+
+      for (final report in failedReports) {
+        _overdueHandovers.add(PendingShiftHandover(
+          shopAddress: report.shopAddress,
+          shiftType: report.shiftType,
+          shiftName: report.shiftType == 'morning' ? 'Утренняя смена' : 'Вечерняя смена',
+        ));
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки failed отчётов', e);
+    }
+
+    // Сортируем: сначала по магазину, потом по смене
+    void sortHandovers(List<PendingShiftHandover> list) {
+      list.sort((a, b) {
+        final shopCompare = a.shopAddress.compareTo(b.shopAddress);
+        if (shopCompare != 0) return shopCompare;
+        return a.shiftType == 'morning' ? -1 : 1;
+      });
+    }
+
+    sortHandovers(_pendingHandovers);
+    sortHandovers(_overdueHandovers);
+
+    Logger.info('Непройденных сдач смен (в срок): ${_pendingHandovers.length}');
+    Logger.info('Просроченных сдач смен (не в срок): ${_overdueHandovers.length}');
+  }
+
+  /// Локальное вычисление (fallback если сервер недоступен)
+  void _calculatePendingHandoversLocal() {
     final now = DateTime.now();
     final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     final settings = _handoverSettings ?? ShiftHandoverPointsSettings.defaults();
 
-    Logger.info('Вычисление сдач смен. Магазинов: ${_allShops.length}');
-    Logger.info('Дедлайны из настроек "Сдача Смены": утро до ${settings.morningEndTime}, вечер до ${settings.eveningEndTime}');
+    Logger.info('Локальное вычисление сдач смен. Магазинов: ${_allShops.length}');
+    Logger.info('Дедлайны из настроек: утро до ${settings.morningEndTime}, вечер до ${settings.eveningEndTime}');
 
     // Собираем пройденные сдачи смен за сегодня (ключ: магазин_смена)
     final completedHandovers = <String>{};
@@ -165,20 +224,16 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         final shiftType = _getShiftType(report.createdAt);
         final key = '${report.shopAddress.toLowerCase().trim()}_$shiftType';
         completedHandovers.add(key);
-        Logger.debug('Найден отчёт за сегодня: ${report.shopAddress} - $shiftType');
       }
     }
 
-    Logger.info('Пройденных сдач смен сегодня: ${completedHandovers.length}');
-
-    // Очищаем списки
     _pendingHandovers = [];
     _overdueHandovers = [];
 
     for (final shop in _allShops) {
       final shopKey = shop.address.toLowerCase().trim();
 
-      // Утренняя смена - показываем ВСЕГДА если не пройдена
+      // Утренняя смена
       final morningKey = '${shopKey}_morning';
       if (!completedHandovers.contains(morningKey)) {
         final pending = PendingShiftHandover(
@@ -187,7 +242,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           shiftName: 'Утренняя смена',
         );
 
-        // Проверяем, прошёл ли дедлайн (morningEndTime из настроек "Сдача Смены")
         if (_isOverdue('morning', now, settings)) {
           _overdueHandovers.add(pending);
         } else {
@@ -195,7 +249,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         }
       }
 
-      // Вечерняя смена - показываем ВСЕГДА если не пройдена
+      // Вечерняя смена
       final eveningKey = '${shopKey}_evening';
       if (!completedHandovers.contains(eveningKey)) {
         final pending = PendingShiftHandover(
@@ -204,7 +258,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           shiftName: 'Вечерняя смена',
         );
 
-        // Проверяем, прошёл ли дедлайн (eveningEndTime из настроек "Сдача Смены")
         if (_isOverdue('evening', now, settings)) {
           _overdueHandovers.add(pending);
         } else {
@@ -213,7 +266,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       }
     }
 
-    // Сортируем: сначала по магазину, потом по смене
+    // Сортируем
     void sortHandovers(List<PendingShiftHandover> list) {
       list.sort((a, b) {
         final shopCompare = a.shopAddress.compareTo(b.shopAddress);
@@ -299,14 +352,14 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       _allReports = reportsMap.values.toList();
       _allReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-      // Вычисляем непройденные сдачи смен за сегодня (магазин + смена)
-      _calculatePendingHandovers();
+      // Загружаем непройденные сдачи смен с сервера
+      await _loadPendingHandovers();
 
       Logger.success('Всего отчетов после объединения: ${_allReports.length}');
     } catch (e) {
       Logger.error('Ошибка загрузки отчетов', e);
       _allReports = await ShiftHandoverReport.loadAllLocal();
-      _calculatePendingHandovers();
+      await _loadPendingHandovers();
     }
 
     if (mounted) {

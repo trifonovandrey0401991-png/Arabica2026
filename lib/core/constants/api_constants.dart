@@ -43,6 +43,8 @@ class ApiConstants {
   static const String shiftHandoverReportsEndpoint = '/api/shift-handover-reports';
   static const String shiftHandoverQuestionsEndpoint = '/api/shift-handover-questions';
   static const String pendingShiftHandoverReportsEndpoint = '/api/pending-shift-handover-reports';
+  static const String shiftHandoverPendingEndpoint = '/api/shift-handover/pending';
+  static const String shiftHandoverFailedEndpoint = '/api/shift-handover/failed';
 
   // Endpoints - Recount
   static const String recountReportsEndpoint = '/api/recount-reports';

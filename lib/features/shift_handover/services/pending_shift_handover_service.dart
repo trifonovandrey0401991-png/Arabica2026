@@ -4,24 +4,23 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 class PendingShiftHandoverService {
-  static const String baseEndpoint = ApiConstants.pendingShiftHandoverReportsEndpoint;
-
-  /// Получить список непройденных сдач смен за сегодня
+  /// Получить список непройденных сдач смен (pending)
   static Future<List<PendingShiftHandoverReport>> getPendingReports() async {
     Logger.debug('📥 Загрузка непройденных сдач смен...');
     return await BaseHttpService.getList<PendingShiftHandoverReport>(
-      endpoint: baseEndpoint,
+      endpoint: ApiConstants.shiftHandoverPendingEndpoint,
       fromJson: (json) => PendingShiftHandoverReport.fromJson(json),
-      listKey: 'reports',
+      listKey: 'items',
     );
   }
 
-  /// Сгенерировать сдачи смен на сегодня (ручной вызов)
-  static Future<bool> generateDailyReports() async {
-    Logger.debug('📤 Генерация сдач смен на сегодня...');
-    return await BaseHttpService.simplePost(
-      endpoint: '$baseEndpoint/generate',
-      body: {},
+  /// Получить список просроченных сдач смен (failed)
+  static Future<List<PendingShiftHandoverReport>> getFailedReports() async {
+    Logger.debug('📥 Загрузка просроченных сдач смен...');
+    return await BaseHttpService.getList<PendingShiftHandoverReport>(
+      endpoint: ApiConstants.shiftHandoverFailedEndpoint,
+      fromJson: (json) => PendingShiftHandoverReport.fromJson(json),
+      listKey: 'items',
     );
   }
 }
