@@ -31,6 +31,12 @@ const SHOPS_DIR = '/var/www/shops';
 const POINTS_SETTINGS_DIR = '/var/www/points-settings';
 const SHIFT_HANDOVER_STATE_DIR = '/var/www/shift-handover-automation-state';
 const STATE_FILE = path.join(SHIFT_HANDOVER_STATE_DIR, 'state.json');
+const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
+const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
+
+// Penalty Constants
+const PENALTY_CATEGORY = 'shift_handover_missed_penalty';
+const PENALTY_CATEGORY_NAME = 'Сдача смены - пропуск';
 
 // Constants
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // Проверка каждые 5 минут
@@ -387,6 +393,9 @@ async function checkPendingDeadlines() {
       });
 
       console.log(`[ShiftHandoverScheduler] FAILED: ${report.shopName} (${report.shiftType}), deadline was ${report.deadline}`);
+
+      // Assign penalty to employee from work schedule
+      await assignPenaltyFromSchedule(report);
     }
   }
 
@@ -501,7 +510,129 @@ function cleanupFailedReports() {
 }
 
 // ============================================
-// 5. Admin Notifications
+// 5. Assign Penalty from Work Schedule
+// ============================================
+async function assignPenaltyFromSchedule(report) {
+  const settings = getShiftHandoverSettings();
+  const today = getMoscowDateString();
+  const monthKey = today.substring(0, 7); // YYYY-MM
+
+  // Load work schedule for this month
+  const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
+  const schedule = loadJsonFile(scheduleFile, { entries: [] });
+
+  if (!schedule.entries || schedule.entries.length === 0) {
+    console.log(`[ShiftHandoverScheduler] No work schedule found for ${monthKey}, cannot assign penalty`);
+    return null;
+  }
+
+  // Find employee assigned to this shop/shift/date
+  const entry = schedule.entries.find(e =>
+    e.shopAddress && report.shopAddress &&
+    e.shopAddress.toLowerCase().trim() === report.shopAddress.toLowerCase().trim() &&
+    e.date === today &&
+    e.shiftType === report.shiftType
+  );
+
+  if (!entry) {
+    console.log(`[ShiftHandoverScheduler] No schedule entry found for ${report.shopAddress}, ${today}, ${report.shiftType}`);
+    return null;
+  }
+
+  // Create penalty
+  const penalty = createPenalty({
+    employeeId: entry.employeeId,
+    employeeName: entry.employeeName,
+    employeePhone: entry.phone || entry.employeePhone,
+    shopAddress: report.shopAddress,
+    points: settings.missedPenalty,
+    reason: `Не сдана ${report.shiftType === 'morning' ? 'утренняя' : 'вечерняя'} смена`,
+    sourceId: report.id
+  });
+
+  // Send push notification to employee
+  if (penalty && entry.phone) {
+    await sendEmployeePenaltyNotification(entry.phone, entry.employeeName, settings.missedPenalty, report.shiftType);
+  }
+
+  return penalty;
+}
+
+// ============================================
+// 6. Create Penalty
+// ============================================
+function createPenalty({ employeeId, employeeName, employeePhone, shopAddress, points, reason, sourceId }) {
+  const now = new Date();
+  const today = getMoscowDateString();
+  const monthKey = today.substring(0, 7);
+
+  const penalty = {
+    id: `penalty_sh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type: 'employee',
+    entityId: employeeId,
+    entityName: employeeName,
+    shopAddress: shopAddress,
+    employeeName: employeeName,
+    employeePhone: employeePhone,
+    category: PENALTY_CATEGORY,
+    categoryName: PENALTY_CATEGORY_NAME,
+    date: today,
+    points: points,
+    reason: reason,
+    sourceId: sourceId,
+    sourceType: 'shift_handover',
+    createdAt: now.toISOString()
+  };
+
+  // Ensure directory exists
+  ensureDirectoryExists(EFFICIENCY_PENALTIES_DIR);
+
+  // Load existing penalties
+  const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
+  let penalties = loadJsonFile(penaltiesFile, []);
+
+  // Check for duplicate
+  const exists = penalties.some(p => p.sourceId === sourceId);
+  if (exists) {
+    console.log(`[ShiftHandoverScheduler] Penalty already exists for ${sourceId}, skipping`);
+    return null;
+  }
+
+  penalties.push(penalty);
+  saveJsonFile(penaltiesFile, penalties);
+
+  console.log(`[ShiftHandoverScheduler] Created penalty for ${employeeName}: ${points} points (${reason})`);
+  return penalty;
+}
+
+// ============================================
+// 7. Employee Penalty Notification
+// ============================================
+async function sendEmployeePenaltyNotification(employeePhone, employeeName, points, shiftType) {
+  const shiftLabel = shiftType === 'morning' ? 'утреннюю' : 'вечернюю';
+  const title = 'Штраф за пропуск сдачи смены';
+  const body = `Вам начислен штраф ${points} баллов за пропуск ${shiftLabel} сдачи смены`;
+
+  console.log(`[ShiftHandoverScheduler] PUSH to ${employeePhone}: ${body}`);
+
+  if (sendPushToPhone) {
+    try {
+      await sendPushToPhone(employeePhone, title, body, {
+        type: 'shift_handover_penalty',
+        points: String(points),
+        shiftType: shiftType,
+      });
+      console.log(`[ShiftHandoverScheduler] Penalty notification sent to ${employeePhone}`);
+    } catch (e) {
+      console.error(`[ShiftHandoverScheduler] Error sending penalty notification to ${employeePhone}:`, e.message);
+    }
+  } else {
+    console.log('[ShiftHandoverScheduler] sendPushToPhone not available');
+  }
+}
+
+// ============================================
+// 8. Admin Notifications
 // ============================================
 async function sendAdminFailedNotification(count, failedShops) {
   const shiftTypes = [...new Set(failedShops.map(s => s.shiftType))];
