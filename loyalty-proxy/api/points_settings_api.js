@@ -120,6 +120,8 @@ const DEFAULT_SHIFT_HANDOVER_POINTS_SETTINGS = {
   eveningEndTime: '23:00',     // Дедлайн вечерней сдачи смены
   // Штраф за пропуск сдачи смены
   missedPenalty: -3,           // Баллы за пропуск
+  // Время на проверку админом (часы)
+  adminReviewTimeout: 4,       // По умолчанию 4 часа
   createdAt: null,
   updatedAt: null
 };
@@ -821,7 +823,7 @@ function setupPointsSettingsAPI(app) {
       const {
         minPoints, zeroThreshold, maxPoints,
         morningStartTime, morningEndTime, eveningStartTime, eveningEndTime,
-        missedPenalty
+        missedPenalty, adminReviewTimeout
       } = req.body;
 
       // Validation
@@ -873,6 +875,7 @@ function setupPointsSettingsAPI(app) {
       if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
       if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
       if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+      if (adminReviewTimeout !== undefined) settings.adminReviewTimeout = parseInt(adminReviewTimeout);
 
       settings.updatedAt = new Date().toISOString();
 
