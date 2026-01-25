@@ -58,15 +58,29 @@ class PointsSettingsService {
   static Future<AttendancePointsSettings?> saveAttendancePointsSettings({
     required double onTimePoints,
     required double latePoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) async {
-    Logger.debug('Saving attendance points settings: onTime=$onTimePoints, late=$latePoints');
+    Logger.debug('Saving attendance points settings: onTime=$onTimePoints, late=$latePoints, missedPenalty=$missedPenalty');
+
+    final body = <String, dynamic>{
+      'onTimePoints': onTimePoints,
+      'latePoints': latePoints,
+    };
+
+    // Add time window settings if provided
+    if (morningStartTime != null) body['morningStartTime'] = morningStartTime;
+    if (morningEndTime != null) body['morningEndTime'] = morningEndTime;
+    if (eveningStartTime != null) body['eveningStartTime'] = eveningStartTime;
+    if (eveningEndTime != null) body['eveningEndTime'] = eveningEndTime;
+    if (missedPenalty != null) body['missedPenalty'] = missedPenalty;
 
     return await BaseHttpService.post<AttendancePointsSettings>(
       endpoint: '$baseEndpoint/attendance',
-      body: {
-        'onTimePoints': onTimePoints,
-        'latePoints': latePoints,
-      },
+      body: body,
       fromJson: (json) => AttendancePointsSettings.fromJson(json),
       itemKey: 'settings',
     );
@@ -193,15 +207,29 @@ class PointsSettingsService {
   static Future<RkoPointsSettings?> saveRkoPointsSettings({
     required double hasRkoPoints,
     required double noRkoPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) async {
     Logger.debug('Saving RKO points settings: hasRko=$hasRkoPoints, noRko=$noRkoPoints');
 
+    final body = <String, dynamic>{
+      'hasRkoPoints': hasRkoPoints,
+      'noRkoPoints': noRkoPoints,
+    };
+
+    // Add time window settings if provided
+    if (morningStartTime != null) body['morningStartTime'] = morningStartTime;
+    if (morningEndTime != null) body['morningEndTime'] = morningEndTime;
+    if (eveningStartTime != null) body['eveningStartTime'] = eveningStartTime;
+    if (eveningEndTime != null) body['eveningEndTime'] = eveningEndTime;
+    if (missedPenalty != null) body['missedPenalty'] = missedPenalty;
+
     return await BaseHttpService.post<RkoPointsSettings>(
       endpoint: '$baseEndpoint/rko',
-      body: {
-        'hasRkoPoints': hasRkoPoints,
-        'noRkoPoints': noRkoPoints,
-      },
+      body: body,
       fromJson: (json) => RkoPointsSettings.fromJson(json),
       itemKey: 'settings',
     );
@@ -232,6 +260,7 @@ class PointsSettingsService {
     String? eveningStartTime,
     String? eveningEndTime,
     double? missedPenalty,
+    int? adminReviewTimeout,
   }) async {
     Logger.debug('Saving shift handover points settings: min=$minPoints, zero=$zeroThreshold, max=$maxPoints');
 
@@ -247,6 +276,7 @@ class PointsSettingsService {
     if (eveningStartTime != null) body['eveningStartTime'] = eveningStartTime;
     if (eveningEndTime != null) body['eveningEndTime'] = eveningEndTime;
     if (missedPenalty != null) body['missedPenalty'] = missedPenalty;
+    if (adminReviewTimeout != null) body['adminReviewTimeout'] = adminReviewTimeout;
 
     return await BaseHttpService.post<ShiftHandoverPointsSettings>(
       endpoint: '$baseEndpoint/shift-handover',

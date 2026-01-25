@@ -101,6 +101,16 @@ class AttendancePointsSettings {
   final String category;
   final double onTimePoints;  // Points for arriving on time
   final double latePoints;    // Points for being late (negative)
+
+  // Временные окна для посещаемости
+  final String morningStartTime;   // "07:00" - начало утренней смены
+  final String morningEndTime;     // "09:00" - дедлайн утренней отметки
+  final String eveningStartTime;   // "19:00" - начало вечерней смены
+  final String eveningEndTime;     // "21:00" - дедлайн вечерней отметки
+
+  // Штраф за пропуск отметки
+  final double missedPenalty;      // -2 балла по умолчанию
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -109,6 +119,11 @@ class AttendancePointsSettings {
     this.category = 'attendance',
     required this.onTimePoints,
     required this.latePoints,
+    this.morningStartTime = '07:00',
+    this.morningEndTime = '09:00',
+    this.eveningStartTime = '19:00',
+    this.eveningEndTime = '21:00',
+    this.missedPenalty = -2.0,
     this.createdAt,
     this.updatedAt,
   });
@@ -119,6 +134,11 @@ class AttendancePointsSettings {
       category: json['category'] ?? 'attendance',
       onTimePoints: (json['onTimePoints'] ?? 0.5).toDouble(),
       latePoints: (json['latePoints'] ?? -1).toDouble(),
+      morningStartTime: json['morningStartTime'] ?? '07:00',
+      morningEndTime: json['morningEndTime'] ?? '09:00',
+      eveningStartTime: json['eveningStartTime'] ?? '19:00',
+      eveningEndTime: json['eveningEndTime'] ?? '21:00',
+      missedPenalty: (json['missedPenalty'] ?? -2.0).toDouble(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -133,6 +153,11 @@ class AttendancePointsSettings {
     'category': category,
     'onTimePoints': onTimePoints,
     'latePoints': latePoints,
+    'morningStartTime': morningStartTime,
+    'morningEndTime': morningEndTime,
+    'eveningStartTime': eveningStartTime,
+    'eveningEndTime': eveningEndTime,
+    'missedPenalty': missedPenalty,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -142,6 +167,11 @@ class AttendancePointsSettings {
     return AttendancePointsSettings(
       onTimePoints: 0.5,
       latePoints: -1,
+      morningStartTime: '07:00',
+      morningEndTime: '09:00',
+      eveningStartTime: '19:00',
+      eveningEndTime: '21:00',
+      missedPenalty: -2.0,
     );
   }
 
@@ -153,12 +183,22 @@ class AttendancePointsSettings {
   AttendancePointsSettings copyWith({
     double? onTimePoints,
     double? latePoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) {
     return AttendancePointsSettings(
       id: id,
       category: category,
       onTimePoints: onTimePoints ?? this.onTimePoints,
       latePoints: latePoints ?? this.latePoints,
+      morningStartTime: morningStartTime ?? this.morningStartTime,
+      morningEndTime: morningEndTime ?? this.morningEndTime,
+      eveningStartTime: eveningStartTime ?? this.eveningStartTime,
+      eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      missedPenalty: missedPenalty ?? this.missedPenalty,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -465,6 +505,16 @@ class RkoPointsSettings {
   final String category;
   final double hasRkoPoints;  // Points when RKO exists
   final double noRkoPoints;   // Points when no RKO (negative)
+
+  // Временные окна для РКО
+  final String morningStartTime;   // "07:00" - начало утренней смены
+  final String morningEndTime;     // "14:00" - дедлайн утреннего РКО
+  final String eveningStartTime;   // "14:00" - начало вечерней смены
+  final String eveningEndTime;     // "23:00" - дедлайн вечернего РКО
+
+  // Штраф за пропуск РКО (переход в "Не прошли")
+  final double missedPenalty;      // -3 балла по умолчанию
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -473,6 +523,11 @@ class RkoPointsSettings {
     this.category = 'rko',
     required this.hasRkoPoints,
     required this.noRkoPoints,
+    this.morningStartTime = '07:00',
+    this.morningEndTime = '14:00',
+    this.eveningStartTime = '14:00',
+    this.eveningEndTime = '23:00',
+    this.missedPenalty = -3.0,
     this.createdAt,
     this.updatedAt,
   });
@@ -483,6 +538,11 @@ class RkoPointsSettings {
       category: json['category'] ?? 'rko',
       hasRkoPoints: (json['hasRkoPoints'] ?? 1).toDouble(),
       noRkoPoints: (json['noRkoPoints'] ?? -3).toDouble(),
+      morningStartTime: json['morningStartTime'] ?? '07:00',
+      morningEndTime: json['morningEndTime'] ?? '14:00',
+      eveningStartTime: json['eveningStartTime'] ?? '14:00',
+      eveningEndTime: json['eveningEndTime'] ?? '23:00',
+      missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -497,6 +557,11 @@ class RkoPointsSettings {
     'category': category,
     'hasRkoPoints': hasRkoPoints,
     'noRkoPoints': noRkoPoints,
+    'morningStartTime': morningStartTime,
+    'morningEndTime': morningEndTime,
+    'eveningStartTime': eveningStartTime,
+    'eveningEndTime': eveningEndTime,
+    'missedPenalty': missedPenalty,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -506,6 +571,11 @@ class RkoPointsSettings {
     return RkoPointsSettings(
       hasRkoPoints: 1,
       noRkoPoints: -3,
+      morningStartTime: '07:00',
+      morningEndTime: '14:00',
+      eveningStartTime: '14:00',
+      eveningEndTime: '23:00',
+      missedPenalty: -3.0,
     );
   }
 
@@ -517,12 +587,22 @@ class RkoPointsSettings {
   RkoPointsSettings copyWith({
     double? hasRkoPoints,
     double? noRkoPoints,
+    String? morningStartTime,
+    String? morningEndTime,
+    String? eveningStartTime,
+    String? eveningEndTime,
+    double? missedPenalty,
   }) {
     return RkoPointsSettings(
       id: id,
       category: category,
       hasRkoPoints: hasRkoPoints ?? this.hasRkoPoints,
       noRkoPoints: noRkoPoints ?? this.noRkoPoints,
+      morningStartTime: morningStartTime ?? this.morningStartTime,
+      morningEndTime: morningEndTime ?? this.morningEndTime,
+      eveningStartTime: eveningStartTime ?? this.eveningStartTime,
+      eveningEndTime: eveningEndTime ?? this.eveningEndTime,
+      missedPenalty: missedPenalty ?? this.missedPenalty,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -548,6 +628,9 @@ class ShiftHandoverPointsSettings {
   // Штраф за пропуск сдачи смены
   final double missedPenalty;      // -3 балла по умолчанию
 
+  // Время на проверку админом (в часах)
+  final int adminReviewTimeout;    // 4 часа по умолчанию
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -564,6 +647,7 @@ class ShiftHandoverPointsSettings {
     this.eveningStartTime = '14:00',
     this.eveningEndTime = '23:00',
     this.missedPenalty = -3.0,
+    this.adminReviewTimeout = 4,
     this.createdAt,
     this.updatedAt,
   });
@@ -582,6 +666,7 @@ class ShiftHandoverPointsSettings {
       eveningStartTime: json['eveningStartTime'] ?? '14:00',
       eveningEndTime: json['eveningEndTime'] ?? '23:00',
       missedPenalty: (json['missedPenalty'] ?? -3.0).toDouble(),
+      adminReviewTimeout: json['adminReviewTimeout'] ?? 4,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -604,6 +689,7 @@ class ShiftHandoverPointsSettings {
     'eveningStartTime': eveningStartTime,
     'eveningEndTime': eveningEndTime,
     'missedPenalty': missedPenalty,
+    'adminReviewTimeout': adminReviewTimeout,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -619,6 +705,7 @@ class ShiftHandoverPointsSettings {
       eveningStartTime: '14:00',
       eveningEndTime: '23:00',
       missedPenalty: -3.0,
+      adminReviewTimeout: 4,
     );
   }
 
@@ -647,6 +734,7 @@ class ShiftHandoverPointsSettings {
     String? eveningStartTime,
     String? eveningEndTime,
     double? missedPenalty,
+    int? adminReviewTimeout,
   }) {
     return ShiftHandoverPointsSettings(
       id: id,
@@ -661,6 +749,7 @@ class ShiftHandoverPointsSettings {
       eveningStartTime: eveningStartTime ?? this.eveningStartTime,
       eveningEndTime: eveningEndTime ?? this.eveningEndTime,
       missedPenalty: missedPenalty ?? this.missedPenalty,
+      adminReviewTimeout: adminReviewTimeout ?? this.adminReviewTimeout,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

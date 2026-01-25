@@ -56,6 +56,7 @@ const { startShiftAutomationScheduler } = require("./api/shift_automation_schedu
 const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
 const { startRkoAutomationScheduler, getPendingReports: getPendingRkoReports, getFailedReports: getFailedRkoReports } = require("./api/rko_automation_scheduler");
 const { startShiftHandoverAutomationScheduler, getPendingReports: getPendingShiftHandoverReports, getFailedReports: getFailedShiftHandoverReports, markPendingAsCompleted: markShiftHandoverPendingCompleted, sendAdminNewReportNotification: sendShiftHandoverNewReportNotification } = require("./api/shift_handover_automation_scheduler");
+const { startAttendanceAutomationScheduler, getPendingReports: getPendingAttendanceReports, getFailedReports: getFailedAttendanceReports, canMarkAttendance, markPendingAsCompleted: markAttendancePendingCompleted } = require("./api/attendance_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
@@ -957,6 +958,17 @@ app.post('/api/attendance', async (req, res) => {
   try {
     console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
 
+    // Проверяем есть ли pending отчёт для этого магазина
+    const canMark = canMarkAttendance(req.body.shopAddress);
+    if (!canMark) {
+      console.log('Отметка отклонена: нет pending отчёта для', req.body.shopAddress);
+      return res.status(400).json({
+        success: false,
+        error: 'Сейчас не время для отметки. Подождите начала смены.',
+        cannotMark: true
+      });
+    }
+
     const attendanceDir = '/var/www/attendance';
     if (!fs.existsSync(attendanceDir)) {
       fs.mkdirSync(attendanceDir, { recursive: true });
@@ -982,6 +994,9 @@ app.post('/api/attendance', async (req, res) => {
 
     fs.writeFileSync(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
     console.log('Отметка сохранена:', recordFile);
+
+    // Удаляем pending отчёт после успешной отметки
+    markAttendancePendingCompleted(req.body.shopAddress, checkResult.shiftType);
 
     // Если время вне интервала - возвращаем флаг для диалога выбора смены
     if (checkResult.needsShiftSelection) {
@@ -2675,6 +2690,76 @@ app.get('/api/rko/failed', (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Ошибка при получении failed РКО'
+    });
+  }
+});
+
+// ========== API для pending/failed Attendance отчетов ==========
+
+// Получить pending Attendance отчеты
+app.get('/api/attendance/pending', (req, res) => {
+  try {
+    console.log('GET /api/attendance/pending');
+    const reports = getPendingAttendanceReports();
+    res.json({
+      success: true,
+      items: reports,
+      count: reports.length
+    });
+  } catch (error) {
+    console.error('Ошибка получения pending attendance:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении pending attendance'
+    });
+  }
+});
+
+// Получить failed Attendance отчеты
+app.get('/api/attendance/failed', (req, res) => {
+  try {
+    console.log('GET /api/attendance/failed');
+    const reports = getFailedAttendanceReports();
+    res.json({
+      success: true,
+      items: reports,
+      count: reports.length
+    });
+  } catch (error) {
+    console.error('Ошибка получения failed attendance:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении failed attendance'
+    });
+  }
+});
+
+// Проверить можно ли отмечаться на магазине
+app.get('/api/attendance/can-mark', (req, res) => {
+  try {
+    const { shopAddress } = req.query;
+    console.log('GET /api/attendance/can-mark:', shopAddress);
+
+    if (!shopAddress) {
+      return res.status(400).json({
+        success: false,
+        canMark: false,
+        error: 'shopAddress is required'
+      });
+    }
+
+    const canMark = canMarkAttendance(shopAddress);
+    res.json({
+      success: true,
+      canMark: canMark,
+      shopAddress: shopAddress
+    });
+  } catch (error) {
+    console.error('Ошибка проверки can-mark attendance:', error);
+    res.status(500).json({
+      success: false,
+      canMark: false,
+      error: error.message || 'Ошибка проверки'
     });
   }
 });
@@ -7347,6 +7432,9 @@ startRkoAutomationScheduler();
 
 // Start Shift Handover automation scheduler (auto-create reports, check deadlines, admin timeout)
 startShiftHandoverAutomationScheduler();
+
+// Start Attendance automation scheduler (auto-create reports, check deadlines, penalties)
+startAttendanceAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);

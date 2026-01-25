@@ -39,6 +39,13 @@ const DEFAULT_ATTENDANCE_POINTS_SETTINGS = {
   category: 'attendance',
   onTimePoints: 0.5,    // Points for arriving on time
   latePoints: -1,       // Points for being late
+  // Временные окна для посещаемости
+  morningStartTime: '07:00',   // Начало утренней смены
+  morningEndTime: '09:00',     // Дедлайн утренней отметки
+  eveningStartTime: '19:00',   // Начало вечерней смены
+  eveningEndTime: '21:00',     // Дедлайн вечерней отметки
+  // Штраф за пропуск отметки
+  missedPenalty: -2,           // Баллы за пропуск
   createdAt: null,
   updatedAt: null
 };
@@ -384,7 +391,11 @@ function setupPointsSettingsAPI(app) {
     try {
       ensureDir();
 
-      const { onTimePoints, latePoints } = req.body;
+      const {
+        onTimePoints, latePoints,
+        morningStartTime, morningEndTime, eveningStartTime, eveningEndTime,
+        missedPenalty
+      } = req.body;
 
       // Validation
       if (onTimePoints === undefined || latePoints === undefined) {
@@ -420,6 +431,14 @@ function setupPointsSettingsAPI(app) {
       // Update settings
       settings.onTimePoints = parseFloat(onTimePoints);
       settings.latePoints = parseFloat(latePoints);
+
+      // Update time windows if provided
+      if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
+      if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
+      if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
+      if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
+      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+
       settings.updatedAt = new Date().toISOString();
 
       fs.writeFileSync(ATTENDANCE_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
