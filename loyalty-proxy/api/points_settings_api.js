@@ -93,6 +93,13 @@ const DEFAULT_RKO_POINTS_SETTINGS = {
   category: 'rko',
   hasRkoPoints: 1,      // Points when RKO exists
   noRkoPoints: -3,      // Points when no RKO
+  // Временные окна для РКО
+  morningStartTime: '07:00',   // Начало утренней смены
+  morningEndTime: '14:00',     // Дедлайн утреннего РКО
+  eveningStartTime: '14:00',   // Начало вечерней смены
+  eveningEndTime: '23:00',     // Дедлайн вечернего РКО
+  // Штраф за пропуск РКО
+  missedPenalty: -3,           // Баллы за пропуск
   createdAt: null,
   updatedAt: null
 };
@@ -716,7 +723,15 @@ function setupPointsSettingsAPI(app) {
     try {
       ensureDir();
 
-      const { hasRkoPoints, noRkoPoints } = req.body;
+      const {
+        hasRkoPoints,
+        noRkoPoints,
+        morningStartTime,
+        morningEndTime,
+        eveningStartTime,
+        eveningEndTime,
+        missedPenalty
+      } = req.body;
 
       // Validation
       if (hasRkoPoints === undefined || noRkoPoints === undefined) {
@@ -752,6 +767,14 @@ function setupPointsSettingsAPI(app) {
       // Update settings
       settings.hasRkoPoints = parseFloat(hasRkoPoints);
       settings.noRkoPoints = parseFloat(noRkoPoints);
+
+      // Update time window settings if provided
+      if (morningStartTime !== undefined) settings.morningStartTime = morningStartTime;
+      if (morningEndTime !== undefined) settings.morningEndTime = morningEndTime;
+      if (eveningStartTime !== undefined) settings.eveningStartTime = eveningStartTime;
+      if (eveningEndTime !== undefined) settings.eveningEndTime = eveningEndTime;
+      if (missedPenalty !== undefined) settings.missedPenalty = parseFloat(missedPenalty);
+
       settings.updatedAt = new Date().toISOString();
 
       fs.writeFileSync(RKO_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
