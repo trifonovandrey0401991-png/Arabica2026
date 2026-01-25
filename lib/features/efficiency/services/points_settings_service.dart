@@ -338,14 +338,16 @@ class PointsSettingsService {
   static Future<ProductSearchPointsSettings?> saveProductSearchPointsSettings({
     required double answeredPoints,
     required double notAnsweredPoints,
+    int answerTimeoutMinutes = 30,
   }) async {
-    Logger.debug('Saving product search points settings: answered=$answeredPoints, notAnswered=$notAnsweredPoints');
+    Logger.debug('Saving product search points settings: answered=$answeredPoints, notAnswered=$notAnsweredPoints, timeout=$answerTimeoutMinutes');
 
     return await BaseHttpService.post<ProductSearchPointsSettings>(
       endpoint: '$baseEndpoint/product-search',
       body: {
         'answeredPoints': answeredPoints,
         'notAnsweredPoints': notAnsweredPoints,
+        'answerTimeoutMinutes': answerTimeoutMinutes,
       },
       fromJson: (json) => ProductSearchPointsSettings.fromJson(json),
       itemKey: 'settings',

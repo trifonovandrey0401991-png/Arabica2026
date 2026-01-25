@@ -832,6 +832,7 @@ class ProductSearchPointsSettings {
   final String category;
   final double answeredPoints;     // Points for answering on time
   final double notAnsweredPoints;  // Points for not answering
+  final int answerTimeoutMinutes;  // Timeout in minutes for answering
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -840,6 +841,7 @@ class ProductSearchPointsSettings {
     this.category = 'product_search',
     required this.answeredPoints,
     required this.notAnsweredPoints,
+    this.answerTimeoutMinutes = 30,
     this.createdAt,
     this.updatedAt,
   });
@@ -850,6 +852,7 @@ class ProductSearchPointsSettings {
       category: json['category'] ?? 'product_search',
       answeredPoints: (json['answeredPoints'] ?? 0.2).toDouble(),
       notAnsweredPoints: (json['notAnsweredPoints'] ?? -3).toDouble(),
+      answerTimeoutMinutes: json['answerTimeoutMinutes'] ?? 30,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
@@ -864,6 +867,7 @@ class ProductSearchPointsSettings {
     'category': category,
     'answeredPoints': answeredPoints,
     'notAnsweredPoints': notAnsweredPoints,
+    'answerTimeoutMinutes': answerTimeoutMinutes,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
     if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
   };
@@ -873,6 +877,7 @@ class ProductSearchPointsSettings {
     return ProductSearchPointsSettings(
       answeredPoints: 0.2,
       notAnsweredPoints: -3,
+      answerTimeoutMinutes: 30,
     );
   }
 
@@ -884,12 +889,14 @@ class ProductSearchPointsSettings {
   ProductSearchPointsSettings copyWith({
     double? answeredPoints,
     double? notAnsweredPoints,
+    int? answerTimeoutMinutes,
   }) {
     return ProductSearchPointsSettings(
       id: id,
       category: category,
       answeredPoints: answeredPoints ?? this.answeredPoints,
       notAnsweredPoints: notAnsweredPoints ?? this.notAnsweredPoints,
+      answerTimeoutMinutes: answerTimeoutMinutes ?? this.answerTimeoutMinutes,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

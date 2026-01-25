@@ -8,12 +8,28 @@ const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
 const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
 const PENALTY_STATE_DIR = '/var/www/product-question-penalty-state';
 const STATE_FILE = path.join(PENALTY_STATE_DIR, 'processed.json');
+const POINTS_SETTINGS_DIR = '/var/www/points-settings';
 
 // Settings
-const TIMEOUT_MINUTES = 15;
 const PENALTY_POINTS = -1;
 const CATEGORY_CODE = 'product_question_penalty';
 const CATEGORY_NAME = 'Неотвеченный вопрос о товаре';
+
+// ============================================
+// Dynamic Timeout from Settings
+// ============================================
+function getTimeoutMinutes() {
+  const settingsFile = path.join(POINTS_SETTINGS_DIR, 'product_search_points_settings.json');
+  if (fs.existsSync(settingsFile)) {
+    try {
+      const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+      return settings.answerTimeoutMinutes || 30;
+    } catch (e) {
+      console.error('Error loading timeout settings:', e.message);
+    }
+  }
+  return 30; // Default timeout
+}
 
 // ============================================
 // Helper: Load JSON file safely
@@ -145,9 +161,10 @@ function findUnreadQuestions(now, state) {
 
       const questionTime = new Date(question.timestamp);
       const elapsedMinutes = (now - questionTime) / (1000 * 60);
+      const timeoutMinutes = getTimeoutMinutes();
 
-      // Check if 15+ minutes old
-      if (elapsedMinutes < TIMEOUT_MINUTES) continue;
+      // Check if timeout exceeded
+      if (elapsedMinutes < timeoutMinutes) continue;
 
       // Check if any shop hasn't answered
       const hasUnanswered = question.shops && question.shops.some(shop => !shop.isAnswered);
@@ -194,8 +211,9 @@ function findUnreadDialogs(now, state) {
 
       const messageTime = new Date(firstUnreadClientMsg.timestamp);
       const elapsedMinutes = (now - messageTime) / (1000 * 60);
+      const timeoutMinutes = getTimeoutMinutes();
 
-      if (elapsedMinutes >= TIMEOUT_MINUTES) {
+      if (elapsedMinutes >= timeoutMinutes) {
         unreadDialogs.push(dialog);
       }
     } catch (e) {
@@ -213,6 +231,7 @@ function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType, sour
   const employees = getEmployeesFromSchedule(shopAddress, new Date(questionTimestamp));
   const penalties = [];
   const now = new Date();
+  const timeoutMinutes = getTimeoutMinutes();
 
   if (employees.length === 0) {
     console.log(`  No employees found on schedule for ${shopAddress} at ${questionTimestamp}`);
@@ -231,7 +250,7 @@ function createPenaltiesForShop(shopAddress, questionTimestamp, sourceType, sour
       categoryName: CATEGORY_NAME,
       date: now.toISOString().split('T')[0],
       points: PENALTY_POINTS,
-      reason: `Вопрос не отвечен за ${TIMEOUT_MINUTES} минут (${sourceType}: ${sourceId})`,
+      reason: `Вопрос не отвечен за ${timeoutMinutes} минут (${sourceType}: ${sourceId})`,
       sourceId: sourceId,
       sourceType: sourceType, // 'question' or 'dialog'
       createdAt: now.toISOString()
@@ -346,10 +365,11 @@ function checkUnreadQuestionsAndDialogs() {
 // 9. Scheduler Setup
 // ============================================
 function startScheduler() {
+  const timeoutMinutes = getTimeoutMinutes();
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Product Questions Penalty Scheduler started');
   console.log(`  - Checking every 5 minutes`);
-  console.log(`  - Timeout: ${TIMEOUT_MINUTES} minutes`);
+  console.log(`  - Timeout: ${timeoutMinutes} minutes (dynamic)`);
   console.log(`  - Penalty: ${PENALTY_POINTS} points per employee`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 

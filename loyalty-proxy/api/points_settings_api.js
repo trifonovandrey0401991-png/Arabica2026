@@ -149,6 +149,7 @@ const DEFAULT_PRODUCT_SEARCH_POINTS_SETTINGS = {
   category: 'product_search',
   answeredPoints: 0.2,    // Points for answering on time
   notAnsweredPoints: -3,  // Points for not answering
+  answerTimeoutMinutes: 30, // Timeout in minutes for answering
   createdAt: null,
   updatedAt: null
 };
@@ -1049,7 +1050,7 @@ function setupPointsSettingsAPI(app) {
     try {
       ensureDir();
 
-      const { answeredPoints, notAnsweredPoints } = req.body;
+      const { answeredPoints, notAnsweredPoints, answerTimeoutMinutes } = req.body;
 
       // Validation
       if (answeredPoints === undefined || notAnsweredPoints === undefined) {
@@ -1073,6 +1074,13 @@ function setupPointsSettingsAPI(app) {
         });
       }
 
+      if (answerTimeoutMinutes !== undefined && (answerTimeoutMinutes < 5 || answerTimeoutMinutes > 60)) {
+        return res.status(400).json({
+          success: false,
+          error: 'answerTimeoutMinutes must be between 5 and 60'
+        });
+      }
+
       // Load existing or create new
       let settings = { ...DEFAULT_PRODUCT_SEARCH_POINTS_SETTINGS };
       if (fs.existsSync(PRODUCT_SEARCH_POINTS_FILE)) {
@@ -1085,6 +1093,7 @@ function setupPointsSettingsAPI(app) {
       // Update settings
       settings.answeredPoints = parseFloat(answeredPoints);
       settings.notAnsweredPoints = parseFloat(notAnsweredPoints);
+      settings.answerTimeoutMinutes = answerTimeoutMinutes !== undefined ? parseInt(answerTimeoutMinutes) : (settings.answerTimeoutMinutes || 30);
       settings.updatedAt = new Date().toISOString();
 
       fs.writeFileSync(PRODUCT_SEARCH_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');

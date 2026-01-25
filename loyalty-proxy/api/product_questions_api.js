@@ -16,6 +16,65 @@ const PRODUCT_QUESTION_PHOTOS_DIR = '/var/www/product-question-photos';
 });
 
 function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
+  // ===== HELPER FUNCTIONS =====
+
+  /**
+   * Начисление баллов за своевременный ответ на вопрос о товаре
+   */
+  async function assignAnswerBonus({ questionId, shopAddress, senderPhone, senderName, points, questionAge }) {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const monthKey = today.substring(0, 7); // YYYY-MM
+
+    const PENALTIES_DIR = '/var/www/efficiency-penalties';
+    if (!fs.existsSync(PENALTIES_DIR)) {
+      fs.mkdirSync(PENALTIES_DIR, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(PENALTIES_DIR, `${monthKey}.json`);
+    let penalties = [];
+
+    if (fs.existsSync(penaltiesFile)) {
+      try {
+        penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+      } catch (e) {
+        console.error('Error reading penalties file:', e);
+      }
+    }
+
+    // Проверка дедупликации по sourceId
+    const sourceId = `pq_answer_${questionId}`;
+    const exists = penalties.some(p => p.sourceId === sourceId);
+
+    if (exists) {
+      console.log(`Bonus already assigned for question ${questionId}, skipping`);
+      return;
+    }
+
+    // Создаём запись с положительными баллами
+    const bonus = {
+      id: `bonus_pq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: senderPhone,
+      entityName: senderName,
+      shopAddress: shopAddress,
+      employeeName: senderName,
+      category: 'product_question_bonus',
+      categoryName: 'Ответ на вопрос о товаре',
+      date: today,
+      points: points, // +0.2
+      reason: `Ответил на вопрос за ${Math.round(questionAge)} минут`,
+      sourceId: sourceId,
+      sourceType: 'question_answer',
+      createdAt: now.toISOString()
+    };
+
+    penalties.push(bonus);
+
+    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    console.log(`✅ Bonus assigned: ${senderName} (+${points} points) for question ${questionId}`);
+  }
+
   // ===== PRODUCT QUESTIONS =====
 
   app.get('/api/product-questions', async (req, res) => {
@@ -319,6 +378,38 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
 
       console.log('✅ Answer added to question:', questionId, 'by shop:', shopAddress);
+
+      // ✅ Начисление баллов за своевременный ответ
+      try {
+        const questionAge = (new Date() - new Date(question.timestamp)) / (1000 * 60); // минуты
+
+        // Загружаем настройки баллов
+        const settingsFile = path.join('/var/www/points-settings', 'product_search_points_settings.json');
+        let settings = { answeredPoints: 0.2, answerTimeoutMinutes: 30 };
+        if (fs.existsSync(settingsFile)) {
+          try {
+            settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+          } catch (e) {
+            console.error('Error loading product search settings:', e);
+          }
+        }
+
+        // Если ответили вовремя (до истечения таймаута) → начислить баллы
+        if (questionAge <= (settings.answerTimeoutMinutes || 30)) {
+          await assignAnswerBonus({
+            questionId: questionId,
+            shopAddress: shopAddress,
+            senderPhone: senderPhone,
+            senderName: senderName || 'Сотрудник',
+            points: settings.answeredPoints || 0.2,
+            questionAge: questionAge
+          });
+        } else {
+          console.log(`⏰ Question age (${Math.round(questionAge)} min) exceeds timeout (${settings.answerTimeoutMinutes || 30} min), no bonus`);
+        }
+      } catch (e) {
+        console.error('Error assigning answer bonus:', e);
+      }
 
       // ✅ Отправка уведомления клиенту
       try {

@@ -19,6 +19,7 @@ class _ProductSearchPointsSettingsPageState
 
   double _answeredPoints = 0.2;
   double _notAnsweredPoints = -3;
+  int _answerTimeoutMinutes = 30;
 
   // Gradient colors for this page (cyan theme)
   static const _gradientColors = [Color(0xFF00d2ff), Color(0xFF3a7bd5)];
@@ -37,6 +38,7 @@ class _ProductSearchPointsSettingsPageState
         _settings = settings;
         _answeredPoints = settings.answeredPoints;
         _notAnsweredPoints = settings.notAnsweredPoints;
+        _answerTimeoutMinutes = settings.answerTimeoutMinutes;
         _isLoading = false;
       });
     } catch (e) {
@@ -55,6 +57,7 @@ class _ProductSearchPointsSettingsPageState
       final result = await PointsSettingsService.saveProductSearchPointsSettings(
         answeredPoints: _answeredPoints,
         notAnsweredPoints: _notAnsweredPoints,
+        answerTimeoutMinutes: _answerTimeoutMinutes,
       );
       if (result != null) {
         setState(() { _settings = result; _isSaving = false; });
@@ -197,6 +200,21 @@ class _ProductSearchPointsSettingsPageState
                           valueLabel: _notAnsweredPoints.toStringAsFixed(1),
                           accentColor: Colors.red,
                           icon: Icons.cancel_outlined,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Timeout slider
+                        _buildSliderSection(
+                          title: 'Таймаут ответа',
+                          subtitle: 'Сколько минут дается на ответ',
+                          value: _answerTimeoutMinutes.toDouble(),
+                          min: 5,
+                          max: 60,
+                          divisions: 11,
+                          onChanged: (value) => setState(() => _answerTimeoutMinutes = value.round()),
+                          valueLabel: '$_answerTimeoutMinutes мин',
+                          accentColor: Colors.blue,
+                          icon: Icons.timer_outlined,
                         ),
                         const SizedBox(height: 24),
 

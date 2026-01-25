@@ -707,6 +707,7 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 
 // Статическая раздача фото
 app.use('/shift-photos', express.static('/var/www/shift-photos'));
+app.use('/product-question-photos', express.static('/var/www/product-question-photos'));
 
 // ============================================
 // Вспомогательные функции для проверки времени смены
