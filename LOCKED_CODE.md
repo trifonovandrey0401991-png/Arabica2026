@@ -71,6 +71,8 @@
 | 03.01.2026 | v1.5.3 | Пересменки: просроченные отчёты, 4-я вкладка, cron 00:00 |
 | 03.01.2026 | v1.5.4 | Пересчёты: вопросы (грейды, фото), прохождение (выбор магазина, ответы), отчёты (4 вкладки, оценки, просроченные) |
 | 03.01.2026 | v1.5.5 | Статьи обучения: CRUD, группировка, открытие ссылок, белые заголовки, AndroidManifest queries |
+| 26.01.2026 | v1.6.0 | Мои диалоги: сетевые сообщения, связь с руководством, интеграция с отзывами и поиском товара |
+| 26.01.2026 | v1.6.1 | Поиск товара: вопросы, персональные диалоги, автоматическое начисление баллов, scheduler штрафов |
 
 ---
 
@@ -477,6 +479,332 @@
 | Название группы | fontSize: 20, fontWeight: bold, color: Colors.white |
 | Фон страницы | arabica_background.png с opacity 0.6 на Color(0xFF004D40) |
 | Карточки статей | Card с elevation: 2, иконка Icons.article |
+
+---
+
+## Мои диалоги (v1.6.0) - Проверено: 26.01.2026
+
+### Общее описание:
+Централизованная страница для клиента, объединяющая все типы диалогов: сетевые сообщения, связь с руководством, отзывы, поиск товара (общий и персональные диалоги). Включает единый счётчик непрочитанных сообщений.
+
+---
+
+### Функционал:
+- 5 типов диалогов на одной странице
+- Единый счётчик непрочитанных (MyDialogsCounterService)
+- Сетевые сообщения (broadcast и личные)
+- Связь с руководством (клиент↔админ)
+- Интеграция с отзывами клиента
+- Интеграция с поиском товара (общий диалог + персональные)
+- Push-уведомления для всех типов сообщений
+- Флаги непрочитанности (isReadByClient, isReadByAdmin, isReadByManager)
+
+---
+
+### Защищённые файлы:
+
+#### Страницы
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/app/pages/my_dialogs_page.dart` | Главная страница "Мои диалоги", 5 карточек типов диалогов | ✅ Работает |
+| `lib/features/clients/pages/network_dialog_page.dart` | Диалог сетевых сообщений (клиент) | ✅ Работает |
+| `lib/features/clients/pages/management_dialog_page.dart` | Диалог с руководством (клиент) | ✅ Работает |
+| `lib/features/clients/pages/admin_management_dialog_page.dart` | Диалог с клиентом (админ) | ✅ Работает |
+| `lib/features/clients/pages/management_dialogs_list_page.dart` | Список диалогов с клиентами (админ) | ✅ Работает |
+
+#### Модели
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/features/clients/models/network_message_model.dart` | NetworkMessage, NetworkDialogData | ✅ Работает |
+| `lib/features/clients/models/management_message_model.dart` | ManagementMessage, ManagementDialogData | ✅ Работает |
+
+#### Сервисы
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/app/services/my_dialogs_counter_service.dart` | getTotalUnreadCount() - подсчёт всех непрочитанных | ✅ Работает |
+| `lib/features/clients/services/network_message_service.dart` | getNetworkMessages, sendMessage, markAsRead | ✅ Работает |
+| `lib/features/clients/services/management_message_service.dart` | getManagementMessages, sendMessage, sendManagerMessage, markAsRead | ✅ Работает |
+
+---
+
+### API Endpoints:
+
+#### Сетевые сообщения
+| Endpoint | Метод | Статус |
+|----------|-------|--------|
+| `/api/client-dialogs/:phone/network` | GET | ✅ Получение сетевых сообщений |
+| `/api/client-dialogs/:phone/network/reply` | POST | ✅ Ответ клиента на сетевое сообщение |
+| `/api/client-dialogs/:phone/network/read-by-client` | POST | ✅ Отметить как прочитанное |
+| `/api/client-dialogs/network/broadcast` | POST | ✅ Broadcast всем клиентам |
+
+#### Связь с руководством
+| Endpoint | Метод | Статус |
+|----------|-------|--------|
+| `/api/client-dialogs/:phone/management` | GET | ✅ Получение диалога с руководством |
+| `/api/client-dialogs/:phone/management/reply` | POST | ✅ Сообщение от клиента руководству |
+| `/api/client-dialogs/:phone/management/send` | POST | ✅ Ответ от руководства клиенту |
+| `/api/client-dialogs/:phone/management/read-by-client` | POST | ✅ Отметить как прочитанное (клиент) |
+| `/api/client-dialogs/:phone/management/read-by-manager` | POST | ✅ Отметить как прочитанное (админ) |
+| `/api/client-dialogs/management/list` | GET | ✅ Список всех диалогов (админ) |
+
+---
+
+### Серверная часть:
+
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `loyalty-proxy/api/clients_api.js` | Все endpoints для network/management диалогов | ✅ Работает |
+
+---
+
+### Хранение данных:
+| Директория | Содержимое |
+|------------|------------|
+| `/var/www/client-messages/network/` | Сетевые сообщения по клиентам |
+| `/var/www/client-messages/management/` | Диалоги с руководством по клиентам |
+
+---
+
+### Логика счётчика:
+```
+MyDialogsCounterService.getTotalUnreadCount()
+    ├── NetworkMessageService → unreadCount
+    ├── ManagementMessageService → unreadCount
+    ├── ReviewService → getUnreadCountForClient()
+    ├── ProductQuestionService (общий) → unreadCount
+    └── ProductQuestionService (персональные) → hasUnreadFromEmployee
+
+Итого: sum(все непрочитанные) → Бейдж на кнопке "Мои диалоги"
+```
+
+---
+
+### Push-уведомления:
+| Тип | Получатель | Payload.type |
+|-----|------------|--------------|
+| Broadcast всем | Все клиенты | `'network_broadcast'` |
+| Ответ админа (сетевое) | Клиент | `'network_message'` |
+| Ответ клиента (сетевое) | Админы | `'network_message'` |
+| Ответ руководства | Клиент | `'management_message'` |
+| Сообщение клиента руководству | Админы | `'management_message'` |
+
+---
+
+## Поиск товара (v1.6.1) - Проверено: 26.01.2026
+
+### Общее описание:
+Система для клиентов по поиску товаров в сети кофеен с возможностью задать вопрос конкретному магазину, всей сети или продолжить персональный диалог. Включает автоматическое начисление баллов за ответы, штрафы за неответы и scheduler для проверки просроченных вопросов.
+
+---
+
+### Функционал:
+- 3 типа вопросов: конкретному магазину, всей сети, персональные диалоги
+- Автоматическое начисление баллов за своевременные ответы (+0.2 по умолчанию)
+- Автоматические штрафы за неответы (-3 по умолчанию)
+- Настраиваемый таймаут ответа (5-60 минут, по умолчанию 30)
+- Scheduler проверки просроченных вопросов (каждые 5 минут)
+- Broadcast push-уведомлений всем сотрудникам
+- Приоритет персональных диалогов над общими вопросами
+- Интеграция с модулем Эффективность (баллы)
+- Дедупликация начисления баллов через sourceId
+
+---
+
+### Защищённые файлы:
+
+#### Страницы (Клиент)
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/features/product_questions/pages/product_search_shop_selection_page.dart` | Выбор магазина или "Вся сеть" | ✅ Работает |
+| `lib/features/product_questions/pages/product_question_input_page.dart` | Ввод текста вопроса + фото | ✅ Работает |
+| `lib/features/product_questions/pages/product_question_client_dialog_page.dart` | Общий диалог всех вопросов клиента | ✅ Работает |
+| `lib/features/product_questions/pages/product_question_personal_dialog_page.dart` | Персональный диалог с магазином | ✅ Работает |
+
+#### Страницы (Сотрудник)
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/features/product_questions/pages/product_question_shops_list_page.dart` | Список магазинов с приоритетом персональных диалогов | ✅ Работает |
+| `lib/features/product_questions/pages/product_question_dialog_page.dart` | Просмотр и ответ на общий вопрос | ✅ Работает |
+| `lib/features/product_questions/pages/product_question_employee_dialog_page.dart` | Диалог сотрудника | ✅ Работает |
+
+#### Страницы (Админ)
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/features/product_questions/pages/product_questions_management_page.dart` | Управление вопросами | ✅ Работает |
+| `lib/features/product_questions/pages/product_questions_report_page.dart` | Статистика вопросов | ✅ Работает |
+| `lib/features/efficiency/pages/settings_tabs/product_search_points_settings_page.dart` | Настройки баллов и таймаута | ✅ Работает |
+
+#### Модели
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/features/product_questions/models/product_question_model.dart` | ProductQuestion, PersonalProductDialog, ProductQuestionShopGroup | ✅ Работает |
+| `lib/features/product_questions/models/product_question_message_model.dart` | ProductQuestionMessage | ✅ Работает |
+
+#### Сервисы
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `lib/features/product_questions/services/product_question_service.dart` | CRUD вопросов, персональных диалогов, группировка | ✅ Работает |
+
+---
+
+### API Endpoints:
+
+#### Вопросы
+| Endpoint | Метод | Статус |
+|----------|-------|--------|
+| `/api/product-questions` | GET | ✅ Получить все вопросы |
+| `/api/product-questions` | POST | ✅ Создать вопрос |
+| `/api/product-questions/client/:phone` | GET | ✅ Вопросы клиента (общий диалог) |
+| `/api/product-questions/:id` | GET | ✅ Получить конкретный вопрос |
+| `/api/product-questions/:id/messages` | POST | ✅ Ответить на вопрос (с начислением баллов) |
+| `/api/product-questions/:id/mark-answered` | POST | ✅ Пометить как отвеченный |
+
+#### Персональные диалоги
+| Endpoint | Метод | Статус |
+|----------|-------|--------|
+| `/api/product-question-dialogs/all` | GET | ✅ Все персональные диалоги |
+| `/api/product-question-dialogs/client/:phone` | GET | ✅ Персональные диалоги клиента |
+| `/api/product-question-dialogs/:id` | GET | ✅ Получить диалог |
+| `/api/product-question-dialogs/:id/messages` | POST | ✅ Отправить сообщение в диалог |
+| `/api/product-question-dialogs/:id/read-by-client` | POST | ✅ Отметить как прочитанное (клиент) |
+| `/api/product-question-dialogs/:id/read-by-employee` | POST | ✅ Отметить как прочитанное (сотрудник) |
+
+#### Группировка
+| Endpoint | Метод | Статус |
+|----------|-------|--------|
+| `/api/product-questions/grouped-by-shop` | GET | ✅ Вопросы + диалоги, группированные по магазинам |
+
+---
+
+### Серверная часть:
+
+| Файл | Функционал | Статус |
+|------|------------|--------|
+| `loyalty-proxy/api/product_questions_api.js` | Все endpoints, начисление баллов при ответе (assignAnswerBonus) | ✅ Работает |
+| `loyalty-proxy/api/product_questions_notifications.js` | Push-уведомления (broadcast сотрудникам, персональные клиенту) | ✅ Работает |
+| `loyalty-proxy/product_questions_penalty_scheduler.js` | Cron каждые 5 минут: проверка просроченных, начисление штрафов | ✅ Работает |
+
+---
+
+### Хранение данных:
+| Директория | Содержимое |
+|------------|------------|
+| `/var/www/product-questions/` | JSON файлы общих вопросов |
+| `/var/www/product-question-dialogs/` | JSON файлы персональных диалогов |
+| `/var/www/efficiency-penalties/{YYYY-MM}.json` | Баллы и штрафы за месяц |
+| `/var/www/points-settings/product_search_points_settings.json` | Настройки баллов и таймаута |
+
+---
+
+### Настройки баллов:
+| Параметр | По умолчанию | Описание |
+|----------|--------------|----------|
+| `answeredPoints` | +0.2 | Баллы за своевременный ответ |
+| `notAnsweredPoints` | -3.0 | Штраф за неответ |
+| `answerTimeoutMinutes` | 30 | Таймаут в минутах |
+
+---
+
+### Функции начисления баллов:
+
+#### assignAnswerBonus() (в product_questions_api.js)
+```javascript
+// Вызывается при ответе сотрудника
+// Проверяет: questionAge <= answerTimeoutMinutes
+// Начисляет: +answeredPoints (например, +0.2)
+// Дедупликация: sourceId = "pq_answer_{questionId}"
+// Записывает в: /var/www/efficiency-penalties/{YYYY-MM}.json
+```
+
+#### assignPenalty() (в product_questions_penalty_scheduler.js)
+```javascript
+// Вызывается scheduler каждые 5 минут
+// Проверяет: !isAnswered && !penalized && ageMinutes >= answerTimeoutMinutes
+// Начисляет: notAnsweredPoints (например, -3)
+// Дедупликация: sourceId = "pq_timeout_{questionId}"
+// Помечает: question.penalized = true
+// Записывает в: /var/www/efficiency-penalties/{YYYY-MM}.json
+```
+
+---
+
+### Scheduler (Cron каждые 5 минут):
+```
+Файл: product_questions_penalty_scheduler.js
+
+Логика:
+1. Загрузить все вопросы из /var/www/product-questions/
+2. Загрузить настройки из product_search_points_settings.json
+3. Для каждого вопроса:
+   - Если !isAnswered && !penalized
+   - Вычислить возраст: (now - timestamp) / 60000 минут
+   - Если возраст >= answerTimeoutMinutes:
+     → assignPenalty() → штраф магазину
+     → question.penalized = true
+     → sendPushNotification() → всем сотрудникам
+4. Сохранить изменённые вопросы
+```
+
+---
+
+### Push-уведомления:
+| Событие | Получатель | Payload.type | Функция |
+|---------|------------|--------------|---------|
+| Новый вопрос | Все сотрудники | `'product_question'` | `notifyEmployeesAboutNewQuestion()` |
+| Ответ сотрудника | Клиент | `'product_question_answer'` | `notifyClientAboutAnswer()` |
+| Сообщение клиента (персональный) | Все сотрудники | `'personal_dialog_client_message'` | `notifyPersonalDialogClientMessage()` |
+| Сообщение сотрудника (персональный) | Клиент | `'personal_dialog_employee_message'` | `notifyPersonalDialogEmployeeMessage()` |
+| Штраф за неответ | Все сотрудники | `'product_question_penalty'` | Scheduler → broadcast |
+
+---
+
+### Критические особенности:
+
+1. **Broadcast уведомлений:**
+   - Все уведомления сотрудникам отправляются broadcast (всем, независимо от магазина)
+   - Любой сотрудник может ответить на вопрос
+
+2. **Приоритет персональных диалогов:**
+   - На `ShopsListPage` сотрудник видит список магазинов
+   - При клике: сначала проверка персональных диалогов → если есть, открыть → иначе открыть общий вопрос
+
+3. **Автоматическое начисление баллов:**
+   - Бонус начисляется сразу при ответе (если в рамках таймаута)
+   - Штраф начисляется scheduler'ом каждые 5 минут
+   - Дедупликация через `sourceId` предотвращает повторное начисление
+
+4. **Динамический таймаут:**
+   - Админ может настроить таймаут в UI (5-60 минут)
+   - Scheduler динамически загружает настройки из файла при каждом запуске
+
+---
+
+### Интеграция с модулем Эффективность:
+```
+Категории баллов:
+  - product_question_bonus (+0.2 по умолчанию)
+  - product_question_penalty (-3 по умолчанию)
+
+Запись в файл:
+  /var/www/efficiency-penalties/{YYYY-MM}.json
+
+Структура записи:
+  {
+    "id": "bonus_pq_123",
+    "type": "employee",
+    "entityId": "79054443224",
+    "entityName": "Мария",
+    "shopAddress": "ул. Ленина, 1",
+    "category": "product_question_bonus",
+    "categoryName": "Ответ на вопрос о товаре",
+    "points": 0.2,
+    "reason": "Ответил на вопрос за 15 минут",
+    "sourceId": "pq_answer_pq_123",
+    "sourceType": "question_answer",
+    "date": "2026-01-26",
+    "createdAt": "2026-01-26T12:00:00Z"
+  }
+```
 
 ---
 
