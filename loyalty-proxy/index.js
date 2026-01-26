@@ -3273,11 +3273,21 @@ app.post('/api/withdrawals', async (req, res) => {
       type,
       expenses,
       adminName,
+      category,          // 'withdrawal' | 'deposit' | 'transfer'
+      transferDirection, // 'ooo_to_ip' | 'ip_to_ooo' (для переносов)
     } = req.body;
 
-    // Валидация
-    if (!shopAddress || !employeeName || !employeeId || !type || !expenses || !Array.isArray(expenses)) {
+    // Валидация - для переносов employeeId может быть пустым
+    const effectiveCategory = category || 'withdrawal';
+    const isTransfer = effectiveCategory === 'transfer';
+
+    if (!shopAddress || !employeeName || !type || !expenses || !Array.isArray(expenses)) {
       return res.status(400).json({ error: 'Не все обязательные поля заполнены' });
+    }
+
+    // employeeId обязателен только для выемок и внесений (не для переносов)
+    if (!isTransfer && !employeeId) {
+      return res.status(400).json({ error: 'ID сотрудника обязателен' });
     }
 
     if (type !== 'ooo' && type !== 'ip') {
@@ -3307,13 +3317,15 @@ app.post('/api/withdrawals', async (req, res) => {
       id: `withdrawal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       shopAddress,
       employeeName,
-      employeeId,
+      employeeId: employeeId || '',
       type,
       totalAmount,
       expenses,
       adminName: adminName || null,
       createdAt: new Date().toISOString(),
       confirmed: false,
+      category: effectiveCategory,
+      ...(transferDirection && { transferDirection }),
     };
 
     // Сохранить в файл
