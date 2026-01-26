@@ -1010,7 +1010,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                             child: Text('  ${expense.supplierName}'),
                           ),
                           Text(
-                            '${expense.amount.toStringAsFixed(0)} ₽',
+                            '${expense.amount.toStringAsFixed(0)} руб',
                             style: const TextStyle(color: Colors.red),
                           ),
                           IconButton(
@@ -1086,7 +1086,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                             child: Text('  ${expense.supplierName}'),
                           ),
                           Text(
-                            '${expense.amount.toStringAsFixed(0)} ₽',
+                            '${expense.amount.toStringAsFixed(0)} руб',
                             style: const TextStyle(color: Colors.red),
                           ),
                           IconButton(
@@ -1150,7 +1150,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             ),
           ),
           Text(
-            '${value.toStringAsFixed(0)} ₽',
+            '${value.toStringAsFixed(0)} руб',
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               color: isRed ? Colors.red : (isGreen ? Colors.green : null),
@@ -1191,7 +1191,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
             icon,
             color: isMoney ? Colors.teal.shade700 : Colors.blueGrey.shade700,
           ),
-          suffixText: isMoney ? '₽' : null,
+          suffixText: isMoney ? 'руб' : null,
           suffixStyle: TextStyle(
             color: Colors.teal.shade700,
             fontWeight: FontWeight.bold,
@@ -1263,7 +1263,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       children: [
                         Text('- ${e.supplierName}'),
                         Text(
-                          '-${e.amount.toStringAsFixed(0)} ₽',
+                          '-${e.amount.toStringAsFixed(0)} руб',
                           style: const TextStyle(color: Colors.red),
                         ),
                       ],
@@ -1303,7 +1303,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                       children: [
                         Text('- ${e.supplierName}'),
                         Text(
-                          '-${e.amount.toStringAsFixed(0)} ₽',
+                          '-${e.amount.toStringAsFixed(0)} руб',
                           style: const TextStyle(color: Colors.red),
                         ),
                       ],
@@ -1331,7 +1331,7 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '${_totalEnvelopeAmount.toStringAsFixed(0)} ₽',
+                  '${_totalEnvelopeAmount.toStringAsFixed(0)} руб',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

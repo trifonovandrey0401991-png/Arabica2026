@@ -470,12 +470,12 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               ],
             ),
             const Divider(),
-            _buildInfoRow('Выручка:', '${_report.oooRevenue.toStringAsFixed(0)} ₽'),
-            _buildInfoRow('Наличные:', '${_report.oooCash.toStringAsFixed(0)} ₽'),
+            _buildInfoRow('Выручка:', '${_report.oooRevenue.toStringAsFixed(0)} руб'),
+            _buildInfoRow('Наличные:', '${_report.oooCash.toStringAsFixed(0)} руб'),
             const Divider(),
             _buildInfoRow(
               'В конверте:',
-              '${_report.oooEnvelopeAmount.toStringAsFixed(0)} ₽',
+              '${_report.oooEnvelopeAmount.toStringAsFixed(0)} руб',
               isBold: true,
               color: Colors.green,
             ),
@@ -521,8 +521,8 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               ],
             ),
             const Divider(),
-            _buildInfoRow('Выручка:', '${_report.ipRevenue.toStringAsFixed(0)} ₽'),
-            _buildInfoRow('Наличные:', '${_report.ipCash.toStringAsFixed(0)} ₽'),
+            _buildInfoRow('Выручка:', '${_report.ipRevenue.toStringAsFixed(0)} руб'),
+            _buildInfoRow('Наличные:', '${_report.ipCash.toStringAsFixed(0)} руб'),
             if (_report.expenses.isNotEmpty) ...[
               const SizedBox(height: 8),
               const Text(
@@ -551,7 +551,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
                       ),
                     ),
                     Text(
-                      '-${e.amount.toStringAsFixed(0)} ₽',
+                      '-${e.amount.toStringAsFixed(0)} руб',
                       style: const TextStyle(color: Colors.red),
                     ),
                   ],
@@ -560,14 +560,14 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               const SizedBox(height: 4),
               _buildInfoRow(
                 'Итого расходов:',
-                '-${_report.totalExpenses.toStringAsFixed(0)} ₽',
+                '-${_report.totalExpenses.toStringAsFixed(0)} руб',
                 color: Colors.red,
               ),
             ],
             const Divider(),
             _buildInfoRow(
               'В конверте:',
-              '${_report.ipEnvelopeAmount.toStringAsFixed(0)} ₽',
+              '${_report.ipEnvelopeAmount.toStringAsFixed(0)} руб',
               isBold: true,
               color: Colors.green,
             ),
@@ -590,7 +590,7 @@ class _EnvelopeReportViewPageState extends State<EnvelopeReportViewPage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              '${_report.totalEnvelopeAmount.toStringAsFixed(0)} ₽',
+              '${_report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,

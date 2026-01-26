@@ -386,7 +386,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
         ),
         const SizedBox(height: 4),
         Text(
-          '${_formatFullAmount(amount)} \u20bd',
+          '${_formatFullAmount(amount)} руб',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -407,7 +407,7 @@ class _TurnoverCalendarWidgetState extends State<TurnoverCalendarWidget> {
           Row(
             children: [
               Text(
-                '${_formatFullAmount(amount)} \u20bd',
+                '${_formatFullAmount(amount)} руб',
                 style: const TextStyle(fontSize: 13),
               ),
               if (changePercent != null) ...[

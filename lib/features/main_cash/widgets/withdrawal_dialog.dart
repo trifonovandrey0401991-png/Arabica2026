@@ -196,7 +196,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Сумма',
                   border: OutlineInputBorder(),
-                  suffixText: '\u20bd',
+                  suffixText: 'руб',
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [

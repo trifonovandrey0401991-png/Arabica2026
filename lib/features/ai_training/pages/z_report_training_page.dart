@@ -841,7 +841,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
             ),
             child: Icon(icon, color: Colors.white, size: 18),
           ),
-          suffixText: isMoney ? '₽' : null,
+          suffixText: isMoney ? 'руб' : null,
           suffixStyle: TextStyle(
             color: _purpleGradient[1],
             fontWeight: FontWeight.bold,
@@ -990,7 +990,7 @@ class _TrainingSampleTabState extends State<_TrainingSampleTab> {
           ),
           Text(
             value != null
-                ? (isMoney ? '${value.toStringAsFixed(2)} ₽' : value.toStringAsFixed(0))
+                ? (isMoney ? '${value.toStringAsFixed(2)} руб' : value.toStringAsFixed(0))
                 : '—',
             style: TextStyle(
               fontSize: 14,

@@ -186,6 +186,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 // Выбор магазина
                 DropdownButtonFormField<String>(
                   value: selectedShop,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Магазин *',
                     border: OutlineInputBorder(),
@@ -220,6 +221,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 // Выбор сотрудника
                 DropdownButtonFormField<String>(
                   value: selectedEmployeeId,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Кто вносит *',
                     border: OutlineInputBorder(),
@@ -227,7 +229,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   ),
                   items: employees.map((e) => DropdownMenuItem(
                     value: e.id,
-                    child: Text(e.name),
+                    child: Text(e.name, overflow: TextOverflow.ellipsis),
                   )).toList(),
                   onChanged: (value) {
                     setDialogState(() {
@@ -244,7 +246,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     labelText: 'Сумма *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.attach_money),
-                    suffixText: '₽',
+                    suffixText: 'руб',
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -393,6 +395,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 // Выбор магазина
                 DropdownButtonFormField<String>(
                   value: selectedShop,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Магазин *',
                     border: OutlineInputBorder(),
@@ -510,7 +513,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     labelText: 'Сумма *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.attach_money),
-                    suffixText: '₽',
+                    suffixText: 'руб',
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -614,16 +617,22 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   }
 
   String _formatAmount(double amount) {
+    final isNegative = amount < 0;
+    final absAmount = amount.abs();
     String result;
-    if (amount >= 1000000) {
-      result = '${(amount / 1000000).toStringAsFixed(1)}M';
-    } else if (amount >= 1000) {
-      final k = amount / 1000;
+
+    if (absAmount >= 1000000) {
+      result = '${(absAmount / 1000000).toStringAsFixed(1)}M';
+    } else if (absAmount >= 1000) {
+      final k = absAmount / 1000;
       result = '${k.toStringAsFixed(k % 1 == 0 ? 0 : 1)}k';
     } else {
-      result = amount.toStringAsFixed(0);
+      result = absAmount.toStringAsFixed(0);
     }
-    Logger.debug('_formatAmount($amount) => "$result"');
+
+    if (isNegative) {
+      result = '-$result';
+    }
     return result;
   }
 
@@ -1114,6 +1123,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   ),
                   child: DropdownButtonFormField<String>(
                     value: _selectedShopFilter,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Фильтр по магазину',
                       labelStyle: TextStyle(
@@ -1141,7 +1151,6 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                       DropdownMenuItem<String>(
                         value: null,
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.select_all,
@@ -1149,7 +1158,12 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                               color: Colors.grey[600],
                             ),
                             const SizedBox(width: 8),
-                            const Text('Все магазины'),
+                            const Expanded(
+                              child: Text(
+                                'Все магазины',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1404,7 +1418,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${withdrawal.totalAmount.toStringAsFixed(0)} ₽',
+                    '${withdrawal.totalAmount.toStringAsFixed(0)} руб',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -1495,7 +1509,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                         ),
                         // Сумма
                         Text(
-                          '${expense.amount.toStringAsFixed(0)} ₽',
+                          '${expense.amount.toStringAsFixed(0)} руб',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -1658,7 +1672,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             Text(
-              'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} ₽',
+              'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} руб',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
@@ -1741,7 +1755,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             Text(
-              'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} ₽',
+              'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} руб',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),

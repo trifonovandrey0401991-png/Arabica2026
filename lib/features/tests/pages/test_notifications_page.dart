@@ -880,7 +880,7 @@ class _TestNotificationsPageState extends State<TestNotificationsPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${order.totalPrice.toStringAsFixed(0)} ₽ - ${order.status == 'completed' ? 'Выполнено' : order.status == 'rejected' ? 'Не принят' : 'Ожидает'}',
+                                    '${order.totalPrice.toStringAsFixed(0)} руб - ${order.status == 'completed' ? 'Выполнено' : order.status == 'rejected' ? 'Не принят' : 'Ожидает'}',
                                   ),
                                   if (order.acceptedBy != null)
                                     Text(

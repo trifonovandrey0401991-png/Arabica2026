@@ -262,7 +262,7 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
             reportId: 'rko_${now.millisecondsSinceEpoch}',
             employeeName: employeeNameForRKO,
             shopName: _selectedShop!.address,
-            description: '${widget.rkoType}: ${amount.toStringAsFixed(0)} ₽',
+            description: '${widget.rkoType}: ${amount.toStringAsFixed(0)} руб',
           );
 
           ScaffoldMessenger.of(context).showSnackBar(

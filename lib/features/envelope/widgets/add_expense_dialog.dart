@@ -217,7 +217,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                       style: const TextStyle(fontSize: 18),
                       decoration: InputDecoration(
                         hintText: 'Введите сумму',
-                        suffixText: '₽',
+                        suffixText: 'руб',
                         suffixStyle: const TextStyle(fontSize: 18),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),

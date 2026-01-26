@@ -473,7 +473,7 @@ class _WithdrawalFormPageState extends State<WithdrawalFormPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${_calculateTotal().toStringAsFixed(0)} ₽',
+                                  '${_calculateTotal().toStringAsFixed(0)} руб',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 32,

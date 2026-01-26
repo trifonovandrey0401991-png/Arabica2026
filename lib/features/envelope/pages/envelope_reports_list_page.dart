@@ -264,7 +264,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
             Row(
               children: [
                 Text(
-                  'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} ₽',
+                  'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF004D40),

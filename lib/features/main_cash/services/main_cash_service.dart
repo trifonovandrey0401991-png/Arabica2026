@@ -40,29 +40,50 @@ class MainCashService {
           }
         }
 
-        // Суммируем выемки для этого магазина (только активные, не отмененные)
+        // Суммируем операции для этого магазина (только активные, не отмененные)
         double oooWithdrawals = 0;
         double ipWithdrawals = 0;
+        double oooDeposits = 0;
+        double ipDeposits = 0;
 
         for (final withdrawal in withdrawals) {
           if (withdrawal.shopAddress == shop.address && withdrawal.isActive) {
-            if (withdrawal.type == 'ooo') {
-              oooWithdrawals += withdrawal.totalAmount;
-            } else if (withdrawal.type == 'ip') {
-              ipWithdrawals += withdrawal.totalAmount;
+            if (withdrawal.category == 'deposit') {
+              // Внесение — добавляем к балансу
+              if (withdrawal.type == 'ooo') {
+                oooDeposits += withdrawal.totalAmount;
+              } else if (withdrawal.type == 'ip') {
+                ipDeposits += withdrawal.totalAmount;
+              }
+            } else if (withdrawal.category == 'transfer') {
+              // Перенос — вычитаем из источника, добавляем к получателю
+              if (withdrawal.transferDirection == 'ooo_to_ip') {
+                oooWithdrawals += withdrawal.totalAmount;
+                ipDeposits += withdrawal.totalAmount;
+              } else if (withdrawal.transferDirection == 'ip_to_ooo') {
+                ipWithdrawals += withdrawal.totalAmount;
+                oooDeposits += withdrawal.totalAmount;
+              }
+            } else {
+              // Выемка — вычитаем из баланса
+              if (withdrawal.type == 'ooo') {
+                oooWithdrawals += withdrawal.totalAmount;
+              } else if (withdrawal.type == 'ip') {
+                ipWithdrawals += withdrawal.totalAmount;
+              }
             }
           }
         }
 
-        // Рассчитываем баланс
-        final oooBalance = oooIncome - oooWithdrawals;
-        final ipBalance = ipIncome - ipWithdrawals;
+        // Рассчитываем баланс: доход + внесения - выемки
+        final oooBalance = oooIncome + oooDeposits - oooWithdrawals;
+        final ipBalance = ipIncome + ipDeposits - ipWithdrawals;
 
         // Добавляем только если были какие-то движения
-        if (oooIncome > 0 || ipIncome > 0 || oooWithdrawals > 0 || ipWithdrawals > 0) {
+        if (oooIncome > 0 || ipIncome > 0 || oooWithdrawals > 0 || ipWithdrawals > 0 || oooDeposits > 0 || ipDeposits > 0) {
           Logger.debug('Магазин: ${shop.address}');
-          Logger.debug('  ООО: доход=$oooIncome, выемки=$oooWithdrawals, баланс=$oooBalance');
-          Logger.debug('  ИП: доход=$ipIncome, выемки=$ipWithdrawals, баланс=$ipBalance');
+          Logger.debug('  ООО: доход=$oooIncome, внесения=$oooDeposits, выемки=$oooWithdrawals, баланс=$oooBalance');
+          Logger.debug('  ИП: доход=$ipIncome, внесения=$ipDeposits, выемки=$ipWithdrawals, баланс=$ipBalance');
           Logger.debug('  Итого: ${oooBalance + ipBalance}');
           balances.add(ShopCashBalance(
             shopAddress: shop.address,
@@ -111,24 +132,45 @@ class MainCashService {
         ipIncome += report.ipCash;
       }
 
-      // Суммируем выемки (только активные, не отмененные)
+      // Суммируем операции (только активные, не отмененные)
       double oooWithdrawals = 0;
       double ipWithdrawals = 0;
+      double oooDeposits = 0;
+      double ipDeposits = 0;
 
       for (final withdrawal in withdrawals) {
         if (withdrawal.isActive) {
-          if (withdrawal.type == 'ooo') {
-            oooWithdrawals += withdrawal.totalAmount;
-          } else if (withdrawal.type == 'ip') {
-            ipWithdrawals += withdrawal.totalAmount;
+          if (withdrawal.category == 'deposit') {
+            // Внесение — добавляем к балансу
+            if (withdrawal.type == 'ooo') {
+              oooDeposits += withdrawal.totalAmount;
+            } else if (withdrawal.type == 'ip') {
+              ipDeposits += withdrawal.totalAmount;
+            }
+          } else if (withdrawal.category == 'transfer') {
+            // Перенос — вычитаем из источника, добавляем к получателю
+            if (withdrawal.transferDirection == 'ooo_to_ip') {
+              oooWithdrawals += withdrawal.totalAmount;
+              ipDeposits += withdrawal.totalAmount;
+            } else if (withdrawal.transferDirection == 'ip_to_ooo') {
+              ipWithdrawals += withdrawal.totalAmount;
+              oooDeposits += withdrawal.totalAmount;
+            }
+          } else {
+            // Выемка — вычитаем из баланса
+            if (withdrawal.type == 'ooo') {
+              oooWithdrawals += withdrawal.totalAmount;
+            } else if (withdrawal.type == 'ip') {
+              ipWithdrawals += withdrawal.totalAmount;
+            }
           }
         }
       }
 
       return ShopCashBalance(
         shopAddress: shopAddress,
-        oooBalance: oooIncome - oooWithdrawals,
-        ipBalance: ipIncome - ipWithdrawals,
+        oooBalance: oooIncome + oooDeposits - oooWithdrawals,
+        ipBalance: ipIncome + ipDeposits - ipWithdrawals,
         oooTotalIncome: oooIncome,
         ipTotalIncome: ipIncome,
         oooTotalWithdrawals: oooWithdrawals,

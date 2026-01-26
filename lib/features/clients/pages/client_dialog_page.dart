@@ -301,7 +301,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                         ),
                       ),
                       Text(
-                        '${item['total'] ?? 0} ₽',
+                        '${item['total'] ?? 0} руб',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -317,7 +317,7 @@ class _ClientDialogPageState extends State<ClientDialogPage> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    '$totalPrice ₽',
+                    '$totalPrice руб',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

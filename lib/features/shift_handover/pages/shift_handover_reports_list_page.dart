@@ -968,25 +968,24 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                   ],
                 ),
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  spacing: 8,
                   children: [
                     Text(
-                      'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} ₽',
+                      'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF004D40),
                       ),
                     ),
-                    if (report.expenses.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                    if (report.expenses.isNotEmpty)
                       Text(
-                        '(расходы: ${report.totalExpenses.toStringAsFixed(0)} ₽)',
+                        '(расходы: ${report.totalExpenses.toStringAsFixed(0)} руб)',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.red.shade700,
                         ),
                       ),
-                    ],
                   ],
                 ),
                 if (isConfirmed && report.rating != null)
@@ -2550,25 +2549,30 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} ₽',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: Color(0xFF004D40),
+                      Flexible(
+                        child: Wrap(
+                          spacing: 4,
+                          children: [
+                            Text(
+                              'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Color(0xFF004D40),
+                              ),
+                            ),
+                            if (report.expenses.isNotEmpty)
+                              Text(
+                                '(расходы: ${report.totalExpenses.toStringAsFixed(0)} руб)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.red.shade700,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (report.expenses.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          '(расходы: ${report.totalExpenses.toStringAsFixed(0)} ₽)',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
+                      const SizedBox(width: 4),
                       Text(
                         '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
                         style: TextStyle(fontSize: 11, color: Colors.grey[600]),

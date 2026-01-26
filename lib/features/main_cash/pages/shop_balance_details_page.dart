@@ -159,7 +159,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
                 ),
               ),
               Text(
-                '${_formatFullAmount(_balance!.totalBalance)} \u20bd',
+                '${_formatFullAmount(_balance!.totalBalance)} руб',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -228,7 +228,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
           ],
         ),
         Text(
-          '${_formatFullAmount(amount)} \u20bd',
+          '${_formatFullAmount(amount)} руб',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -250,7 +250,7 @@ class _ShopBalanceDetailsPageState extends State<ShopBalanceDetailsPage>
             style: const TextStyle(color: Colors.grey),
           ),
           Text(
-            '${_formatFullAmount(amount)} \u20bd',
+            '${_formatFullAmount(amount)} руб',
             style: TextStyle(
               color: amount < 0 ? Colors.red : Colors.green,
             ),

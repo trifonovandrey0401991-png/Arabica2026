@@ -335,7 +335,7 @@ class _ZReportRecognitionDialogState extends State<ZReportRecognitionDialog> {
               size: 20,
             ),
           ),
-          suffixText: isMoney ? '₽' : null,
+          suffixText: isMoney ? 'руб' : null,
           suffixStyle: TextStyle(
             color: Colors.teal.shade700,
             fontWeight: FontWeight.bold,

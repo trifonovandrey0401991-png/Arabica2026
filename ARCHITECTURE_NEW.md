@@ -8749,6 +8749,763 @@ flowchart TB
 
 ---
 
+## 16. Финансы - КОНВЕРТЫ (Envelope)
+
+### 16.1 Обзор модуля
+
+**Назначение:** Модуль для учёта сдачи наличных денег из кассы в конце смены. Сотрудники заполняют отчёт о выручке (ООО и ИП), указывают сумму наличных, расходы поставщикам, и фотографируют Z-отчёты и конверты. Данные используются для аналитики выручки и расчёта балансов в Главной Кассе.
+
+**Файлы модуля:**
+```
+lib/features/envelope/
+├── models/
+│   ├── envelope_report_model.dart    # Модель отчёта конверта
+│   └── envelope_question_model.dart  # Вопросы для сдачи смены
+├── pages/
+│   ├── envelope_form_page.dart       # Форма создания отчёта
+│   ├── envelope_reports_list_page.dart # Список отчётов
+│   ├── envelope_report_view_page.dart  # Просмотр отчёта
+│   └── envelope_questions_management_page.dart # Управление вопросами
+├── services/
+│   ├── envelope_report_service.dart  # API сервис отчётов
+│   └── envelope_question_service.dart # API сервис вопросов
+└── widgets/
+    └── add_expense_dialog.dart       # Диалог добавления расхода
+```
+
+---
+
+### 16.2 Модели данных
+
+```mermaid
+classDiagram
+    class EnvelopeReport {
+        +String id
+        +String employeeName
+        +String shopAddress
+        +String shiftType
+        +DateTime createdAt
+        +String? oooZReportPhotoUrl
+        +double oooRevenue
+        +double oooCash
+        +List~ExpenseItem~ oooExpenses
+        +String? oooEnvelopePhotoUrl
+        +int oooOfdNotSent
+        +String? ipZReportPhotoUrl
+        +double ipRevenue
+        +double ipCash
+        +List~ExpenseItem~ expenses
+        +String? ipEnvelopePhotoUrl
+        +int ipOfdNotSent
+        +String status
+        +DateTime? confirmedAt
+        +String? confirmedByAdmin
+        +int? rating
+        +totalExpenses() double
+        +oooTotalExpenses() double
+        +oooEnvelopeAmount() double
+        +ipEnvelopeAmount() double
+        +totalEnvelopeAmount() double
+    }
+
+    class ExpenseItem {
+        +String supplierId
+        +String supplierName
+        +double amount
+        +String? comment
+    }
+
+    EnvelopeReport "1" *-- "*" ExpenseItem : expenses
+    EnvelopeReport "1" *-- "*" ExpenseItem : oooExpenses
+```
+
+---
+
+### 16.3 Формула расчёта суммы в конверте
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Сумма в конверте = Наличные - Расходы поставщикам          │
+├─────────────────────────────────────────────────────────────┤
+│  ООО:                                                       │
+│    oooEnvelopeAmount = oooCash - oooTotalExpenses           │
+│                                                             │
+│  ИП:                                                        │
+│    ipEnvelopeAmount = ipCash - totalExpenses                │
+│                                                             │
+│  ИТОГО:                                                     │
+│    totalEnvelopeAmount = oooEnvelopeAmount + ipEnvelopeAmount│
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 16.4 Типы смен
+
+| Тип | Значение | Описание |
+|-----|----------|----------|
+| `morning` | Утренняя | Утренняя смена |
+| `evening` | Вечерняя | Вечерняя смена |
+
+---
+
+### 16.5 Статусы отчёта
+
+| Статус | Описание |
+|--------|----------|
+| `pending` | Ожидает проверки администратором |
+| `confirmed` | Подтверждён администратором |
+
+**Просроченный отчёт:** Если прошло более 24 часов без подтверждения.
+
+---
+
+### 16.6 Поток создания отчёта
+
+```mermaid
+sequenceDiagram
+    participant EMP as Сотрудник
+    participant FORM as EnvelopeFormPage
+    participant DLG as AddExpenseDialog
+    participant SVC as EnvelopeReportService
+    participant API as Server API
+
+    EMP->>FORM: Открыть форму
+    FORM->>FORM: Выбрать тип смены (утро/вечер)
+
+    Note over FORM: Шаг 1: ООО данные
+    FORM->>FORM: Фото Z-отчёта ООО
+    FORM->>FORM: Ввод выручки ООО
+    FORM->>FORM: Ввод наличных ООО
+    opt Расходы ООО
+        FORM->>DLG: Добавить расход
+        DLG-->>FORM: ExpenseItem
+    end
+    FORM->>FORM: Фото конверта ООО
+
+    Note over FORM: Шаг 2: ИП данные
+    FORM->>FORM: Фото Z-отчёта ИП
+    FORM->>FORM: Ввод выручки ИП
+    FORM->>FORM: Ввод наличных ИП
+    opt Расходы ИП
+        FORM->>DLG: Добавить расход
+        DLG-->>FORM: ExpenseItem
+    end
+    FORM->>FORM: Фото конверта ИП
+
+    Note over FORM: Шаг 3: Итого
+    FORM->>FORM: Показать итоговые суммы
+    FORM->>SVC: createReport(report)
+    SVC->>API: POST /api/envelope-reports
+    API-->>SVC: EnvelopeReport
+    SVC-->>FORM: Успех
+```
+
+---
+
+### 16.7 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/envelope-reports` | Получить все отчёты (фильтры: shopAddress, status, fromDate, toDate) |
+| GET | `/api/envelope-reports/:id` | Получить отчёт по ID |
+| POST | `/api/envelope-reports` | Создать новый отчёт |
+| PUT | `/api/envelope-reports/:id` | Обновить отчёт |
+| DELETE | `/api/envelope-reports/:id` | Удалить отчёт |
+| GET | `/api/envelope-reports/expired` | Получить просроченные отчёты |
+| PUT | `/api/envelope-reports/:id/confirm` | Подтвердить отчёт с оценкой |
+
+---
+
+### 16.8 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph ENVELOPE["КОНВЕРТЫ (envelope)"]
+        ER[EnvelopeReport]
+        ERS[EnvelopeReportService]
+    end
+
+    subgraph MAIN_CASH["ГЛАВНАЯ КАССА (main_cash)"]
+        MCS[MainCashService]
+        RAS[RevenueAnalyticsService]
+        TS[TurnoverService]
+    end
+
+    subgraph SHIFT_HANDOVER["СДАЧА СМЕНЫ"]
+        SH[ShiftHandoverReportsPage]
+    end
+
+    subgraph SHOPS["МАГАЗИНЫ"]
+        SHOP[Shop]
+    end
+
+    ER --> MCS
+    ER --> RAS
+    ER --> TS
+    ERS --> MCS
+    ERS --> RAS
+    ERS --> TS
+    SH --> ER
+    SHOP --> ER
+
+    style ENVELOPE fill:#FF9800,color:#fff
+    style MAIN_CASH fill:#4CAF50,color:#fff
+```
+
+---
+
+### 16.9 Серверные файлы данных
+
+| Файл | Путь | Описание |
+|------|------|----------|
+| envelope-reports.json | `/var/www/envelope-reports.json` | Все отчёты конвертов |
+
+---
+
+### 16.10 Структура данных отчёта (JSON)
+
+```json
+{
+  "id": "envelope_1737847234567_abc123",
+  "employeeName": "Иванов Иван",
+  "shopAddress": "Пятигорск, ул. Коллективная 1",
+  "shiftType": "morning",
+  "createdAt": "2026-01-25T14:00:00.000Z",
+  "oooZReportPhotoUrl": "https://...",
+  "oooRevenue": 25000,
+  "oooCash": 18000,
+  "oooExpenses": [
+    {
+      "supplierId": "supplier_1",
+      "supplierName": "ООО Поставщик",
+      "amount": 3000,
+      "comment": "Молоко"
+    }
+  ],
+  "oooEnvelopePhotoUrl": "https://...",
+  "oooOfdNotSent": 0,
+  "ipZReportPhotoUrl": "https://...",
+  "ipRevenue": 15000,
+  "ipCash": 12000,
+  "expenses": [
+    {
+      "supplierId": "supplier_2",
+      "supplierName": "ИП Сидоров",
+      "amount": 2000,
+      "comment": "Расходные материалы"
+    }
+  ],
+  "ipEnvelopePhotoUrl": "https://...",
+  "ipOfdNotSent": 0,
+  "status": "pending",
+  "confirmedAt": null,
+  "confirmedByAdmin": null,
+  "rating": null
+}
+```
+
+---
+
+## 17. Финансы - ГЛАВНАЯ КАССА (Main Cash)
+
+### 17.1 Обзор модуля
+
+**Назначение:** Центральный модуль для учёта и контроля денежных средств по всем магазинам. Агрегирует данные из отчётов конвертов и выемок для отображения текущих балансов, истории операций и аналитики выручки. Позволяет управлять выемками, внесениями и переносами между кассами ООО и ИП.
+
+**Файлы модуля:**
+```
+lib/features/main_cash/
+├── models/
+│   ├── shop_cash_balance_model.dart   # Баланс кассы магазина
+│   ├── shop_revenue_model.dart        # Модели выручки и аналитики
+│   ├── withdrawal_model.dart          # Модель выемки/внесения/переноса
+│   └── withdrawal_expense_model.dart  # Модель расхода в выемке
+├── pages/
+│   ├── main_cash_page.dart            # Главная страница (3 вкладки)
+│   ├── shop_balance_details_page.dart # Детали баланса магазина
+│   ├── revenue_analytics_page.dart    # Аналитика выручки
+│   ├── withdrawal_form_page.dart      # Форма выемки/внесения/переноса
+│   ├── withdrawal_shop_selection_page.dart    # Выбор магазина
+│   └── withdrawal_employee_selection_page.dart # Выбор сотрудника
+├── services/
+│   ├── main_cash_service.dart         # Сервис расчёта балансов
+│   ├── withdrawal_service.dart        # API сервис операций
+│   ├── revenue_analytics_service.dart # Сервис аналитики выручки
+│   └── turnover_service.dart          # Сервис оборотов
+└── widgets/
+    ├── withdrawal_dialog.dart         # Диалог операции
+    ├── withdrawal_confirmation_dialog.dart # Диалог подтверждения
+    └── turnover_calendar.dart         # Календарь оборотов
+```
+
+---
+
+### 17.2 Модели данных
+
+```mermaid
+classDiagram
+    class ShopCashBalance {
+        +String shopAddress
+        +double oooBalance
+        +double ipBalance
+        +double oooTotalIncome
+        +double ipTotalIncome
+        +double oooTotalWithdrawals
+        +double ipTotalWithdrawals
+        +totalBalance() double
+    }
+
+    class Withdrawal {
+        +String id
+        +String shopAddress
+        +String employeeName
+        +String employeeId
+        +String type
+        +double totalAmount
+        +List~WithdrawalExpense~ expenses
+        +String? adminName
+        +DateTime createdAt
+        +bool confirmed
+        +String? status
+        +DateTime? cancelledAt
+        +String? cancelledBy
+        +String? cancelReason
+        +String category
+        +String? transferDirection
+        +isDeposit() bool
+        +isTransfer() bool
+        +isWithdrawal() bool
+        +isActive() bool
+        +isCancelled() bool
+    }
+
+    class WithdrawalExpense {
+        +String? supplierId
+        +String? supplierName
+        +double amount
+        +String comment
+        +isOtherExpense() bool
+    }
+
+    class DailyRevenue {
+        +DateTime date
+        +double oooRevenue
+        +double ipRevenue
+        +totalRevenue() double
+    }
+
+    class ShopRevenue {
+        +String shopAddress
+        +DateTime startDate
+        +DateTime endDate
+        +double totalRevenue
+        +double oooRevenue
+        +double ipRevenue
+        +int shiftsCount
+        +double avgPerShift
+        +double? prevPeriodRevenue
+        +double? changePercent
+        +TrendDirection trend
+    }
+
+    class WeeklyRevenue {
+        +DateTime weekStart
+        +List~double~ dailyRevenues
+        +total() double
+    }
+
+    class MonthlyRevenueTable {
+        +int year
+        +int month
+        +List~WeeklyRevenue~ weeks
+        +double totalRevenue
+        +double averageRevenue
+        +int daysWithRevenue
+    }
+
+    Withdrawal "1" *-- "*" WithdrawalExpense : expenses
+    ShopRevenue --> TrendDirection
+    MonthlyRevenueTable "1" *-- "*" WeeklyRevenue : weeks
+```
+
+---
+
+### 17.3 Категории операций (Withdrawal)
+
+| Категория | category | Описание | Влияние на баланс |
+|-----------|----------|----------|-------------------|
+| **Выемка** | `withdrawal` | Изъятие денег из кассы | Уменьшает баланс |
+| **Внесение** | `deposit` | Внесение денег в кассу | Увеличивает баланс |
+| **Перенос** | `transfer` | Перенос между ООО и ИП | Один уменьшается, другой увеличивается |
+
+---
+
+### 17.4 Направления переноса
+
+| Направление | transferDirection | Описание |
+|-------------|-------------------|----------|
+| ООО → ИП | `ooo_to_ip` | Перенос из кассы ООО в кассу ИП |
+| ИП → ООО | `ip_to_ooo` | Перенос из кассы ИП в кассу ООО |
+
+---
+
+### 17.5 Формула расчёта баланса магазина
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Баланс = Доходы (из конвертов) + Внесения - Выемки ± Переносы      │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ООО Баланс:                                                         │
+│    oooBalance = oooIncome + oooDeposits - oooWithdrawals             │
+│                                                                      │
+│  ИП Баланс:                                                          │
+│    ipBalance = ipIncome + ipDeposits - ipWithdrawals                 │
+│                                                                      │
+│  Где:                                                                │
+│    - oooIncome = Σ oooCash из всех EnvelopeReport                    │
+│    - ipIncome = Σ ipCash из всех EnvelopeReport                      │
+│    - Deposits = операции с category='deposit'                        │
+│    - Withdrawals = операции с category='withdrawal'                  │
+│    - Transfers: ooo_to_ip вычитает из ООО, добавляет в ИП            │
+│               ip_to_ooo вычитает из ИП, добавляет в ООО              │
+│                                                                      │
+│  ВАЖНО: Учитываются только операции с isActive=true (не отменённые) │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 17.6 Статусы операций
+
+| Статус | status | Описание |
+|--------|--------|----------|
+| Активная | `active` (или null) | Операция учитывается в балансе |
+| Отменена | `cancelled` | Операция не учитывается в балансе |
+
+---
+
+### 17.7 Структура главной страницы (3 вкладки)
+
+```mermaid
+flowchart TB
+    subgraph TAB1["Вкладка: Балансы"]
+        B1[Список магазинов]
+        B2[ООО баланс]
+        B3[ИП баланс]
+        B4[Итого]
+        B1 --> B2
+        B1 --> B3
+        B2 --> B4
+        B3 --> B4
+    end
+
+    subgraph TAB2["Вкладка: Операции"]
+        W1[Фильтр: Все / Подтверждённые]
+        W2[Фильтр по магазину]
+        W3[Список операций]
+        W4[Карточка операции]
+        W1 --> W3
+        W2 --> W3
+        W3 --> W4
+    end
+
+    subgraph TAB3["Вкладка: Аналитика"]
+        A1[RevenueAnalyticsPage]
+        A2[Все магазины / Один магазин]
+        A3[Выбор периода]
+        A4[Графики и таблицы]
+        A1 --> A2
+        A2 --> A3
+        A3 --> A4
+    end
+
+    subgraph ACTIONS["Действия"]
+        ACT1[FAB: Новая операция]
+        ACT2[Выбор типа: Выемка/Внесение/Перенос]
+        ACT3[Выбор магазина]
+        ACT4[Выбор сотрудника]
+        ACT5[Форма операции]
+    end
+
+    ACT1 --> ACT2
+    ACT2 --> ACT3
+    ACT3 --> ACT4
+    ACT4 --> ACT5
+
+    style TAB1 fill:#4CAF50,color:#fff
+    style TAB2 fill:#2196F3,color:#fff
+    style TAB3 fill:#9C27B0,color:#fff
+```
+
+---
+
+### 17.8 Поток создания операции
+
+```mermaid
+sequenceDiagram
+    participant ADMIN as Администратор
+    participant PAGE as MainCashPage
+    participant SEL1 as WithdrawalShopSelectionPage
+    participant SEL2 as WithdrawalEmployeeSelectionPage
+    participant FORM as WithdrawalFormPage
+    participant SVC as WithdrawalService
+    participant API as Server API
+
+    ADMIN->>PAGE: Нажать FAB (+)
+    PAGE->>PAGE: Показать меню выбора типа
+    Note over PAGE: Выемка / Внесение / Перенос
+
+    ADMIN->>SEL1: Выбрать тип операции
+    SEL1->>SEL1: Показать список магазинов
+    ADMIN->>SEL1: Выбрать магазин
+
+    SEL1->>SEL2: Перейти к выбору сотрудника
+    SEL2->>SEL2: Показать список сотрудников
+    ADMIN->>SEL2: Выбрать сотрудника
+
+    SEL2->>FORM: Перейти к форме
+    FORM->>FORM: Показать форму операции
+
+    alt Выемка
+        FORM->>FORM: Выбрать тип кассы (ООО/ИП)
+        FORM->>FORM: Добавить расходы
+    else Внесение
+        FORM->>FORM: Выбрать тип кассы (ООО/ИП)
+        FORM->>FORM: Ввести сумму
+    else Перенос
+        FORM->>FORM: Выбрать направление (ООО→ИП / ИП→ООО)
+        FORM->>FORM: Ввести сумму
+    end
+
+    ADMIN->>FORM: Подтвердить
+    FORM->>SVC: createWithdrawal(withdrawal)
+    SVC->>API: POST /api/withdrawals
+    API-->>SVC: Withdrawal
+    SVC-->>FORM: Успех
+    FORM-->>PAGE: Вернуться и обновить данные
+```
+
+---
+
+### 17.9 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/withdrawals` | Получить все операции (фильтры: shopAddress, type, fromDate, toDate) |
+| POST | `/api/withdrawals` | Создать новую операцию |
+| DELETE | `/api/withdrawals/:id` | Удалить операцию |
+| PATCH | `/api/withdrawals/:id/confirm` | Подтвердить операцию |
+| PATCH | `/api/withdrawals/:id/cancel` | Отменить операцию (undo) |
+
+---
+
+### 17.10 Аналитика выручки
+
+```mermaid
+flowchart TB
+    subgraph SOURCE["Источник данных"]
+        ENV[EnvelopeReport]
+        OOO[oooRevenue + ipRevenue]
+    end
+
+    subgraph ANALYTICS["RevenueAnalyticsService"]
+        AGG[Агрегация по магазинам]
+        PERIOD[Сравнение периодов]
+        TREND[Расчёт трендов]
+        DAILY[Группировка по дням]
+        WEEKLY[Группировка по неделям]
+    end
+
+    subgraph OUTPUT["Результат"]
+        SR[ShopRevenue]
+        DR[DailyRevenue]
+        WR[WeeklyRevenue]
+        MRT[MonthlyRevenueTable]
+    end
+
+    ENV --> OOO
+    OOO --> AGG
+    AGG --> PERIOD
+    PERIOD --> TREND
+    TREND --> SR
+    AGG --> DAILY
+    DAILY --> DR
+    DAILY --> WEEKLY
+    WEEKLY --> WR
+    WEEKLY --> MRT
+
+    style SOURCE fill:#FF9800,color:#fff
+    style ANALYTICS fill:#2196F3,color:#fff
+    style OUTPUT fill:#4CAF50,color:#fff
+```
+
+---
+
+### 17.11 Тренды выручки
+
+| Тренд | Условие | Иконка | Цвет |
+|-------|---------|--------|------|
+| `up` (Рост) | changePercent > 10% | 📈 | Зелёный (#4CAF50) |
+| `stable` (Стабильно) | -10% ≤ changePercent ≤ 10% | 📊 | Оранжевый (#FFA726) |
+| `down` (Падение) | changePercent < -10% | 📉 | Красный (#EF5350) |
+
+---
+
+### 17.12 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph MAIN_CASH["ГЛАВНАЯ КАССА"]
+        MCS[MainCashService]
+        WS[WithdrawalService]
+        RAS[RevenueAnalyticsService]
+        TS[TurnoverService]
+    end
+
+    subgraph ENVELOPE["КОНВЕРТЫ"]
+        ER[EnvelopeReport]
+        ERS[EnvelopeReportService]
+    end
+
+    subgraph SHOPS["МАГАЗИНЫ"]
+        SHOP[Shop]
+        SS[ShopService]
+    end
+
+    subgraph EMPLOYEES["СОТРУДНИКИ"]
+        EMP[Employee]
+        ES[EmployeeService]
+    end
+
+    ERS --> MCS
+    ERS --> RAS
+    ERS --> TS
+    SS --> MCS
+    ES --> WS
+
+    style MAIN_CASH fill:#4CAF50,color:#fff
+    style ENVELOPE fill:#FF9800,color:#fff
+    style SHOPS fill:#2196F3,color:#fff
+    style EMPLOYEES fill:#9C27B0,color:#fff
+```
+
+---
+
+### 17.13 Серверные файлы данных
+
+| Файл | Путь | Описание |
+|------|------|----------|
+| withdrawals.json | `/var/www/withdrawals.json` | Все операции (выемки, внесения, переносы) |
+
+---
+
+### 17.14 Структура данных операции (JSON)
+
+```json
+{
+  "id": "withdrawal_1737847234567_xyz789",
+  "shopAddress": "Пятигорск, ул. Коллективная 1",
+  "employeeName": "Иванов Иван",
+  "employeeId": "employee_123",
+  "type": "ooo",
+  "totalAmount": 5000,
+  "expenses": [
+    {
+      "supplierId": "supplier_1",
+      "supplierName": "ООО Поставщик",
+      "amount": 3000,
+      "comment": "Молоко"
+    },
+    {
+      "supplierId": null,
+      "supplierName": null,
+      "amount": 2000,
+      "comment": "Хозяйственные расходы"
+    }
+  ],
+  "adminName": "Петров Пётр",
+  "createdAt": "2026-01-25T15:30:00.000Z",
+  "confirmed": false,
+  "status": "active",
+  "category": "withdrawal",
+  "transferDirection": null
+}
+```
+
+**Пример переноса:**
+```json
+{
+  "id": "transfer_1737850000000_abc",
+  "shopAddress": "Пятигорск, ул. Коллективная 1",
+  "employeeName": "Сидоров Сидор",
+  "employeeId": "employee_456",
+  "type": "ooo",
+  "totalAmount": 10000,
+  "expenses": [
+    {
+      "supplierId": null,
+      "supplierName": "Перенос ООО→ИП",
+      "amount": 10000,
+      "comment": "Перенос средств"
+    }
+  ],
+  "createdAt": "2026-01-25T16:00:00.000Z",
+  "confirmed": true,
+  "status": "active",
+  "category": "transfer",
+  "transferDirection": "ooo_to_ip"
+}
+```
+
+---
+
+### 17.15 Календарь оборотов (TurnoverCalendar)
+
+```mermaid
+flowchart LR
+    subgraph CALENDAR["Виджет TurnoverCalendar"]
+        MONTH[Выбор месяца]
+        DAYS[Дни месяца]
+        DAY[День с выручкой]
+        EMPTY[Пустой день]
+    end
+
+    subgraph DATA["Данные"]
+        TS[TurnoverService]
+        DT[List~DayTurnover~]
+    end
+
+    subgraph COMPARE["Сравнение"]
+        WEEK[С неделей назад]
+        MONTH_AGO[С месяцем назад]
+        PERCENT[% изменения]
+    end
+
+    MONTH --> TS
+    TS --> DT
+    DT --> DAYS
+    DAYS --> DAY
+    DAYS --> EMPTY
+    DAY --> COMPARE
+
+    style CALENDAR fill:#4CAF50,color:#fff
+```
+
+---
+
+### 17.16 Таблица зависимостей
+
+| Модуль | Направление | Что использует |
+|--------|-------------|----------------|
+| **Envelope** | → | EnvelopeReport для расчёта доходов и аналитики |
+| **Shops** | → | shopAddress для группировки и фильтрации |
+| **Employees** | → | employeeName, employeeId для привязки операций |
+| **KPI** | ← | Данные о выручке для аналитики |
+
+---
+
 ## Следующие разделы (TODO)
 
 - [x] 2. Управление данными - СОТРУДНИКИ
@@ -8765,4 +9522,6 @@ flowchart TB
 - [x] 13. Клиентский модуль - МОИ ДИАЛОГИ
 - [x] 14. Клиентский модуль - ПОИСК ТОВАРА
 - [x] 15. Система обучения - ТЕСТИРОВАНИЕ
-- [ ] 16. Аналитика - ЭФФЕКТИВНОСТЬ
+- [x] 16. Финансы - КОНВЕРТЫ
+- [x] 17. Финансы - ГЛАВНАЯ КАССА
+- [ ] 18. Аналитика - ЭФФЕКТИВНОСТЬ
