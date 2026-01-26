@@ -243,9 +243,97 @@ async function notifyQuestionAnswered(question, answer) {
   await sendPushToPhone(clientPhone, title, body, data);
 }
 
+/**
+ * Уведомить сотрудников магазина о новом сообщении клиента в персональном диалоге
+ * @param {Object} dialog - Объект персонального диалога
+ * @param {Object} message - Объект сообщения от клиента
+ * @returns {Promise<void>}
+ */
+async function notifyPersonalDialogClientMessage(dialog, message) {
+  console.log('📨 Отправка уведомлений сотрудникам о сообщении в персональном диалоге...');
+
+  // Получить всех сотрудников
+  const allEmployees = getAllEmployees();
+  if (allEmployees.length === 0) {
+    console.log('⚠️  Нет сотрудников для уведомления');
+    return;
+  }
+
+  // Фильтровать только сотрудников этого магазина
+  const shopAddress = dialog.shopAddress;
+  const shopEmployees = allEmployees.filter(emp => {
+    if (!emp.assignedShops || !Array.isArray(emp.assignedShops)) {
+      return false;
+    }
+    return emp.assignedShops.includes(shopAddress);
+  });
+
+  if (shopEmployees.length === 0) {
+    console.log(`⚠️  Нет сотрудников для магазина ${shopAddress}`);
+    return;
+  }
+
+  const clientName = message.senderName || dialog.clientName || 'Клиент';
+  const messageText = message.text || '';
+
+  const shortText = messageText.length > 50
+    ? messageText.substring(0, 50) + '...'
+    : messageText;
+
+  const title = 'Сообщение в поиске товара';
+  const body = `${clientName}: "${shortText}"`;
+
+  const data = {
+    type: 'personal_dialog_client_message',
+    dialogId: dialog.id,
+    shopAddress: shopAddress,
+    action: 'view_personal_dialog',
+  };
+
+  console.log(`📨 Уведомление ${shopEmployees.length} сотрудникам магазина ${shopAddress}`);
+  await sendPushToMultiple(shopEmployees, title, body, data);
+}
+
+/**
+ * Уведомить клиента об ответе сотрудника в персональном диалоге
+ * @param {Object} dialog - Объект персонального диалога
+ * @param {Object} message - Объект сообщения от сотрудника
+ * @returns {Promise<void>}
+ */
+async function notifyPersonalDialogEmployeeMessage(dialog, message) {
+  console.log('📨 Отправка уведомления клиенту о сообщении в персональном диалоге...');
+
+  const clientPhone = dialog.clientPhone;
+  if (!clientPhone) {
+    console.log('⚠️  Нет телефона клиента для уведомления');
+    return;
+  }
+
+  const shopName = message.shopAddress || dialog.shopAddress || 'Магазин';
+  const messageText = message.text || '';
+
+  const shortText = messageText.length > 50
+    ? messageText.substring(0, 50) + '...'
+    : messageText;
+
+  const title = 'Ответ от магазина';
+  const body = `${shopName}: ${shortText}`;
+
+  const data = {
+    type: 'personal_dialog_employee_message',
+    dialogId: dialog.id,
+    shopAddress: dialog.shopAddress,
+    action: 'view_personal_dialog',
+  };
+
+  await sendPushToPhone(clientPhone, title, body, data);
+}
+
 // ==================== ЭКСПОРТ ====================
 
 module.exports = {
   notifyQuestionCreated,
   notifyQuestionAnswered,
+  notifyPersonalDialogClientMessage,
+  notifyPersonalDialogEmployeeMessage,
 };

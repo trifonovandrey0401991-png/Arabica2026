@@ -245,23 +245,8 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
 
   /// Открыть диалог с магазином
   Future<void> _openShopDialog(String shopAddress, String? questionId) async {
-    // Если есть questionId - открываем существующий диалог
-    if (questionId != null) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProductQuestionDialogPage(
-            questionId: questionId,
-          ),
-        ),
-      );
-      _loadMessages();
-      return;
-    }
-
-    // Если questionId нет - ищем или создаем персональный диалог
     try {
-      // Сначала проверим, есть ли уже персональный диалог с этим магазином
+      // Проверяем телефон клиента
       if (_clientPhone == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -272,6 +257,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         return;
       }
 
+      // Всегда ищем персональный диалог с этим магазином
       final dialogs = await ProductQuestionService.getClientPersonalDialogs(_clientPhone!);
       final existingDialog = dialogs.where((d) => d.shopAddress == shopAddress).firstOrNull;
 
@@ -280,8 +266,9 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProductQuestionDialogPage(
-              questionId: existingDialog.id,
+            builder: (context) => ProductQuestionPersonalDialogPage(
+              dialogId: existingDialog.id,
+              shopAddress: shopAddress,
             ),
           ),
         );

@@ -5,6 +5,7 @@ import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_dialog_page.dart';
 import 'product_question_client_dialog_page.dart';
+import 'product_question_personal_dialog_page.dart';
 
 /// Страница списка магазинов для поиска товара
 class ProductQuestionShopsListPage extends StatefulWidget {
@@ -235,25 +236,31 @@ class _ProductQuestionShopsListPageState extends State<ProductQuestionShopsListP
                 ),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () async {
-            // Находим первый questionId для этого магазина
-            String? questionId;
-
-            if (group.questions.isNotEmpty) {
-              questionId = group.questions.first.id;
-            } else if (group.dialogs.isNotEmpty) {
-              questionId = group.dialogs.first.originalQuestionId;
-            }
-
-            if (questionId != null) {
+            // ПРИОРИТЕТ: сначала проверяем персональный диалог
+            if (group.dialogs.isNotEmpty) {
+              // Есть персональный диалог - открываем его
+              final personalDialog = group.dialogs.last;
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProductQuestionPersonalDialogPage(
+                    dialogId: personalDialog.id,
+                    shopAddress: shopAddress,
+                  ),
+                ),
+              );
+              _loadData();
+            } else if (group.questions.isNotEmpty) {
+              // Нет персонального диалога, но есть вопросы - открываем обычный диалог
+              final questionId = group.questions.last.id;
               await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ProductQuestionDialogPage(
-                    questionId: questionId!,
+                    questionId: questionId,
                   ),
                 ),
               );
-              // Обновляем после возврата
               _loadData();
             }
           },

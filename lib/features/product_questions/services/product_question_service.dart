@@ -142,6 +142,12 @@ class ProductQuestionService {
     if (result != null) {
       final data = ProductQuestionGroupedData.fromJson(result);
       Logger.debug('✅ Загружено ${data.byShop.length} магазинов, общий unread: ${data.totalUnread}');
+
+      // DEBUG: Показать сколько диалогов в каждом магазине
+      data.byShop.forEach((shop, group) {
+        Logger.debug('  🏪 $shop: ${group.questions.length} вопросов, ${group.dialogs.length} диалогов');
+      });
+
       return data;
     }
     return null;

@@ -4,7 +4,9 @@ const path = require('path');
 // Push-уведомления
 const {
   notifyQuestionCreated,
-  notifyQuestionAnswered
+  notifyQuestionAnswered,
+  notifyPersonalDialogClientMessage,
+  notifyPersonalDialogEmployeeMessage
 } = require('./product_questions_notifications');
 
 const PRODUCT_QUESTIONS_DIR = '/var/www/product-questions';
@@ -856,12 +858,14 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
 
       fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2));
 
-      // Отправить push
+      // Отправить push уведомления для персонального диалога
       try {
         if (senderType === 'employee') {
-          await notifyQuestionAnswered(dialog, newMessage);
+          // Сотрудник ответил → уведомить клиента
+          await notifyPersonalDialogEmployeeMessage(dialog, newMessage);
         } else {
-          await notifyQuestionCreated(newMessage);
+          // Клиент написал → уведомить сотрудников магазина
+          await notifyPersonalDialogClientMessage(dialog, newMessage);
         }
       } catch (e) {
         console.error('❌ Ошибка отправки уведомлений:', e);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/product_question_model.dart';
 import '../services/product_question_service.dart';
 
@@ -18,28 +19,22 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
   ProductQuestion? _question;
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadQuestion();
     _markAsRead();
-    _startAutoRefresh();
+    // Автообновление каждые 5 секунд
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadQuestion());
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _startAutoRefresh() {
-    Future.delayed(const Duration(seconds: 5), () {
-      if (mounted) {
-        _loadQuestion();
-        _startAutoRefresh();
-      }
-    });
   }
 
   Future<void> _loadQuestion() async {
@@ -126,7 +121,31 @@ class _ProductQuestionDialogPageState extends State<ProductQuestionDialogPage> {
                     style: TextStyle(color: Colors.grey),
                   ),
                 )
-              : ListView.builder(
+              : _question!.messages.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.chat_bubble_outline,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Нет сообщений в этом диалоге',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Вопрос: ${_question!.questionText}',
+                            style: const TextStyle(color: Colors.black87),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
                   controller: _scrollController,
                   reverse: true,
                   padding: const EdgeInsets.all(16),
