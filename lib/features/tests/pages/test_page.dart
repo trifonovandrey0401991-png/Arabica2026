@@ -196,21 +196,9 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
         employeeName = 'Неизвестный сотрудник';
       }
 
-      // Получаем адрес магазина
+      // Получаем адрес магазина из SharedPreferences
       String? shopAddress = prefs.getString('user_shop_address') ??
                            prefs.getString('selected_shop_address');
-
-      // Если адрес магазина не найден, пытаемся получить из UserRoleService
-      if (shopAddress == null || shopAddress.isEmpty) {
-        try {
-          final roleData = await UserRoleService.checkEmployeeViaAPI(employeePhone);
-          if (roleData != null && roleData.shopAddress != null && roleData.shopAddress!.isNotEmpty) {
-            shopAddress = roleData.shopAddress!;
-          }
-        } catch (e) {
-          Logger.warning('Не удалось загрузить адрес магазина: $e');
-        }
-      }
 
       final timeSpent = 420 - _timeRemaining;
 
