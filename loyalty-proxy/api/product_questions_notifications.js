@@ -250,29 +250,16 @@ async function notifyQuestionAnswered(question, answer) {
  * @returns {Promise<void>}
  */
 async function notifyPersonalDialogClientMessage(dialog, message) {
-  console.log('📨 Отправка уведомлений сотрудникам о сообщении в персональном диалоге...');
+  console.log('📨 Отправка уведомлений ВСЕМ сотрудникам о сообщении в персональном диалоге...');
 
-  // Получить всех сотрудников
+  // Получить всех сотрудников (broadcast - любой может ответить)
   const allEmployees = getAllEmployees();
   if (allEmployees.length === 0) {
     console.log('⚠️  Нет сотрудников для уведомления');
     return;
   }
 
-  // Фильтровать только сотрудников этого магазина
   const shopAddress = dialog.shopAddress;
-  const shopEmployees = allEmployees.filter(emp => {
-    if (!emp.assignedShops || !Array.isArray(emp.assignedShops)) {
-      return false;
-    }
-    return emp.assignedShops.includes(shopAddress);
-  });
-
-  if (shopEmployees.length === 0) {
-    console.log(`⚠️  Нет сотрудников для магазина ${shopAddress}`);
-    return;
-  }
-
   const clientName = message.senderName || dialog.clientName || 'Клиент';
   const messageText = message.text || '';
 
@@ -281,7 +268,7 @@ async function notifyPersonalDialogClientMessage(dialog, message) {
     : messageText;
 
   const title = 'Сообщение в поиске товара';
-  const body = `${clientName}: "${shortText}"`;
+  const body = `${shopAddress}: ${clientName} - "${shortText}"`;
 
   const data = {
     type: 'personal_dialog_client_message',
@@ -290,8 +277,8 @@ async function notifyPersonalDialogClientMessage(dialog, message) {
     action: 'view_personal_dialog',
   };
 
-  console.log(`📨 Уведомление ${shopEmployees.length} сотрудникам магазина ${shopAddress}`);
-  await sendPushToMultiple(shopEmployees, title, body, data);
+  console.log(`📨 Broadcast: отправка ${allEmployees.length} сотрудникам`);
+  await sendPushToMultiple(allEmployees, title, body, data);
 }
 
 /**
