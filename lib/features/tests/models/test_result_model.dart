@@ -8,6 +8,8 @@ class TestResult {
   final int timeSpent; // в секундах
   final DateTime completedAt;
   final DateTime? createdAt;
+  final double? points; // Начисленные баллы (может быть null для старых результатов)
+  final String? shopAddress; // Магазин сотрудника
 
   TestResult({
     required this.id,
@@ -18,6 +20,8 @@ class TestResult {
     required this.timeSpent,
     required this.completedAt,
     this.createdAt,
+    this.points,
+    this.shopAddress,
   });
 
   /// Создать TestResult из JSON
@@ -35,6 +39,8 @@ class TestResult {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
+      points: json['points'] != null ? (json['points'] as num).toDouble() : null,
+      shopAddress: json['shopAddress'] as String?,
     );
   }
 
@@ -49,6 +55,8 @@ class TestResult {
       'timeSpent': timeSpent,
       'completedAt': completedAt.toIso8601String(),
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      if (points != null) 'points': points,
+      if (shopAddress != null) 'shopAddress': shopAddress,
     };
   }
 

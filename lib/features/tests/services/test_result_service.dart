@@ -18,12 +18,14 @@ class TestResultService {
   }
 
   /// Сохранить результат теста
-  static Future<bool> saveResult({
+  /// Возвращает TestResult с начисленными баллами или null в случае ошибки
+  static Future<TestResult?> saveResult({
     required String employeeName,
     required String employeePhone,
     required int score,
     required int totalQuestions,
     required int timeSpent,
+    String? shopAddress,
   }) async {
     Logger.debug('📤 Сохранение результата теста: $employeeName - $score/$totalQuestions');
 
@@ -37,11 +39,12 @@ class TestResultService {
         'totalQuestions': totalQuestions,
         'timeSpent': timeSpent,
         'completedAt': DateTime.now().toIso8601String(),
+        if (shopAddress != null) 'shopAddress': shopAddress,
       },
       fromJson: (json) => TestResult.fromJson(json),
       itemKey: 'result',
     );
 
-    return result != null;
+    return result;
   }
 }

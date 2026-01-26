@@ -51,6 +51,7 @@ const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api")
 const { setupPointsSettingsAPI, calculateRecountPoints, calculateShiftPoints } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
+const { startScheduler: startTestResultsScheduler } = require("./test_results_penalty_scheduler");
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
 const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
 const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
@@ -6264,6 +6265,108 @@ app.get('/api/test-results', async (req, res) => {
   }
 });
 
+/**
+ * Начисление баллов за прохождение теста
+ * Использует линейную интерполяцию для расчета баллов
+ */
+async function assignTestPoints(result) {
+  try {
+    const now = new Date(result.completedAt || Date.now());
+    const today = now.toISOString().split('T')[0];
+    const monthKey = today.substring(0, 7); // YYYY-MM
+
+    // Загрузка настроек баллов
+    const settingsFile = '/var/www/points-settings/test_points_settings.json';
+    let settings = {
+      maxPoints: 5,
+      minPoints: -2,
+      zeroThreshold: 12
+    };
+
+    if (fs.existsSync(settingsFile)) {
+      try {
+        const settingsData = fs.readFileSync(settingsFile, 'utf8');
+        settings = JSON.parse(settingsData);
+      } catch (e) {
+        console.error('Error loading test settings:', e);
+      }
+    }
+
+    // Расчет баллов через линейную интерполяцию
+    const { score, totalQuestions } = result;
+    let points = 0;
+
+    if (totalQuestions === 0) {
+      points = 0;
+    } else if (score <= 0) {
+      points = settings.minPoints;
+    } else if (score >= totalQuestions) {
+      points = settings.maxPoints;
+    } else if (score <= settings.zeroThreshold) {
+      // Интерполяция от minPoints до 0
+      points = settings.minPoints + (0 - settings.minPoints) * (score / settings.zeroThreshold);
+    } else {
+      // Интерполяция от 0 до maxPoints
+      const range = totalQuestions - settings.zeroThreshold;
+      points = (settings.maxPoints - 0) * ((score - settings.zeroThreshold) / range);
+    }
+
+    // Округление до 2 знаков
+    points = Math.round(points * 100) / 100;
+
+    // Дедупликация
+    const sourceId = `test_${result.id}`;
+    const PENALTIES_DIR = '/var/www/efficiency-penalties';
+    if (!fs.existsSync(PENALTIES_DIR)) {
+      fs.mkdirSync(PENALTIES_DIR, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(PENALTIES_DIR, `${monthKey}.json`);
+    let penalties = [];
+
+    if (fs.existsSync(penaltiesFile)) {
+      try {
+        penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+      } catch (e) {
+        console.error('Error reading penalties file:', e);
+      }
+    }
+
+    const exists = penalties.some(p => p.sourceId === sourceId);
+    if (exists) {
+      console.log(`Points already assigned for test ${result.id}, skipping`);
+      return { success: true, skipped: true };
+    }
+
+    // Создание записи
+    const entry = {
+      id: `test_pts_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: result.employeePhone,
+      entityName: result.employeeName,
+      shopAddress: result.shopAddress || '',
+      employeeName: result.employeeName,
+      category: points >= 0 ? 'test_bonus' : 'test_penalty',
+      categoryName: 'Прохождение теста',
+      date: today,
+      points: points,
+      reason: `Тест: ${score}/${totalQuestions} правильных (${Math.round((score/totalQuestions)*100)}%)`,
+      sourceId: sourceId,
+      sourceType: 'test_result',
+      createdAt: now.toISOString()
+    };
+
+    penalties.push(entry);
+    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+
+    console.log(`✅ Test points assigned: ${result.employeeName} (${points >= 0 ? '+' : ''}${points} points)`);
+    return { success: true, points: points };
+  } catch (error) {
+    console.error('Error assigning test points:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // POST /api/test-results - сохранить результат теста
 app.post('/api/test-results', async (req, res) => {
   try {
@@ -6276,13 +6379,23 @@ app.post('/api/test-results', async (req, res) => {
       totalQuestions: req.body.totalQuestions,
       timeSpent: req.body.timeSpent,
       completedAt: req.body.completedAt || new Date().toISOString(),
+      shopAddress: req.body.shopAddress,
     };
 
     const resultFile = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
     fs.writeFileSync(resultFile, JSON.stringify(result, null, 2), 'utf8');
 
     console.log(`✅ Результат теста сохранен: ${result.employeeName} - ${result.score}/${result.totalQuestions}`);
-    res.json({ success: true, result });
+
+    // Начисление баллов за тест
+    const pointsResult = await assignTestPoints(result);
+
+    res.json({
+      success: true,
+      result,
+      pointsAssigned: pointsResult.success,
+      points: pointsResult.points
+    });
   } catch (error) {
     console.error('Ошибка сохранения результата теста:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -7620,6 +7733,9 @@ startShiftHandoverAutomationScheduler();
 
 // Start Attendance automation scheduler (auto-create reports, check deadlines, penalties)
 startAttendanceAutomationScheduler();
+
+// Start Test Results scheduler (auto-assign points for test results)
+startTestResultsScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
