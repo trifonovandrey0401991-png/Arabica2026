@@ -73,6 +73,7 @@ ssh root@arabica26.ru "pm2 restart loyalty-proxy"
 | 15 | Поиск товара (вопросы + баллы) | ✅ Работает | `lib/features/product_questions/`, `loyalty-proxy/product_questions_*` |
 | 16 | Заказы | ✅ Работает | `loyalty-proxy/modules/orders.js` |
 | 17 | Статьи обучения | ✅ Работает | `lib/features/articles/` |
+| 18 | Тестирование (автобаллы) | ✅ Работает | `lib/features/tests/`, `loyalty-proxy/index.js` (assignTestPoints) |
 
 **Что можно изменять:**
 - ❌ **Только модуль `lib/features/ai_training/`** и `loyalty-proxy/modules/z-report-vision.js` (в разработке)
