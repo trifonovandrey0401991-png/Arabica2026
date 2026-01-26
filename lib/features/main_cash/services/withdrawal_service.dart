@@ -49,9 +49,17 @@ class WithdrawalService {
     }
   }
 
-  /// Создать новую выемку
+  /// Создать новую выемку (с валидацией)
   static Future<Withdrawal?> createWithdrawal(Withdrawal withdrawal) async {
     Logger.debug('Создание выемки: ${withdrawal.shopAddress}, ${withdrawal.type}, ${withdrawal.totalAmount}');
+
+    // Валидация перед отправкой
+    final validationError = withdrawal.validate();
+    if (validationError != null) {
+      Logger.error('❌ Ошибка валидации выемки: $validationError', null);
+      throw Exception(validationError);
+    }
+
     return await BaseHttpService.post<Withdrawal>(
       endpoint: baseEndpoint,
       body: withdrawal.toJson(),
@@ -66,7 +74,7 @@ class WithdrawalService {
     return await BaseHttpService.delete(endpoint: '$baseEndpoint/$id');
   }
 
-  /// Получить сумму выемок по магазину и типу
+  /// Получить сумму выемок по магазину и типу (только активных)
   static Future<Map<String, double>> getWithdrawalTotals(String shopAddress) async {
     try {
       final withdrawals = await getWithdrawals(shopAddress: shopAddress);
@@ -75,10 +83,13 @@ class WithdrawalService {
       double ipTotal = 0;
 
       for (final w in withdrawals) {
-        if (w.type == 'ooo') {
-          oooTotal += w.totalAmount;
-        } else if (w.type == 'ip') {
-          ipTotal += w.totalAmount;
+        // Учитываем только активные (не отмененные) выемки
+        if (w.isActive) {
+          if (w.type == 'ooo') {
+            oooTotal += w.totalAmount;
+          } else if (w.type == 'ip') {
+            ipTotal += w.totalAmount;
+          }
         }
       }
 
@@ -98,6 +109,25 @@ class WithdrawalService {
     return await BaseHttpService.simplePatch(
       endpoint: '$baseEndpoint/$id/confirm',
       body: {'confirmed': true},
+    );
+  }
+
+  /// Отменить выемку (undo)
+  static Future<Withdrawal?> cancelWithdrawal({
+    required String id,
+    required String cancelledBy,
+    String? cancelReason,
+  }) async {
+    Logger.debug('Отмена выемки: $id, причина: $cancelReason');
+
+    return await BaseHttpService.patch<Withdrawal>(
+      endpoint: '$baseEndpoint/$id/cancel',
+      body: {
+        'cancelledBy': cancelledBy,
+        'cancelReason': cancelReason ?? 'Отменено пользователем',
+      },
+      fromJson: (json) => Withdrawal.fromJson(json),
+      itemKey: 'withdrawal',
     );
   }
 }

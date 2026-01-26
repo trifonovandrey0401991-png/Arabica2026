@@ -40,12 +40,12 @@ class MainCashService {
           }
         }
 
-        // Суммируем выемки для этого магазина
+        // Суммируем выемки для этого магазина (только активные, не отмененные)
         double oooWithdrawals = 0;
         double ipWithdrawals = 0;
 
         for (final withdrawal in withdrawals) {
-          if (withdrawal.shopAddress == shop.address) {
+          if (withdrawal.shopAddress == shop.address && withdrawal.isActive) {
             if (withdrawal.type == 'ooo') {
               oooWithdrawals += withdrawal.totalAmount;
             } else if (withdrawal.type == 'ip') {
@@ -111,15 +111,17 @@ class MainCashService {
         ipIncome += report.ipCash;
       }
 
-      // Суммируем выемки
+      // Суммируем выемки (только активные, не отмененные)
       double oooWithdrawals = 0;
       double ipWithdrawals = 0;
 
       for (final withdrawal in withdrawals) {
-        if (withdrawal.type == 'ooo') {
-          oooWithdrawals += withdrawal.totalAmount;
-        } else if (withdrawal.type == 'ip') {
-          ipWithdrawals += withdrawal.totalAmount;
+        if (withdrawal.isActive) {
+          if (withdrawal.type == 'ooo') {
+            oooWithdrawals += withdrawal.totalAmount;
+          } else if (withdrawal.type == 'ip') {
+            ipWithdrawals += withdrawal.totalAmount;
+          }
         }
       }
 

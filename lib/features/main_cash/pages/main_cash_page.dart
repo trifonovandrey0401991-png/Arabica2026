@@ -727,12 +727,18 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   }
 
   Widget _buildWithdrawalCard(Withdrawal withdrawal) {
+    // Определить цвет границы и фона для отмененных выемок
+    final isCancelled = withdrawal.isCancelled;
+    final borderColor = isCancelled ? Colors.red[200]! : Colors.grey[200]!;
+    final cardColor = isCancelled ? Colors.red[50] : null;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 1,
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!),
+        side: BorderSide(color: borderColor, width: isCancelled ? 2 : 1),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -741,19 +747,25 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
           childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           title: Row(
             children: [
-              // Левая часть: иконка типа
+              // Левая часть: иконка типа (или иконка отмены)
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: withdrawal.type == 'ooo'
-                      ? Colors.blue.withOpacity(0.1)
-                      : Colors.orange.withOpacity(0.1),
+                  color: isCancelled
+                      ? Colors.red.withOpacity(0.1)
+                      : (withdrawal.type == 'ooo'
+                          ? Colors.blue.withOpacity(0.1)
+                          : Colors.orange.withOpacity(0.1)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  withdrawal.type == 'ooo' ? Icons.business : Icons.store,
+                  isCancelled
+                      ? Icons.cancel
+                      : (withdrawal.type == 'ooo' ? Icons.business : Icons.store),
                   size: 20,
-                  color: withdrawal.type == 'ooo' ? Colors.blue : Colors.orange,
+                  color: isCancelled
+                      ? Colors.red[700]
+                      : (withdrawal.type == 'ooo' ? Colors.blue : Colors.orange),
                 ),
               ),
               const SizedBox(width: 12),
@@ -764,12 +776,26 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                   children: [
                     Row(
                       children: [
+                        if (isCancelled) ...[
+                          Text(
+                            'ОТМЕНЕНО',
+                            style: TextStyle(
+                              color: Colors.red[700],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         Text(
                           withdrawal.typeDisplayName,
                           style: TextStyle(
-                            color: withdrawal.type == 'ooo' ? Colors.blue : Colors.orange,
+                            color: isCancelled
+                                ? Colors.grey
+                                : (withdrawal.type == 'ooo' ? Colors.blue : Colors.orange),
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
+                            decoration: isCancelled ? TextDecoration.lineThrough : null,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -780,7 +806,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                             fontSize: 10,
                           ),
                         ),
-                        if (withdrawal.confirmed) ...[
+                        if (withdrawal.confirmed && !isCancelled) ...[
                           const SizedBox(width: 6),
                           Icon(
                             Icons.check_circle,
@@ -961,6 +987,92 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     ),
                   ),
                 ],
+                // Кнопка отмены (для активных выемок)
+                if (withdrawal.isActive) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _cancelWithdrawal(withdrawal),
+                      icon: const Icon(Icons.cancel_outlined, size: 16),
+                      label: const Text(
+                        'Отменить выемку',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red[700],
+                        side: BorderSide(color: Colors.red[300]!),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                // Показать статус отмены
+                if (withdrawal.isCancelled) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.cancel, color: Colors.red[700], size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'ВЫЕМКА ОТМЕНЕНА',
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (withdrawal.cancelReason != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Причина: ${withdrawal.cancelReason}',
+                            style: TextStyle(
+                              color: Colors.red[600],
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                        if (withdrawal.cancelledBy != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Отменил: ${withdrawal.cancelledBy}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                        if (withdrawal.cancelledAt != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Дата отмены: ${_formatDate(withdrawal.cancelledAt!)}',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
               ],
             ),
@@ -1047,6 +1159,109 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _cancelWithdrawal(Withdrawal withdrawal) async {
+    // Показать диалог с причиной отмены
+    final TextEditingController reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Отмена выемки'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Вы уверены, что хотите отменить эту выемку?'),
+            const SizedBox(height: 16),
+            Text(
+              'Магазин: ${withdrawal.shopAddress}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            Text(
+              'Сумма: ${withdrawal.totalAmount.toStringAsFixed(0)} ₽',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Причина отмены',
+                hintText: 'Укажите причину (необязательно)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'После отмены выемка не будет учитываться в балансе.',
+              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Назад'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Отменить выемку', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+
+      try {
+        // Получить имя текущего пользователя
+        final prefs = await SharedPreferences.getInstance();
+        final currentUserName = prefs.getString('employeeName') ?? 'Администратор';
+
+        final result = await WithdrawalService.cancelWithdrawal(
+          id: withdrawal.id,
+          cancelledBy: currentUserName,
+          cancelReason: reasonController.text.isEmpty ? null : reasonController.text,
+        );
+
+        if (result != null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Выемка отменена'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          await _loadData();
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка отмены выемки'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => _isLoading = false);
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   String _getExpenseEnding(int count) {

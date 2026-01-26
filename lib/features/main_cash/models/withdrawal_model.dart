@@ -13,6 +13,10 @@ class Withdrawal {
   final String? adminName;
   final DateTime createdAt;
   final bool confirmed; // Подтверждена ли выемка
+  final String? status; // "active" или "cancelled"
+  final DateTime? cancelledAt;
+  final String? cancelledBy;
+  final String? cancelReason;
 
   Withdrawal({
     String? id,
@@ -25,6 +29,10 @@ class Withdrawal {
     this.adminName,
     DateTime? createdAt,
     this.confirmed = false,
+    this.status,
+    this.cancelledAt,
+    this.cancelledBy,
+    this.cancelReason,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
 
@@ -55,6 +63,12 @@ class Withdrawal {
       adminName: json['adminName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       confirmed: json['confirmed'] as bool? ?? false,
+      status: json['status'] as String?,
+      cancelledAt: json['cancelledAt'] != null
+        ? DateTime.parse(json['cancelledAt'] as String)
+        : null,
+      cancelledBy: json['cancelledBy'] as String?,
+      cancelReason: json['cancelReason'] as String?,
     );
   }
 
@@ -70,6 +84,10 @@ class Withdrawal {
       'adminName': adminName,
       'createdAt': createdAt.toIso8601String(),
       'confirmed': confirmed,
+      if (status != null) 'status': status,
+      if (cancelledAt != null) 'cancelledAt': cancelledAt!.toIso8601String(),
+      if (cancelledBy != null) 'cancelledBy': cancelledBy,
+      if (cancelReason != null) 'cancelReason': cancelReason,
     };
   }
 
@@ -84,6 +102,10 @@ class Withdrawal {
     String? adminName,
     DateTime? createdAt,
     bool? confirmed,
+    String? status,
+    DateTime? cancelledAt,
+    String? cancelledBy,
+    String? cancelReason,
   }) {
     return Withdrawal(
       id: id ?? this.id,
@@ -96,6 +118,10 @@ class Withdrawal {
       adminName: adminName ?? this.adminName,
       createdAt: createdAt ?? this.createdAt,
       confirmed: confirmed ?? this.confirmed,
+      status: status ?? this.status,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      cancelReason: cancelReason ?? this.cancelReason,
     );
   }
 
@@ -113,4 +139,51 @@ class Withdrawal {
   }
 
   String get formattedDateTime => '$formattedDate, $formattedTime';
+
+  /// Проверить, отменена ли выемка
+  bool get isCancelled => status == 'cancelled';
+
+  /// Проверить, активна ли выемка
+  bool get isActive => status != 'cancelled';
+
+  /// Валидация: проверить что totalAmount соответствует сумме всех расходов
+  bool validateTotalAmount() {
+    if (expenses.isEmpty) {
+      return totalAmount == 0;
+    }
+
+    final calculatedTotal = expenses.fold<double>(
+      0.0,
+      (sum, expense) => sum + expense.amount,
+    );
+
+    // Используем небольшую погрешность для сравнения float чисел
+    return (calculatedTotal - totalAmount).abs() <= 0.01;
+  }
+
+  /// Получить вычисленную сумму всех расходов
+  double get calculatedTotal {
+    return expenses.fold<double>(
+      0.0,
+      (sum, expense) => sum + expense.amount,
+    );
+  }
+
+  /// Валидация: проверить что все расходы имеют положительные суммы
+  bool validateExpenseAmounts() {
+    return expenses.every((expense) => expense.amount > 0);
+  }
+
+  /// Полная валидация выемки
+  String? validate() {
+    if (!validateExpenseAmounts()) {
+      return 'Все расходы должны иметь положительные суммы';
+    }
+
+    if (!validateTotalAmount()) {
+      return 'Общая сумма (${totalAmount.toStringAsFixed(2)}) не соответствует сумме расходов (${calculatedTotal.toStringAsFixed(2)})';
+    }
+
+    return null; // Нет ошибок
+  }
 }

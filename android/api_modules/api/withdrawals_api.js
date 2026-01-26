@@ -13,7 +13,7 @@ function setupWithdrawalsAPI(app) {
   app.get('/api/withdrawals', async (req, res) => {
     try {
       console.log('GET /api/withdrawals');
-      const { shopAddress, type, fromDate, toDate } = req.query;
+      const { shopAddress, type, fromDate, toDate, includeCancelled } = req.query;
       const withdrawals = [];
 
       if (fs.existsSync(WITHDRAWALS_DIR)) {
@@ -23,6 +23,11 @@ function setupWithdrawalsAPI(app) {
           try {
             const content = fs.readFileSync(path.join(WITHDRAWALS_DIR, file), 'utf8');
             const withdrawal = JSON.parse(content);
+
+            // Фильтруем отменённые выемки, если не запрошено явно
+            if (withdrawal.status === 'cancelled' && includeCancelled !== 'true') {
+              continue;
+            }
 
             if (shopAddress && withdrawal.shopAddress !== shopAddress) continue;
             if (type && withdrawal.type !== type) continue;
@@ -50,6 +55,31 @@ function setupWithdrawalsAPI(app) {
 
       if (!withdrawal.shopAddress || !withdrawal.amount) {
         return res.status(400).json({ success: false, error: 'Shop address and amount required' });
+      }
+
+      // Валидация данных: проверка корректности сумм
+      if (withdrawal.expenses && Array.isArray(withdrawal.expenses)) {
+        // Проверка что все расходы имеют положительные суммы
+        for (const expense of withdrawal.expenses) {
+          if (!expense.amount || expense.amount < 0) {
+            return res.status(400).json({
+              success: false,
+              error: 'All expenses must have positive amounts'
+            });
+          }
+        }
+
+        // Проверка что totalAmount соответствует сумме всех расходов
+        const calculatedTotal = withdrawal.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+        const totalAmount = withdrawal.totalAmount || withdrawal.amount;
+
+        // Используем небольшую погрешность для сравнения float чисел
+        if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+          return res.status(400).json({
+            success: false,
+            error: `Total amount mismatch: expected ${calculatedTotal}, got ${totalAmount}`
+          });
+        }
       }
 
       if (!withdrawal.id) {
@@ -98,6 +128,42 @@ function setupWithdrawalsAPI(app) {
       } else {
         res.status(404).json({ success: false, error: 'Withdrawal not found' });
       }
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.patch('/api/withdrawals/:withdrawalId/cancel', async (req, res) => {
+    try {
+      const { withdrawalId } = req.params;
+      const { cancelledBy, cancelReason } = req.body;
+      console.log('PATCH /api/withdrawals/:withdrawalId/cancel', withdrawalId);
+
+      const filePath = path.join(WITHDRAWALS_DIR, `${withdrawalId}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Withdrawal not found' });
+      }
+
+      const withdrawal = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      // Проверка что выемка еще не отменена
+      if (withdrawal.status === 'cancelled') {
+        return res.status(400).json({
+          success: false,
+          error: 'Withdrawal is already cancelled'
+        });
+      }
+
+      // Отмена выемки
+      withdrawal.status = 'cancelled';
+      withdrawal.cancelledAt = new Date().toISOString();
+      withdrawal.cancelledBy = cancelledBy || 'unknown';
+      withdrawal.cancelReason = cancelReason || 'No reason provided';
+
+      fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+
+      res.json({ success: true, withdrawal });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
