@@ -3,10 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/shop_cash_balance_model.dart';
 import '../models/withdrawal_model.dart';
+import '../models/withdrawal_expense_model.dart';
 import '../services/main_cash_service.dart';
 import '../services/withdrawal_service.dart';
+import '../../employees/services/employee_service.dart';
+import '../../employees/pages/employees_page.dart' show Employee;
 import 'shop_balance_details_page.dart';
 import 'withdrawal_shop_selection_page.dart';
+import 'revenue_analytics_page.dart';
 
 /// Главная страница отчета по кассе
 class MainCashPage extends StatefulWidget {
@@ -27,7 +31,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadData();
   }
 
@@ -144,6 +148,471 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     _loadData();
   }
 
+  /// Показать диалог внесения денег
+  Future<void> _showDepositDialog() async {
+    // Загружаем сотрудников и магазины
+    List<Employee> employees = [];
+    try {
+      employees = await EmployeeService.getEmployees();
+    } catch (e) {
+      Logger.error('Ошибка загрузки сотрудников', e);
+    }
+
+    if (!mounted) return;
+
+    String? selectedShop;
+    String? selectedType; // 'ooo' или 'ip'
+    String? selectedEmployeeId;
+    String? selectedEmployeeName;
+    final amountController = TextEditingController();
+    final commentController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.add_circle, color: Colors.green[700]),
+              const SizedBox(width: 8),
+              const Text('Внесение денег'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Выбор магазина
+                DropdownButtonFormField<String>(
+                  value: selectedShop,
+                  decoration: const InputDecoration(
+                    labelText: 'Магазин *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.store),
+                  ),
+                  items: _shopAddresses.map((address) => DropdownMenuItem(
+                    value: address,
+                    child: Text(address, overflow: TextOverflow.ellipsis),
+                  )).toList(),
+                  onChanged: (value) {
+                    setDialogState(() => selectedShop = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Выбор типа (ООО/ИП)
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  decoration: const InputDecoration(
+                    labelText: 'Куда вносить *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.account_balance),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'ooo', child: Text('ООО')),
+                    DropdownMenuItem(value: 'ip', child: Text('ИП')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() => selectedType = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Выбор сотрудника
+                DropdownButtonFormField<String>(
+                  value: selectedEmployeeId,
+                  decoration: const InputDecoration(
+                    labelText: 'Кто вносит *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  items: employees.map((e) => DropdownMenuItem(
+                    value: e.id,
+                    child: Text(e.name),
+                  )).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedEmployeeId = value;
+                      selectedEmployeeName = employees.firstWhere((e) => e.id == value).name;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Сумма
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(
+                    labelText: 'Сумма *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.attach_money),
+                    suffixText: '₽',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                // Комментарий (обязательный)
+                TextField(
+                  controller: commentController,
+                  decoration: const InputDecoration(
+                    labelText: 'Комментарий *',
+                    hintText: 'Укажите причину внесения',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.comment),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Валидация
+                if (selectedShop == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Выберите магазин'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                if (selectedType == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Выберите куда вносить (ООО/ИП)'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                if (selectedEmployeeId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Выберите сотрудника'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                final amount = double.tryParse(amountController.text);
+                if (amount == null || amount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Введите корректную сумму'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                if (commentController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Комментарий обязателен'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700]),
+              child: const Text('Внести', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true && selectedShop != null && selectedType != null && selectedEmployeeId != null) {
+      setState(() => _isLoading = true);
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final adminName = prefs.getString('employeeName') ?? 'Администратор';
+        final amount = double.parse(amountController.text);
+
+        final deposit = Withdrawal(
+          shopAddress: selectedShop!,
+          employeeName: selectedEmployeeName!,
+          employeeId: selectedEmployeeId!,
+          type: selectedType!,
+          totalAmount: amount,
+          expenses: [
+            WithdrawalExpense(
+              amount: amount,
+              comment: commentController.text.trim(),
+              supplierName: 'Внесение',
+            ),
+          ],
+          adminName: adminName,
+          category: 'deposit',
+        );
+
+        final created = await WithdrawalService.createWithdrawal(deposit);
+
+        if (created != null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Внесение создано и ожидает подтверждения'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          await _loadData();
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ошибка создания внесения'), backgroundColor: Colors.red),
+          );
+          setState(() => _isLoading = false);
+        }
+      } catch (e) {
+        Logger.error('Ошибка создания внесения', e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  /// Показать диалог переноса денег
+  Future<void> _showTransferDialog() async {
+    if (!mounted) return;
+
+    String? selectedShop;
+    String? transferDirection; // 'ooo_to_ip' или 'ip_to_ooo'
+    final amountController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.swap_horiz, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              const Text('Перенос денег'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Выбор магазина
+                DropdownButtonFormField<String>(
+                  value: selectedShop,
+                  decoration: const InputDecoration(
+                    labelText: 'Магазин *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.store),
+                  ),
+                  items: _shopAddresses.map((address) => DropdownMenuItem(
+                    value: address,
+                    child: Text(address, overflow: TextOverflow.ellipsis),
+                  )).toList(),
+                  onChanged: (value) {
+                    setDialogState(() => selectedShop = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Выбор направления
+                const Text(
+                  'Направление переноса:',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          setDialogState(() => transferDirection = 'ooo_to_ip');
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: transferDirection == 'ooo_to_ip'
+                                ? Colors.blue.withOpacity(0.1)
+                                : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: transferDirection == 'ooo_to_ip'
+                                  ? Colors.blue
+                                  : Colors.grey[300]!,
+                              width: transferDirection == 'ooo_to_ip' ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.arrow_forward,
+                                color: transferDirection == 'ooo_to_ip'
+                                    ? Colors.blue
+                                    : Colors.grey,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'ООО → ИП',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: transferDirection == 'ooo_to_ip'
+                                      ? Colors.blue
+                                      : Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          setDialogState(() => transferDirection = 'ip_to_ooo');
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: transferDirection == 'ip_to_ooo'
+                                ? Colors.orange.withOpacity(0.1)
+                                : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: transferDirection == 'ip_to_ooo'
+                                  ? Colors.orange
+                                  : Colors.grey[300]!,
+                              width: transferDirection == 'ip_to_ooo' ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.arrow_back,
+                                color: transferDirection == 'ip_to_ooo'
+                                    ? Colors.orange
+                                    : Colors.grey,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'ИП → ООО',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: transferDirection == 'ip_to_ooo'
+                                      ? Colors.orange
+                                      : Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Сумма
+                TextField(
+                  controller: amountController,
+                  decoration: const InputDecoration(
+                    labelText: 'Сумма *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.attach_money),
+                    suffixText: '₽',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Валидация
+                if (selectedShop == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Выберите магазин'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                if (transferDirection == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Выберите направление переноса'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                final amount = double.tryParse(amountController.text);
+                if (amount == null || amount <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Введите корректную сумму'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700]),
+              child: const Text('Перенести', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true && selectedShop != null && transferDirection != null) {
+      setState(() => _isLoading = true);
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final adminName = prefs.getString('employeeName') ?? 'Администратор';
+        final amount = double.parse(amountController.text);
+
+        // Определяем тип (откуда снимаем)
+        final sourceType = transferDirection == 'ooo_to_ip' ? 'ooo' : 'ip';
+        final directionText = transferDirection == 'ooo_to_ip' ? 'ООО → ИП' : 'ИП → ООО';
+
+        final transfer = Withdrawal(
+          shopAddress: selectedShop!,
+          employeeName: adminName,
+          employeeId: '',
+          type: sourceType,
+          totalAmount: amount,
+          expenses: [
+            WithdrawalExpense(
+              amount: amount,
+              comment: 'Перенос $directionText',
+              supplierName: 'Перенос',
+            ),
+          ],
+          adminName: adminName,
+          category: 'transfer',
+          transferDirection: transferDirection,
+        );
+
+        final created = await WithdrawalService.createWithdrawal(transfer);
+
+        if (created != null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Перенос создан и ожидает подтверждения'),
+              backgroundColor: Colors.blue,
+            ),
+          );
+          await _loadData();
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ошибка создания переноса'), backgroundColor: Colors.red),
+          );
+          setState(() => _isLoading = false);
+        }
+      } catch (e) {
+        Logger.error('Ошибка создания переноса', e);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   String _formatAmount(double amount) {
     String result;
     if (amount >= 1000000) {
@@ -221,6 +690,16 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                     ],
                   ),
                 ),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.bar_chart, size: 20),
+                      SizedBox(width: 8),
+                      Text('Аналитика'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -233,6 +712,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               children: [
                 _buildCashTab(),
                 _buildWithdrawalsTab(),
+                const RevenueAnalyticsPage(),
               ],
             ),
     );
@@ -312,19 +792,52 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             },
           ),
         ),
-        // Кнопка Выемка
+        // Кнопки действий
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           color: const Color(0xFF00695C),
-          child: ElevatedButton.icon(
-            onPressed: _navigateToWithdrawal,
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text('Сделать выемку', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
+          child: Row(
+            children: [
+              // Кнопка Выемка
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _navigateToWithdrawal,
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 18),
+                  label: const Text('Выемка', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF004D40),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Кнопка Внести
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _showDepositDialog,
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 18),
+                  label: const Text('Внести', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[700],
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Кнопка Перенести
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _showTransferDialog,
+                  icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 18),
+                  label: const Text('Перенос', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         // Итого по всем магазинам
@@ -739,6 +1252,36 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     final borderColor = isCancelled ? Colors.red[200]! : Colors.grey[200]!;
     final cardColor = isCancelled ? Colors.red[50] : null;
 
+    // Определить цвет и иконку в зависимости от категории
+    Color getCategoryColor() {
+      if (isCancelled) return Colors.red;
+      switch (withdrawal.category) {
+        case 'deposit':
+          return Colors.green;
+        case 'transfer':
+          return Colors.blue;
+        case 'withdrawal':
+        default:
+          return withdrawal.type == 'ooo' ? Colors.blue : Colors.orange;
+      }
+    }
+
+    IconData getCategoryIcon() {
+      if (isCancelled) return Icons.cancel;
+      switch (withdrawal.category) {
+        case 'deposit':
+          return Icons.add_circle;
+        case 'transfer':
+          return Icons.swap_horiz;
+        case 'withdrawal':
+        default:
+          return withdrawal.type == 'ooo' ? Icons.business : Icons.store;
+      }
+    }
+
+    final categoryColor = getCategoryColor();
+    final categoryIcon = getCategoryIcon();
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 1,
@@ -758,21 +1301,13 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isCancelled
-                      ? Colors.red.withOpacity(0.1)
-                      : (withdrawal.type == 'ooo'
-                          ? Colors.blue.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1)),
+                  color: categoryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  isCancelled
-                      ? Icons.cancel
-                      : (withdrawal.type == 'ooo' ? Icons.business : Icons.store),
+                  categoryIcon,
                   size: 20,
-                  color: isCancelled
-                      ? Colors.red[700]
-                      : (withdrawal.type == 'ooo' ? Colors.blue : Colors.orange),
+                  color: isCancelled ? Colors.red[700] : categoryColor,
                 ),
               ),
               const SizedBox(width: 12),
@@ -781,46 +1316,63 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (isCancelled) ...[
+                        if (isCancelled)
                           Text(
                             'ОТМЕНЕНО',
                             style: TextStyle(
                               color: Colors.red[700],
                               fontWeight: FontWeight.bold,
-                              fontSize: 11,
+                              fontSize: 10,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(
-                          withdrawal.typeDisplayName,
-                          style: TextStyle(
-                            color: isCancelled
-                                ? Colors.grey
-                                : (withdrawal.type == 'ooo' ? Colors.blue : Colors.orange),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                            decoration: isCancelled ? TextDecoration.lineThrough : null,
+                        // Показываем категорию операции
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: categoryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            withdrawal.categoryDisplayName,
+                            style: TextStyle(
+                              color: isCancelled ? Colors.grey : categoryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 8,
+                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        // Показываем тип (ООО/ИП) если это не перенос
+                        if (!withdrawal.isTransfer)
+                          Text(
+                            withdrawal.typeDisplayName,
+                            style: TextStyle(
+                              color: isCancelled
+                                  ? Colors.grey
+                                  : (withdrawal.type == 'ooo' ? Colors.blue : Colors.orange),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
                         Text(
                           withdrawal.formattedDateTime,
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 10,
+                            fontSize: 9,
                           ),
                         ),
-                        if (withdrawal.confirmed && !isCancelled) ...[
-                          const SizedBox(width: 6),
+                        if (withdrawal.confirmed && !isCancelled)
                           Icon(
                             Icons.check_circle,
-                            size: 14,
+                            size: 12,
                             color: Colors.green[600],
                           ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 2),

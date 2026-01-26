@@ -17,6 +17,8 @@ class Withdrawal {
   final DateTime? cancelledAt;
   final String? cancelledBy;
   final String? cancelReason;
+  final String category; // "withdrawal" | "deposit" | "transfer"
+  final String? transferDirection; // "ooo_to_ip" | "ip_to_ooo" (для переносов)
 
   Withdrawal({
     String? id,
@@ -33,6 +35,8 @@ class Withdrawal {
     this.cancelledAt,
     this.cancelledBy,
     this.cancelReason,
+    this.category = 'withdrawal',
+    this.transferDirection,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
 
@@ -69,6 +73,8 @@ class Withdrawal {
         : null,
       cancelledBy: json['cancelledBy'] as String?,
       cancelReason: json['cancelReason'] as String?,
+      category: json['category'] as String? ?? 'withdrawal',
+      transferDirection: json['transferDirection'] as String?,
     );
   }
 
@@ -84,10 +90,12 @@ class Withdrawal {
       'adminName': adminName,
       'createdAt': createdAt.toIso8601String(),
       'confirmed': confirmed,
+      'category': category,
       if (status != null) 'status': status,
       if (cancelledAt != null) 'cancelledAt': cancelledAt!.toIso8601String(),
       if (cancelledBy != null) 'cancelledBy': cancelledBy,
       if (cancelReason != null) 'cancelReason': cancelReason,
+      if (transferDirection != null) 'transferDirection': transferDirection,
     };
   }
 
@@ -106,6 +114,8 @@ class Withdrawal {
     DateTime? cancelledAt,
     String? cancelledBy,
     String? cancelReason,
+    String? category,
+    String? transferDirection,
   }) {
     return Withdrawal(
       id: id ?? this.id,
@@ -122,10 +132,39 @@ class Withdrawal {
       cancelledAt: cancelledAt ?? this.cancelledAt,
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancelReason: cancelReason ?? this.cancelReason,
+      category: category ?? this.category,
+      transferDirection: transferDirection ?? this.transferDirection,
     );
   }
 
   String get typeDisplayName => type == 'ooo' ? 'ООО' : 'ИП';
+
+  /// Название категории операции
+  String get categoryDisplayName {
+    switch (category) {
+      case 'deposit':
+        return 'ВНЕСЕНИЕ';
+      case 'transfer':
+        if (transferDirection == 'ooo_to_ip') {
+          return 'ПЕРЕНОС ООО→ИП';
+        } else if (transferDirection == 'ip_to_ooo') {
+          return 'ПЕРЕНОС ИП→ООО';
+        }
+        return 'ПЕРЕНОС';
+      case 'withdrawal':
+      default:
+        return 'ВЫЕМКА';
+    }
+  }
+
+  /// Проверить, является ли это внесением
+  bool get isDeposit => category == 'deposit';
+
+  /// Проверить, является ли это переносом
+  bool get isTransfer => category == 'transfer';
+
+  /// Проверить, является ли это выемкой
+  bool get isWithdrawal => category == 'withdrawal';
 
   String get formattedDate {
     return '${createdAt.day.toString().padLeft(2, '0')}.'
