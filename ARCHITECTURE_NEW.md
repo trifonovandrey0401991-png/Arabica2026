@@ -8050,6 +8050,705 @@ flowchart TB
 
 ---
 
+---
+
+## 15. Система обучения - ТЕСТИРОВАНИЕ
+
+### 15.1 Обзор модуля
+
+**Назначение:** Модуль тестирования знаний сотрудников с автоматическим начислением баллов на основе результатов. Баллы рассчитываются по алгоритму линейной интерполяции и интегрируются с модулем Эффективность. Результаты отображаются с анимацией сразу после завершения теста.
+
+**Основные компоненты:**
+1. **Прохождение теста** — сотрудник отвечает на 20 вопросов с таймером (7 минут)
+2. **Управление вопросами** — админ создаёт/редактирует вопросы теста
+3. **Отчёты по результатам** — админ просматривает результаты всех тестов
+4. **Настройки баллов** — настройка линейной интерполяции (min, max, zero threshold)
+5. **Автоматическое начисление** — баллы начисляются синхронно при сохранении результата
+
+**Файлы модуля:**
+```
+lib/features/tests/
+├── models/
+│   ├── test_model.dart               # TestQuestion - вопрос теста
+│   └── test_result_model.dart        # TestResult - результат теста с баллами
+├── pages/
+│   ├── test_page.dart                # Прохождение теста (анимация, таймер)
+│   ├── test_questions_management_page.dart  # Управление вопросами (админ)
+│   └── test_results_page.dart        # Просмотр результатов (админ)
+└── services/
+    ├── test_question_service.dart    # API вопросов
+    └── test_result_service.dart      # API результатов
+```
+
+**Настройки баллов (efficiency):**
+```
+lib/features/efficiency/
+├── models/
+│   └── points_settings_model.dart              # TestPointsSettings
+├── pages/settings_tabs/
+│   └── test_points_settings_page.dart          # UI настроек (слайдеры)
+└── services/
+    └── points_settings_service.dart            # API настроек
+```
+
+**Серверные модули:**
+```
+loyalty-proxy/
+└── index.js                                     # Endpoints: /api/test-*, assignTestPoints()
+```
+
+---
+
+### 15.2 Модели данных
+
+```mermaid
+classDiagram
+    class TestQuestion {
+        +String id
+        +String question
+        +List~String~ options
+        +String correctAnswer
+        +DateTime? createdAt
+        +toJson() Map
+        +fromJson(Map) TestQuestion
+        +loadQuestions() List~TestQuestion~
+        +getRandomQuestions(all, count) List~TestQuestion~
+    }
+
+    class TestResult {
+        +String id
+        +String employeeName
+        +String employeePhone
+        +int score
+        +int totalQuestions
+        +int timeSpent
+        +DateTime completedAt
+        +DateTime? createdAt
+        +double? points
+        +String? shopAddress
+        +toJson() Map
+        +fromJson(Map) TestResult
+        +percentage double
+        +formattedTime String
+    }
+
+    class TestPointsSettings {
+        +String id
+        +String category
+        +double minPoints
+        +double maxPoints
+        +int zeroThreshold
+        +DateTime? createdAt
+        +DateTime? updatedAt
+        +toJson() Map
+        +fromJson(Map) TestPointsSettings
+        +defaults() TestPointsSettings
+    }
+
+    TestResult "1" -- "0..1" TestPointsSettings : uses for calculation
+```
+
+---
+
+### 15.3 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph TESTS["ТЕСТИРОВАНИЕ"]
+        TQ[TestQuestion<br/>Вопросы]
+        TR[TestResult<br/>Результаты]
+        TPS[TestPointsSettings<br/>Настройки баллов]
+        TP[TestPage<br/>UI с анимацией]
+    end
+
+    subgraph EFFICIENCY["ЭФФЕКТИВНОСТЬ"]
+        PEN[Penalties File<br/>YYYY-MM.json]
+        ED[EfficiencyData<br/>Сводка баллов]
+    end
+
+    subgraph EMPLOYEES["СОТРУДНИКИ"]
+        EMP[Employee<br/>Данные сотрудника]
+    end
+
+    subgraph SHOPS["МАГАЗИНЫ"]
+        SHOP[Shop<br/>Адрес магазина]
+    end
+
+    TR --> |assignTestPoints| PEN
+    TR --> EMP
+    TR --> SHOP
+    TPS --> TR
+    PEN --> ED
+    TP --> |saveResult| TR
+
+    style TESTS fill:#2196F3,color:#fff
+    style EFFICIENCY fill:#4CAF50,color:#fff
+    style EMPLOYEES fill:#FF9800,color:#fff
+    style SHOPS fill:#9C27B0,color:#fff
+```
+
+---
+
+### 15.4 Жизненный цикл теста
+
+```mermaid
+stateDiagram-v2
+    [*] --> Start: Открыть тест
+
+    Start --> Questions: Старт теста (таймер 7 мин)
+
+    Questions --> Questions: Ответ на вопрос
+    Questions --> Finished: Все вопросы пройдены
+    Questions --> Finished: Время вышло
+
+    Finished --> Calculating: Подсчёт результата
+    Calculating --> Saving: POST /api/test-results
+
+    Saving --> PointsCalculation: assignTestPoints()
+    PointsCalculation --> PointsAssigned: Баллы начислены
+
+    PointsAssigned --> ShowResults: Показать результат с анимацией
+    ShowResults --> [*]
+
+    note right of PointsCalculation
+        Линейная интерполяция:
+        - score <= 0 → minPoints
+        - score <= zeroThreshold → interpolate(min, 0)
+        - score > zeroThreshold → interpolate(0, max)
+        - score >= totalQuestions → maxPoints
+    end note
+
+    note right of ShowResults
+        - Анимация elasticOut (600ms)
+        - Цветовая кодировка (+green, -red)
+        - Склонение "балл/балла/баллов"
+    end note
+```
+
+---
+
+### 15.5 Поток данных: Прохождение теста
+
+```mermaid
+sequenceDiagram
+    participant E as Сотрудник
+    participant App as TestPage
+    participant API as /api/test-results
+    participant CALC as assignTestPoints()
+    participant SET as PointsSettings
+    participant PEN as Penalties File
+    participant UI as Results Dialog
+
+    E->>App: Нажать "Начать тест"
+    App->>App: Загрузить 20 вопросов
+    App->>App: Запустить таймер (7 мин)
+
+    loop Для каждого вопроса
+        App->>E: Показать вопрос + 4 варианта
+        E->>App: Выбрать ответ
+        App->>App: Сохранить ответ
+    end
+
+    alt Все вопросы пройдены или время вышло
+        App->>App: Подсчитать score
+        App->>API: POST {employeeName, employeePhone,<br/>score, totalQuestions, timeSpent, shopAddress}
+
+        API->>SET: Загрузить настройки
+        SET-->>API: {minPoints, maxPoints, zeroThreshold}
+
+        API->>CALC: Вызвать assignTestPoints(result)
+        CALC->>CALC: Рассчитать баллы<br/>(линейная интерполяция)
+        CALC->>CALC: Проверить дедупликацию<br/>(sourceId)
+        CALC->>PEN: Создать запись<br/>{category: test_penalty, points}
+
+        API-->>App: {success, result: {points, ...}}
+
+        App->>UI: Показать результат
+        UI->>UI: Анимация elasticOut
+        UI->>E: Отобразить баллы с цветом
+    end
+```
+
+---
+
+### 15.6 Алгоритм начисления баллов (линейная интерполяция)
+
+```mermaid
+flowchart TB
+    START[Результат теста:<br/>score / totalQuestions] --> LOAD[Загрузить настройки:<br/>minPoints, maxPoints,<br/>zeroThreshold]
+
+    LOAD --> CHECK1{score <= 0?}
+    CHECK1 -->|Да| MIN[points = minPoints<br/>например: -3.0]
+
+    CHECK1 -->|Нет| CHECK2{score >= totalQuestions?}
+    CHECK2 -->|Да| MAX[points = maxPoints<br/>например: +3.5]
+
+    CHECK2 -->|Нет| CHECK3{score <= zeroThreshold?}
+    CHECK3 -->|Да| INTERP1[Интерполяция от min до 0:<br/>points = minPoints + <br/> 0 - minPoints × score / zeroThreshold]
+
+    CHECK3 -->|Нет| INTERP2[Интерполяция от 0 до max:<br/>range = totalQuestions - zeroThreshold<br/>points = maxPoints × <br/> score - zeroThreshold / range]
+
+    MIN --> ROUND[Округлить до 2 знаков]
+    MAX --> ROUND
+    INTERP1 --> ROUND
+    INTERP2 --> ROUND
+
+    ROUND --> DEDUP{Существует запись<br/>с sourceId?}
+    DEDUP -->|Да| SKIP[Пропустить начисление<br/>дедупликация]
+    DEDUP -->|Нет| SAVE[Создать запись в penalties:<br/>category: test_penalty<br/>sourceId: test_resultId]
+
+    SAVE --> RETURN[Вернуть TestResult<br/>с полем points]
+    SKIP --> RETURN
+
+    style MIN fill:#f44336,color:#fff
+    style MAX fill:#4CAF50,color:#fff
+    style INTERP1 fill:#FFC107,color:#000
+    style INTERP2 fill:#2196F3,color:#fff
+    style ROUND fill:#9C27B0,color:#fff
+```
+
+**Примеры расчёта** (minPoints=-3, maxPoints=+3.5, zeroThreshold=15, totalQuestions=20):
+
+| score | Процент | Формула | Баллы |
+|-------|---------|---------|-------|
+| 0 | 0% | minPoints | **-3.0** |
+| 7 | 35% | -3 + (0 - (-3)) × (7 / 15) | **-1.6** |
+| 10 | 50% | -3 + (0 - (-3)) × (10 / 15) | **-1.0** |
+| 15 | 75% | 0 (порог) | **0.0** |
+| 18 | 90% | 3.5 × ((18 - 15) / 5) | **+2.1** |
+| 20 | 100% | maxPoints | **+3.5** |
+
+---
+
+### 15.7 UI особенности и анимация
+
+```mermaid
+flowchart LR
+    subgraph TestPage["TestPage - Прохождение теста"]
+        Q[Вопрос #N / 20]
+        T[Таймер: 07:00]
+        O[4 варианта ответа]
+        P[Прогресс-бар]
+    end
+
+    subgraph ResultsDialog["Results Dialog - Результаты"]
+        R[Результат: X/20<br/>Y%]
+        M[Сообщение<br/>Отлично!/Хорошо!/Можно лучше]
+        B[Баллы с анимацией]
+        BTN[Кнопка "Закрыть"]
+    end
+
+    subgraph Animation["Анимация баллов"]
+        AC[AnimationController<br/>600ms]
+        CURVE[Curves.elasticOut<br/>эффект "отскока"]
+        SCALE[ScaleTransition<br/>0.0 → 1.0]
+    end
+
+    subgraph PointsBadge["Бейдж баллов"]
+        COLOR{Цвет}
+        COLOR -->|points >= 0| GREEN[Зелёный<br/>Icons.add_circle]
+        COLOR -->|points < 0| RED[Красный<br/>Icons.remove_circle]
+
+        TEXT[Текст: +X.X балла]
+        DECL[Склонение:<br/>балл/балла/баллов]
+    end
+
+    TestPage --> ResultsDialog
+    ResultsDialog --> B
+    B --> Animation
+    Animation --> PointsBadge
+    PointsBadge --> TEXT
+    TEXT --> DECL
+
+    style TestPage fill:#2196F3,color:#fff
+    style ResultsDialog fill:#4CAF50,color:#fff
+    style Animation fill:#9C27B0,color:#fff
+    style GREEN fill:#4CAF50,color:#fff
+    style RED fill:#f44336,color:#fff
+```
+
+**Детали анимации:**
+```dart
+// AnimationController
+_pointsAnimController = AnimationController(
+  vsync: this,
+  duration: const Duration(milliseconds: 600),
+);
+
+// Кривая elasticOut для эффекта "отскока"
+_pointsScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+  CurvedAnimation(parent: _pointsAnimController, curve: Curves.elasticOut),
+);
+
+// ScaleTransition
+ScaleTransition(
+  scale: _pointsScaleAnimation,
+  child: Container(
+    // Бейдж с баллами
+    decoration: BoxDecoration(
+      color: (points >= 0 ? Colors.green : Colors.red).withOpacity(0.1),
+      border: Border.all(color: points >= 0 ? Colors.green : Colors.red),
+    ),
+    child: Row(
+      children: [
+        Icon(points >= 0 ? Icons.add_circle : Icons.remove_circle),
+        Text('${points >= 0 ? "+" : ""}${points.toStringAsFixed(1)} ${_getBallsWordForm(points)}'),
+      ],
+    ),
+  ),
+)
+```
+
+**Склонение слова "балл":**
+```dart
+String _getBallsWordForm(double points) {
+  final absPoints = points.abs().round();
+  if (absPoints % 10 == 1 && absPoints % 100 != 11) {
+    return 'балл';    // 1 балл, 21 балл
+  } else if ([2, 3, 4].contains(absPoints % 10) && ![12, 13, 14].contains(absPoints % 100)) {
+    return 'балла';   // 2 балла, 3 балла, 4 балла
+  } else {
+    return 'баллов';  // 5 баллов, 11 баллов, 20 баллов
+  }
+}
+```
+
+---
+
+### 15.8 API Endpoints
+
+#### Вопросы
+
+| Метод | Endpoint | Описание | Параметры |
+|-------|----------|----------|-----------|
+| GET | `/api/test-questions` | Получить все вопросы | - |
+| POST | `/api/test-questions` | Создать вопрос | `{question, options[], correctAnswer}` |
+| PUT | `/api/test-questions/:id` | Обновить вопрос | `{question, options[], correctAnswer}` |
+| DELETE | `/api/test-questions/:id` | Удалить вопрос | - |
+
+#### Результаты
+
+| Метод | Endpoint | Описание | Параметры | Ответ |
+|-------|----------|----------|-----------|-------|
+| GET | `/api/test-results` | Получить все результаты | `?employeePhone=X` (опц) | `{success, results[]}` |
+| POST | `/api/test-results` | Сохранить результат + начислить баллы | `{id, employeeName, employeePhone, score, totalQuestions, timeSpent, shopAddress?}` | `{success, result: {id, points, ...}}` |
+
+#### Настройки баллов
+
+| Метод | Endpoint | Описание | Параметры |
+|-------|----------|----------|-----------|
+| GET | `/api/points-settings/test` | Получить настройки | - |
+| POST | `/api/points-settings/test` | Сохранить настройки | `{minPoints, maxPoints, zeroThreshold}` |
+
+---
+
+### 15.9 Хранение данных
+
+```mermaid
+graph TB
+    subgraph Server["/var/www/"]
+        Q[test-questions/<br/>question_*.json]
+        R[test-results/<br/>test_result_*.json]
+        P[efficiency-penalties/<br/>YYYY-MM.json]
+        S[points-settings/<br/>test_points_settings.json]
+    end
+
+    subgraph QuestionFile["question_*.json"]
+        QF["{ id, question, options[],<br/>correctAnswer, createdAt }"]
+    end
+
+    subgraph ResultFile["test_result_*.json"]
+        RF["{ id, employeeName, employeePhone,<br/>score, totalQuestions, timeSpent,<br/>completedAt, shopAddress }"]
+    end
+
+    subgraph PenaltyFile["YYYY-MM.json"]
+        PF["[<br/>  { id, type: 'employee',<br/>    entityId, entityName,<br/>    category: 'test_penalty',<br/>    points, reason,<br/>    sourceId: 'test_resultId',<br/>    date, createdAt }<br/>]"]
+    end
+
+    subgraph SettingsFile["test_points_settings.json"]
+        SF["{ id, category: 'test',<br/>  minPoints: -3.0,<br/>  maxPoints: +3.5,<br/>  zeroThreshold: 15,<br/>  updatedAt }"]
+    end
+
+    Q --> QuestionFile
+    R --> ResultFile
+    P --> PenaltyFile
+    S --> SettingsFile
+```
+
+**Структура записи в penalties file:**
+```json
+{
+  "id": "test_pts_1769416399587_czjmflh75",
+  "type": "employee",
+  "entityId": "79054443224",
+  "entityName": "Андрей В",
+  "shopAddress": "",
+  "employeeName": "Андрей В",
+  "category": "test_penalty",
+  "categoryName": "Прохождение теста",
+  "date": "2026-01-26",
+  "points": -1.6,
+  "reason": "Тест: 7/20 правильных (35%)",
+  "sourceId": "test_test_result_79054443224_1769416399000",
+  "sourceType": "test_result",
+  "createdAt": "2026-01-26T11:33:19.000Z"
+}
+```
+
+---
+
+### 15.10 Структура страниц
+
+#### 15.10.1 Сотрудник
+
+| Страница | Описание | Особенности |
+|----------|----------|-------------|
+| **TestPage** | Прохождение теста | - 20 вопросов<br/>- Таймер 7 минут<br/>- Прогресс-бар<br/>- Анимация переходов между вопросами<br/>- Результаты с анимацией баллов |
+
+#### 15.10.2 Админ
+
+| Страница | Описание | Особенности |
+|----------|----------|-------------|
+| **TestQuestionsManagementPage** | Управление вопросами | - CRUD вопросов<br/>- 4 варианта ответа<br/>- Указание правильного ответа |
+| **TestResultsPage** | Просмотр результатов | - Все результаты тестов<br/>- Фильтр по сотруднику<br/>- Отображение баллов |
+| **TestPointsSettingsPage** | Настройки баллов | - 3 слайдера (minPoints, maxPoints, zeroThreshold)<br/>- Визуализация графика интерполяции |
+
+---
+
+### 15.11 Таблица зависимостей
+
+| Модуль | Зависит от | Что использует |
+|--------|------------|----------------|
+| Tests | Employees | Имя сотрудника, телефон |
+| Tests | Shops | Адрес магазина (опционально) |
+| Tests | Efficiency | Запись баллов в penalties file |
+| Tests | PointsSettings | Настройки линейной интерполяции |
+| TestPage | SharedPreferences | user_name, user_phone, user_shop_address |
+
+---
+
+### 15.12 Критические особенности
+
+1. **Синхронное начисление баллов:**
+   - Баллы начисляются сразу при сохранении результата теста
+   - Не требуется scheduler (в отличие от product_questions или attendance)
+   - TestResult возвращается с полем `points` клиенту
+
+2. **Линейная интерполяция:**
+   - Две области: от minPoints до 0, и от 0 до maxPoints
+   - Точка перехода определяется `zeroThreshold`
+   - Гибкая настройка через админ-панель
+   - Формула обеспечивает плавный переход от отрицательных к положительным баллам
+
+3. **Анимация в UI:**
+   - Curves.elasticOut для эффекта "отскока"
+   - Задержка 300ms перед стартом анимации
+   - Цветовая кодировка (зелёный для положительных, красный для отрицательных)
+   - Правильное склонение русских слов (балл/балла/баллов)
+
+4. **Дедупликация:**
+   - `sourceId` формируется как: `"test_{resultId}"`
+   - Перед созданием записи проверяется наличие записи с таким же `sourceId`
+   - Если запись существует → баллы НЕ начисляются повторно
+   - Предотвращает двойное начисление при повторном сохранении
+
+5. **Интеграция с Эффективностью:**
+   - Автоматическое отображение в разделе "Моя эффективность"
+   - Категория "Прохождение теста" в списке штрафов/бонусов
+   - Запись создаётся в том же формате, что и другие penalty/bonus
+
+6. **Настраиваемость:**
+   - Админ может изменить minPoints, maxPoints, zeroThreshold
+   - Изменения применяются сразу для новых тестов
+   - Старые результаты НЕ пересчитываются (immutable)
+   - Можно создать "мягкую" (min=-1, max=+1) или "жёсткую" (min=-5, max=+5) систему оценки
+
+7. **Таймер и прогресс:**
+   - Жёсткий лимит 7 минут (420 секунд)
+   - Автоматическое завершение при истечении времени
+   - Прогресс-бар показывает процент выполнения
+   - Время прохождения сохраняется в результате (timeSpent)
+
+---
+
+### 15.13 Формула линейной интерполяции (подробно)
+
+```
+Дано:
+  - score: количество правильных ответов (0..20)
+  - totalQuestions: всего вопросов (20)
+  - minPoints: баллы за 0% (например, -3)
+  - maxPoints: баллы за 100% (например, +3.5)
+  - zeroThreshold: количество правильных для 0 баллов (например, 15)
+
+Условия:
+  1. Если score <= 0:
+     points = minPoints
+
+  2. Если score >= totalQuestions:
+     points = maxPoints
+
+  3. Если 0 < score <= zeroThreshold:
+     Интерполяция от minPoints до 0:
+     points = minPoints + (0 - minPoints) × (score / zeroThreshold)
+
+     Пример: score=7, zeroThreshold=15, minPoints=-3
+     points = -3 + (0 - (-3)) × (7 / 15)
+            = -3 + 3 × 0.4667
+            = -3 + 1.4
+            = -1.6
+
+  4. Если zeroThreshold < score < totalQuestions:
+     Интерполяция от 0 до maxPoints:
+     range = totalQuestions - zeroThreshold
+     points = (maxPoints - 0) × ((score - zeroThreshold) / range)
+
+     Пример: score=18, zeroThreshold=15, maxPoints=3.5, totalQuestions=20
+     range = 20 - 15 = 5
+     points = 3.5 × ((18 - 15) / 5)
+            = 3.5 × (3 / 5)
+            = 3.5 × 0.6
+            = 2.1
+
+Результат:
+  points округляется до 2 знаков после запятой: Math.round(points × 100) / 100
+```
+
+---
+
+### 15.14 График интерполяции (визуализация)
+
+```
+Баллы
+  ^
+  |                                     * (20, +3.5) maxPoints
++3.5|                                  /
+  |                                 /
+  |                              /
++2.0|                           /
+  |                          *  (18, +2.1)
+  |                       /
++1.0|                    /
+  |                   /
+  |                /
+  0|-------------* (15, 0) zeroThreshold
+  |           /
+-1.0|        * (10, -1.0)
+  |       /
+  |     /
+-1.6|   * (7, -1.6)
+  |  /
+-3.0|* (0, -3.0) minPoints
+  +----+----+----+----+----+----+----+----+----+----+--> Правильных ответов
+  0    5   10   15   20   25   30   35   40   45   50
+
+Две зоны:
+  - Зона штрафов: [0, zeroThreshold] → [minPoints, 0]
+  - Зона бонусов: [zeroThreshold, totalQuestions] → [0, maxPoints]
+```
+
+---
+
+### 15.15 Пример использования
+
+#### Пример 1: Отличный результат
+
+```
+Сотрудник: Мария
+Результат: 19/20 (95%)
+Время: 5 минут 30 секунд
+
+Расчёт:
+  score = 19
+  zeroThreshold = 15
+  maxPoints = 3.5
+  totalQuestions = 20
+
+  Условие: 15 < 19 < 20 → интерполяция от 0 до maxPoints
+  range = 20 - 15 = 5
+  points = 3.5 × ((19 - 15) / 5) = 3.5 × 0.8 = 2.8
+
+Результат: +2.8 балла (зелёный бейдж, иконка add_circle)
+```
+
+#### Пример 2: Средний результат
+
+```
+Сотрудник: Алексей
+Результат: 15/20 (75%)
+Время: 6 минут 45 секунд
+
+Расчёт:
+  score = 15
+  zeroThreshold = 15
+
+  Условие: score == zeroThreshold → 0 баллов
+
+Результат: 0.0 баллов (серый текст, нейтральное сообщение)
+```
+
+#### Пример 3: Низкий результат
+
+```
+Сотрудник: Андрей
+Результат: 7/20 (35%)
+Время: 4 минуты 10 секунд
+
+Расчёт:
+  score = 7
+  zeroThreshold = 15
+  minPoints = -3
+
+  Условие: 0 < 7 <= 15 → интерполяция от minPoints до 0
+  points = -3 + (0 - (-3)) × (7 / 15) = -3 + 1.4 = -1.6
+
+Результат: -1.6 балла (красный бейдж, иконка remove_circle)
+```
+
+---
+
+### 15.16 Интеграция с модулем Эффективность
+
+```mermaid
+flowchart TB
+    subgraph TEST["Модуль Тестирование"]
+        TR[TestResult<br/>score, points]
+        ATP[assignTestPoints()]
+    end
+
+    subgraph PENALTIES["Efficiency Penalties"]
+        PF[/var/www/efficiency-penalties/<br/>YYYY-MM.json]
+        ENTRY[Запись:<br/>category: test_penalty<br/>points: -1.6<br/>sourceId: test_resultId]
+    end
+
+    subgraph EFFICIENCY["Модуль Эффективность"]
+        ED[EfficiencyData]
+        EP[EfficiencyPage<br/>"Моя эффективность"]
+        CAT[Категория:<br/>"Прохождение теста"]
+    end
+
+    TR --> ATP
+    ATP --> ENTRY
+    ENTRY --> PF
+    PF --> ED
+    ED --> EP
+    EP --> CAT
+
+    style TEST fill:#2196F3,color:#fff
+    style PENALTIES fill:#FFC107,color:#000
+    style EFFICIENCY fill:#4CAF50,color:#fff
+```
+
+**Категория баллов:**
+- `category`: `"test_penalty"`
+- `categoryName`: `"Прохождение теста"`
+
+**Формат reason:**
+- `"Тест: {score}/{totalQuestions} правильных ({percentage}%)"`
+- Пример: `"Тест: 7/20 правильных (35%)"`
+
+---
+
 ## Следующие разделы (TODO)
 
 - [x] 2. Управление данными - СОТРУДНИКИ
@@ -8065,4 +8764,5 @@ flowchart TB
 - [x] 12. Клиентский модуль - ОТЗЫВЫ
 - [x] 13. Клиентский модуль - МОИ ДИАЛОГИ
 - [x] 14. Клиентский модуль - ПОИСК ТОВАРА
-- [ ] 15. Аналитика - ЭФФЕКТИВНОСТЬ
+- [x] 15. Система обучения - ТЕСТИРОВАНИЕ
+- [ ] 16. Аналитика - ЭФФЕКТИВНОСТЬ
