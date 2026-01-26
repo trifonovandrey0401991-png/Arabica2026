@@ -3113,6 +3113,7 @@ async function sendWithdrawalNotifications(withdrawal) {
   } catch (err) {
     console.error('Ошибка отправки push-уведомлений о выемке:', err);
   }
+}
 
 // Отправить push-уведомления о подтверждении выемки
 async function sendWithdrawalConfirmationNotifications(withdrawal) {
@@ -3166,7 +3167,6 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
   } catch (err) {
     console.error("❌ Ошибка отправки push-уведомлений о подтверждении:", err);
   }
-}
 }
 
 // Обновить баланс главной кассы после выемки
