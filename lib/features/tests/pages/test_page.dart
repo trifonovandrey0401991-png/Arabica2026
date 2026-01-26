@@ -5,6 +5,7 @@ import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../employees/services/user_role_service.dart';
 import '../models/test_model.dart';
+import '../models/test_result_model.dart';
 import '../services/test_result_service.dart';
 
 /// Страница тестирования
@@ -25,10 +26,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
   int _timeRemaining = 420; // 7 минут в секундах
   bool _testStarted = false;
   bool _testFinished = false;
+  TestResult? _testResult; // Результат теста с начисленными баллами
 
   late AnimationController _progressController;
   late AnimationController _questionAnimController;
   late Animation<double> _questionFadeAnimation;
+  late AnimationController _pointsAnimController;
+  late Animation<double> _pointsScaleAnimation;
 
   @override
   void initState() {
@@ -45,6 +49,13 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     _questionFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _questionAnimController, curve: Curves.easeInOut),
     );
+    _pointsAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _pointsScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pointsAnimController, curve: Curves.elasticOut),
+    );
   }
 
   @override
@@ -52,6 +63,7 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     _timer?.cancel();
     _progressController.dispose();
     _questionAnimController.dispose();
+    _pointsAnimController.dispose();
     super.dispose();
   }
 
@@ -184,15 +196,39 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
         employeeName = 'Неизвестный сотрудник';
       }
 
+      // Получаем адрес магазина
+      String? shopAddress = prefs.getString('user_shop_address') ??
+                           prefs.getString('selected_shop_address');
+
+      // Если адрес магазина не найден, пытаемся получить из UserRoleService
+      if (shopAddress == null || shopAddress.isEmpty) {
+        try {
+          final roleData = await UserRoleService.checkEmployeeViaAPI(employeePhone);
+          if (roleData != null && roleData.shopAddress != null && roleData.shopAddress!.isNotEmpty) {
+            shopAddress = roleData.shopAddress!;
+          }
+        } catch (e) {
+          Logger.warning('Не удалось загрузить адрес магазина: $e');
+        }
+      }
+
       final timeSpent = 420 - _timeRemaining;
 
-      await TestResultService.saveResult(
+      final result = await TestResultService.saveResult(
         employeeName: employeeName,
         employeePhone: employeePhone.replaceAll(RegExp(r'[\s\+]'), ''),
         score: score,
         totalQuestions: _questions.length,
         timeSpent: timeSpent,
+        shopAddress: shopAddress,
       );
+
+      // Сохраняем результат с начисленными баллами
+      if (mounted) {
+        setState(() {
+          _testResult = result;
+        });
+      }
 
       await ReportNotificationService.createNotification(
         reportType: ReportType.test,
@@ -275,7 +311,26 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
     );
   }
 
+  String _getBallsWordForm(double points) {
+    final absPoints = points.abs().round();
+    if (absPoints % 10 == 1 && absPoints % 100 != 11) {
+      return 'балл';
+    } else if ([2, 3, 4].contains(absPoints % 10) && ![12, 13, 14].contains(absPoints % 100)) {
+      return 'балла';
+    } else {
+      return 'баллов';
+    }
+  }
+
   void _showResultsDialog() {
+    // Запускаем анимацию баллов
+    _pointsAnimController.reset();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _pointsAnimController.forward();
+      }
+    });
+
     final percentage = (_score / _questions.length * 100).round();
     Color resultColor;
     String resultMessage;
@@ -363,6 +418,43 @@ class _TestPageState extends State<TestPage> with TickerProviderStateMixin {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              // Отображаем начисленные баллы
+              if (_testResult?.points != null) ...[
+                const SizedBox(height: 20),
+                ScaleTransition(
+                  scale: _pointsScaleAnimation,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: (_testResult!.points! >= 0 ? Colors.green : Colors.red).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _testResult!.points! >= 0 ? Colors.green : Colors.red,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _testResult!.points! >= 0 ? Icons.add_circle : Icons.remove_circle,
+                          color: _testResult!.points! >= 0 ? Colors.green : Colors.red,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_testResult!.points! >= 0 ? "+" : ""}${_testResult!.points!.toStringAsFixed(1)} ${_getBallsWordForm(_testResult!.points!)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: _testResult!.points! >= 0 ? Colors.green[700] : Colors.red[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
