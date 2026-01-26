@@ -51,7 +51,6 @@ const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api")
 const { setupPointsSettingsAPI, calculateRecountPoints, calculateShiftPoints } = require("./api/points_settings_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
 const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
-const { startScheduler: startTestResultsScheduler } = require("./test_results_penalty_scheduler");
 const { setupOrderTimeoutAPI } = require("./order_timeout_api");
 const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
 const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
@@ -7733,9 +7732,6 @@ startShiftHandoverAutomationScheduler();
 
 // Start Attendance automation scheduler (auto-create reports, check deadlines, penalties)
 startAttendanceAutomationScheduler();
-
-// Start Test Results scheduler (auto-assign points for test results)
-startTestResultsScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
