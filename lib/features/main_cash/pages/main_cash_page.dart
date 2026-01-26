@@ -625,6 +625,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
                       DropdownMenuItem<String>(
                         value: null,
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.select_all,
