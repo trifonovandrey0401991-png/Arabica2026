@@ -139,10 +139,11 @@ if (rateLimit) {
     validate: { xForwardedForHeader: false }, // Отключаем валидацию т.к. trust proxy включен
   });
 
-  // Строгий лимит для чувствительных endpoints: 10 запросов в минуту
-  const strictLimiter = rateLimit({
+  // Умеренный лимит для финансовых endpoints: 50 запросов в минуту
+  // Увеличено с 10 т.к. приложение загружает список + создаёт записи
+  const financialLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 10,
+    max: 50,
     message: { success: false, error: 'Превышен лимит запросов. Подождите минуту.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -152,12 +153,12 @@ if (rateLimit) {
   // Применяем общий лимит ко всем /api/* маршрутам
   app.use('/api/', generalLimiter);
 
-  // Строгий лимит для финансовых операций
-  app.use('/api/withdrawals', strictLimiter);
-  app.use('/api/bonus-penalties', strictLimiter);
-  app.use('/api/rko', strictLimiter);
+  // Умеренный лимит для финансовых операций
+  app.use('/api/withdrawals', financialLimiter);
+  app.use('/api/bonus-penalties', financialLimiter);
+  app.use('/api/rko', financialLimiter);
 
-  console.log('✅ Rate Limiting активирован: 500 req/min (общий), 10 req/min (финансовые операции)');
+  console.log('✅ Rate Limiting активирован: 500 req/min (общий), 50 req/min (финансовые операции)');
 }
 
 // Статические файлы для редактора координат
