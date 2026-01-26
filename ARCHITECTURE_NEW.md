@@ -1272,12 +1272,15 @@ lib/features/shifts/
 ```
 lib/features/efficiency/
 ├── models/
-│   └── points_settings_model.dart        # ShiftPointsSettings
+│   ├── points_settings_model.dart              # Re-export (обратная совместимость)
+│   └── settings/
+│       ├── points_settings_base.dart           # Базовый класс + миксины
+│       └── shift_points_settings.dart          # ShiftPointsSettings
 ├── pages/settings_tabs/
-│   ├── shift_points_settings_page.dart   # Настройки баллов пересменки
+│   ├── shift_points_settings_page.dart         # Настройки баллов пересменки
 │   └── shift_points_settings_page_v2.dart
 └── services/
-    └── points_settings_service.dart      # API настроек баллов
+    └── points_settings_service.dart            # API настроек баллов
 ```
 
 ---
@@ -1943,9 +1946,12 @@ lib/features/recount/
 ```
 lib/features/efficiency/
 ├── models/
-│   └── points_settings_model.dart       # RecountPointsSettings
+│   ├── points_settings_model.dart              # Re-export (обратная совместимость)
+│   └── settings/
+│       ├── points_settings_base.dart           # Базовый класс + миксины
+│       └── recount_points_settings.dart        # RecountPointsSettings
 └── services/
-    └── points_settings_service.dart     # API настроек баллов
+    └── points_settings_service.dart            # API настроек баллов
 
 lib/features/shops/
 └── services/
@@ -4104,11 +4110,14 @@ lib/features/envelope/
 ```
 lib/features/efficiency/
 ├── models/
-│   └── points_settings_model.dart              # ShiftHandoverPointsSettings
+│   ├── points_settings_model.dart                    # Re-export (обратная совместимость)
+│   └── settings/
+│       ├── points_settings_base.dart                 # Базовый класс + миксины
+│       └── shift_handover_points_settings.dart       # ShiftHandoverPointsSettings
 ├── pages/settings_tabs/
-│   └── shift_handover_points_settings_page.dart  # Настройки баллов
+│   └── shift_handover_points_settings_page.dart      # Настройки баллов
 └── services/
-    └── points_settings_service.dart            # API настроек
+    └── points_settings_service.dart                  # API настроек
 ```
 
 **Серверные модули:**
@@ -4791,7 +4800,10 @@ lib/core/services/
 ```
 lib/features/efficiency/
 ├── models/
-│   └── points_settings_model.dart                    # AttendancePointsSettings
+│   ├── points_settings_model.dart                    # Re-export (обратная совместимость)
+│   └── settings/
+│       ├── points_settings_base.dart                 # Базовый класс + миксины
+│       └── attendance_points_settings.dart           # AttendancePointsSettings
 ├── pages/settings_tabs/
 │   └── attendance_points_settings_page.dart          # UI настроек
 └── services/
@@ -8084,7 +8096,10 @@ lib/features/tests/
 ```
 lib/features/efficiency/
 ├── models/
-│   └── points_settings_model.dart              # TestPointsSettings
+│   ├── points_settings_model.dart              # Re-export (обратная совместимость)
+│   └── settings/
+│       ├── points_settings_base.dart           # Базовый класс + миксины
+│       └── test_points_settings.dart           # TestPointsSettings
 ├── pages/settings_tabs/
 │   └── test_points_settings_page.dart          # UI настроек (слайдеры)
 └── services/
@@ -9503,6 +9518,104 @@ flowchart LR
 | **Shops** | → | shopAddress для группировки и фильтрации |
 | **Employees** | → | employeeName, employeeId для привязки операций |
 | **KPI** | ← | Данные о выручке для аналитики |
+
+---
+
+## 18. Архитектура - НАСТРОЙКИ БАЛЛОВ ЭФФЕКТИВНОСТИ
+
+Модуль настроек баллов эффективности был рефакторен для улучшения поддерживаемости.
+
+### 18.1 Структура файлов
+
+```
+lib/features/efficiency/models/
+├── points_settings_model.dart              # Re-export (обратная совместимость)
+├── efficiency_data_model.dart              # EfficiencyRecord, EfficiencySummary
+└── settings/
+    ├── points_settings.dart                # Barrel export всех настроек
+    ├── points_settings_base.dart           # Базовый класс + миксины
+    │
+    │   # Настройки с рейтингом 1-10 (линейная интерполяция)
+    ├── shift_points_settings.dart          # ShiftPointsSettings
+    ├── recount_points_settings.dart        # RecountPointsSettings
+    ├── shift_handover_points_settings.dart # ShiftHandoverPointsSettings
+    │
+    │   # Настройки с временными окнами
+    ├── attendance_points_settings.dart     # AttendancePointsSettings
+    ├── rko_points_settings.dart            # RkoPointsSettings
+    │
+    │   # Простые настройки (положительный/отрицательный)
+    ├── test_points_settings.dart           # TestPointsSettings
+    ├── reviews_points_settings.dart        # ReviewsPointsSettings
+    ├── product_search_points_settings.dart # ProductSearchPointsSettings
+    ├── orders_points_settings.dart         # OrdersPointsSettings
+    ├── envelope_points_settings.dart       # EnvelopePointsSettings
+    │
+    │   # Настройки задач
+    └── task_points_settings.dart           # Regular + RecurringTaskPointsSettings
+```
+
+### 18.2 Базовые классы и миксины
+
+```dart
+/// Базовый класс для всех настроек баллов
+abstract class PointsSettingsBase {
+  String get id;
+  String get category;
+  DateTime? get createdAt;
+  DateTime? get updatedAt;
+  Map<String, dynamic> toJson();
+}
+
+/// Миксин для временных окон (утренняя/вечерняя смена)
+mixin TimeWindowSettings {
+  String get morningStartTime;
+  String get morningEndTime;
+  String get eveningStartTime;
+  String get eveningEndTime;
+  double get missedPenalty;
+}
+
+/// Миксин для рейтинга 1-10 с интерполяцией
+mixin RatingBasedSettings {
+  int get minRating;        // 1
+  int get maxRating;        // 10
+  double get minPoints;     // Штраф за rating=1
+  int get zeroThreshold;    // Rating для 0 баллов
+  double get maxPoints;     // Бонус за rating=10
+  int get adminReviewTimeout;
+
+  double calculatePointsFromRating(int rating);  // Линейная интерполяция
+}
+```
+
+### 18.3 Использование в классах
+
+| Класс | Extends | Миксины |
+|-------|---------|---------|
+| `ShiftPointsSettings` | `PointsSettingsBase` | `TimeWindowSettings`, `RatingBasedSettings` |
+| `RecountPointsSettings` | `PointsSettingsBase` | `TimeWindowSettings`, `RatingBasedSettings` |
+| `ShiftHandoverPointsSettings` | `PointsSettingsBase` | `TimeWindowSettings`, `RatingBasedSettings` |
+| `AttendancePointsSettings` | `PointsSettingsBase` | `TimeWindowSettings` |
+| `RkoPointsSettings` | `PointsSettingsBase` | `TimeWindowSettings` |
+| `TestPointsSettings` | `PointsSettingsBase` | — |
+| `ReviewsPointsSettings` | `PointsSettingsBase` | — |
+| `ProductSearchPointsSettings` | `PointsSettingsBase` | — |
+| `OrdersPointsSettings` | `PointsSettingsBase` | — |
+| `EnvelopePointsSettings` | `PointsSettingsBase` | — |
+| `RegularTaskPointsSettings` | `PointsSettingsBase` | — |
+| `RecurringTaskPointsSettings` | `PointsSettingsBase` | — |
+
+### 18.4 Обратная совместимость
+
+Старые импорты продолжают работать:
+```dart
+// Старый способ (работает)
+import '../models/points_settings_model.dart';
+
+// Новый способ (рекомендуется)
+import '../models/settings/points_settings.dart';
+```
 
 ---
 
