@@ -38,6 +38,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
@@ -64,6 +65,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
         Logger.debug('    Расходов: ${w.expenses.length}');
       }
 
+      if (!mounted) return;
       setState(() {
         _balances = balances;
         _withdrawals = withdrawals;
@@ -74,6 +76,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     } catch (e, stackTrace) {
       Logger.error('❌ Ошибка загрузки данных', e);
       Logger.debug('Stack trace: $stackTrace');
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -1124,6 +1127,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
 
       try {
@@ -1146,6 +1150,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               backgroundColor: Colors.red,
             ),
           );
+          if (!mounted) return;
           setState(() => _isLoading = false);
         }
       } catch (e) {
@@ -1156,6 +1161,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             backgroundColor: Colors.red,
           ),
         );
+        if (!mounted) return;
         setState(() => _isLoading = false);
       }
     }
@@ -1215,6 +1221,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
 
       try {
@@ -1245,6 +1252,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
               backgroundColor: Colors.red,
             ),
           );
+          if (!mounted) return;
           setState(() => _isLoading = false);
         }
       } catch (e) {
@@ -1255,6 +1263,7 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
             backgroundColor: Colors.red,
           ),
         );
+        if (!mounted) return;
         setState(() => _isLoading = false);
       }
     }
