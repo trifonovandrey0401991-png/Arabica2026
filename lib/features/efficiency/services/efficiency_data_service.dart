@@ -1,18 +1,20 @@
 import '../models/efficiency_data_model.dart';
 import 'efficiency_calculation_service.dart';
-import '../../shifts/services/shift_report_service.dart';
-import '../../recount/services/recount_service.dart';
-import '../../shift_handover/services/shift_handover_report_service.dart';
-import '../../attendance/services/attendance_service.dart';
-import '../../tasks/services/task_service.dart';
-import '../../tasks/models/task_model.dart';
-import '../../reviews/services/review_service.dart';
+import 'data_loaders/data_loaders.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
 
 /// Сервис загрузки и агрегации данных эффективности
+///
+/// Основной публичный метод: loadMonthData()
+/// Данные загружаются из 7 источников и агрегируются по магазинам/сотрудникам.
+///
+/// Структура после рефакторинга:
+/// - efficiency_data_service.dart - оркестратор и кэширование (этот файл)
+/// - data_loaders/efficiency_batch_parsers.dart - парсеры для batch API
+/// - data_loaders/efficiency_record_loaders.dart - загрузчики из отдельных сервисов
 class EfficiencyDataService {
   static const String _penaltiesEndpoint = ApiConstants.efficiencyPenaltiesEndpoint;
 
@@ -60,13 +62,13 @@ class EfficiencyDataService {
 
     // Загружаем все отчеты и штрафы параллельно
     final results = await Future.wait([
-      _loadShiftRecords(start, end),
-      _loadRecountRecords(start, end),
-      _loadShiftHandoverRecords(start, end),
-      _loadAttendanceRecords(start, end),
-      _loadPenaltyRecords(start, end),
-      _loadTaskRecords(start, end),
-      _loadReviewRecords(start, end),
+      loadShiftRecords(start, end),
+      loadRecountRecords(start, end),
+      loadShiftHandoverRecords(start, end),
+      loadAttendanceRecords(start, end),
+      loadPenaltyRecords(start, end),
+      loadTaskRecords(start, end),
+      loadReviewRecords(start, end),
     ]);
 
     // Объединяем все записи
@@ -136,15 +138,15 @@ class EfficiencyDataService {
       Logger.debug('   - attendance: ${(result['attendance'] as List?)?.length ?? 0}');
 
       // Загружаем остальные типы отдельно (пока не добавлены в batch API)
-      final penaltyRecords = await _loadPenaltyRecords(start, end);
-      final taskRecords = await _loadTaskRecords(start, end);
-      final reviewRecords = await _loadReviewRecords(start, end);
+      final penaltyRecords = await loadPenaltyRecords(start, end);
+      final taskRecords = await loadTaskRecords(start, end);
+      final reviewRecords = await loadReviewRecords(start, end);
 
       // Парсим отчёты и конвертируем в EfficiencyRecord
-      final shiftRecords = await _parseShiftReportsFromBatch(result['shifts'] as List<dynamic>? ?? [], start, end);
-      final recountRecords = await _parseRecountReportsFromBatch(result['recounts'] as List<dynamic>? ?? [], start, end);
-      final handoverRecords = await _parseHandoverReportsFromBatch(result['handovers'] as List<dynamic>? ?? [], start, end);
-      final attendanceRecords = await _parseAttendanceFromBatch(result['attendance'] as List<dynamic>? ?? [], start, end);
+      final shiftRecords = await parseShiftReportsFromBatch(result['shifts'] as List<dynamic>? ?? [], start, end);
+      final recountRecords = await parseRecountReportsFromBatch(result['recounts'] as List<dynamic>? ?? [], start, end);
+      final handoverRecords = await parseHandoverReportsFromBatch(result['handovers'] as List<dynamic>? ?? [], start, end);
+      final attendanceRecords = await parseAttendanceFromBatch(result['attendance'] as List<dynamic>? ?? [], start, end);
 
       // Объединяем все записи
       final List<EfficiencyRecord> allRecords = [
@@ -181,346 +183,6 @@ class EfficiencyDataService {
         endDate: endDate,
         forceRefresh: forceRefresh,
       );
-    }
-  }
-
-  /// Парсинг shift reports из batch API
-  static Future<List<EfficiencyRecord>> _parseShiftReportsFromBatch(
-    List<dynamic> rawReports,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final records = <EfficiencyRecord>[];
-
-    for (final json in rawReports) {
-      try {
-        final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-        final timestamp = json['timestamp'] != null ? DateTime.parse(json['timestamp']) : null;
-        final reportDate = createdAt ?? timestamp;
-
-        if (reportDate == null) continue;
-
-        // Проверяем период
-        if (reportDate.isBefore(start) || reportDate.isAfter(end)) {
-          continue;
-        }
-
-        final rating = json['rating'] as int?;
-        if (rating == null || rating < 1) {
-          continue; // Пропускаем неоцененные отчеты
-        }
-
-        final record = await EfficiencyCalculationService.createShiftRecord(
-          id: json['id'] ?? 'unknown',
-          shopAddress: json['shopAddress'] ?? '',
-          employeeName: json['employeeName'] ?? '',
-          date: json['confirmedAt'] != null ? DateTime.parse(json['confirmedAt']) : reportDate,
-          rating: rating,
-        );
-
-        if (record != null) {
-          records.add(record);
-        }
-      } catch (e) {
-        Logger.error('Error parsing shift report from batch', e);
-      }
-    }
-
-    return records;
-  }
-
-  /// Парсинг recount reports из batch API
-  static Future<List<EfficiencyRecord>> _parseRecountReportsFromBatch(
-    List<dynamic> rawReports,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final records = <EfficiencyRecord>[];
-
-    for (final json in rawReports) {
-      try {
-        final completedAt = json['completedAt'] != null ? DateTime.parse(json['completedAt']) : null;
-        final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-        final reportDate = completedAt ?? createdAt;
-
-        if (reportDate == null) continue;
-
-        // Проверяем период
-        if (reportDate.isBefore(start) || reportDate.isAfter(end)) {
-          continue;
-        }
-
-        final adminRating = json['adminRating'] as int?;
-        if (adminRating == null || adminRating < 1) {
-          continue; // Пропускаем неоцененные отчеты
-        }
-
-        final record = await EfficiencyCalculationService.createRecountRecord(
-          id: json['id'] ?? 'unknown',
-          shopAddress: json['shopAddress'] ?? '',
-          employeeName: json['employeeName'] ?? '',
-          date: json['ratedAt'] != null ? DateTime.parse(json['ratedAt']) : reportDate,
-          adminRating: adminRating,
-        );
-
-        if (record != null) {
-          records.add(record);
-        }
-      } catch (e) {
-        Logger.error('Error parsing recount report from batch', e);
-      }
-    }
-
-    return records;
-  }
-
-  /// Парсинг shift handover reports из batch API
-  static Future<List<EfficiencyRecord>> _parseHandoverReportsFromBatch(
-    List<dynamic> rawReports,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final records = <EfficiencyRecord>[];
-
-    for (final json in rawReports) {
-      try {
-        final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-
-        if (createdAt == null) continue;
-
-        // Проверяем период
-        if (createdAt.isBefore(start) || createdAt.isAfter(end)) {
-          continue;
-        }
-
-        final rating = json['rating'] as int?;
-        if (rating == null || rating < 1) {
-          continue; // Пропускаем неоцененные отчеты
-        }
-
-        final record = await EfficiencyCalculationService.createShiftHandoverRecord(
-          id: json['id'] ?? 'unknown',
-          shopAddress: json['shopAddress'] ?? '',
-          employeeName: json['employeeName'] ?? '',
-          date: json['confirmedAt'] != null ? DateTime.parse(json['confirmedAt']) : createdAt,
-          rating: rating,
-        );
-
-        if (record != null) {
-          records.add(record);
-        }
-      } catch (e) {
-        Logger.error('Error parsing shift handover report from batch', e);
-      }
-    }
-
-    return records;
-  }
-
-  /// Парсинг attendance records из batch API
-  static Future<List<EfficiencyRecord>> _parseAttendanceFromBatch(
-    List<dynamic> rawRecords,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final records = <EfficiencyRecord>[];
-
-    for (final json in rawRecords) {
-      try {
-        final timestamp = json['timestamp'] != null ? DateTime.parse(json['timestamp']) : null;
-        final createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
-        final recordDate = timestamp ?? createdAt;
-
-        if (recordDate == null) continue;
-
-        // Проверяем период
-        if (recordDate.isBefore(start) || recordDate.isAfter(end)) {
-          continue;
-        }
-
-        // isOnTime может быть null если сотрудник отметился вне смены
-        final isOnTime = json['isOnTime'] as bool?;
-        if (isOnTime == null) {
-          continue;
-        }
-
-        final record = await EfficiencyCalculationService.createAttendanceRecord(
-          id: json['id'] ?? 'unknown',
-          shopAddress: json['shopAddress'] ?? '',
-          employeeName: json['employeeName'] ?? '',
-          date: recordDate,
-          isOnTime: isOnTime,
-        );
-
-        records.add(record);
-      } catch (e) {
-        Logger.error('Error parsing attendance record from batch', e);
-      }
-    }
-
-    return records;
-  }
-
-  /// Загрузить записи пересменки
-  static Future<List<EfficiencyRecord>> _loadShiftRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading shift reports...');
-      final reports = await ShiftReportService.getReports();
-
-      final records = <EfficiencyRecord>[];
-      for (final report in reports) {
-        // Проверяем период и наличие оценки
-        if (report.createdAt.isBefore(start) || report.createdAt.isAfter(end)) {
-          continue;
-        }
-
-        if (report.rating == null || report.rating! < 1) {
-          continue; // Пропускаем неоцененные отчеты
-        }
-
-        final record = await EfficiencyCalculationService.createShiftRecord(
-          id: report.id,
-          shopAddress: report.shopAddress,
-          employeeName: report.employeeName,
-          date: report.confirmedAt ?? report.createdAt,
-          rating: report.rating!,
-        );
-
-        if (record != null) {
-          records.add(record);
-        }
-      }
-
-      Logger.debug('Loaded ${records.length} shift efficiency records');
-      return records;
-    } catch (e) {
-      Logger.error('Error loading shift records', e);
-      return [];
-    }
-  }
-
-  /// Загрузить записи пересчета
-  static Future<List<EfficiencyRecord>> _loadRecountRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading recount reports...');
-      final reports = await RecountService.getReports();
-
-      final records = <EfficiencyRecord>[];
-      for (final report in reports) {
-        // Проверяем период и наличие оценки
-        if (report.completedAt.isBefore(start) || report.completedAt.isAfter(end)) {
-          continue;
-        }
-
-        if (report.adminRating == null || report.adminRating! < 1) {
-          continue; // Пропускаем неоцененные отчеты
-        }
-
-        final record = await EfficiencyCalculationService.createRecountRecord(
-          id: report.id,
-          shopAddress: report.shopAddress,
-          employeeName: report.employeeName,
-          date: report.ratedAt ?? report.completedAt,
-          adminRating: report.adminRating,
-        );
-
-        if (record != null) {
-          records.add(record);
-        }
-      }
-
-      Logger.debug('Loaded ${records.length} recount efficiency records');
-      return records;
-    } catch (e) {
-      Logger.error('Error loading recount records', e);
-      return [];
-    }
-  }
-
-  /// Загрузить записи сдачи смены
-  static Future<List<EfficiencyRecord>> _loadShiftHandoverRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading shift handover reports...');
-      final reports = await ShiftHandoverReportService.getReports();
-
-      final records = <EfficiencyRecord>[];
-      for (final report in reports) {
-        // Проверяем период и наличие оценки
-        if (report.createdAt.isBefore(start) || report.createdAt.isAfter(end)) {
-          continue;
-        }
-
-        if (report.rating == null || report.rating! < 1) {
-          continue; // Пропускаем неоцененные отчеты
-        }
-
-        final record = await EfficiencyCalculationService.createShiftHandoverRecord(
-          id: report.id,
-          shopAddress: report.shopAddress,
-          employeeName: report.employeeName,
-          date: report.confirmedAt ?? report.createdAt,
-          rating: report.rating,
-        );
-
-        if (record != null) {
-          records.add(record);
-        }
-      }
-
-      Logger.debug('Loaded ${records.length} shift handover efficiency records');
-      return records;
-    } catch (e) {
-      Logger.error('Error loading shift handover records', e);
-      return [];
-    }
-  }
-
-  /// Загрузить записи посещаемости
-  static Future<List<EfficiencyRecord>> _loadAttendanceRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading attendance records...');
-      final attendanceRecords = await AttendanceService.getAttendanceRecords();
-
-      final records = <EfficiencyRecord>[];
-      for (final attendance in attendanceRecords) {
-        // Проверяем период
-        if (attendance.timestamp.isBefore(start) || attendance.timestamp.isAfter(end)) {
-          continue;
-        }
-
-        // isOnTime может быть null если сотрудник отметился вне смены
-        if (attendance.isOnTime == null) {
-          continue;
-        }
-
-        final record = await EfficiencyCalculationService.createAttendanceRecord(
-          id: attendance.id,
-          shopAddress: attendance.shopAddress,
-          employeeName: attendance.employeeName,
-          date: attendance.timestamp,
-          isOnTime: attendance.isOnTime!,
-        );
-
-        records.add(record);
-      }
-
-      Logger.debug('Loaded ${records.length} attendance efficiency records');
-      return records;
-    } catch (e) {
-      Logger.error('Error loading attendance records', e);
-      return [];
     }
   }
 
@@ -649,44 +311,6 @@ class EfficiencyDataService {
     );
   }
 
-  /// Загрузить штрафы с сервера
-  static Future<List<EfficiencyRecord>> _loadPenaltyRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading penalty records from server...');
-
-      // Формируем месяц для запроса (YYYY-MM)
-      final monthKey = '${start.year}-${start.month.toString().padLeft(2, '0')}';
-
-      final result = await BaseHttpService.getRaw(
-        endpoint: '$_penaltiesEndpoint?month=$monthKey',
-      );
-
-      if (result != null) {
-        final penalties = (result['penalties'] as List<dynamic>)
-            .map((json) => EfficiencyPenalty.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        Logger.debug('Loaded ${penalties.length} penalties from server');
-
-        // Преобразуем штрафы в записи эффективности
-        final records = <EfficiencyRecord>[];
-        for (final penalty in penalties) {
-          records.add(penalty.toRecord());
-        }
-
-        return records;
-      }
-
-      return [];
-    } catch (e) {
-      Logger.error('Error loading penalty records', e);
-      return [];
-    }
-  }
-
   /// Получить штрафы с сервера напрямую
   static Future<List<EfficiencyPenalty>> loadPenalties({
     String? month,
@@ -713,108 +337,6 @@ class EfficiencyDataService {
       return [];
     } catch (e) {
       Logger.error('Error loading penalties', e);
-      return [];
-    }
-  }
-
-  /// Загрузить записи по задачам
-  static Future<List<EfficiencyRecord>> _loadTaskRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading task assignments...');
-      final assignments = await TaskService.getAllAssignments();
-
-      final records = <EfficiencyRecord>[];
-      for (final assignment in assignments) {
-        // Проверяем период (по времени ответа или проверки)
-        DateTime? recordDate;
-        if (assignment.status == TaskStatus.approved ||
-            assignment.status == TaskStatus.rejected) {
-          recordDate = assignment.reviewedAt;
-        } else if (assignment.status == TaskStatus.declined) {
-          recordDate = assignment.respondedAt ?? assignment.deadline;
-        } else if (assignment.status == TaskStatus.expired) {
-          recordDate = assignment.deadline;
-        }
-
-        if (recordDate == null) continue;
-        if (recordDate.isBefore(start) || recordDate.isAfter(end)) continue;
-
-        // Определяем баллы по статусу
-        double points;
-        switch (assignment.status) {
-          case TaskStatus.approved:
-            points = 1.0; // +1 за выполненную задачу
-            break;
-          case TaskStatus.rejected:
-            points = -3.0; // -3 за отклоненную админом
-            break;
-          case TaskStatus.expired:
-            points = -3.0; // -3 за просроченную
-            break;
-          case TaskStatus.declined:
-            points = -3.0; // -3 за отказ
-            break;
-          default:
-            continue; // Пропускаем pending/submitted
-        }
-
-        records.add(EfficiencyRecord(
-          id: assignment.id,
-          category: EfficiencyCategory.tasks,
-          shopAddress: '', // Задачи не привязаны к магазинам
-          employeeName: assignment.assigneeName,
-          date: recordDate,
-          points: points,
-          rawValue: {
-            'status': assignment.status.name,
-            'taskTitle': assignment.task?.title ?? 'Задача',
-          },
-          sourceId: assignment.taskId,
-        ));
-      }
-
-      Logger.debug('Loaded ${records.length} task efficiency records');
-      return records;
-    } catch (e) {
-      Logger.error('Error loading task records', e);
-      return [];
-    }
-  }
-
-  /// Загрузить записи по отзывам
-  static Future<List<EfficiencyRecord>> _loadReviewRecords(
-    DateTime start,
-    DateTime end,
-  ) async {
-    try {
-      Logger.debug('Loading review records...');
-      final reviews = await ReviewService.getAllReviews();
-
-      final records = <EfficiencyRecord>[];
-      for (final review in reviews) {
-        // Проверяем период
-        if (review.createdAt.isBefore(start) || review.createdAt.isAfter(end)) {
-          continue;
-        }
-
-        final isPositive = review.reviewType == 'positive';
-        final record = await EfficiencyCalculationService.createReviewRecord(
-          id: review.id,
-          shopAddress: review.shopAddress,
-          date: review.createdAt,
-          isPositive: isPositive,
-        );
-
-        records.add(record);
-      }
-
-      Logger.debug('Loaded ${records.length} review efficiency records');
-      return records;
-    } catch (e) {
-      Logger.error('Error loading review records', e);
       return [];
     }
   }
