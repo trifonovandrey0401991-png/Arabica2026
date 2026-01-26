@@ -3382,6 +3382,42 @@ app.delete('/api/withdrawals/:id', (req, res) => {
   }
 });
 
+// PATCH /api/withdrawals/:id/cancel - отменить выемку
+app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cancelledBy, cancelReason } = req.body;
+    console.log('PATCH /api/withdrawals/:id/cancel', id);
+
+    const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Withdrawal not found' });
+    }
+
+    const withdrawal = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+    if (withdrawal.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        error: 'Withdrawal is already cancelled'
+      });
+    }
+
+    withdrawal.status = 'cancelled';
+    withdrawal.cancelledAt = new Date().toISOString();
+    withdrawal.cancelledBy = cancelledBy || 'unknown';
+    withdrawal.cancelReason = cancelReason || 'No reason provided';
+
+    fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+
+    res.json({ success: true, withdrawal });
+  } catch (error) {
+    console.error('Error cancelling withdrawal:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==================== API для графика работы ====================
 
 const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
