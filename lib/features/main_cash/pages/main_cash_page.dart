@@ -84,6 +84,9 @@ class _MainCashPageState extends State<MainCashPage> with SingleTickerProviderSt
   List<Withdrawal> get _filteredWithdrawals {
     var filtered = _withdrawals;
 
+    // Исключаем отменённые выемки из всех вкладок
+    filtered = filtered.where((w) => w.isActive).toList();
+
     // Фильтр по подтверждению
     if (_withdrawalTabIndex == 0) {
       filtered = filtered.where((w) => !w.confirmed).toList();
