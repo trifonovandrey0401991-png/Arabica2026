@@ -6988,6 +6988,1068 @@ flowchart TB
 
 ---
 
+---
+
+## 13. Клиентский модуль - МОИ ДИАЛОГИ
+
+### 13.1 Обзор модуля
+
+**Назначение:** Централизованная страница для клиента, объединяющая все типы диалогов с сетью кофеен: сетевые сообщения, связь с руководством, отзывы, поиск товара (общий и персональные диалоги).
+
+**Роли:**
+- **Клиент:** Просматривает все диалоги, счётчик непрочитанных
+- **Админ/Сотрудник:** НЕ используют эту страницу (есть отдельные админские интерфейсы)
+
+**Файлы модуля:**
+```
+lib/app/
+├── pages/
+│   └── my_dialogs_page.dart               # Главная страница "Мои диалоги"
+└── services/
+    └── my_dialogs_counter_service.dart    # Сервис подсчёта непрочитанных
+
+lib/features/clients/
+├── models/
+│   ├── network_message_model.dart         # Сетевые сообщения
+│   └── management_message_model.dart      # Связь с руководством
+├── pages/
+│   ├── network_dialog_page.dart           # Диалог сетевых сообщений
+│   └── management_dialog_page.dart        # Диалог с руководством (клиент)
+└── services/
+    ├── network_message_service.dart       # API для сетевых сообщений
+    └── management_message_service.dart    # API для связи с руководством
+
+lib/features/reviews/
+└── pages/
+    └── client_reviews_list_page.dart      # Список отзывов клиента
+
+lib/features/product_questions/
+└── pages/
+    ├── product_question_client_dialog_page.dart    # Общий диалог поиска товара
+    └── product_question_personal_dialog_page.dart  # Персональный диалог с магазином
+
+loyalty-proxy/api/
+├── clients_api.js                         # Endpoints для диалогов клиента
+└── product_questions_api.js               # Endpoints для поиска товара
+```
+
+---
+
+### 13.2 Типы диалогов
+
+| Тип | Endpoint | Модель | Страница | Описание |
+|-----|----------|--------|----------|----------|
+| **Сетевые сообщения** | `/api/client-dialogs/:phone/network` | `NetworkMessage` | `NetworkDialogPage` | Объявления и рассылки от администрации |
+| **Связь с руководством** | `/api/client-dialogs/:phone/management` | `ManagementMessage` | `ManagementDialogPage` | Личный чат клиент↔руководство |
+| **Отзывы** | `/api/reviews` | `Review` | `ClientReviewsListPage` | Отзывы клиента по магазинам |
+| **Поиск товара (общий)** | `/api/product-questions/client/:phone` | `ProductQuestion` | `ProductQuestionClientDialogPage` | Общий чат для всех вопросов |
+| **Поиск товара (персональный)** | `/api/product-question-dialogs/client/:phone` | `PersonalProductDialog` | `ProductQuestionPersonalDialogPage` | Диалоги с конкретными магазинами |
+
+---
+
+### 13.3 Модели данных
+
+```mermaid
+classDiagram
+    class NetworkMessage {
+        +String id
+        +String text
+        +String? imageUrl
+        +String timestamp
+        +String senderType
+        +String senderName
+        +bool isReadByClient
+        +bool isReadByAdmin
+        +bool isBroadcast
+        +fromJson(Map) NetworkMessage
+        +toJson() Map
+    }
+
+    class NetworkDialogData {
+        +List~NetworkMessage~ messages
+        +int unreadCount
+        +bool hasUnread
+        +bool hasMessages
+        +fromJson(Map) NetworkDialogData
+    }
+
+    class ManagementMessage {
+        +String id
+        +String text
+        +String? imageUrl
+        +String timestamp
+        +String senderType
+        +String senderName
+        +bool isReadByClient
+        +bool isReadByManager
+        +fromJson(Map) ManagementMessage
+        +toJson() Map
+    }
+
+    class ManagementDialogData {
+        +List~ManagementMessage~ messages
+        +int unreadCount
+        +bool hasUnread
+        +bool hasMessages
+        +fromJson(Map) ManagementDialogData
+    }
+
+    class MyDialogsCounterService {
+        +getTotalUnreadCount() int
+    }
+
+    NetworkDialogData "1" *-- "0..*" NetworkMessage
+    ManagementDialogData "1" *-- "0..*" ManagementMessage
+    MyDialogsCounterService ..> NetworkDialogData : использует
+    MyDialogsCounterService ..> ManagementDialogData : использует
+```
+
+---
+
+### 13.4 Архитектура страницы "Мои диалоги"
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["📱 КЛИЕНТ"]
+        MDP[MyDialogsPage<br/>Главная страница]
+    end
+
+    subgraph DIALOGS["💬 ТИПЫ ДИАЛОГОВ"]
+        ND[NetworkDialogPage<br/>Сетевые]
+        MD[ManagementDialogPage<br/>Руководство]
+        CR[ClientReviewsListPage<br/>Отзывы]
+        PQ[ProductQuestionClientDialogPage<br/>Поиск товара]
+        PP[ProductQuestionPersonalDialogPage<br/>Персональные]
+    end
+
+    subgraph SERVICES["⚙️ СЕРВИСЫ"]
+        MDCS[MyDialogsCounterService]
+        NMS[NetworkMessageService]
+        MMS[ManagementMessageService]
+        RS[ReviewService]
+        PQS[ProductQuestionService]
+    end
+
+    subgraph SERVER["🖥️ СЕРВЕР"]
+        API["/api/client-dialogs/*<br/>/api/reviews/*<br/>/api/product-questions/*"]
+        FS[File Storage]
+        PUSH[Push Notifications]
+    end
+
+    MDP --> MDCS
+    MDCS --> NMS
+    MDCS --> MMS
+    MDCS --> RS
+    MDCS --> PQS
+
+    MDP --> ND
+    MDP --> MD
+    MDP --> CR
+    MDP --> PQ
+    MDP --> PP
+
+    ND --> NMS
+    MD --> MMS
+    CR --> RS
+    PQ --> PQS
+    PP --> PQS
+
+    NMS --> API
+    MMS --> API
+    RS --> API
+    PQS --> API
+
+    API --> FS
+    API --> PUSH
+```
+
+---
+
+### 13.5 Flow загрузки "Мои диалоги"
+
+```mermaid
+sequenceDiagram
+    participant C as Клиент
+    participant MDP as MyDialogsPage
+    participant MDCS as CounterService
+    participant NMS as NetworkService
+    participant MMS as ManagementService
+    participant RS as ReviewService
+    participant PQS as ProductQuestionService
+    participant API as Server API
+
+    C->>MDP: Открывает "Мои диалоги"
+    MDP->>MDCS: getTotalUnreadCount()
+
+    par Параллельная загрузка счётчиков
+        MDCS->>NMS: getNetworkMessages(phone)
+        NMS->>API: GET /api/client-dialogs/:phone/network
+        API-->>NMS: {messages, unreadCount}
+        NMS-->>MDCS: NetworkDialogData
+
+        MDCS->>MMS: getManagementMessages(phone)
+        MMS->>API: GET /api/client-dialogs/:phone/management
+        API-->>MMS: {messages, unreadCount}
+        MMS-->>MDCS: ManagementDialogData
+
+        MDCS->>RS: getClientReviews(phone)
+        RS->>API: GET /api/reviews?clientPhone=:phone
+        API-->>RS: [Review]
+        RS-->>MDCS: List<Review>
+
+        MDCS->>PQS: getClientDialog(phone)
+        PQS->>API: GET /api/product-questions/client/:phone
+        API-->>PQS: {messages, unreadCount}
+        PQS-->>MDCS: ProductQuestionClientDialogData
+
+        MDCS->>PQS: getClientPersonalDialogs(phone)
+        PQS->>API: GET /api/product-question-dialogs/client/:phone
+        API-->>PQS: [PersonalDialog]
+        PQS-->>MDCS: List<PersonalProductDialog>
+    end
+
+    MDCS-->>MDP: totalUnread (сумма всех)
+    MDP->>C: Отображает диалоги с счётчиками
+```
+
+---
+
+### 13.6 API Endpoints
+
+#### 13.6.1 Сетевые сообщения
+
+| Endpoint | Метод | Роль | Описание |
+|----------|-------|------|----------|
+| `/api/client-dialogs/:phone/network` | GET | Клиент | Получить сетевые сообщения клиента |
+| `/api/client-dialogs/:phone/network/reply` | POST | Клиент | Ответить на сетевое сообщение |
+| `/api/client-dialogs/:phone/network/read-by-client` | POST | Клиент | Отметить как прочитанное |
+| `/api/client-dialogs/network/broadcast` | POST | Админ | Отправить broadcast всем клиентам |
+
+#### 13.6.2 Связь с руководством
+
+| Endpoint | Метод | Роль | Описание |
+|----------|-------|------|----------|
+| `/api/client-dialogs/:phone/management` | GET | Клиент | Получить диалог с руководством |
+| `/api/client-dialogs/:phone/management/reply` | POST | Клиент | Отправить сообщение руководству |
+| `/api/client-dialogs/:phone/management/send` | POST | Админ | Ответить клиенту |
+| `/api/client-dialogs/:phone/management/read-by-client` | POST | Клиент | Отметить как прочитанное |
+| `/api/client-dialogs/:phone/management/read-by-manager` | POST | Админ | Отметить как прочитанное |
+| `/api/client-dialogs/management/list` | GET | Админ | Список всех диалогов с клиентами |
+
+---
+
+### 13.7 Хранилище данных на сервере
+
+```
+/var/www/client-messages/
+├── network/                           # Сетевые сообщения
+│   └── {phone}/
+│       └── network.json               # Диалог клиента с сетью
+│
+├── management/                        # Связь с руководством
+│   └── {phone}.json                   # Диалог клиента с руководством
+│
+/var/www/reviews/                      # Отзывы
+└── {review_id}.json                   # Отдельный файл на отзыв
+│
+/var/www/product-questions/            # Поиск товара
+├── {question_id}.json                 # Общий вопрос
+│
+/var/www/product-question-dialogs/     # Персональные диалоги
+└── {dialog_id}.json                   # Персональный диалог клиент↔магазин
+```
+
+---
+
+### 13.8 Push-уведомления
+
+| Тип сообщения | Trigger | Получатель | Payload.type |
+|---------------|---------|------------|--------------|
+| Сетевое (broadcast) | Админ отправляет | Все клиенты | `'network_broadcast'` |
+| Сетевое (ответ админа) | Админ отвечает клиенту | Клиент | `'network_message'` |
+| Сетевое (от клиента) | Клиент пишет | Админы | `'network_message'` |
+| Руководство (от админа) | Админ пишет клиенту | Клиент | `'management_message'` |
+| Руководство (от клиента) | Клиент пишет | Админы | `'management_message'` |
+
+**Логика отправки:**
+- **Broadcast:** `sendPushToAllClients()`
+- **Конкретному клиенту:** `sendPushToPhone(phone, title, body, data)`
+- **Всем админам:** `sendPushNotification(title, body, data)` (роль "manager")
+
+---
+
+### 13.9 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph DIALOGS["💬 МОИ ДИАЛОГИ"]
+        MDP[MyDialogsPage]
+        MDCS[MyDialogsCounterService]
+    end
+
+    subgraph MESSAGES["📨 ТИПЫ СООБЩЕНИЙ"]
+        NM[Network Messages]
+        MM[Management Messages]
+    end
+
+    subgraph INTEGRATION["🔗 ИНТЕГРАЦИЯ"]
+        REV[Reviews Module]
+        PQ[Product Questions]
+        PP[Personal Dialogs]
+    end
+
+    subgraph MENU["📱 МЕНЮ"]
+        BADGE[Красный бейдж<br/>счётчика]
+        BTN[Кнопка<br/>"Мои диалоги"]
+    end
+
+    subgraph PUSH["🔔 PUSH"]
+        FCM[Firebase FCM]
+    end
+
+    MDP --> NM
+    MDP --> MM
+    MDP --> REV
+    MDP --> PQ
+    MDP --> PP
+
+    MDCS --> NM
+    MDCS --> MM
+    MDCS --> REV
+    MDCS --> PQ
+    MDCS --> PP
+
+    MDCS --> BADGE
+    BTN --> MDP
+
+    FCM --> MDP
+```
+
+---
+
+### 13.10 UI компоненты
+
+| Компонент | Описание | Навигация |
+|-----------|----------|-----------|
+| **Карточка "Сетевые"** | Последнее сообщение, счётчик | → `NetworkDialogPage` |
+| **Карточка "Руководство"** | Последнее сообщение, счётчик | → `ManagementDialogPage` |
+| **Карточка "Отзывы"** | Последний отзыв, счётчик | → `ClientReviewsListPage` |
+| **Карточка "Поиск товара"** | Последний вопрос, счётчик | → `ProductQuestionClientDialogPage` |
+| **Список персональных** | Диалоги с магазинами, счётчик | → `ProductQuestionPersonalDialogPage` |
+| **Кнопка "Связаться с Руководством"** | Быстрый доступ | → `ManagementDialogPage` |
+
+---
+
+### 13.11 Флаги непрочитанности
+
+| Диалог | Флаг клиента | Флаг админа/сотрудника | Где сбрасывается |
+|--------|--------------|------------------------|------------------|
+| **Сетевые** | `isReadByClient` | `isReadByAdmin` | При открытии `NetworkDialogPage` |
+| **Руководство** | `isReadByClient` | `isReadByManager` | При открытии `ManagementDialogPage` / `AdminManagementDialogPage` |
+| **Отзывы** | `hasUnreadFromAdmin` | `hasUnreadFromClient` | При открытии `ReviewDetailPage` |
+| **Поиск товара** | `unreadCount` | - | При открытии диалога |
+| **Персональные** | `hasUnreadFromEmployee` | `hasUnreadFromClient` | При открытии персонального диалога |
+
+---
+
+### 13.12 Таблица зависимостей
+
+| Модуль | Направление | Что использует |
+|--------|-------------|----------------|
+| **NetworkMessages** | → | Диалог сетевых сообщений |
+| **ManagementMessages** | → | Диалог с руководством |
+| **Reviews** | → | Список отзывов клиента |
+| **ProductQuestions** | → | Общий диалог + персональные |
+| **MyDialogsCounter** | ← | Подсчёт всех непрочитанных |
+| **MainMenu** | ← | Бейдж на кнопке "Мои диалоги" |
+| **Firebase/Push** | → | Уведомления о новых сообщениях |
+
+---
+
+## 14. Клиентский модуль - ПОИСК ТОВАРА
+
+### 14.1 Обзор модуля
+
+**Назначение:** Система для клиентов по поиску товаров в сети кофеен с возможностью задать вопрос конкретному магазину, всей сети или продолжить диалог с сотрудниками. Включает автоматическое начисление баллов за ответы и штрафы за неответы.
+
+**Роли:**
+- **Клиент:** Задаёт вопросы, получает ответы, ведёт диалоги
+- **Сотрудник:** Отвечает на вопросы, ведёт персональные диалоги
+- **Админ:** Управляет настройками баллов, просматривает статистику
+
+**Файлы модуля:**
+```
+lib/features/product_questions/
+├── models/
+│   ├── product_question_model.dart              # ProductQuestion, PersonalProductDialog
+│   └── product_question_message_model.dart      # ProductQuestionMessage
+├── pages/
+│   ├── product_search_shop_selection_page.dart  # Выбор магазина (клиент)
+│   ├── product_question_input_page.dart         # Ввод вопроса (клиент)
+│   ├── product_question_client_dialog_page.dart # Общий диалог (клиент)
+│   ├── product_question_personal_dialog_page.dart # Персональный диалог (клиент)
+│   ├── product_question_shops_list_page.dart    # Список магазинов (сотрудник)
+│   ├── product_question_dialog_page.dart        # Диалог вопроса (сотрудник)
+│   ├── product_question_employee_dialog_page.dart # Диалог сотрудника
+│   ├── product_questions_management_page.dart   # Управление (админ)
+│   └── product_questions_report_page.dart       # Отчёт (админ)
+└── services/
+    └── product_question_service.dart            # API сервис
+
+lib/features/efficiency/pages/settings_tabs/
+└── product_search_points_settings_page.dart     # Настройки баллов
+
+loyalty-proxy/
+├── api/
+│   ├── product_questions_api.js                 # API endpoints
+│   └── product_questions_notifications.js       # Push-уведомления
+└── product_questions_penalty_scheduler.js       # Cron: штрафы за неответы
+```
+
+---
+
+### 14.2 Модели данных
+
+```mermaid
+classDiagram
+    class ProductQuestion {
+        +String id
+        +String clientPhone
+        +String clientName
+        +String shopAddress
+        +String questionText
+        +String? questionImageUrl
+        +String timestamp
+        +bool isAnswered
+        +String? answeredBy
+        +String? answeredByName
+        +bool isNetworkWide
+        +List~ProductQuestionMessage~ messages
+        +fromJson(Map) ProductQuestion
+        +toJson() Map
+        +getLastMessage() Message?
+    }
+
+    class ProductQuestionMessage {
+        +String id
+        +String senderType
+        +String? senderPhone
+        +String? senderName
+        +String? shopAddress
+        +String text
+        +String? imageUrl
+        +String timestamp
+        +fromJson(Map) ProductQuestionMessage
+        +toJson() Map
+    }
+
+    class PersonalProductDialog {
+        +String id
+        +String clientPhone
+        +String clientName
+        +String shopAddress
+        +String? originalQuestionId
+        +String createdAt
+        +bool hasUnreadFromClient
+        +bool hasUnreadFromEmployee
+        +List~ProductQuestionMessage~ messages
+        +fromJson(Map) PersonalProductDialog
+        +toJson() Map
+        +getLastMessage() Message?
+    }
+
+    class ProductQuestionShopGroup {
+        +String shopAddress
+        +List~ProductQuestion~ questions
+        +List~PersonalProductDialog~ dialogs
+        +int unreadCount
+        +getLastMessage() Message?
+    }
+
+    class ProductSearchPointsSettings {
+        +double answeredPoints
+        +double notAnsweredPoints
+        +int answerTimeoutMinutes
+        +fromJson(Map) ProductSearchPointsSettings
+        +toJson() Map
+    }
+
+    ProductQuestion "1" *-- "0..*" ProductQuestionMessage : messages
+    PersonalProductDialog "1" *-- "0..*" ProductQuestionMessage : messages
+    ProductQuestionShopGroup "1" *-- "0..*" ProductQuestion : questions
+    ProductQuestionShopGroup "1" *-- "0..*" PersonalProductDialog : dialogs
+    ProductQuestion --> ProductSearchPointsSettings : баллы
+```
+
+---
+
+### 14.3 Типы вопросов
+
+| Тип | Значение поля | Описание | Получатели |
+|-----|---------------|----------|------------|
+| **Конкретному магазину** | `isNetworkWide: false` | Вопрос к определённой кофейне | Все сотрудники (broadcast) |
+| **Всей сети** | `isNetworkWide: true` | Вопрос ко всем магазинам сразу | Все сотрудники (broadcast) |
+| **Персональный диалог** | `PersonalProductDialog` | Продолжение общения с магазином | Клиент ↔ конкретный магазин |
+
+---
+
+### 14.4 Архитектура сервиса
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["📱 КЛИЕНТ"]
+        SS[ShopSelectionPage<br/>Выбор магазина]
+        QI[QuestionInputPage<br/>Ввод вопроса]
+        CD[ClientDialogPage<br/>Общий диалог]
+        PD[PersonalDialogPage<br/>Персональный диалог]
+    end
+
+    subgraph EMPLOYEE["👨‍💼 СОТРУДНИК"]
+        SL[ShopsListPage<br/>Список магазинов]
+        QD[QuestionDialogPage<br/>Диалог вопроса]
+        ED[EmployeeDialogPage<br/>Диалог сотрудника]
+    end
+
+    subgraph ADMIN["👨‍💼 АДМИН"]
+        PM[ManagementPage<br/>Управление]
+        RP[ReportPage<br/>Отчёт]
+        PS[PointsSettingsPage<br/>Настройки баллов]
+    end
+
+    subgraph SERVICES["⚙️ СЕРВИСЫ"]
+        PQS[ProductQuestionService]
+        PTS[PointsSettingsService]
+        EFF[EfficiencyDataService]
+    end
+
+    subgraph SERVER["🖥️ СЕРВЕР"]
+        API["/api/product-questions/*"]
+        PUSH[Push Notifications]
+        SCHED[Penalty Scheduler<br/>Cron каждые 5 мин]
+        FS[File Storage]
+    end
+
+    SS --> QI --> PQS
+    CD --> PQS
+    PD --> PQS
+
+    SL --> QD --> PQS
+    ED --> PQS
+
+    PM --> PQS
+    RP --> PQS
+    PS --> PTS
+
+    PQS --> API
+    PTS --> API
+
+    API --> FS
+    API --> PUSH
+    SCHED --> API
+    SCHED --> EFF
+```
+
+---
+
+### 14.5 Flow создания вопроса
+
+```mermaid
+sequenceDiagram
+    participant C as Клиент
+    participant SS as ShopSelectPage
+    participant QI as QuestionInputPage
+    participant PQS as ProductQuestionService
+    participant API as Server API
+    participant PUSH as Push Service
+    participant E as Сотрудники (все)
+
+    C->>SS: Нажимает "Поиск товара"
+    SS->>C: Показать список магазинов + "Вся сеть"
+    C->>SS: Выбирает магазин или "Вся сеть"
+    SS->>QI: Переход к вводу вопроса
+    QI->>C: Показать форму ввода текста/фото
+    C->>QI: Вводит вопрос и отправляет
+    QI->>PQS: createQuestion(...)
+    PQS->>API: POST /api/product-questions
+    API->>API: Сохранить в файл /var/www/product-questions/{id}.json
+    API->>PUSH: notifyEmployeesAboutNewQuestion()
+    PUSH-->>E: "❓ Вопрос: {shopAddress} - {text}"
+    API-->>PQS: { question }
+    PQS-->>QI: Success
+    QI->>C: "Вопрос отправлен! Ожидайте ответа"
+```
+
+---
+
+### 14.6 Flow ответа на вопрос
+
+```mermaid
+sequenceDiagram
+    participant E as Сотрудник
+    participant QD as QuestionDialogPage
+    participant PQS as ProductQuestionService
+    participant API as Server API
+    participant BONUS as assignAnswerBonus()
+    participant EFF as Efficiency Module
+    participant PUSH as Push Service
+    participant C as Клиент
+
+    E->>QD: Открывает вопрос из списка
+    QD->>E: Показать диалог с вопросом
+    E->>QD: Вводит ответ и отправляет
+    QD->>PQS: sendMessage(questionId, text, ...)
+    PQS->>API: POST /api/product-questions/:id/messages
+    API->>API: Сохранить сообщение
+
+    alt Ответил вовремя (до истечения таймаута)
+        API->>BONUS: assignAnswerBonus(...)
+        BONUS->>EFF: Добавить +0.2 балла (настраиваемо)
+        EFF->>EFF: Записать в penalties/{YYYY-MM}.json
+    end
+
+    API->>PUSH: notifyClientAboutAnswer()
+    PUSH-->>C: "✅ Ответ на ваш вопрос"
+    API-->>PQS: { message }
+    PQS-->>QD: Success
+    QD->>E: Сообщение отправлено
+```
+
+---
+
+### 14.7 Flow штрафов за неответы (Scheduler)
+
+```mermaid
+sequenceDiagram
+    participant CRON as Cron (каждые 5 мин)
+    participant SCHED as PenaltyScheduler
+    participant API as Server Files
+    participant EFF as Efficiency Module
+    participant PUSH as Push Service
+    participant E as Сотрудники
+
+    CRON->>SCHED: Проверка просроченных вопросов
+    SCHED->>API: Загрузить все вопросы
+    API-->>SCHED: [ProductQuestion]
+
+    loop Для каждого вопроса
+        alt Не отвечен && прошло > answerTimeoutMinutes
+            SCHED->>EFF: Начислить штраф -3 балла (настраиваемо)
+            EFF->>EFF: Записать penalty в файл
+            SCHED->>API: Пометить вопрос как penalized
+            SCHED->>PUSH: Уведомить всех сотрудников
+            PUSH-->>E: "⚠️ Штраф за неотвеченный вопрос"
+        end
+    end
+```
+
+---
+
+### 14.8 Flow персонального диалога
+
+```mermaid
+sequenceDiagram
+    participant C as Клиент
+    participant SL as ShopsListPage (сотрудник)
+    participant PD as PersonalDialogPage
+    participant PQS as ProductQuestionService
+    participant API as Server API
+    participant PUSH as Push Service
+    participant E as Сотрудники
+
+    C->>PD: Открывает персональный диалог
+    Note over C,PD: Создаётся при первом ответе сотрудника<br/>или клиент переходит из общего вопроса
+
+    C->>PD: Пишет сообщение
+    PD->>PQS: sendPersonalMessage(dialogId, text, ...)
+    PQS->>API: POST /api/product-question-dialogs/:id/messages
+    API->>API: Сохранить в /var/www/product-question-dialogs/{id}.json
+    API->>PUSH: notifyPersonalDialogClientMessage()
+    PUSH-->>E: Broadcast всем сотрудникам: "Сообщение в поиске товара"
+    API-->>PQS: { message }
+
+    E->>SL: Видит уведомление, открывает список
+    SL->>PD: Выбирает магазин (приоритет персональным диалогам)
+    E->>PD: Отвечает клиенту
+    PD->>PQS: sendPersonalMessage(dialogId, text, ...)
+    PQS->>API: POST /api/product-question-dialogs/:id/messages
+    API->>API: Сохранить сообщение
+    API->>PUSH: notifyPersonalDialogEmployeeMessage()
+    PUSH-->>C: "✅ Ответ от магазина: {shopAddress}"
+    API-->>PQS: { message }
+```
+
+---
+
+### 14.9 API Endpoints
+
+#### 14.9.1 Вопросы
+
+| Endpoint | Метод | Роль | Описание |
+|----------|-------|------|----------|
+| `/api/product-questions` | GET | Сотрудник | Получить все вопросы |
+| `/api/product-questions` | POST | Клиент | Создать вопрос |
+| `/api/product-questions/client/:phone` | GET | Клиент | Получить вопросы клиента (общий диалог) |
+| `/api/product-questions/:id` | GET | Оба | Получить конкретный вопрос |
+| `/api/product-questions/:id/messages` | POST | Сотрудник | Ответить на вопрос |
+| `/api/product-questions/:id/mark-answered` | POST | Сотрудник | Пометить как отвеченный |
+
+#### 14.9.2 Персональные диалоги
+
+| Endpoint | Метод | Роль | Описание |
+|----------|-------|------|----------|
+| `/api/product-question-dialogs/all` | GET | Сотрудник | Все персональные диалоги |
+| `/api/product-question-dialogs/client/:phone` | GET | Клиент | Персональные диалоги клиента |
+| `/api/product-question-dialogs/:id` | GET | Оба | Получить диалог |
+| `/api/product-question-dialogs/:id/messages` | POST | Оба | Отправить сообщение |
+| `/api/product-question-dialogs/:id/read-by-client` | POST | Клиент | Отметить как прочитанное |
+| `/api/product-question-dialogs/:id/read-by-employee` | POST | Сотрудник | Отметить как прочитанное |
+
+#### 14.9.3 Группировка для сотрудников
+
+| Endpoint | Метод | Роль | Описание |
+|----------|-------|------|----------|
+| `/api/product-questions/grouped-by-shop` | GET | Сотрудник | Вопросы + диалоги, сгруппированные по магазинам |
+
+---
+
+### 14.10 Хранилище данных на сервере
+
+```
+/var/www/product-questions/
+└── {question_id}.json                 # Общий вопрос клиента
+    {
+      "id": "pq_123",
+      "clientPhone": "79001234567",
+      "clientName": "Иван",
+      "shopAddress": "ул. Ленина, 1" | "networkWide",
+      "questionText": "Есть ли капучино?",
+      "questionImageUrl": "https://...",
+      "timestamp": "2026-01-26T12:00:00Z",
+      "isAnswered": false,
+      "isNetworkWide": false,
+      "messages": [
+        {
+          "id": "msg_1",
+          "senderType": "client",
+          "text": "Есть ли капучино?",
+          "timestamp": "..."
+        },
+        {
+          "id": "msg_2",
+          "senderType": "employee",
+          "senderPhone": "79054443224",
+          "senderName": "Мария",
+          "shopAddress": "ул. Ленина, 1",
+          "text": "Да, есть!",
+          "timestamp": "..."
+        }
+      ],
+      "penalized": false
+    }
+
+/var/www/product-question-dialogs/
+└── {dialog_id}.json                   # Персональный диалог
+    {
+      "id": "dialog_123",
+      "clientPhone": "79001234567",
+      "clientName": "Иван",
+      "shopAddress": "ул. Ленина, 1",
+      "originalQuestionId": "pq_123",
+      "createdAt": "2026-01-26T12:00:00Z",
+      "hasUnreadFromClient": false,
+      "hasUnreadFromEmployee": false,
+      "lastMessageTime": "2026-01-26T12:05:00Z",
+      "messages": [...]
+    }
+
+/var/www/efficiency-penalties/
+└── {YYYY-MM}.json                     # Баллы за месяц
+    [
+      {
+        "id": "bonus_pq_123",
+        "type": "employee",
+        "entityId": "79054443224",
+        "entityName": "Мария",
+        "shopAddress": "ул. Ленина, 1",
+        "category": "product_question_bonus",
+        "categoryName": "Ответ на вопрос о товаре",
+        "points": 0.2,
+        "reason": "Ответил на вопрос за 15 минут",
+        "sourceId": "pq_answer_pq_123",
+        "date": "2026-01-26",
+        "createdAt": "..."
+      },
+      {
+        "id": "penalty_pq_456",
+        "type": "shop",
+        "entityId": "shop_1",
+        "shopAddress": "ул. Ленина, 1",
+        "category": "product_question_penalty",
+        "categoryName": "Неотвеченный вопрос о товаре",
+        "points": -3,
+        "reason": "Вопрос не отвечен за 30 минут",
+        "sourceId": "pq_timeout_pq_456",
+        "date": "2026-01-26",
+        "createdAt": "..."
+      }
+    ]
+
+/var/www/points-settings/
+└── product_search_points_settings.json
+    {
+      "id": "product_search_points",
+      "category": "product_search",
+      "answeredPoints": 0.2,
+      "notAnsweredPoints": -3,
+      "answerTimeoutMinutes": 30,
+      "updatedAt": "..."
+    }
+```
+
+---
+
+### 14.11 Push-уведомления
+
+| Событие | Получатель | Payload.type | Логика отправки |
+|---------|------------|--------------|-----------------|
+| **Новый вопрос** | Все сотрудники | `'product_question'` | `notifyEmployeesAboutNewQuestion()` - broadcast |
+| **Ответ сотрудника** | Клиент | `'product_question_answer'` | `notifyClientAboutAnswer()` - конкретному клиенту |
+| **Сообщение клиента (персональный)** | Все сотрудники | `'personal_dialog_client_message'` | `notifyPersonalDialogClientMessage()` - broadcast |
+| **Сообщение сотрудника (персональный)** | Клиент | `'personal_dialog_employee_message'` | `notifyPersonalDialogEmployeeMessage()` - конкретному клиенту |
+| **Штраф за неответ** | Все сотрудники | `'product_question_penalty'` | Scheduler → broadcast |
+
+**Функции отправки** (loyalty-proxy/api/product_questions_notifications.js):
+- `notifyEmployeesAboutNewQuestion(question)` - broadcast всем сотрудникам
+- `notifyClientAboutAnswer(question, message)` - уведомление клиенту
+- `notifyPersonalDialogClientMessage(dialog, message)` - broadcast всем сотрудникам
+- `notifyPersonalDialogEmployeeMessage(dialog, message)` - уведомление клиенту
+
+---
+
+### 14.12 Scheduler: штрафы за неответы
+
+**Файл:** `loyalty-proxy/product_questions_penalty_scheduler.js`
+
+**Запуск:** Cron каждые 5 минут
+
+**Логика:**
+1. Загрузить все вопросы из `/var/www/product-questions/`
+2. Для каждого вопроса:
+   - Если `!isAnswered` и `!penalized`
+   - Вычислить возраст вопроса: `(now - timestamp) / (1000 * 60)` минут
+   - Загрузить таймаут из настроек: `answerTimeoutMinutes` (по умолчанию 30)
+   - Если `ageMinutes >= answerTimeoutMinutes`:
+     - Начислить штраф через `assignPenalty()`
+     - Пометить вопрос: `penalized: true`
+     - Отправить push-уведомление всем сотрудникам
+
+**Функция начисления штрафа:**
+```javascript
+async function assignPenalty(question, settings) {
+  const monthKey = today.substring(0, 7); // YYYY-MM
+  const penaltiesFile = `/var/www/efficiency-penalties/${monthKey}.json`;
+
+  const penalty = {
+    id: `penalty_pq_${Date.now()}_${randomId}`,
+    type: 'shop',
+    entityId: shopId,
+    shopAddress: question.shopAddress,
+    category: 'product_question_penalty',
+    categoryName: 'Неотвеченный вопрос о товаре',
+    points: settings.notAnsweredPoints, // -3 (настраиваемо)
+    reason: `Вопрос не отвечен за ${settings.answerTimeoutMinutes} минут`,
+    sourceId: `pq_timeout_${question.id}`,
+    sourceType: 'question_timeout',
+    date: today,
+    createdAt: now.toISOString()
+  };
+
+  penalties.push(penalty);
+  fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2));
+}
+```
+
+---
+
+### 14.13 Система баллов (интеграция с Эффективностью)
+
+| Событие | Категория | Баллы (по умолчанию) | Кому начисляется |
+|---------|-----------|----------------------|------------------|
+| **Ответил вовремя** | `product_question_bonus` | +0.2 | Сотрудник |
+| **Не ответил вовремя** | `product_question_penalty` | -3.0 | Магазин |
+
+**Настройки баллов:**
+- Страница: `lib/features/efficiency/pages/settings_tabs/product_search_points_settings_page.dart`
+- API: `POST /api/points-settings/product-search`
+- Файл: `/var/www/points-settings/product_search_points_settings.json`
+
+**Поля настроек:**
+- `answeredPoints` - баллы за своевременный ответ (например, +0.2)
+- `notAnsweredPoints` - штраф за неответ (например, -3)
+- `answerTimeoutMinutes` - таймаут в минутах (например, 30)
+
+**Начисление бонуса** (при ответе сотрудника):
+```javascript
+// loyalty-proxy/api/product_questions_api.js
+// После сохранения ответа:
+const questionAge = (new Date() - new Date(question.timestamp)) / (1000 * 60);
+
+if (questionAge <= settings.answerTimeoutMinutes) {
+  await assignAnswerBonus({
+    questionId: questionId,
+    senderPhone: senderPhone,
+    senderName: senderName,
+    points: settings.answeredPoints,
+    questionAge: questionAge
+  });
+}
+```
+
+**Дедупликация:**
+- Используется поле `sourceId` для предотвращения дублирования
+- Бонус: `sourceId = "pq_answer_{questionId}"`
+- Штраф: `sourceId = "pq_timeout_{questionId}"`
+
+---
+
+### 14.14 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph PQ["🔍 ПОИСК ТОВАРА"]
+        PQM[ProductQuestion Model]
+        PPD[PersonalDialog Model]
+        PQS[ProductQuestionService]
+        PQN[NotificationService]
+        SCH[PenaltyScheduler]
+    end
+
+    subgraph SHOPS["🏪 МАГАЗИНЫ"]
+        SM[Shop Model]
+        SL[Список магазинов]
+    end
+
+    subgraph EFFICIENCY["📊 ЭФФЕКТИВНОСТЬ"]
+        EDS[EfficiencyDataService]
+        ECS[EfficiencyCalculationService]
+        PTS[PointsSettingsService]
+        PEN[Penalties Storage]
+    end
+
+    subgraph DIALOGS["💬 МОИ ДИАЛОГИ"]
+        MDP[MyDialogsPage]
+        MDCS[MyDialogsCounterService]
+    end
+
+    subgraph MENU["📱 ГЛАВНОЕ МЕНЮ"]
+        MMC[Кнопка Поиск товара<br/>Клиент]
+        MME[Кнопка Поиск товара<br/>Сотрудник]
+    end
+
+    subgraph NOTIFICATIONS["🔔 УВЕДОМЛЕНИЯ"]
+        FCM[Firebase Cloud Messaging]
+        PUSH[Push Service]
+    end
+
+    SM --> PQS
+    PQS --> PQM
+    PQS --> PPD
+
+    SCH --> EDS
+    SCH --> PTS
+    PQS --> EDS
+    EDS --> PEN
+
+    PQS --> MDP
+    PQS --> MDCS
+
+    MMC --> PQS
+    MME --> PQS
+
+    PQN --> PUSH
+    PUSH --> FCM
+    SCH --> PUSH
+```
+
+---
+
+### 14.15 Таблица зависимостей
+
+| Модуль | Направление | Что использует |
+|--------|-------------|----------------|
+| **Shop** | → | Список магазинов для выбора |
+| **Efficiency** | ← | Баллы за ответы и штрафы |
+| **PointsSettings** | → | Настройки баллов и таймаутов |
+| **MyDialogs** | ← | Вопросы клиента в списке диалогов |
+| **MyDialogsCounter** | ← | Подсчёт непрочитанных вопросов |
+| **MainMenu** | ← | Кнопки "Поиск товара" (клиент/сотрудник) |
+| **Firebase/Push** | → | Push-уведомления о новых вопросах/ответах |
+| **Scheduler** | → | Автоматические штрафы за просроченные вопросы |
+
+---
+
+### 14.16 UI компоненты
+
+#### 14.16.1 Клиент
+
+| Страница | Описание | Навигация |
+|----------|----------|-----------|
+| **ShopSelectionPage** | Выбор магазина или "Вся сеть" | → `QuestionInputPage` |
+| **QuestionInputPage** | Ввод текста вопроса + фото | → Submit |
+| **ClientDialogPage** | Общий диалог: все вопросы клиента | Показывает сообщения из всех вопросов |
+| **PersonalDialogPage** | Персональный диалог с магазином | Диалог клиент ↔ конкретный магазин |
+
+#### 14.16.2 Сотрудник
+
+| Страница | Описание | Особенности |
+|----------|----------|-------------|
+| **ShopsListPage** | Список магазинов с вопросами | Приоритет: персональные диалоги → общие вопросы |
+| **QuestionDialogPage** | Просмотр и ответ на общий вопрос | Создаёт персональный диалог при ответе |
+| **PersonalDialogPage** | Продолжение диалога с клиентом | Двусторонняя переписка |
+
+#### 14.16.3 Админ
+
+| Страница | Описание |
+|----------|----------|
+| **ManagementPage** | Управление вопросами (список всех) |
+| **ReportPage** | Статистика: количество вопросов, ответов |
+| **PointsSettingsPage** | Настройка баллов и таймаута |
+
+---
+
+### 14.17 Флаги непрочитанности
+
+| Диалог | Флаг клиента | Флаг сотрудника | Где сбрасывается |
+|--------|--------------|-----------------|------------------|
+| **Общий вопрос** | `unreadCount` | - | При открытии `ClientDialogPage` |
+| **Персональный** | `hasUnreadFromEmployee` | `hasUnreadFromClient` | При открытии `PersonalDialogPage` (клиент/сотрудник) |
+
+---
+
+### 14.18 Критические особенности
+
+1. **Broadcast уведомлений сотрудникам:**
+   - При создании вопроса → всем сотрудникам (независимо от магазина)
+   - При сообщении клиента в персональном диалоге → всем сотрудникам (любой может ответить)
+
+2. **Приоритет персональных диалогов:**
+   - На странице `ShopsListPage` сотрудник видит список магазинов
+   - При клике на магазин сначала проверяются персональные диалоги
+   - Если есть персональный диалог → открывается он
+   - Если нет → открывается общий вопрос
+
+3. **Автоматическое начисление баллов:**
+   - Бонус начисляется сразу при ответе (если в рамках таймаута)
+   - Дедупликация по `sourceId` предотвращает повторное начисление
+   - Штрафы начисляются scheduler'ом каждые 5 минут
+
+4. **Настраиваемый таймаут:**
+   - Админ может настроить таймаут ответа (5-60 минут)
+   - Scheduler динамически загружает настройки из файла
+   - Endpoint `/management/reply` используется для отправки как от сотрудника (при начислении баллов), так и для ответов руководства
+
+---
+
 ## Следующие разделы (TODO)
 
 - [x] 2. Управление данными - СОТРУДНИКИ
@@ -7001,4 +8063,6 @@ flowchart TB
 - [x] 10. Система передачи смен - ПЕРЕДАТЬ СМЕНУ
 - [x] 11. Аналитика - KPI
 - [x] 12. Клиентский модуль - ОТЗЫВЫ
-- [ ] 13. Аналитика - ЭФФЕКТИВНОСТЬ
+- [x] 13. Клиентский модуль - МОИ ДИАЛОГИ
+- [x] 14. Клиентский модуль - ПОИСК ТОВАРА
+- [ ] 15. Аналитика - ЭФФЕКТИВНОСТЬ
