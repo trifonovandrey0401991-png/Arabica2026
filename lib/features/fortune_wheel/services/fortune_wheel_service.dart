@@ -42,13 +42,11 @@ class FortuneWheelService {
   }
 
   /// Обновить настройки секторов
-  static Future<bool> updateSettings(List<FortuneWheelSector> sectors) async {
+  static Future<bool> updateSettings(FortuneWheelSettings settings) async {
     try {
       final result = await BaseHttpService.postRaw(
         endpoint: '$_baseEndpoint/settings',
-        body: {
-          'sectors': sectors.map((s) => s.toJson()).toList(),
-        },
+        body: settings.toJson(),
       );
       return result != null;
     } catch (e) {

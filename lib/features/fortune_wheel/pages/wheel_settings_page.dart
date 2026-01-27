@@ -12,6 +12,7 @@ class WheelSettingsPage extends StatefulWidget {
 
 class _WheelSettingsPageState extends State<WheelSettingsPage> {
   List<FortuneWheelSector> _sectors = [];
+  int _topEmployeesCount = 3; // Количество топ-сотрудников (1-10)
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -55,6 +56,7 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
 
       setState(() {
         _sectors = sectors;
+        _topEmployeesCount = settings?.topEmployeesCount ?? 3; // Читаем topEmployeesCount
         _isLoading = false;
       });
     }
@@ -62,6 +64,18 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
 
   Future<void> _saveSettings() async {
     setState(() => _isSaving = true);
+
+    // Валидация topEmployeesCount
+    if (_topEmployeesCount < 1 || _topEmployeesCount > 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Количество должно быть от 1 до 10'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() => _isSaving = false);
+      return;
+    }
 
     // Собираем обновлённые секторы
     final updatedSectors = <FortuneWheelSector>[];
@@ -73,7 +87,13 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
       ));
     }
 
-    final success = await FortuneWheelService.updateSettings(updatedSectors);
+    // Создаём настройки с topEmployeesCount
+    final updatedSettings = FortuneWheelSettings(
+      topEmployeesCount: _topEmployeesCount,
+      sectors: updatedSectors,
+    );
+
+    final success = await FortuneWheelService.updateSettings(updatedSettings);
 
     setState(() => _isSaving = false);
 
@@ -108,6 +128,142 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                // Настройка количества топ-сотрудников
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Заголовок
+                      Row(
+                        children: [
+                          const Icon(Icons.emoji_events, color: Color(0xFF004D40), size: 24),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Количество призовых мест',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF004D40),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Слайдер
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Slider(
+                              value: _topEmployeesCount.toDouble(),
+                              min: 1,
+                              max: 10,
+                              divisions: 9,
+                              activeColor: const Color(0xFF004D40),
+                              inactiveColor: const Color(0xFF004D40).withOpacity(0.3),
+                              label: _topEmployeesCount.toString(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _topEmployeesCount = value.toInt();
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Текущее значение
+                          Container(
+                            width: 60,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF004D40),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$_topEmployeesCount',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Предпросмотр распределения
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Распределение прокруток:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (int i = 0; i < _topEmployeesCount; i++)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: i == 0 ? Colors.amber[100] : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: i == 0 ? Colors.amber : Colors.grey,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          i == 0 ? '🥇' : i == 1 ? '🥈' : i == 2 ? '🥉' : '${i + 1}',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${i == 0 ? 2 : 1} спин${i == 0 ? 'а' : ''}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: i == 0 ? FontWeight.bold : FontWeight.normal,
+                                            color: i == 0 ? Colors.amber[900] : Colors.grey[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Инфо
                 Container(
                   padding: const EdgeInsets.all(16),

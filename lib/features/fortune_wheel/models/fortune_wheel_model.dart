@@ -58,16 +58,19 @@ class FortuneWheelSector {
 
 /// Модель настроек колеса
 class FortuneWheelSettings {
+  final int topEmployeesCount; // Количество топ-сотрудников (1-10)
   final List<FortuneWheelSector> sectors;
   final String? updatedAt;
 
   FortuneWheelSettings({
+    this.topEmployeesCount = 3, // Дефолт = 3 (обратная совместимость)
     required this.sectors,
     this.updatedAt,
   });
 
   factory FortuneWheelSettings.fromJson(Map<String, dynamic> json) {
     return FortuneWheelSettings(
+      topEmployeesCount: json['topEmployeesCount'] ?? 3, // Обратная совместимость
       sectors: (json['sectors'] as List?)
           ?.map((e) => FortuneWheelSector.fromJson(e))
           .toList() ?? [],
@@ -76,8 +79,34 @@ class FortuneWheelSettings {
   }
 
   Map<String, dynamic> toJson() => {
+    'topEmployeesCount': topEmployeesCount,
     'sectors': sectors.map((s) => s.toJson()).toList(),
   };
+
+  /// Проверка валидности настроек
+  bool get isValid {
+    // Проверка суммы вероятностей секторов
+    final sum = sectors.fold<double>(0, (sum, s) => sum + s.probability);
+    final probabilitiesValid = (sum - 1.0).abs() < 0.01;
+
+    // Проверка topEmployeesCount: должно быть от 1 до 10
+    final countValid = topEmployeesCount >= 1 && topEmployeesCount <= 10;
+
+    return probabilitiesValid && countValid;
+  }
+
+  /// Копия с изменениями
+  FortuneWheelSettings copyWith({
+    int? topEmployeesCount,
+    List<FortuneWheelSector>? sectors,
+    String? updatedAt,
+  }) {
+    return FortuneWheelSettings(
+      topEmployeesCount: topEmployeesCount ?? this.topEmployeesCount,
+      sectors: sectors ?? this.sectors,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
 
 /// Модель доступных прокруток

@@ -411,8 +411,12 @@ module.exports = function setupRatingWheelAPI(app) {
 
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 
-      // Выдаем прокрутки топ-3
-      await assignWheelSpins(month, ratings.slice(0, 3));
+      // Читаем topEmployeesCount из настроек и выдаем прокрутки топ-N
+      const wheelSettings = getWheelSettings();
+      const topCount = wheelSettings.topEmployeesCount || 3;
+
+      console.log(`🎡 Выдача прокруток топ-${topCount} сотрудникам`);
+      await assignWheelSpins(month, ratings.slice(0, topCount));
 
       console.log(`✅ Рейтинг за ${month} рассчитан и сохранен`);
       res.json({ success: true, ratings, month });
@@ -441,12 +445,22 @@ module.exports = function setupRatingWheelAPI(app) {
       if (fs.existsSync(filePath)) {
         const content = fs.readFileSync(filePath, 'utf8');
         const settings = JSON.parse(content);
-        return res.json({ success: true, sectors: settings.sectors });
+
+        // Обратная совместимость: если нет topEmployeesCount, вернуть дефолт
+        if (!settings.topEmployeesCount) {
+          settings.topEmployeesCount = 3;
+        }
+
+        return res.json({
+          success: true,
+          sectors: settings.sectors,
+          topEmployeesCount: settings.topEmployeesCount
+        });
       }
 
       // Возвращаем дефолтные настройки
       const sectors = getDefaultWheelSectors();
-      res.json({ success: true, sectors, isDefault: true });
+      res.json({ success: true, sectors, topEmployeesCount: 3, isDefault: true });
     } catch (error) {
       console.error('❌ Ошибка получения настроек колеса:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -456,7 +470,7 @@ module.exports = function setupRatingWheelAPI(app) {
   // POST /api/fortune-wheel/settings - обновить настройки секторов (используется приложением)
   app.post('/api/fortune-wheel/settings', async (req, res) => {
     try {
-      const { sectors } = req.body;
+      const { sectors, topEmployeesCount } = req.body;
       console.log('🎡 POST /api/fortune-wheel/settings');
 
       if (!sectors || !Array.isArray(sectors) || sectors.length !== 15) {
@@ -466,20 +480,26 @@ module.exports = function setupRatingWheelAPI(app) {
         });
       }
 
+      // Валидация topEmployeesCount: ограничение 1-10, дефолт 3
+      const validatedCount = topEmployeesCount !== undefined
+        ? Math.max(1, Math.min(10, topEmployeesCount))
+        : 3;
+
       if (!fs.existsSync(FORTUNE_WHEEL_DIR)) {
         fs.mkdirSync(FORTUNE_WHEEL_DIR, { recursive: true });
       }
 
       const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
       const data = {
+        topEmployeesCount: validatedCount,
         sectors,
         updatedAt: new Date().toISOString()
       };
 
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 
-      console.log('✅ Настройки колеса обновлены');
-      res.json({ success: true, sectors });
+      console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
+      res.json({ success: true, sectors, topEmployeesCount: validatedCount });
     } catch (error) {
       console.error('❌ Ошибка обновления настроек колеса:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -489,7 +509,7 @@ module.exports = function setupRatingWheelAPI(app) {
   // PUT /api/fortune-wheel/settings - обновить настройки секторов
   app.put('/api/fortune-wheel/settings', async (req, res) => {
     try {
-      const { sectors } = req.body;
+      const { sectors, topEmployeesCount } = req.body;
       console.log('🎡 PUT /api/fortune-wheel/settings');
 
       if (!sectors || !Array.isArray(sectors) || sectors.length !== 15) {
@@ -499,20 +519,26 @@ module.exports = function setupRatingWheelAPI(app) {
         });
       }
 
+      // Валидация topEmployeesCount: ограничение 1-10, дефолт 3
+      const validatedCount = topEmployeesCount !== undefined
+        ? Math.max(1, Math.min(10, topEmployeesCount))
+        : 3;
+
       if (!fs.existsSync(FORTUNE_WHEEL_DIR)) {
         fs.mkdirSync(FORTUNE_WHEEL_DIR, { recursive: true });
       }
 
       const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
       const data = {
+        topEmployeesCount: validatedCount,
         sectors,
         updatedAt: new Date().toISOString()
       };
 
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 
-      console.log('✅ Настройки колеса обновлены');
-      res.json({ success: true, sectors });
+      console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
+      res.json({ success: true, sectors, topEmployeesCount: validatedCount });
     } catch (error) {
       console.error('❌ Ошибка обновления настроек колеса:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -758,6 +784,37 @@ module.exports = function setupRatingWheelAPI(app) {
 
   console.log('✅ Rating & Fortune Wheel API initialized');
 };
+
+// Вспомогательная функция: получить настройки колеса
+function getWheelSettings() {
+  try {
+    const settingsPath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
+
+    if (fs.existsSync(settingsPath)) {
+      const content = fs.readFileSync(settingsPath, 'utf8');
+      const settings = JSON.parse(content);
+
+      // Обратная совместимость: если нет topEmployeesCount, используем дефолт 3
+      if (!settings.topEmployeesCount) {
+        settings.topEmployeesCount = 3;
+      }
+
+      return settings;
+    }
+
+    // Дефолтные настройки
+    return {
+      topEmployeesCount: 3,
+      sectors: getDefaultWheelSectors()
+    };
+  } catch (error) {
+    console.error('Ошибка чтения настроек колеса:', error);
+    return {
+      topEmployeesCount: 3,
+      sectors: getDefaultWheelSectors()
+    };
+  }
+}
 
 // Вспомогательная функция: выдать прокрутки топ-3
 async function assignWheelSpins(month, top3) {
