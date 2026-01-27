@@ -499,6 +499,11 @@ module.exports = function setupRatingWheelAPI(app) {
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 
       console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
+
+      // Автоматически пересчитываем прокрутки для текущего месяца
+      const currentMonth = getCurrentMonth();
+      await recalculateCurrentMonthSpins(currentMonth, validatedCount);
+
       res.json({ success: true, sectors, topEmployeesCount: validatedCount });
     } catch (error) {
       console.error('❌ Ошибка обновления настроек колеса:', error);
@@ -538,6 +543,11 @@ module.exports = function setupRatingWheelAPI(app) {
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 
       console.log(`✅ Настройки колеса обновлены (топ-${validatedCount})`);
+
+      // Автоматически пересчитываем прокрутки для текущего месяца
+      const currentMonth = getCurrentMonth();
+      await recalculateCurrentMonthSpins(currentMonth, validatedCount);
+
       res.json({ success: true, sectors, topEmployeesCount: validatedCount });
     } catch (error) {
       console.error('❌ Ошибка обновления настроек колеса:', error);
@@ -813,6 +823,38 @@ function getWheelSettings() {
       topEmployeesCount: 3,
       sectors: getDefaultWheelSectors()
     };
+  }
+}
+
+// Вспомогательная функция: пересчитать прокрутки для текущего месяца
+async function recalculateCurrentMonthSpins(month, topCount) {
+  try {
+    console.log(`🔄 Пересчёт прокруток для месяца ${month}, топ-${topCount} сотрудников`);
+
+    // Читаем текущий рейтинг
+    const ratingsPath = path.join(RATINGS_DIR, `${month}.json`);
+
+    if (!fs.existsSync(ratingsPath)) {
+      console.log(`⚠️ Рейтинг за ${month} не найден, пересчёт прокруток невозможен`);
+      return;
+    }
+
+    const content = fs.readFileSync(ratingsPath, 'utf8');
+    const data = JSON.parse(content);
+    const ratings = data.ratings || [];
+
+    if (ratings.length === 0) {
+      console.log(`⚠️ Рейтинг за ${month} пустой, пересчёт прокруток невозможен`);
+      return;
+    }
+
+    // Выдаём прокрутки топ-N сотрудникам
+    const topN = Math.min(topCount, ratings.length);
+    await assignWheelSpins(month, ratings.slice(0, topN));
+
+    console.log(`✅ Прокрутки пересчитаны: топ-${topN} сотрудников получили прокрутки`);
+  } catch (error) {
+    console.error(`❌ Ошибка пересчёта прокруток для ${month}:`, error);
   }
 }
 
