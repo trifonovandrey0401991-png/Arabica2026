@@ -541,8 +541,8 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
   }
 }
 
-/// Карточка с последними записями для detail страниц
-class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
+/// Карточка с последними записями для detail страниц (с фильтрацией по категориям)
+class EfficiencyDetailRecentRecordsCard extends StatefulWidget {
   final EfficiencySummary summary;
   /// Показывать имя сотрудника (для страницы магазина) или адрес магазина (для страницы сотрудника)
   final bool showEmployeeName;
@@ -554,13 +554,44 @@ class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // Сортируем записи по дате (новые сначала)
-    final sortedRecords = List<EfficiencyRecord>.from(summary.records)
-      ..sort((a, b) => b.date.compareTo(a.date));
+  State<EfficiencyDetailRecentRecordsCard> createState() => _EfficiencyDetailRecentRecordsCardState();
+}
 
-    // Берем последние 20 записей
-    final recentRecords = sortedRecords.take(20).toList();
+class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRecentRecordsCard> {
+  /// Выбранная категория для фильтрации (null = все категории)
+  EfficiencyCategory? _selectedCategory;
+
+  /// Получить уникальные категории из записей
+  List<EfficiencyCategory> get _availableCategories {
+    final categories = widget.summary.records
+        .map((r) => r.category)
+        .toSet()
+        .toList();
+    // Сортируем по displayName
+    categories.sort((a, b) => a.displayName.compareTo(b.displayName));
+    return categories;
+  }
+
+  /// Отфильтрованные записи
+  List<EfficiencyRecord> get _filteredRecords {
+    var records = List<EfficiencyRecord>.from(widget.summary.records);
+
+    // Фильтруем по категории если выбрана
+    if (_selectedCategory != null) {
+      records = records.where((r) => r.category == _selectedCategory).toList();
+    }
+
+    // Сортируем по дате (новые сначала)
+    records.sort((a, b) => b.date.compareTo(a.date));
+
+    // Берем последние 30 записей (увеличено для фильтрации)
+    return records.take(30).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = _availableCategories;
+    final filteredRecords = _filteredRecords;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -573,7 +604,7 @@ class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Последние записи',
+                  'Записи',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -581,7 +612,9 @@ class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Всего: ${summary.recordsCount}',
+                  _selectedCategory != null
+                      ? '${filteredRecords.length} из ${widget.summary.recordsCount}'
+                      : 'Всего: ${widget.summary.recordsCount}',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
@@ -589,19 +622,79 @@ class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
                 ),
               ],
             ),
+            // Фильтр по категориям (показываем только если > 1 категории)
+            if (categories.length > 1) ...[
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // Чип "Все"
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: const Text('Все'),
+                        selected: _selectedCategory == null,
+                        onSelected: (_) {
+                          setState(() => _selectedCategory = null);
+                        },
+                        selectedColor: EfficiencyUtils.secondaryColor,
+                        checkmarkColor: EfficiencyUtils.primaryColor,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          color: _selectedCategory == null
+                              ? EfficiencyUtils.primaryColor
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    // Чипы категорий
+                    ...categories.map((category) {
+                      final isSelected = _selectedCategory == category;
+                      final color = EfficiencyUtils.getCategoryColor(category);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(category.displayName),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            setState(() {
+                              _selectedCategory = isSelected ? null : category;
+                            });
+                          },
+                          selectedColor: color.withOpacity(0.2),
+                          checkmarkColor: color,
+                          avatar: isSelected ? null : Icon(
+                            EfficiencyUtils.getCategoryIcon(category),
+                            size: 16,
+                            color: color,
+                          ),
+                          labelStyle: TextStyle(
+                            fontSize: 12,
+                            color: isSelected ? color : Colors.grey[700],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
-            if (recentRecords.isEmpty)
+            if (filteredRecords.isEmpty)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    'Нет записей',
+                    _selectedCategory != null
+                        ? 'Нет записей в категории "${_selectedCategory!.displayName}"'
+                        : 'Нет записей',
                     style: TextStyle(color: Colors.grey[500]),
                   ),
                 ),
               )
             else
-              ...recentRecords.map((record) => _buildRecordRow(record)),
+              ...filteredRecords.map((record) => _buildRecordRow(record)),
           ],
         ),
       ),
@@ -614,7 +707,7 @@ class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
 
     // Определяем вторичную информацию (имя сотрудника или адрес магазина)
     String secondaryInfo = '';
-    if (showEmployeeName) {
+    if (widget.showEmployeeName) {
       secondaryInfo = record.employeeName;
     } else {
       // Для штрафов берем shopAddress из rawValue
