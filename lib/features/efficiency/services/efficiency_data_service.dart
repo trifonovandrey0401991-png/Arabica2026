@@ -9,7 +9,10 @@ import '../../../core/utils/cache_manager.dart';
 /// Сервис загрузки и агрегации данных эффективности
 ///
 /// Основной публичный метод: loadMonthData()
-/// Данные загружаются из 7 источников и агрегируются по магазинам/сотрудникам.
+/// Данные загружаются из 10 источников и агрегируются по магазинам/сотрудникам:
+/// - Пересменка, Пересчёт, Сдача смены, Посещаемость
+/// - Штрафы, Задачи, Отзывы
+/// - Поиск товара, Заказы, РКО
 ///
 /// Структура после рефакторинга:
 /// - efficiency_data_service.dart - оркестратор и кэширование (этот файл)
@@ -60,7 +63,7 @@ class EfficiencyDataService {
     // Загружаем настройки баллов
     await EfficiencyCalculationService.loadAllSettings();
 
-    // Загружаем все отчеты и штрафы параллельно
+    // Загружаем все отчеты и штрафы параллельно (10 источников)
     final results = await Future.wait([
       loadShiftRecords(start, end),
       loadRecountRecords(start, end),
@@ -69,6 +72,9 @@ class EfficiencyDataService {
       loadPenaltyRecords(start, end),
       loadTaskRecords(start, end),
       loadReviewRecords(start, end),
+      loadProductSearchRecords(start, end),
+      loadOrderRecords(start, end),
+      loadRkoRecords(start, end),
     ]);
 
     // Объединяем все записи
@@ -141,6 +147,9 @@ class EfficiencyDataService {
       final penaltyRecords = await loadPenaltyRecords(start, end);
       final taskRecords = await loadTaskRecords(start, end);
       final reviewRecords = await loadReviewRecords(start, end);
+      final productSearchRecords = await loadProductSearchRecords(start, end);
+      final orderRecords = await loadOrderRecords(start, end);
+      final rkoRecords = await loadRkoRecords(start, end);
 
       // Парсим отчёты и конвертируем в EfficiencyRecord
       final shiftRecords = await parseShiftReportsFromBatch(result['shifts'] as List<dynamic>? ?? [], start, end);
@@ -148,7 +157,7 @@ class EfficiencyDataService {
       final handoverRecords = await parseHandoverReportsFromBatch(result['handovers'] as List<dynamic>? ?? [], start, end);
       final attendanceRecords = await parseAttendanceFromBatch(result['attendance'] as List<dynamic>? ?? [], start, end);
 
-      // Объединяем все записи
+      // Объединяем все записи (10 источников)
       final List<EfficiencyRecord> allRecords = [
         ...shiftRecords,
         ...recountRecords,
@@ -157,6 +166,9 @@ class EfficiencyDataService {
         ...penaltyRecords,
         ...taskRecords,
         ...reviewRecords,
+        ...productSearchRecords,
+        ...orderRecords,
+        ...rkoRecords,
       ];
 
       Logger.debug('Total efficiency records from BATCH API: ${allRecords.length}');

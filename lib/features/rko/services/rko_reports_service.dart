@@ -174,4 +174,31 @@ class RKOReportsService {
       return [];
     }
   }
+
+  /// Получить все РКО за месяц (для эффективности)
+  ///
+  /// [month] - месяц в формате YYYY-MM (опционально)
+  static Future<List<Map<String, dynamic>>> getAllRKOs({String? month}) async {
+    try {
+      var url = '${ApiConstants.serverUrl}$baseEndpoint/all';
+      if (month != null) {
+        url += '?month=$month';
+      }
+      Logger.debug('Запрос всех РКО: $url');
+      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('Получено РКО: ${result['count']}');
+          final items = result['items'] as List<dynamic>? ?? [];
+          return items.map((item) => item as Map<String, dynamic>).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      Logger.error('Ошибка получения всех РКО', e);
+      return [];
+    }
+  }
 }

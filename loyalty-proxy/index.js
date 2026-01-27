@@ -2328,6 +2328,43 @@ app.get('/api/rko/list/shop/:shopAddress', async (req, res) => {
   }
 });
 
+// Получить все РКО за месяц (для эффективности)
+app.get('/api/rko/all', async (req, res) => {
+  try {
+    const { month } = req.query; // YYYY-MM
+    console.log('📋 GET /api/rko/all, month:', month);
+
+    const metadata = loadRKOMetadata();
+
+    let items = metadata.items || [];
+
+    // Фильтруем по месяцу если указан
+    if (month) {
+      items = items.filter(rko => {
+        const rkoMonth = new Date(rko.date).toISOString().substring(0, 7);
+        return rkoMonth === month;
+      });
+    }
+
+    // Сортируем по дате (новые первыми)
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    console.log(`✅ Найдено ${items.length} РКО${month ? ` за ${month}` : ''}`);
+
+    res.json({
+      success: true,
+      items: items,
+      count: items.length,
+    });
+  } catch (error) {
+    console.error('Ошибка получения всех РКО:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Ошибка при получении РКО'
+    });
+  }
+});
+
 // Получить DOCX файл РКО
 app.get('/api/rko/file/:fileName', async (req, res) => {
   try {

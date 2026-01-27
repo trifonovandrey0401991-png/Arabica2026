@@ -7,6 +7,9 @@ import '../../../attendance/services/attendance_service.dart';
 import '../../../tasks/services/task_service.dart';
 import '../../../tasks/models/task_model.dart';
 import '../../../reviews/services/review_service.dart';
+import '../../../product_questions/services/product_question_service.dart';
+import '../../../orders/services/order_service.dart';
+import '../../../rko/services/rko_reports_service.dart';
 import '../../../../core/services/base_http_service.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/logger.dart';
@@ -315,6 +318,183 @@ Future<List<EfficiencyRecord>> loadReviewRecords(
     return records;
   } catch (e) {
     Logger.error('Error loading review records', e);
+    return [];
+  }
+}
+
+/// Загрузить записи по поиску товара (ответы на вопросы клиентов)
+///
+/// Баллы начисляются сотруднику, который ответил на вопрос.
+/// Неотвеченные вопросы не учитываются (нет конкретного виновного).
+Future<List<EfficiencyRecord>> loadProductSearchRecords(
+  DateTime start,
+  DateTime end,
+) async {
+  try {
+    Logger.debug('Loading product search records...');
+    // Загружаем все вопросы
+    final questions = await ProductQuestionService.getQuestions();
+
+    final records = <EfficiencyRecord>[];
+    for (final question in questions) {
+      // Парсим дату вопроса
+      final questionDate = DateTime.tryParse(question.timestamp);
+      if (questionDate == null) continue;
+
+      // Проверяем период
+      if (questionDate.isBefore(start) || questionDate.isAfter(end)) continue;
+
+      // Если вопрос отвечен - создаём запись для ответившего сотрудника
+      if (question.isAnswered &&
+          question.answeredByName != null &&
+          question.answeredByName!.isNotEmpty) {
+        // Используем время ответа если есть, иначе время вопроса
+        final answerDate = question.lastAnswerTime != null
+            ? DateTime.tryParse(question.lastAnswerTime!)
+            : questionDate;
+
+        final record = await EfficiencyCalculationService.createProductSearchRecord(
+          id: question.id,
+          shopAddress: question.shopAddress,
+          employeeName: question.answeredByName!,
+          date: answerDate ?? questionDate,
+          answered: true,
+        );
+
+        records.add(record);
+      }
+      // Примечание: неотвеченные вопросы не учитываем,
+      // т.к. нет конкретного сотрудника для начисления штрафа
+    }
+
+    Logger.debug('Loaded ${records.length} product search efficiency records');
+    return records;
+  } catch (e) {
+    Logger.error('Error loading product search records', e);
+    return [];
+  }
+}
+
+/// Загрузить записи по заказам клиентов
+///
+/// Баллы начисляются:
+/// - За принятый заказ: сотруднику из поля acceptedBy
+/// - За отклонённый заказ: сотруднику из поля rejectedBy
+Future<List<EfficiencyRecord>> loadOrderRecords(
+  DateTime start,
+  DateTime end,
+) async {
+  try {
+    Logger.debug('Loading order records...');
+    // Загружаем все заказы
+    final orders = await OrderService.getAllOrders();
+
+    final records = <EfficiencyRecord>[];
+    for (final order in orders) {
+      // Парсим дату создания заказа
+      final createdAtStr = order['createdAt'] as String?;
+      if (createdAtStr == null) continue;
+
+      final orderDate = DateTime.tryParse(createdAtStr);
+      if (orderDate == null) continue;
+
+      // Проверяем период
+      if (orderDate.isBefore(start) || orderDate.isAfter(end)) continue;
+
+      final status = order['status'] as String? ?? 'pending';
+      final shopAddress = order['shopAddress'] as String? ?? '';
+      final orderId = order['id'] as String? ?? '';
+
+      // Принятые заказы (accepted, confirmed, delivered)
+      if (status == 'accepted' || status == 'confirmed' || status == 'delivered') {
+        final acceptedBy = order['acceptedBy'] as String?;
+        if (acceptedBy != null && acceptedBy.isNotEmpty) {
+          final record = await EfficiencyCalculationService.createOrderRecord(
+            id: orderId,
+            shopAddress: shopAddress,
+            employeeName: acceptedBy,
+            date: orderDate,
+            accepted: true,
+          );
+          records.add(record);
+        }
+      }
+      // Отклонённые заказы
+      else if (status == 'rejected') {
+        final rejectedBy = order['rejectedBy'] as String?;
+        if (rejectedBy != null && rejectedBy.isNotEmpty) {
+          final record = await EfficiencyCalculationService.createOrderRecord(
+            id: orderId,
+            shopAddress: shopAddress,
+            employeeName: rejectedBy,
+            date: orderDate,
+            accepted: false,
+          );
+          records.add(record);
+        }
+      }
+      // pending и cancelled заказы не учитываем
+    }
+
+    Logger.debug('Loaded ${records.length} order efficiency records');
+    return records;
+  } catch (e) {
+    Logger.error('Error loading order records', e);
+    return [];
+  }
+}
+
+/// Загрузить записи по РКО (расходные кассовые ордера)
+///
+/// Баллы начисляются сотруднику, который создал РКО.
+/// Каждый РКО = положительные баллы за наличие.
+Future<List<EfficiencyRecord>> loadRkoRecords(
+  DateTime start,
+  DateTime end,
+) async {
+  try {
+    Logger.debug('Loading RKO records...');
+
+    // Формируем месяц для запроса (YYYY-MM)
+    final monthKey = '${start.year}-${start.month.toString().padLeft(2, '0')}';
+
+    // Загружаем все РКО за месяц
+    final rkos = await RKOReportsService.getAllRKOs(month: monthKey);
+
+    final records = <EfficiencyRecord>[];
+    for (final rko in rkos) {
+      // Парсим дату РКО
+      final dateStr = rko['date'] as String?;
+      if (dateStr == null) continue;
+
+      final rkoDate = DateTime.tryParse(dateStr);
+      if (rkoDate == null) continue;
+
+      // Проверяем период
+      if (rkoDate.isBefore(start) || rkoDate.isAfter(end)) continue;
+
+      final employeeName = rko['employeeName'] as String? ?? '';
+      final shopAddress = rko['shopAddress'] as String? ?? '';
+      final fileName = rko['fileName'] as String? ?? '';
+
+      if (employeeName.isEmpty) continue;
+
+      // Создаём запись с положительными баллами (РКО есть)
+      final record = await EfficiencyCalculationService.createRkoRecord(
+        id: fileName,
+        shopAddress: shopAddress,
+        employeeName: employeeName,
+        date: rkoDate,
+        hasRko: true,
+      );
+
+      records.add(record);
+    }
+
+    Logger.debug('Loaded ${records.length} RKO efficiency records');
+    return records;
+  } catch (e) {
+    Logger.error('Error loading RKO records', e);
     return [];
   }
 }
