@@ -157,45 +157,61 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Слайдер
-                      Row(
+                      // Кнопки выбора количества
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.center,
                         children: [
-                          Expanded(
-                            child: Slider(
-                              value: _topEmployeesCount.toDouble(),
-                              min: 1,
-                              max: 10,
-                              divisions: 9,
-                              activeColor: const Color(0xFF004D40),
-                              inactiveColor: const Color(0xFF004D40).withOpacity(0.3),
-                              label: _topEmployeesCount.toString(),
-                              onChanged: (value) {
+                          for (int i = 1; i <= 10; i++)
+                            GestureDetector(
+                              onTap: () {
                                 setState(() {
-                                  _topEmployeesCount = value.toInt();
+                                  _topEmployeesCount = i;
                                 });
                               },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Текущее значение
-                          Container(
-                            width: 60,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF004D40),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$_topEmployeesCount',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  gradient: _topEmployeesCount == i
+                                      ? const LinearGradient(
+                                          colors: [Color(0xFF00695C), Color(0xFF004D40)],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        )
+                                      : null,
+                                  color: _topEmployeesCount == i ? null : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: _topEmployeesCount == i
+                                        ? const Color(0xFF004D40)
+                                        : Colors.grey.shade300,
+                                    width: _topEmployeesCount == i ? 2.5 : 1.5,
+                                  ),
+                                  boxShadow: [
+                                    if (_topEmployeesCount == i)
+                                      BoxShadow(
+                                        color: const Color(0xFF004D40).withOpacity(0.3),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$i',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: _topEmployeesCount == i
+                                          ? Colors.white
+                                          : Colors.grey.shade700,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
 
@@ -224,17 +240,46 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
+                              alignment: WrapAlignment.center,
                               children: [
                                 for (int i = 0; i < _topEmployeesCount; i++)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: i == 0 ? Colors.amber[100] : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: i == 0 ? Colors.amber : Colors.grey,
-                                        width: 1.5,
+                                      gradient: LinearGradient(
+                                        colors: i == 0
+                                            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Золото
+                                            : i == 1
+                                                ? [const Color(0xFFE8E8E8), const Color(0xFFC0C0C0)] // Серебро
+                                                : i == 2
+                                                    ? [const Color(0xFFCD7F32), const Color(0xFF8B4513)] // Бронза
+                                                    : [const Color(0xFF64B5F6), const Color(0xFF42A5F5)], // Синий
                                       ),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: i == 0
+                                            ? const Color(0xFFFFD700)
+                                            : i == 1
+                                                ? const Color(0xFFC0C0C0)
+                                                : i == 2
+                                                    ? const Color(0xFFCD7F32)
+                                                    : const Color(0xFF1976D2),
+                                        width: 2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (i == 0
+                                                  ? const Color(0xFFFFD700)
+                                                  : i == 1
+                                                      ? const Color(0xFFC0C0C0)
+                                                      : i == 2
+                                                          ? const Color(0xFFCD7F32)
+                                                          : const Color(0xFF1976D2))
+                                              .withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -243,13 +288,20 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                                           i == 0 ? '🥇' : i == 1 ? '🥈' : i == 2 ? '🥉' : '${i + 1}',
                                           style: const TextStyle(fontSize: 14),
                                         ),
-                                        const SizedBox(width: 4),
+                                        const SizedBox(width: 5),
                                         Text(
                                           '${i == 0 ? 2 : 1} спин${i == 0 ? 'а' : ''}',
                                           style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: i == 0 ? FontWeight.bold : FontWeight.normal,
-                                            color: i == 0 ? Colors.amber[900] : Colors.grey[700],
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            shadows: [
+                                              Shadow(
+                                                color: Colors.black.withOpacity(0.25),
+                                                offset: const Offset(0, 1),
+                                                blurRadius: 1,
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
@@ -299,11 +351,16 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                   padding: const EdgeInsets.all(16),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 50,
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _saveSettings,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF004D40),
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: _isSaving
                           ? const SizedBox(
@@ -316,7 +373,10 @@ class _WheelSettingsPageState extends State<WheelSettingsPage> {
                             )
                           : const Text(
                               'Сохранить',
-                              style: TextStyle(fontSize: 16),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                     ),
                   ),

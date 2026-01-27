@@ -12341,3 +12341,1307 @@ final points = settings.calculatePoints(10); // Пример для 10 клие�
 
 ---
 
+## 23. РЕЙТИНГ И КОЛЕСО УДАЧИ (Fortune Wheel)
+
+### 23.1 Обзор модуля
+
+**Назначение:** Комплексная система мотивации и геймификации для топ-сотрудников. Рассчитывает месячный рейтинг всех сотрудников на основе полной эффективности (все 10 категорий) и реферальных баллов, автоматически награждает топ-N (1-10, настраиваемо) прокрутками Колеса Удачи с настраиваемыми призами.
+
+**Файлы модуля:**
+```
+lib/features/
+├── fortune_wheel/
+│   ├── models/
+│   │   └── fortune_wheel_model.dart           # Модели: секторы, прокрутки, история
+│   ├── pages/
+│   │   ├── fortune_wheel_page.dart            # Главная страница колеса (сотрудник)
+│   │   ├── wheel_settings_page.dart           # Настройка секторов (админ)
+│   │   └── wheel_reports_page.dart            # Отчёты по прокруткам (админ)
+│   ├── services/
+│   │   └── fortune_wheel_service.dart         # API сервис для колеса
+│   └── widgets/
+│       ├── fortune_wheel_painter.dart         # Анимированное колесо
+│       └── wheel_spin_animation.dart          # Анимация прокрутки
+├── rating/
+│   ├── models/
+│   │   └── employee_rating_model.dart         # Модели рейтинга
+│   ├── pages/
+│   │   ├── my_rating_page.dart                # Мой рейтинг (история за 3 месяца)
+│   │   └── all_ratings_page.dart              # Рейтинг всех сотрудников (админ)
+│   ├── services/
+│   │   └── rating_service.dart                # API сервис для рейтинга
+│   └── widgets/
+│       ├── rating_badge_widget.dart           # Бейдж позиции (🥇🥈🥉)
+│       └── rating_card_widget.dart            # Карточка рейтинга
+
+loyalty-proxy/
+├── rating_wheel_api.js                        # Серверный API (рейтинг + колесо)
+└── efficiency_calc.js                         # Полный расчёт эффективности
+
+/var/www/
+├── employee-ratings/                          # Кэш рейтингов
+│   └── YYYY-MM.json                          # Рейтинг за месяц
+├── fortune-wheel/
+│   ├── settings.json                          # Настройки: секторы (15) + topEmployeesCount (1-10)
+│   ├── spins/                                 # Выданные прокрутки
+│   │   └── YYYY-MM.json                      # Прокрутки топ-N сотрудников за месяц
+│   └── history/                               # История прокруток
+│       └── YYYY-MM.json                      # Прокрутки за месяц
+```
+
+**Ключевые особенности:**
+- 📊 **Нормализованный рейтинг**: (баллы / смены) + рефералы с милестоунами
+- 🎡 **15 настраиваемых секторов**: Тексты призов и вероятности (админ)
+- 🏆 **Динамические автонаграды топ-N (1-10)**: 1 место = 2 прокрутки, остальные (2-N) = 1 прокрутка
+- ⚙️ **Гибкие настройки**: Количество призовых мест настраивается админом (1-10)
+- ⏰ **Срок истечения**: Прокрутки действуют до конца следующего месяца
+- 📈 **Полная интеграция**: Все 10 категорий эффективности + рефералы
+- 🎨 **Анимация**: Плавное вращение колеса с физикой замедления
+- 📱 **История**: Отчёты для админа с отметкой выданных призов
+
+---
+
+### 23.2 Модели данных
+
+```mermaid
+classDiagram
+    class FortuneWheelSector {
+        +int index
+        +String text
+        +double probability
+        +Color color
+        +fromJson(Map) FortuneWheelSector
+        +toJson() Map
+        +copyWith() FortuneWheelSector
+    }
+
+    class FortuneWheelSettings {
+        +int topEmployeesCount
+        +List~FortuneWheelSector~ sectors
+        +String updatedAt
+        +bool isValid
+        +fromJson(Map) FortuneWheelSettings
+        +toJson() Map
+        +copyWith() FortuneWheelSettings
+    }
+
+    class EmployeeWheelSpins {
+        +int availableSpins
+        +String month
+        +int position
+        +DateTime expiresAt
+        +bool hasSpins
+        +bool isExpired
+        +String positionIcon
+        +fromJson(Map) EmployeeWheelSpins
+    }
+
+    class WheelSpinResult {
+        +FortuneWheelSector sector
+        +int remainingSpins
+        +String recordId
+        +fromJson(Map) WheelSpinResult
+    }
+
+    class WheelSpinRecord {
+        +String id
+        +String employeeId
+        +String employeeName
+        +String rewardMonth
+        +int position
+        +int sectorIndex
+        +String prize
+        +DateTime spunAt
+        +bool isProcessed
+        +String processedBy
+        +DateTime processedAt
+        +String positionIcon
+        +String formattedDate
+        +fromJson(Map) WheelSpinRecord
+        +toJson() Map
+    }
+
+    class MonthlyRating {
+        +String employeeId
+        +String employeeName
+        +String month
+        +int position
+        +int totalEmployees
+        +double totalPoints
+        +int shiftsCount
+        +double referralPoints
+        +double normalizedRating
+        +Map~String,double~ efficiencyBreakdown
+        +bool isTop3
+        +String positionIcon
+        +String monthName
+        +Color borderColor
+        +fromJson(Map) MonthlyRating
+    }
+
+    FortuneWheelSettings "1" *-- "15" FortuneWheelSector : contains
+    WheelSpinResult "1" *-- "1" FortuneWheelSector : selected
+    MonthlyRating "1" -- "0..1" EmployeeWheelSpins : triggers if top3
+```
+
+**Дефолтные секторы (15 штук):**
+1. `Выходной день` (6.67%)
+2. `+500 к премии` (6.67%)
+3. `Бесплатный обед` (6.67%)
+4. `+300 к премии` (6.67%)
+5. `Сертификат на кофе` (6.67%)
+6. `+200 к премии` (6.67%)
+7. `Раньше уйти` (6.67%)
+8. `+100 к премии` (6.67%)
+9. `Десерт в подарок` (6.67%)
+10. `Скидка 20% на меню` (6.67%)
+11. `+150 к премии` (6.67%)
+12. `Кофе бесплатно неделю` (6.67%)
+13. `+250 к премии` (6.67%)
+14. `Подарок от шефа` (6.67%)
+15. `Позже прийти` (6.67%)
+
+---
+
+### 23.3 Жизненный цикл системы
+
+#### 23.3.1 Основной флоу (месячный цикл)
+
+```mermaid
+stateDiagram-v2
+    [*] --> CalculateRating: Конец месяца
+
+    CalculateRating: Расчёт рейтинга<br/>за месяц
+    note right of CalculateRating
+        • Эффективность (10 категорий)
+        • Количество смен
+        • Рефералы с милестоунами
+        • Нормализация (баллы/смены)
+    end note
+
+    CalculateRating --> SortEmployees: Сортировка по<br/>normalizedRating
+
+    SortEmployees --> AssignPositions: Присвоение позиций<br/>(1, 2, 3, ...)
+
+    AssignPositions --> CheckTopN: Топ-N?
+
+    CheckTopN --> AssignSpins: ДА
+    note right of AssignSpins
+        Выдать прокрутки топ-N
+        (N = 1-10, настраивается)
+        1 место → 2 прокрутки
+        2-N места → 1 прокрутка
+        Срок: до конца след. месяца
+    end note
+
+    CheckTopN --> CacheRating: НЕТ
+
+    AssignSpins --> CacheRating: Кэширование<br/>/var/www/employee-ratings/
+
+    CacheRating --> [*]: Готово
+
+    state WaitForSpin {
+        [*] --> CheckExpiry: Сотрудник заходит<br/>в приложение
+        CheckExpiry --> ShowWheel: Прокрутки есть<br/>и не истекли
+        CheckExpiry --> ShowExpired: Прокрутки истекли
+        ShowWheel --> SpinAnimation: Прокрутить колесо
+        SpinAnimation --> SaveHistory: Выбор сектора<br/>по вероятности
+        SaveHistory --> UpdateSpins: Сохранить в историю<br/>уменьшить availableSpins
+        UpdateSpins --> [*]
+    }
+
+    CacheRating --> WaitForSpin: Следующий месяц
+```
+
+---
+
+#### 23.3.2 Расчёт рейтинга (детальный алгоритм)
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:162` → `calculateRatings(month)`
+
+**Формула нормализованного рейтинга:**
+
+```javascript
+normalizedRating = (totalPoints / shiftsCount) + referralPoints
+```
+
+**Категории эффективности (10 штук):**
+
+| Категория | Источник данных | Настройки | Пример расчёта |
+|-----------|----------------|-----------|----------------|
+| **shifts** | `/var/www/shift_handover_reports/` | `shift_handover_points_settings.json` | 10 отчётов × 0.0 = 0.0 |
+| **recount** | `/var/www/recount_reports/` | `recount_points_settings.json` | 5 пересчётов × 1.1 = 5.5 |
+| **envelope** | `/var/www/envelope-reports/` | `envelope_points_settings.json` | 20 конвертов × 0.0 = 0.0 |
+| **attendance** | `/var/www/attendance/` | `attendance_points_settings.json` | 20 отметок × 0.4 = 8.0 |
+| **reviews** | `/var/www/reviews/` | `reviews_points_settings.json` | 10 × 1.5 - 2 × 0.5 = 14.0 |
+| **rko** | `/var/www/rko/` | `rko_points_settings.json` | 7 РКО × 1.0 = 7.0 |
+| **orders** | `/var/www/orders/` | `orders_points_settings.json` | 50 заказов × 0.4 = 20.0 |
+| **productSearch** | `/var/www/product_questions/` | `product_search_points_settings.json` | 20 ответов × 0.5 = 10.0 |
+| **tests** | `/var/www/tests/` | auto_points из теста | 5 тестов × 1.0 = 5.0 |
+| **tasks** | `/var/www/tasks/` + recurring | points из задачи | 10 задач × 0.5 = 5.0 |
+
+**Штрафы (attendancePenalties):**
+
+- `shift_missed_penalty` - не сдана пересменка (−5 баллов)
+- `envelope_missed_penalty` - не сдан конверт (−5 баллов)
+- `rko_missed_penalty` - не сдан РКО (−3 балла)
+
+**Рефералы с милестоунами:**
+
+```javascript
+function calculateReferralPointsWithMilestone(count, base, threshold, milestone) {
+  if (count <= threshold) {
+    return count * base;
+  } else {
+    return (threshold * base) + ((count - threshold) * milestone);
+  }
+}
+
+// Пример: base=1, threshold=5, milestone=3
+// 3 клиента: 3 × 1 = 3 балла
+// 7 клиентов: 5 × 1 + 2 × 3 = 11 баллов
+```
+
+**Пример полного расчёта:**
+
+```
+Иван Иванов (20 смен):
+  Эффективность:
+    shifts: 0.0
+    recount: 5.5
+    envelope: 0.0
+    attendance: 8.0
+    reviews: 15.0
+    rko: 7.0
+    orders: 20.0
+    productSearch: 10.0
+    tests: 5.0
+    tasks: 5.0
+    penalties: -5.0 (не сдан конверт)
+    ────────────────
+    totalPoints: 70.5
+
+  Рефералы:
+    7 клиентов с милестоунами = 11.0
+
+  Нормализация:
+    normalizedRating = (70.5 / 20) + 11.0 = 14.525
+
+Мария Петрова (15 смен):
+  totalPoints: 75.0
+  referralPoints: 8.0
+  normalizedRating = (75.0 / 15) + 8.0 = 13.0
+
+Рейтинг:
+  1. Иван (14.525) ← 2 прокрутки
+  2. Мария (13.0) ← 1 прокрутка
+```
+
+---
+
+#### 23.3.3 Выдача прокруток (assignWheelSpins)
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:826`
+
+**Алгоритм:**
+
+```javascript
+async function assignWheelSpins(month, topN) {
+  // 1. Вычислить срок истечения
+  const [year, monthNum] = month.split('-').map(Number);
+  const expiryDate = new Date(year, monthNum + 1, 0, 23, 59, 59);
+  const expiresAt = expiryDate.toISOString();
+
+  // 2. Создать прокрутки для топ-N (N = длина массива, до 10)
+  const spins = {};
+  for (let i = 0; i < topN.length; i++) {
+    const emp = topN[i];
+    const spinCount = i === 0 ? 2 : 1; // 1 место = 2, остальные = 1
+
+    spins[emp.employeeId] = {
+      employeeName: emp.employeeName,
+      position: i + 1,
+      available: spinCount,
+      used: 0,
+      assignedAt: new Date().toISOString(),
+      expiresAt
+    };
+  }
+
+  // 3. Сохранить в файл
+  const filePath = `/var/www/fortune-wheel/spins/${month}.json`;
+  const data = { month, assignedAt, expiresAt, spins };
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  console.log(`✅ Прокрутки выданы топ-${topN.length} за ${month} (истекают: ${expiresAt})`);
+}
+```
+
+**Важно:** Функция принимает массив любого размера (1-10 сотрудников), определяется настройкой `topEmployeesCount` в [settings.json](c:\Users\Admin\arabica2026\loyalty-proxy\rating_wheel_api.js#L763).
+
+**Примеры срока истечения:**
+
+- Рейтинг за **январь 2026** (2026-01) → прокрутки истекают **28 февраля 2026 23:59:59**
+- Рейтинг за **февраль 2026** (2026-02) → прокрутки истекают **31 марта 2026 23:59:59**
+- Рейтинг за **февраль 2024** (2024-02) → прокрутки истекают **31 марта 2024 23:59:59** (високосный год)
+
+---
+
+#### 23.3.4 Прокрутка колеса (Spin Algorithm)
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:575` → `POST /api/fortune-wheel/spin`
+
+**Алгоритм выбора сектора по вероятности:**
+
+```javascript
+// 1. Загрузить настройки секторов
+const settings = JSON.parse(fs.readFileSync('/var/www/fortune-wheel/settings.json', 'utf8'));
+const sectors = settings.sectors; // 15 секторов
+
+// 2. Выбрать случайный сектор по вероятности
+const totalProb = sectors.reduce((sum, s) => sum + s.probability, 0);
+let random = Math.random() * totalProb; // 0.0 - 1.0
+let selectedSector = sectors[0];
+
+for (const sector of sectors) {
+  random -= sector.probability;
+  if (random <= 0) {
+    selectedSector = sector;
+    break;
+  }
+}
+
+// 3. Уменьшить количество прокруток
+spinData.spins[employeeId].available--;
+spinData.spins[employeeId].used++;
+
+// 4. Сохранить в историю
+const spinRecord = {
+  id: `spin_${Date.now()}`,
+  employeeId,
+  employeeName,
+  rewardMonth: spinMonth,
+  position: spinData.spins[employeeId].position,
+  sectorIndex: selectedSector.index,
+  prize: selectedSector.text,
+  spunAt: new Date().toISOString(),
+  isProcessed: false,
+  processedBy: null,
+  processedAt: null
+};
+
+historyData.records.push(spinRecord);
+```
+
+**Пример вероятностного выбора:**
+
+Допустим вероятности:
+- Сектор 0: 0.10 (10%)
+- Сектор 1: 0.30 (30%)
+- Сектор 2: 0.40 (40%)
+- Сектор 3: 0.20 (20%)
+
+Генерируется `random = 0.55`:
+
+1. `random = 0.55 - 0.10 = 0.45` (сектор 0 не выбран)
+2. `random = 0.45 - 0.30 = 0.15` (сектор 1 не выбран)
+3. `random = 0.15 - 0.40 = -0.25` (**сектор 2 выбран!**)
+
+---
+
+### 23.4 Серверный API
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js`
+
+#### 23.4.1 RATING API
+
+| Endpoint | Метод | Описание | Параметры |
+|----------|-------|----------|-----------|
+| `/api/ratings` | GET | Получить рейтинг всех сотрудников за месяц | `?month=YYYY-MM` (optional)<br/>`?forceRefresh=true` (optional) |
+| `/api/ratings/:employeeId` | GET | Получить рейтинг сотрудника за N месяцев | `?months=3` (optional) |
+| `/api/ratings/calculate` | POST | Пересчитать и сохранить рейтинг + выдать прокрутки | `?month=YYYY-MM` (optional) |
+| `/api/ratings/cache` | DELETE | Очистить кэш рейтингов | `?month=YYYY-MM` (optional) |
+
+**Примеры запросов:**
+
+```bash
+# Получить текущий рейтинг (с кэшом)
+GET /api/ratings
+
+# Пересчитать рейтинг принудительно
+GET /api/ratings?forceRefresh=true
+
+# Рейтинг за конкретный месяц
+GET /api/ratings?month=2026-01
+
+# История рейтинга сотрудника за 3 месяца
+GET /api/ratings/79777777777?months=3
+
+# Пересчитать рейтинг за январь и выдать прокрутки топ-3
+POST /api/ratings/calculate?month=2026-01
+
+# Очистить весь кэш
+DELETE /api/ratings/cache
+
+# Очистить кэш за январь
+DELETE /api/ratings/cache?month=2026-01
+```
+
+**Ответ GET /api/ratings:**
+
+```json
+{
+  "success": true,
+  "ratings": [
+    {
+      "employeeId": "79777777777",
+      "employeeName": "Иванов Иван",
+      "totalPoints": 85.5,
+      "shiftsCount": 20,
+      "referralPoints": 12.0,
+      "normalizedRating": 16.275,
+      "position": 1,
+      "totalEmployees": 15,
+      "efficiencyBreakdown": {
+        "shifts": 0.0,
+        "recount": 5.5,
+        "envelope": 0.0,
+        "attendance": 8.0,
+        "reviews": 15.0,
+        "rko": 7.0,
+        "orders": 20.0,
+        "productSearch": 10.0,
+        "tests": 5.0,
+        "tasks": 5.0,
+        "attendancePenalties": 0.0
+      }
+    }
+  ],
+  "month": "2026-01",
+  "monthName": "Январь 2026",
+  "cached": false,
+  "calculated": true
+}
+```
+
+---
+
+#### 23.4.2 FORTUNE WHEEL API
+
+| Endpoint | Метод | Описание | Параметры |
+|----------|-------|----------|-----------|
+| `/api/fortune-wheel/settings` | GET | Получить настройки секторов (15) + topEmployeesCount | - |
+| `/api/fortune-wheel/settings` | POST | Обновить настройки секторов + количество топ-N | `body: { sectors: [15 секторов], topEmployeesCount: 1-10 }` |
+| `/api/fortune-wheel/settings` | PUT | Обновить настройки секторов + количество топ-N | `body: { sectors: [15 секторов], topEmployeesCount: 1-10 }` |
+| `/api/fortune-wheel/spins/:employeeId` | GET | Получить доступные прокрутки | - |
+| `/api/fortune-wheel/spin` | POST | Прокрутить колесо | `body: { employeeId, employeeName }` |
+| `/api/fortune-wheel/history` | GET | История прокруток за месяц | `?month=YYYY-MM` (optional) |
+| `/api/fortune-wheel/history/:id/process` | PATCH | Отметить приз обработанным | `body: { adminName, month }` |
+
+**Примеры запросов:**
+
+```bash
+# Получить настройки секторов
+GET /api/fortune-wheel/settings
+
+# Обновить настройки секторов и количество топ-сотрудников (админ)
+POST /api/fortune-wheel/settings
+{
+  "topEmployeesCount": 7,
+  "sectors": [
+    {
+      "index": 0,
+      "text": "Выходной день",
+      "probability": 0.0666,
+      "color": "#FF6384"
+    }
+    // ... 14 остальных секторов
+  ]
+}
+
+# Проверить доступные прокрутки
+GET /api/fortune-wheel/spins/79777777777
+
+# Прокрутить колесо
+POST /api/fortune-wheel/spin
+{
+  "employeeId": "79777777777",
+  "employeeName": "Иванов Иван"
+}
+
+# История прокруток за январь
+GET /api/fortune-wheel/history?month=2026-01
+
+# Отметить приз как выданный
+PATCH /api/fortune-wheel/history/spin_1738123456789/process
+{
+  "adminName": "Администратор",
+  "month": "2026-01"
+}
+```
+
+**Ответ POST /api/fortune-wheel/spin:**
+
+```json
+{
+  "success": true,
+  "sector": {
+    "index": 1,
+    "text": "+500 к премии",
+    "probability": 0.0666,
+    "color": "#36A2EB"
+  },
+  "remainingSpins": 1,
+  "spinRecord": {
+    "id": "spin_1738123456789",
+    "employeeId": "79777777777",
+    "employeeName": "Иванов Иван",
+    "rewardMonth": "2026-01",
+    "position": 1,
+    "sectorIndex": 1,
+    "prize": "+500 к премии",
+    "spunAt": "2026-02-15T10:30:00.000Z",
+    "isProcessed": false
+  }
+}
+```
+
+---
+
+### 23.5 Flutter компоненты
+
+#### 23.5.1 FortuneWheelPage
+
+**Файл:** `lib/features/fortune_wheel/pages/fortune_wheel_page.dart`
+
+**Назначение:** Главная страница колеса для сотрудника.
+
+**Основные элементы:**
+
+1. **Проверка доступных прокруток:**
+   ```dart
+   Future<void> _loadSpins() async {
+     final spins = await FortuneWheelService.getAvailableSpins(widget.employeeId);
+
+     setState(() {
+       _availableSpins = spins.availableSpins;
+       _rewardMonth = spins.month;
+       _position = spins.position;
+       _expiresAt = spins.expiresAt;
+       _isExpired = spins.isExpired;
+     });
+   }
+   ```
+
+2. **Анимация прокрутки:**
+   ```dart
+   Future<void> _spinWheel() async {
+     setState(() => _isSpinning = true);
+
+     final result = await FortuneWheelService.spin(
+       employeeId: widget.employeeId,
+       employeeName: widget.employeeName,
+     );
+
+     if (result != null) {
+       // Анимация вращения до выпавшего сектора
+       await _controller.animateTo(
+         result.sector.index / _sectors.length,
+         duration: Duration(seconds: 5),
+         curve: Curves.easeOut,
+       );
+
+       // Показать диалог с результатом
+       await _showPrizeDialog(result.sector.text);
+
+       setState(() {
+         _availableSpins = result.remainingSpins;
+         _isSpinning = false;
+       });
+     }
+   }
+   ```
+
+3. **Отрисовка колеса:**
+   ```dart
+   CustomPaint(
+     size: Size(300, 300),
+     painter: FortuneWheelPainter(
+       sectors: _sectors,
+       rotationValue: _controller.value,
+     ),
+   )
+   ```
+
+**UI элементы:**
+
+- 🎡 Анимированное колесо (CustomPaint)
+- 🏆 Бейдж позиции ("🥇 1 место за Январь 2026")
+- 🎟️ Счётчик прокруток ("Доступно: 2")
+- ⏰ Срок истечения ("До: 28 февраля 2026")
+- 🎯 Кнопка прокрутки
+- ⚠️ Уведомление об истечении
+
+---
+
+#### 23.5.2 WheelSettingsPage
+
+**Файл:** `lib/features/fortune_wheel/pages/wheel_settings_page.dart`
+
+**Назначение:** Настройка секторов для админа.
+
+**Основные функции:**
+
+1. **Проверка суммы вероятностей:**
+   ```dart
+   double _calculateTotalProbability() {
+     double total = 0;
+     for (final c in _probControllers) {
+       total += double.tryParse(c.text) ?? 0;
+     }
+     return total;
+   }
+   ```
+
+2. **Сохранение настроек:**
+   ```dart
+   Future<void> _saveSettings() async {
+     final updatedSectors = <FortuneWheelSector>[];
+
+     for (int i = 0; i < _sectors.length; i++) {
+       final prob = double.tryParse(_probControllers[i].text) ?? 6.67;
+       updatedSectors.add(_sectors[i].copyWith(
+         text: _textControllers[i].text,
+         probability: prob / 100, // % → доли
+       ));
+     }
+
+     final success = await FortuneWheelService.updateSettings(updatedSectors);
+     if (success) Navigator.pop(context);
+   }
+   ```
+
+**UI элементы:**
+
+- ℹ️ Инфо-панель (сумма = 100%)
+- 📋 Список 15 секторов
+- 🎨 Цветной индикатор
+- ✏️ Поле текста приза
+- 🎲 Поле вероятности (с кнопками +/−)
+- 💾 Кнопка сохранения
+
+---
+
+#### 23.5.3 WheelReportsPage
+
+**Файл:** `lib/features/fortune_wheel/pages/wheel_reports_page.dart`
+
+**Назначение:** Отчёты по прокруткам для админа.
+
+**Основные функции:**
+
+1. **Отметка приза как обработанного:**
+   ```dart
+   Future<void> _markAsProcessed(WheelSpinRecord record) async {
+     final confirmed = await showDialog<bool>( /* диалог подтверждения */ );
+
+     if (confirmed == true) {
+       final success = await FortuneWheelService.markProcessed(
+         recordId: record.id,
+         adminName: 'Администратор',
+         month: _selectedMonth,
+       );
+
+       if (success) _loadRecords(); // Обновить
+     }
+   }
+   ```
+
+2. **Выбор месяца:**
+   ```dart
+   void _showMonthPicker() async {
+     // Последние 6 месяцев
+     final months = <String>[];
+     for (int i = 0; i < 6; i++) {
+       final date = DateTime(now.year, now.month - i, 1);
+       months.add('${date.year}-${date.month.toString().padLeft(2, '0')}');
+     }
+
+     final selected = await showDialog<String>( /* диалог выбора */ );
+     if (selected != null) {
+       setState(() => _selectedMonth = selected);
+       _loadRecords();
+     }
+   }
+   ```
+
+**UI элементы:**
+
+- 📊 Статистика (всего, обработано, ожидает)
+- 📅 Выбор месяца
+- 📋 Список прокруток
+- 🏆 Позиция (🥇🥈🥉)
+- 🎁 Приз
+- ✅ Статус (обработано / ожидает)
+- 👤 Кто обработал
+- 🔘 Кнопка обработки
+
+---
+
+#### 23.5.4 MyRatingPage
+
+**Файл:** `lib/features/rating/pages/my_rating_page.dart`
+
+**Назначение:** Страница "Мой рейтинг" для сотрудника (история за 3 месяца).
+
+**Основные функции:**
+
+```dart
+Future<void> _loadHistory() async {
+  final history = await RatingService.getEmployeeRatingHistory(
+    widget.employeeId,
+    months: 3,
+  );
+  setState(() => _history = history);
+}
+```
+
+**UI элементы:**
+
+- 📋 Список месяцев (последние 3)
+- 🏆 Бейдж позиции (1/15, 🥇)
+- 📊 Статистика (баллы, смены, рефералы)
+- 📈 Нормализованный рейтинг
+- 🎡 Награда (если топ-3)
+- 🎨 Градиент (золото/серебро/бронза)
+- 🔄 Pull to refresh
+
+---
+
+#### 23.5.5 FortuneWheelPainter
+
+**Файл:** `lib/features/fortune_wheel/widgets/fortune_wheel_painter.dart`
+
+**Назначение:** CustomPainter для отрисовки анимированного колеса.
+
+**Алгоритм отрисовки:**
+
+```dart
+@override
+void paint(Canvas canvas, Size size) {
+  final center = Offset(size.width / 2, size.height / 2);
+  final radius = size.width / 2;
+
+  // Вращение
+  canvas.save();
+  canvas.translate(center.dx, center.dy);
+  canvas.rotate(rotationValue * 2 * pi);
+  canvas.translate(-center.dx, -center.dy);
+
+  // Рисуем секторы
+  double startAngle = 0;
+  for (int i = 0; i < sectors.length; i++) {
+    final sector = sectors[i];
+    final sweepAngle = 2 * pi / sectors.length;
+
+    // Сектор
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      true,
+      Paint()..color = sector.color,
+    );
+
+    // Текст приза (в центре сектора)
+    _drawText(canvas, sector.text, center, radius, startAngle + sweepAngle / 2);
+
+    startAngle += sweepAngle;
+  }
+
+  canvas.restore();
+
+  // Центральный круг + указатель
+  _drawCenter(canvas, center, radius);
+  _drawPointer(canvas, center);
+}
+```
+
+---
+
+### 23.6 Интеграции
+
+#### 23.6.1 Интеграция с Efficiency
+
+**Файл:** `loyalty-proxy/efficiency_calc.js` → `calculateFullEfficiency()`
+
+Fortune Wheel использует **полный расчёт эффективности** для определения рейтинга:
+
+```javascript
+function getFullEfficiency(employeeId, employeeName, month) {
+  const result = calculateFullEfficiency(employeeId, employeeName, '', month);
+
+  // result.total - сумма баллов по всем категориям
+  // result.breakdown - детализация по 10 категориям
+
+  return result;
+}
+```
+
+**Категории эффективности:**
+
+1. **shifts** - пересменки
+2. **recount** - пересчёты
+3. **envelope** - конверты
+4. **attendance** - посещаемость
+5. **reviews** - отзывы
+6. **rko** - РКО
+7. **orders** - заказы
+8. **productSearch** - поиск товара
+9. **tests** - тесты
+10. **tasks** - задачи
+
+**Штрафы:**
+
+- **attendancePenalties** - все штрафы (shift_missed, envelope_missed, rko_missed)
+
+---
+
+#### 23.6.2 Интеграция с Referrals
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js` → `getReferralPoints()`
+
+Fortune Wheel использует **реферальные баллы с милестоунами**:
+
+```javascript
+function getReferralPoints(employeeId, month) {
+  // 1. Подсчитать приглашённых клиентов за месяц
+  let count = 0;
+  const files = fs.readdirSync('/var/www/referral-clients');
+  for (const file of files) {
+    const client = JSON.parse(fs.readFileSync(...));
+    if (client.referredByEmployeeId === employeeId &&
+        client.referredAt && client.referredAt.startsWith(month)) {
+      count++;
+    }
+  }
+
+  // 2. Рассчитать с милестоунами
+  const settings = JSON.parse(fs.readFileSync('/var/www/points-settings/referrals.json', 'utf8'));
+  return calculateReferralPointsWithMilestone(
+    count,
+    settings.basePoints,
+    settings.milestoneThreshold,
+    settings.milestonePoints
+  );
+}
+```
+
+**Формула:**
+
+```javascript
+if (count <= threshold) {
+  return count * basePoints;
+} else {
+  return (threshold * basePoints) + ((count - threshold) * milestonePoints);
+}
+```
+
+**Примеры:**
+
+- base=1, threshold=5, milestone=3
+- 3 клиента: 3 × 1 = **3 балла**
+- 7 клиентов: 5 × 1 + 2 × 3 = **11 баллов**
+
+---
+
+#### 23.6.3 Интеграция с Work Schedule
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js` → `getShiftsCount()`
+
+Для нормализации рейтинга подсчитываются смены по attendance:
+
+```javascript
+function getShiftsCount(employeeId, month) {
+  let count = 0;
+  const files = fs.readdirSync('/var/www/attendance');
+
+  for (const file of files) {
+    const record = JSON.parse(fs.readFileSync(...));
+    if ((record.employeeId === employeeId || record.phone === employeeId) &&
+        record.timestamp && record.timestamp.startsWith(month)) {
+      count++;
+    }
+  }
+
+  return count;
+}
+```
+
+**Зачем нужна нормализация?**
+
+Без нормализации сотрудники с большим количеством смен всегда будут выше:
+
+```
+БЕЗ НОРМАЛИЗАЦИИ:
+  Иван: 20 смен × 5 баллов = 100 баллов (1 место)
+  Мария: 10 смен × 8 баллов = 80 баллов (2 место)
+
+С НОРМАЛИЗАЦИЕЙ:
+  Иван: 100 / 20 = 5.0 баллов/смену (2 место)
+  Мария: 80 / 10 = 8.0 баллов/смену (1 место)
+```
+
+Мария работает **эффективнее**, хотя и меньше смен!
+
+---
+
+### 23.7 Файловая структура данных
+
+#### 23.7.1 Рейтинги (/var/www/employee-ratings/)
+
+**Формат:** `/var/www/employee-ratings/YYYY-MM.json`
+
+**Пример:**
+
+```json
+{
+  "month": "2026-01",
+  "calculatedAt": "2026-02-01T00:05:00.000Z",
+  "ratings": [
+    {
+      "employeeId": "79777777777",
+      "employeeName": "Иванов Иван",
+      "totalPoints": 85.5,
+      "shiftsCount": 20,
+      "referralPoints": 12.0,
+      "normalizedRating": 16.275,
+      "position": 1,
+      "totalEmployees": 15,
+      "efficiencyBreakdown": {
+        "shifts": 0.0,
+        "recount": 5.5,
+        "envelope": 0.0,
+        "attendance": 8.0,
+        "reviews": 15.0,
+        "rko": 7.0,
+        "orders": 20.0,
+        "productSearch": 10.0,
+        "tests": 5.0,
+        "tasks": 5.0,
+        "attendancePenalties": 0.0
+      }
+    }
+  ]
+}
+```
+
+**Кэширование:**
+
+- Завершённые месяцы → кэшируются навсегда
+- Текущий месяц → пересчитывается при запросе (если не forceRefresh=false)
+
+---
+
+#### 23.7.2 Настройки колеса (/var/www/fortune-wheel/settings.json)
+
+**Пример:**
+
+```json
+{
+  "sectors": [
+    {
+      "index": 0,
+      "text": "Выходной день",
+      "probability": 0.0666,
+      "color": "#FF6384"
+    }
+    // ... ещё 14 секторов
+  ],
+  "updatedAt": "2026-01-15T12:30:00.000Z"
+}
+```
+
+**Валидация:**
+
+- Должно быть ровно **15 секторов**
+- Сумма `probability` = **~1.0** (100%)
+- Каждый `index` уникален (0-14)
+
+---
+
+#### 23.7.3 Прокрутки (/var/www/fortune-wheel/spins/)
+
+**Формат:** `/var/www/fortune-wheel/spins/YYYY-MM.json`
+
+**Пример:**
+
+```json
+{
+  "month": "2026-01",
+  "assignedAt": "2026-02-01T00:00:00.000Z",
+  "expiresAt": "2026-02-28T23:59:59.000Z",
+  "spins": {
+    "79777777777": {
+      "employeeName": "Иванов Иван",
+      "position": 1,
+      "available": 1,
+      "used": 1,
+      "assignedAt": "2026-02-01T00:00:00.000Z",
+      "expiresAt": "2026-02-28T23:59:59.000Z"
+    }
+  }
+}
+```
+
+**Срок истечения:**
+
+```javascript
+// Последний день следующего месяца 23:59:59
+const [year, monthNum] = month.split('-').map(Number);
+const expiryDate = new Date(year, monthNum + 1, 0, 23, 59, 59);
+```
+
+---
+
+#### 23.7.4 История прокруток (/var/www/fortune-wheel/history/)
+
+**Формат:** `/var/www/fortune-wheel/history/YYYY-MM.json`
+
+**Пример:**
+
+```json
+{
+  "records": [
+    {
+      "id": "spin_1738123456789",
+      "employeeId": "79777777777",
+      "employeeName": "Иванов Иван",
+      "rewardMonth": "2026-01",
+      "position": 1,
+      "sectorIndex": 1,
+      "prize": "+500 к премии",
+      "spunAt": "2026-02-15T10:30:00.000Z",
+      "isProcessed": false,
+      "processedBy": null,
+      "processedAt": null
+    }
+  ]
+}
+```
+
+---
+
+### 23.8 Критические функции
+
+#### 23.8.1 calculateRatings
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:162`
+
+**Назначение:** Расчёт рейтинга всех активных сотрудников за месяц.
+
+**Входные параметры:**
+- `month` (String) - YYYY-MM
+
+**Выходные данные:**
+- Array of Rating objects
+
+**Важные детали:**
+
+```javascript
+const normalizedRating = shiftsCount > 0
+  ? (totalPoints / shiftsCount) + referralPoints
+  : referralPoints;
+```
+
+---
+
+#### 23.8.2 assignWheelSpins
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:826`
+
+**Назначение:** Выдача прокруток топ-N сотрудникам (N от 1 до 10, динамически настраивается).
+
+**Входные параметры:**
+- `month` (String) - YYYY-MM
+- `topN` (Array) - топ-N из рейтинга (размер массива определяется `topEmployeesCount` из settings.json)
+
+**Выходные данные:**
+- Файл `/var/www/fortune-wheel/spins/YYYY-MM.json`
+
+**Важные детали:**
+
+```javascript
+const spinCount = i === 0 ? 2 : 1; // 1 место = 2, остальные (2-N) = 1
+const expiryDate = new Date(year, monthNum + 1, 0, 23, 59, 59);
+```
+
+**Динамическая настройка:**
+- Количество призовых мест (topEmployeesCount) читается из `/var/www/fortune-wheel/settings.json`
+- Дефолт = 3 (обратная совместимость)
+- Диапазон: 1-10 сотрудников
+- При изменении настроек прокрутки автоматически пересчитываются для текущего месяца
+
+---
+
+#### 23.8.3 getWheelSettings
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:763`
+
+**Назначение:** Получить настройки колеса с обратной совместимостью.
+
+**Выходные данные:**
+```javascript
+{
+  topEmployeesCount: 3,  // Количество топ-сотрудников (1-10)
+  sectors: [...],        // 15 секторов
+  updatedAt: "..."
+}
+```
+
+**Логика:**
+- Читает файл `/var/www/fortune-wheel/settings.json`
+- Если `topEmployeesCount` отсутствует → возвращает **дефолт = 3** (обратная совместимость)
+- Валидация: topEmployeesCount должен быть от 1 до 10
+
+---
+
+#### 23.8.4 recalculateCurrentMonthSpins
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:794`
+
+**Назначение:** Автоматический пересчёт прокруток при изменении настроек.
+
+**Входные параметры:**
+- `month` (String) - YYYY-MM
+- `topCount` (Number) - новое количество топ-сотрудников (1-10)
+
+**Логика:**
+```javascript
+async function recalculateCurrentMonthSpins(month, topCount) {
+  // 1. Проверить существование рейтинга за месяц
+  if (!fs.existsSync(ratingsPath)) {
+    console.log(`⚠️ Рейтинг за ${month} не найден`);
+    return;
+  }
+
+  // 2. Прочитать рейтинг
+  const ratings = JSON.parse(fs.readFileSync(ratingsPath)).ratings;
+
+  // 3. Выбрать топ-N сотрудников
+  const topN = Math.min(topCount, ratings.length);
+
+  // 4. Пересчитать и сохранить прокрутки
+  await assignWheelSpins(month, ratings.slice(0, topN));
+
+  console.log(`✅ Прокрутки пересчитаны: топ-${topN}`);
+}
+```
+
+**Важно:** Вызывается автоматически при POST/PUT `/api/fortune-wheel/settings` для мгновенного применения изменений.
+
+---
+
+#### 23.8.5 POST /api/fortune-wheel/spin
+
+**Файл:** `loyalty-proxy/rating_wheel_api.js:575`
+
+**Назначение:** Прокрутить колесо и выдать приз.
+
+**Входные параметры:**
+```json
+{
+  "employeeId": "79777777777",
+  "employeeName": "Иванов Иван"
+}
+```
+
+**Важные проверки:**
+
+```javascript
+// Проверка срока истечения
+if (expiresAt && new Date(expiresAt) < new Date()) {
+  console.log('⏰ Прокрутки истекли');
+  continue;
+}
+
+// Проверка доступных прокруток
+if (data.spins[employeeId].available <= 0) {
+  return res.status(400).json({ error: 'Нет прокруток' });
+}
+```
+
+---
+
+### 23.9 Точки роста
+
+**Реализовано:**
+- ✅ Полный расчёт рейтинга (10 категорий + рефералы)
+- ✅ Нормализация по сменам
+- ✅ Автовыдача прокруток топ-N (1-10, динамически настраивается)
+- ✅ Динамическое изменение количества призовых мест (UI + автопересчёт)
+- ✅ Срок истечения
+- ✅ Анимированное колесо (15 секторов)
+- ✅ Настройка секторов + topEmployeesCount (админ)
+- ✅ История прокруток
+- ✅ Страница "Мой рейтинг"
+- ✅ Кэширование рейтингов
+
+**Планируется:**
+- ⏳ Push-уведомления при выдаче прокруток
+- ⏳ Автоматический расчёт рейтинга (cron)
+- ⏳ Dashboard для админа
+- ⏳ Экспорт рейтингов в CSV
+- ⏳ Анимация конфетти при выигрыше
+- ⏳ Звуковые эффекты
+- ⏳ История всех рейтингов
+- ⏳ Сравнение с другими сотрудниками
+- ⏳ График динамики
+- ⏳ Разные колёса для разных позиций
+- ⏳ Бонусные прокрутки за достижения
+- ⏳ Статистика по призам
+
+---
+
+### 23.10 Критические предупреждения
+
+**⚠️ ВАЖНО: Система полностью интегрирована со всеми модулями!**
+
+**🔒 Защищённые файлы (НЕ ТРОГАТЬ!):**
+
+```
+loyalty-proxy/
+├── rating_wheel_api.js              # ✅ Основной API
+├── efficiency_calc.js               # ✅ Расчёт эффективности
+└── referrals_api.js                 # ✅ Расчёт рефералов
+
+lib/features/
+├── fortune_wheel/                   # ✅ Все файлы
+└── rating/                          # ✅ Все файлы
+```
+
+**💾 Критические данные:**
+
+```
+/var/www/
+├── employee-ratings/                # ✅ Кэш рейтингов
+└── fortune-wheel/                   # ✅ Настройки, прокрутки, история
+```
+
+**🚫 Что НЕ делать:**
+
+- ❌ Не изменять формулу нормализации
+- ❌ Не удалять кэш рейтингов
+- ❌ Не менять количество секторов (всегда 15)
+- ❌ Не игнорировать проверку истечения
+- ❌ Не изменять алгоритм выбора сектора
+
+**✅ Безопасные изменения:**
+
+- ✅ Изменение текстов призов
+- ✅ Изменение вероятностей (сумма = 100%)
+- ✅ Очистка кэша через API
+- ✅ Пересчёт рейтинга через API
+- ✅ Отметка призов как обработанных
+
+---
+

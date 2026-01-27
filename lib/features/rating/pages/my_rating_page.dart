@@ -191,8 +191,8 @@ class _MyRatingPageState extends State<MyRatingPage> {
               ),
             ),
 
-            // Награда за топ-3
-            if (rating.isTop3) ...[
+            // Награда за топ-N (динамически: 1-10)
+            if (rating.position >= 1 && rating.position <= 10) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -285,15 +285,15 @@ class _MyRatingPageState extends State<MyRatingPage> {
   }
 
   String _getRewardText(int position) {
-    switch (position) {
-      case 1:
-        return '1 место! 2 прокрутки Колеса Удачи';
-      case 2:
-        return '2 место! 1 прокрутка Колеса Удачи';
-      case 3:
-        return '3 место! 1 прокрутка Колеса Удачи';
-      default:
-        return '';
+    // Топ-1: 2 прокрутки, остальные (2-N): 1 прокрутка
+    // N определяется настройкой topEmployeesCount (1-10)
+    if (position == 1) {
+      return '1 место! 2 прокрутки Колеса Удачи';
+    } else if (position >= 2 && position <= 10) {
+      // Показываем награду для позиций 2-10
+      // (прокрутки выдаются только если position <= topEmployeesCount)
+      return '$position место! 1 прокрутка Колеса Удачи';
     }
+    return '';
   }
 }
