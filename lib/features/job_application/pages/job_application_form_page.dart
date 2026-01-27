@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'dart:convert';
 import '../../shops/models/shop_model.dart';
 import '../services/job_application_service.dart';
 
@@ -19,18 +22,108 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
   List<String> _selectedShopAddresses = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
+  Timer? _autosaveTimer;
+
+  static const String _draftKey = 'job_application_draft';
 
   @override
   void initState() {
     super.initState();
     _loadShops();
+    _loadDraft();
+    _startAutosave();
+
+    // Слушаем изменения в полях для автосохранения
+    _fullNameController.addListener(_onFormChanged);
+    _phoneController.addListener(_onFormChanged);
   }
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
+    _fullNameController.removeListener(_onFormChanged);
+    _phoneController.removeListener(_onFormChanged);
     _fullNameController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  /// Загрузка черновика из SharedPreferences
+  Future<void> _loadDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftJson = prefs.getString(_draftKey);
+
+      if (draftJson != null) {
+        final draft = json.decode(draftJson);
+
+        setState(() {
+          _fullNameController.text = draft['fullName'] ?? '';
+          _phoneController.text = draft['phone'] ?? '';
+          _selectedShift = draft['selectedShift'] ?? 'day';
+          _selectedShopAddresses = List<String>.from(draft['selectedShopAddresses'] ?? []);
+        });
+
+        // Показываем уведомление о восстановлении черновика
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.restore, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('Черновик восстановлен'),
+                ],
+              ),
+              backgroundColor: const Color(0xFF004D40),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Ошибка загрузки черновика: $e');
+    }
+  }
+
+  /// Сохранение черновика в SharedPreferences
+  Future<void> _saveDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draft = {
+        'fullName': _fullNameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'selectedShift': _selectedShift,
+        'selectedShopAddresses': _selectedShopAddresses,
+        'savedAt': DateTime.now().toIso8601String(),
+      };
+
+      await prefs.setString(_draftKey, json.encode(draft));
+    } catch (e) {
+      print('Ошибка сохранения черновика: $e');
+    }
+  }
+
+  /// Очистка черновика
+  Future<void> _clearDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (e) {
+      print('Ошибка очистки черновика: $e');
+    }
+  }
+
+  /// Обработчик изменения формы
+  void _onFormChanged() {
+    // Сохраняем черновик при каждом изменении (с дебаунсингом через таймер)
+  }
+
+  /// Запуск автосохранения (каждые 30 секунд)
+  void _startAutosave() {
+    _autosaveTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _saveDraft();
+    });
   }
 
   Future<void> _loadShops() async {
@@ -66,6 +159,9 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
     setState(() => _isSubmitting = false);
 
     if (result != null) {
+      // Очищаем черновик после успешной отправки
+      await _clearDraft();
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -444,7 +540,10 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
     final isSelected = _selectedShift == value;
 
     return InkWell(
-      onTap: () => setState(() => _selectedShift = value),
+      onTap: () {
+        setState(() => _selectedShift = value);
+        _saveDraft(); // Сохраняем черновик при изменении смены
+      },
       borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -517,6 +616,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
               _selectedShopAddresses.add(shop.address);
             }
           });
+          _saveDraft(); // Сохраняем черновик при изменении магазинов
         },
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(

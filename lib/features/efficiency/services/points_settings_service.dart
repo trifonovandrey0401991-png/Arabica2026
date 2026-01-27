@@ -472,14 +472,22 @@ class PointsSettingsService {
   static Future<EnvelopePointsSettings?> saveEnvelopePointsSettings({
     required double submittedPoints,
     required double notSubmittedPoints,
+    required String morningStartTime,
+    required String morningEndTime,
+    required String eveningStartTime,
+    required String eveningEndTime,
   }) async {
-    Logger.debug('Saving envelope points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints');
+    Logger.debug('Saving envelope points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints, morning=$morningStartTime-$morningEndTime, evening=$eveningStartTime-$eveningEndTime');
 
     return await BaseHttpService.post<EnvelopePointsSettings>(
       endpoint: '$baseEndpoint/envelope',
       body: {
         'submittedPoints': submittedPoints,
         'notSubmittedPoints': notSubmittedPoints,
+        'morningStartTime': morningStartTime,
+        'morningEndTime': morningEndTime,
+        'eveningStartTime': eveningStartTime,
+        'eveningEndTime': eveningEndTime,
       },
       fromJson: (json) => EnvelopePointsSettings.fromJson(json),
       itemKey: 'settings',

@@ -68,7 +68,7 @@ ssh root@arabica26.ru "pm2 restart loyalty-proxy"
 | 10 | Передать смену (Shift Transfer) | ✅ Работает | `lib/features/shift_transfer/` |
 | 11 | KPI (аналитика) | ✅ Работает | `lib/features/kpi/` |
 | 12 | Отзывы клиентов | ✅ Работает | `lib/features/reviews/` |
-| 13 | Эффективность сотрудников | ✅ Работает | `lib/features/efficiency/` |
+| 13 | Моя эффективность + Эффективность сотрудников | ✅ Работает | `lib/features/efficiency/` |
 | 14 | Мои диалоги (5 типов) | ✅ Работает | `lib/app/pages/`, `lib/features/clients/` |
 | 15 | Поиск товара (вопросы + баллы) | ✅ Работает | `lib/features/product_questions/`, `loyalty-proxy/product_questions_*` |
 | 16 | Заказы | ✅ Работает | `loyalty-proxy/modules/orders.js` |
@@ -76,6 +76,9 @@ ssh root@arabica26.ru "pm2 restart loyalty-proxy"
 | 18 | Тестирование (автобаллы) | ✅ Работает | `lib/features/tests/`, `loyalty-proxy/index.js` (assignTestPoints) |
 | 19 | Конверты (сдача наличных) | ✅ Работает | `lib/features/envelope/` |
 | 20 | Главная Касса (балансы, выемки, аналитика) | ✅ Работает | `lib/features/main_cash/` |
+| 21 | Задачи (разовые + циклические) | ✅ Работает | `lib/features/tasks/`, `loyalty-proxy/tasks_api.js`, `loyalty-proxy/recurring_tasks_api.js` |
+| 22 | Устроиться на работу (заявки) | ✅ Работает | `lib/features/job_application/`, `loyalty-proxy/job_applications_api.js` |
+| 23 | Реферальная система (приглашения клиентов) | ✅ Работает | `lib/features/referrals/`, `loyalty-proxy/referrals_api.js` |
 
 **Что можно изменять:**
 - ❌ **Только модуль `lib/features/ai_training/`** и `loyalty-proxy/modules/z-report-vision.js` (в разработке)

@@ -6,6 +6,7 @@ import '../utils/efficiency_utils.dart';
 import 'employee_efficiency_detail_page.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
+import '../../employees/services/employee_service.dart';
 
 /// Страница списка эффективности по сотрудникам
 class EfficiencyByEmployeePage extends StatefulWidget {
@@ -62,22 +63,33 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
 
     setState(() => _isLoadingReferrals = true);
 
-    final employeeIds = _data!.byEmployee.map((s) => s.entityId).toList();
-
     try {
+      // Загружаем всех сотрудников чтобы получить Map: имя -> ID
+      final employees = await EmployeeService.getEmployees();
+      final nameToIdMap = <String, String>{};
+      for (final emp in employees) {
+        nameToIdMap[emp.name.toLowerCase()] = emp.id;
+      }
+
       final Map<String, EmployeeReferralPoints> pointsMap = {};
 
-      // Загружаем данные для всех сотрудников параллельно
-      await Future.wait(employeeIds.map((employeeId) async {
-        try {
-          final points = await ReferralService.getEmployeePoints(employeeId);
-          if (points != null) {
-            pointsMap[employeeId] = points;
+      // Для каждого сотрудника в данных эффективности
+      for (final summary in _data!.byEmployee) {
+        final employeeName = summary.entityId.toLowerCase();
+        final employeeId = nameToIdMap[employeeName];
+
+        if (employeeId != null) {
+          try {
+            final points = await ReferralService.getEmployeePoints(employeeId);
+            if (points != null) {
+              // Сохраняем по имени (entityId), чтобы легко найти в UI
+              pointsMap[summary.entityId] = points;
+            }
+          } catch (e) {
+            // Игнорируем ошибки для отдельных сотрудников
           }
-        } catch (e) {
-          // Игнорируем ошибки для отдельных сотрудников
         }
-      }));
+      }
 
       if (mounted) {
         setState(() {

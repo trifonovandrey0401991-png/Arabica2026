@@ -82,4 +82,34 @@ class JobApplicationService {
       return false;
     }
   }
+
+  /// Обновить статус заявки
+  static Future<bool> updateStatus(String id, String status) async {
+    try {
+      Logger.debug('Обновление статуса заявки $id -> $status');
+
+      return await BaseHttpService.simplePatch(
+        endpoint: '$_baseEndpoint/$id/status',
+        body: {'status': status},
+      );
+    } catch (e) {
+      Logger.error('Ошибка при обновлении статуса заявки', e);
+      return false;
+    }
+  }
+
+  /// Обновить комментарий админа
+  static Future<bool> updateNotes(String id, String notes) async {
+    try {
+      Logger.debug('Обновление комментариев заявки $id');
+
+      return await BaseHttpService.simplePatch(
+        endpoint: '$_baseEndpoint/$id/notes',
+        body: {'adminNotes': notes},
+      );
+    } catch (e) {
+      Logger.error('Ошибка при обновлении комментариев', e);
+      return false;
+    }
+  }
 }

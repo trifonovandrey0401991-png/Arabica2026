@@ -453,6 +453,39 @@ module.exports = function setupRatingWheelAPI(app) {
     }
   });
 
+  // POST /api/fortune-wheel/settings - обновить настройки секторов (используется приложением)
+  app.post('/api/fortune-wheel/settings', async (req, res) => {
+    try {
+      const { sectors } = req.body;
+      console.log('🎡 POST /api/fortune-wheel/settings');
+
+      if (!sectors || !Array.isArray(sectors) || sectors.length !== 15) {
+        return res.status(400).json({
+          success: false,
+          error: 'Необходимо передать массив из 15 секторов'
+        });
+      }
+
+      if (!fs.existsSync(FORTUNE_WHEEL_DIR)) {
+        fs.mkdirSync(FORTUNE_WHEEL_DIR, { recursive: true });
+      }
+
+      const filePath = path.join(FORTUNE_WHEEL_DIR, 'settings.json');
+      const data = {
+        sectors,
+        updatedAt: new Date().toISOString()
+      };
+
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+
+      console.log('✅ Настройки колеса обновлены');
+      res.json({ success: true, sectors });
+    } catch (error) {
+      console.error('❌ Ошибка обновления настроек колеса:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // PUT /api/fortune-wheel/settings - обновить настройки секторов
   app.put('/api/fortune-wheel/settings', async (req, res) => {
     try {

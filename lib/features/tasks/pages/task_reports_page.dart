@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/task_model.dart';
 import '../services/task_service.dart';
 import 'task_detail_page.dart';
+import 'task_analytics_page.dart';
 
 /// Страница отчетов по задачам (для админа)
 /// 4 вкладки: Ожидают, Выполнено, Отказано, Не выполнено в срок
@@ -95,6 +96,18 @@ class _TaskReportsPageState extends State<TaskReportsPage> with SingleTickerProv
       appBar: AppBar(
         title: const Text('Отчет по задачам'),
         backgroundColor: const Color(0xFF004D40),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.analytics),
+            tooltip: 'Аналитика',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const TaskAnalyticsPage(),
+              ),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,

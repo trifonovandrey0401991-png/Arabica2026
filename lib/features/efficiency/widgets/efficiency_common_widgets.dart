@@ -456,9 +456,8 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Сортируем категории по баллам (от большего к меньшему по абсолютному значению)
-    final sortedCategories = summary.pointsByCategory.entries.toList()
-      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+    // Категории уже отсортированы в categorySummaries
+    final categories = summary.categorySummaries;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -476,7 +475,7 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (sortedCategories.isEmpty)
+            if (categories.isEmpty)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -487,21 +486,22 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
                 ),
               )
             else
-              ...sortedCategories.map((entry) => _buildCategoryRow(entry.key, entry.value)),
+              ...categories.map((cat) => _buildCategoryRow(cat)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCategoryRow(EfficiencyCategory category, double points) {
-    final isPositive = points >= 0;
+  Widget _buildCategoryRow(CategoryData categoryData) {
+    final isPositive = categoryData.points >= 0;
     final formattedPoints = isPositive
-        ? '+${points.toStringAsFixed(2)}'
-        : points.toStringAsFixed(2);
+        ? '+${categoryData.points.toStringAsFixed(2)}'
+        : categoryData.points.toStringAsFixed(2);
 
-    final color = EfficiencyUtils.getCategoryColor(category);
-    final icon = EfficiencyUtils.getCategoryIcon(category);
+    // Используем baseCategory для иконки и цвета
+    final color = EfficiencyUtils.getCategoryColor(categoryData.baseCategory);
+    final icon = EfficiencyUtils.getCategoryIcon(categoryData.baseCategory);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -523,7 +523,7 @@ class EfficiencyDetailCategoriesCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              category.displayName,
+              categoryData.name,  // Используем настоящее имя категории
               style: const TextStyle(fontSize: 15),
             ),
           ),
@@ -722,6 +722,7 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 45,
@@ -741,25 +742,29 @@ class _EfficiencyDetailRecentRecordsCardState extends State<EfficiencyDetailRece
                 Text(
                   record.categoryName,
                   style: const TextStyle(fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                // Показываем причину/значение под категорией
+                Text(
+                  record.formattedRawValue,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 if (secondaryInfo.isNotEmpty)
                   Text(
                     secondaryInfo,
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
+                      fontSize: 11,
+                      color: Colors.grey[400],
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '(${record.formattedRawValue})',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
             ),
           ),
           const SizedBox(width: 8),

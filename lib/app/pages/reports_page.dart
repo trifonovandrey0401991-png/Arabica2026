@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../features/rko/pages/rko_reports_page.dart';
 import '../../features/shifts/pages/shift_reports_list_page.dart';
 import '../../features/shift_handover/pages/shift_handover_reports_list_page.dart';
+import '../../features/envelope/pages/envelope_reports_list_page.dart';
+import '../../features/envelope/services/envelope_report_service.dart';
 import '../../features/recount/pages/recount_reports_list_page.dart';
 import '../../features/attendance/pages/attendance_reports_page.dart';
 import '../../features/kpi/pages/kpi_type_selection_page.dart';
@@ -54,6 +56,7 @@ class _ReportsPageState extends State<ReportsPage> {
   int _referralsUnviewedCount = 0;
   int _ordersUnviewedCount = 0;
   int _shiftTransferRequestsUnreadCount = 0;
+  int _envelopeUnconfirmedCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   @override
@@ -70,6 +73,7 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadReferralsUnviewedCount();
     _loadOrdersUnviewedCount();
     _loadShiftTransferRequestsCount();
+    _loadEnvelopeCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -192,6 +196,20 @@ class _ReportsPageState extends State<ReportsPage> {
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества заявок на смены', e);
+    }
+  }
+
+  Future<void> _loadEnvelopeCount() async {
+    try {
+      final reports = await EnvelopeReportService.getReports();
+      final unconfirmedCount = reports.where((r) => r.status != 'confirmed').length;
+      if (mounted) {
+        setState(() {
+          _envelopeUnconfirmedCount = unconfirmedCount;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества неподтверждённых конвертов', e);
     }
   }
 
@@ -323,6 +341,22 @@ class _ReportsPageState extends State<ReportsPage> {
                   MaterialPageRoute(builder: (context) => const ShiftHandoverReportsListPage()),
                 );
                 _loadReportCounts();
+              },
+            ),
+          if (isAdmin) const SizedBox(height: 8),
+
+          // Отчет по конвертам - только админ
+          if (isAdmin)
+            _buildEnvelopeReportSection(
+              context,
+              title: 'Отчет по конвертам',
+              badgeCount: _envelopeUnconfirmedCount,
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EnvelopeReportsListPage()),
+                );
+                _loadEnvelopeCount();
               },
             ),
           if (isAdmin) const SizedBox(height: 8),
@@ -1235,6 +1269,101 @@ class _ReportsPageState extends State<ReportsPage> {
                       width: 48,
                       height: 48,
                       fit: BoxFit.contain,
+                    ),
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Text(
+                          '$badgeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF004D40),
+                  ),
+                ),
+              ),
+              if (badgeCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              else
+                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка отчета по конвертам с кастомной иконкой и бейджем
+  Widget _buildEnvelopeReportSection(
+    BuildContext context, {
+    required String title,
+    required int badgeCount,
+    required Future<void> Function() onTap,
+  }) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF004D40),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.mail_outlined,
+                      color: Colors.white,
+                      size: 28,
                     ),
                   ),
                   if (badgeCount > 0)

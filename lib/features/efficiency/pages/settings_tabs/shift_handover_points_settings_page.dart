@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
+import '../../widgets/settings_widgets.dart';
 
 /// Page for configuring shift handover points settings (Сдать смену)
 class ShiftHandoverPointsSettingsPage extends StatefulWidget {
@@ -153,67 +154,11 @@ class _ShiftHandoverPointsSettingsPageState
           : Column(
               children: [
                 // Заголовок
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: _gradientColors,
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.assignment_turned_in_outlined,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Оценка сдачи смены: 1-10',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Баллы начисляются при оценке отчета',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                SettingsHeaderCard(
+                  icon: Icons.assignment_turned_in_outlined,
+                  title: 'Оценка сдачи смены: 1-10',
+                  subtitle: 'Баллы начисляются при оценке отчета',
+                  gradientColors: _gradientColors,
                 ),
                 // Контент
                 Expanded(
@@ -223,7 +168,7 @@ class _ShiftHandoverPointsSettingsPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Min points slider
-                        _buildSliderSection(
+                        SettingsSliderWidget(
                           title: 'Минимальная оценка (1)',
                           subtitle: 'Штраф за плохую сдачу смены',
                           value: _minPoints,
@@ -238,7 +183,7 @@ class _ShiftHandoverPointsSettingsPageState
                         const SizedBox(height: 16),
 
                         // Zero threshold slider
-                        _buildSliderSection(
+                        SettingsSliderWidget(
                           title: 'Нулевая граница',
                           subtitle: 'Оценка, дающая 0 баллов',
                           value: _zeroThreshold.toDouble(),
@@ -254,7 +199,7 @@ class _ShiftHandoverPointsSettingsPageState
                         const SizedBox(height: 16),
 
                         // Max points slider
-                        _buildSliderSection(
+                        SettingsSliderWidget(
                           title: 'Максимальная оценка (10)',
                           subtitle: 'Награда за отличную сдачу смены',
                           value: _maxPoints,
@@ -269,22 +214,46 @@ class _ShiftHandoverPointsSettingsPageState
                         const SizedBox(height: 24),
 
                         // Time windows section
-                        _buildSectionTitle('Временные окна сдачи смены'),
+                        SettingsSectionTitle(
+                          title: 'Временные окна сдачи смены',
+                          gradientColors: _gradientColors,
+                        ),
                         const SizedBox(height: 12),
-                        _buildTimeWindowsSection(),
+                        TimeWindowsSection(
+                          windows: [
+                            TimeWindowPickerWidget(
+                              icon: Icons.wb_sunny_outlined,
+                              iconColor: Colors.orange,
+                              title: 'Утренняя смена',
+                              startTime: _morningStartTime,
+                              endTime: _morningEndTime,
+                              onStartChanged: (time) => setState(() => _morningStartTime = time),
+                              onEndChanged: (time) => setState(() => _morningEndTime = time),
+                              primaryColor: _gradientColors[0],
+                            ),
+                            TimeWindowPickerWidget(
+                              icon: Icons.nights_stay_outlined,
+                              iconColor: Colors.indigo,
+                              title: 'Вечерняя смена',
+                              startTime: _eveningStartTime,
+                              endTime: _eveningEndTime,
+                              onStartChanged: (time) => setState(() => _eveningStartTime = time),
+                              onEndChanged: (time) => setState(() => _eveningEndTime = time),
+                              primaryColor: _gradientColors[0],
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 24),
 
                         // Missed penalty slider
-                        _buildSliderSection(
+                        SettingsSliderWidget(
                           title: 'Штраф за пропуск',
                           subtitle: 'Баллы за несданную смену',
                           value: _missedPenalty,
                           min: -10,
                           max: 0,
                           divisions: 100,
-                          onChanged: (value) {
-                            setState(() => _missedPenalty = value);
-                          },
+                          onChanged: (value) => setState(() => _missedPenalty = value),
                           valueLabel: _missedPenalty.toStringAsFixed(1),
                           accentColor: Colors.deepOrange,
                           icon: Icons.warning_amber_outlined,
@@ -292,19 +261,33 @@ class _ShiftHandoverPointsSettingsPageState
                         const SizedBox(height: 24),
 
                         // Admin review timeout section
-                        _buildSectionTitle('Время на проверку админом'),
+                        SettingsSectionTitle(
+                          title: 'Время на проверку админом',
+                          gradientColors: _gradientColors,
+                        ),
                         const SizedBox(height: 12),
                         _buildAdminReviewTimeoutSection(),
                         const SizedBox(height: 24),
 
                         // Preview section
-                        _buildSectionTitle('Предпросмотр расчета баллов'),
+                        SettingsSectionTitle(
+                          title: 'Предпросмотр расчета баллов',
+                          gradientColors: _gradientColors,
+                        ),
                         const SizedBox(height: 12),
-                        _buildPreviewTable(),
+                        RatingPreviewWidget(
+                          previewRatings: [1, 4, _zeroThreshold, 8, 10],
+                          calculatePoints: _calculatePoints,
+                          gradientColors: _gradientColors,
+                        ),
                         const SizedBox(height: 24),
 
                         // Save button
-                        _buildSaveButton(),
+                        SettingsSaveButton(
+                          isSaving: _isSaving,
+                          onPressed: _saveSettings,
+                          gradientColors: _gradientColors,
+                        ),
                         const SizedBox(height: 16),
                       ],
                     ),
@@ -312,466 +295,6 @@ class _ShiftHandoverPointsSettingsPageState
                 ),
               ],
             ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _gradientColors,
-            ),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2D3436),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSliderSection({
-    required String title,
-    required String subtitle,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required ValueChanged<double> onChanged,
-    required String valueLabel,
-    bool isInteger = false,
-    Color accentColor = const Color(0xFFf093fb),
-    IconData icon = Icons.tune,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: accentColor, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3436),
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    valueLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: accentColor,
-                inactiveTrackColor: accentColor.withOpacity(0.2),
-                thumbColor: accentColor,
-                overlayColor: accentColor.withOpacity(0.2),
-                trackHeight: 6,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-              ),
-              child: Slider(
-                value: value,
-                min: min,
-                max: max,
-                divisions: divisions,
-                onChanged: onChanged,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    isInteger ? min.toInt().toString() : min.toString(),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    isInteger ? max.toInt().toString() : max.toString(),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPreviewTable() {
-    final previewRatings = [1, 4, _zeroThreshold, 8, 10];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: _gradientColors,
-                ),
-              ),
-              child: const Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Оценка',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Баллы',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Rows
-            ...previewRatings.asMap().entries.map((entry) {
-              final index = entry.key;
-              final rating = entry.value;
-              final points = _calculatePoints(rating);
-              final color = points < 0
-                  ? Colors.red
-                  : points > 0
-                      ? Colors.green
-                      : Colors.grey;
-              final isLast = index == previewRatings.length - 1;
-
-              return Container(
-                decoration: BoxDecoration(
-                  color: index.isEven ? Colors.grey[50] : Colors.white,
-                  border: isLast
-                      ? null
-                      : Border(bottom: BorderSide(color: Colors.grey[200]!)),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '$rating / 10',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          points >= 0
-                              ? '+${points.toStringAsFixed(2)}'
-                              : points.toStringAsFixed(2),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimeWindowsSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Morning shift
-          _buildTimeWindowRow(
-            icon: Icons.wb_sunny_outlined,
-            iconColor: Colors.orange,
-            title: 'Утренняя смена',
-            startTime: _morningStartTime,
-            endTime: _morningEndTime,
-            onStartChanged: (time) => setState(() => _morningStartTime = time),
-            onEndChanged: (time) => setState(() => _morningEndTime = time),
-          ),
-          const SizedBox(height: 16),
-          Divider(color: Colors.grey[200]),
-          const SizedBox(height: 16),
-          // Evening shift
-          _buildTimeWindowRow(
-            icon: Icons.nights_stay_outlined,
-            iconColor: Colors.indigo,
-            title: 'Вечерняя смена',
-            startTime: _eveningStartTime,
-            endTime: _eveningEndTime,
-            onStartChanged: (time) => setState(() => _eveningStartTime = time),
-            onEndChanged: (time) => setState(() => _eveningEndTime = time),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeWindowRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String startTime,
-    required String endTime,
-    required ValueChanged<String> onStartChanged,
-    required ValueChanged<String> onEndChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D3436),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildTimePickerButton(
-                label: 'Начало',
-                time: startTime,
-                onChanged: onStartChanged,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Icon(Icons.arrow_forward, color: Colors.grey[400], size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildTimePickerButton(
-                label: 'Дедлайн',
-                time: endTime,
-                onChanged: onEndChanged,
-                color: Colors.red,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimePickerButton({
-    required String label,
-    required String time,
-    required ValueChanged<String> onChanged,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: () async {
-        final parts = time.split(':');
-        final initialTime = TimeOfDay(
-          hour: int.parse(parts[0]),
-          minute: int.parse(parts[1]),
-        );
-
-        final picked = await showTimePicker(
-          context: context,
-          initialTime: initialTime,
-          builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  colorScheme: ColorScheme.light(
-                    primary: _gradientColors[0],
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: Colors.black,
-                  ),
-                ),
-                child: child!,
-              ),
-            );
-          },
-        );
-
-        if (picked != null) {
-          final newTime = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-          onChanged(newTime);
-        }
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.access_time, size: 18, color: color),
-                const SizedBox(width: 6),
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -924,59 +447,6 @@ class _ShiftHandoverPointsSettingsPageState
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _gradientColors,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _gradientColors[0].withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: _isSaving ? null : _saveSettings,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: _isSaving
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save_outlined, size: 22),
-                  SizedBox(width: 10),
-                  Text(
-                    'Сохранить настройки',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
       ),
     );
   }

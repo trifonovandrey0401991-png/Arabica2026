@@ -7,6 +7,53 @@ const path = require('path');
 
 const JOB_APPLICATIONS_DIR = '/var/www/job-applications';
 
+// Нормализация телефонного номера (убираем все кроме цифр и +)
+function normalizePhone(phone) {
+  if (!phone) return '';
+  // Убираем все символы кроме цифр
+  let normalized = phone.replace(/[^\d]/g, '');
+  // Если начинается с 8, заменяем на 7
+  if (normalized.startsWith('8') && normalized.length === 11) {
+    normalized = '7' + normalized.substring(1);
+  }
+  // Если начинается с 9 и длина 10, добавляем 7
+  if (!normalized.startsWith('7') && normalized.length === 10) {
+    normalized = '7' + normalized;
+  }
+  return normalized;
+}
+
+// Проверка дубликата по телефону (за последние 24 часа)
+function checkDuplicateApplication(phone) {
+  try {
+    if (!fs.existsSync(JOB_APPLICATIONS_DIR)) return null;
+
+    const files = fs.readdirSync(JOB_APPLICATIONS_DIR);
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    const normalizedPhone = normalizePhone(phone);
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      const content = fs.readFileSync(path.join(JOB_APPLICATIONS_DIR, file), 'utf8');
+      const appData = JSON.parse(content);
+
+      const appNormalizedPhone = normalizePhone(appData.phone);
+      const appCreatedTime = new Date(appData.createdAt).getTime();
+
+      // Если номер совпадает и заявка создана менее 24 часов назад
+      if (appNormalizedPhone === normalizedPhone && appCreatedTime > oneDayAgo) {
+        return appData;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('❌ Ошибка проверки дубликата:', error);
+    return null;
+  }
+}
+
 // Функция отправки push-уведомления админам
 async function sendPushToAdmins(title, body) {
   try {
@@ -106,21 +153,44 @@ module.exports = function setupJobApplicationsAPI(app) {
         });
       }
 
+      // Проверка дубликата по телефону (за последние 24 часа)
+      const duplicate = checkDuplicateApplication(phone);
+      if (duplicate) {
+        const hoursAgo = Math.floor((Date.now() - new Date(duplicate.createdAt).getTime()) / (1000 * 60 * 60));
+        const hoursRemaining = 24 - hoursAgo;
+
+        console.log(`⚠️ Дубликат заявки от ${duplicate.fullName} (${hoursAgo} часов назад)`);
+
+        return res.status(429).json({
+          success: false,
+          error: `Вы уже подавали заявку ${hoursAgo} ${hoursAgo === 1 ? 'час' : hoursAgo < 5 ? 'часа' : 'часов'} назад. Повторная подача возможна через ${hoursRemaining} ${hoursRemaining === 1 ? 'час' : hoursRemaining < 5 ? 'часа' : 'часов'}.`,
+          duplicateId: duplicate.id,
+          canReapplyAt: new Date(new Date(duplicate.createdAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
+        });
+      }
+
       if (!fs.existsSync(JOB_APPLICATIONS_DIR)) {
         fs.mkdirSync(JOB_APPLICATIONS_DIR, { recursive: true });
       }
+
+      // Нормализуем телефон перед сохранением
+      const normalizedPhone = normalizePhone(phone);
 
       const id = `job_${Date.now()}`;
       const application = {
         id,
         fullName,
-        phone,
+        phone: normalizedPhone, // Сохраняем нормализованный
         preferredShift,
         shopAddresses,
         createdAt: new Date().toISOString(),
         isViewed: false,
         viewedAt: null,
-        viewedBy: null
+        viewedBy: null,
+        status: 'new', // Новая заявка
+        adminNotes: null,
+        statusUpdatedAt: null,
+        notesUpdatedAt: null
       };
 
       const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
@@ -187,9 +257,74 @@ module.exports = function setupJobApplicationsAPI(app) {
       application.viewedAt = new Date().toISOString();
       application.viewedBy = adminName || 'Администратор';
 
+      // Если статус был 'new', меняем на 'viewed'
+      if (application.status === 'new' || !application.status) {
+        application.status = 'viewed';
+      }
+
       fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
 
       console.log(`✅ Заявка ${id} отмечена как просмотренная`);
+      res.json({ success: true, application });
+    } catch (error) {
+      console.error('❌ Ошибка:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PATCH /api/job-applications/:id/status - обновить статус
+  app.patch('/api/job-applications/:id/status', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      console.log(`🔄 PATCH /api/job-applications/${id}/status -> ${status}`);
+
+      const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Заявка не найдена' });
+      }
+
+      const content = fs.readFileSync(filePath, 'utf8');
+      const application = JSON.parse(content);
+
+      application.status = status;
+      application.statusUpdatedAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
+
+      console.log(`✅ Статус заявки ${id} обновлен: ${status}`);
+      res.json({ success: true, application });
+    } catch (error) {
+      console.error('❌ Ошибка:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PATCH /api/job-applications/:id/notes - обновить комментарии
+  app.patch('/api/job-applications/:id/notes', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { adminNotes } = req.body;
+
+      console.log(`📝 PATCH /api/job-applications/${id}/notes`);
+
+      const filePath = path.join(JOB_APPLICATIONS_DIR, `${id}.json`);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Заявка не найдена' });
+      }
+
+      const content = fs.readFileSync(filePath, 'utf8');
+      const application = JSON.parse(content);
+
+      application.adminNotes = adminNotes;
+      application.notesUpdatedAt = new Date().toISOString();
+
+      fs.writeFileSync(filePath, JSON.stringify(application, null, 2), 'utf8');
+
+      console.log(`✅ Комментарии к заявке ${id} обновлены`);
       res.json({ success: true, application });
     } catch (error) {
       console.error('❌ Ошибка:', error);

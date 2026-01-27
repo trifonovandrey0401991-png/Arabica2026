@@ -23,9 +23,10 @@ class MyEfficiencyPage extends StatefulWidget {
   State<MyEfficiencyPage> createState() => _MyEfficiencyPageState();
 }
 
-class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
+class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   EfficiencySummary? _summary;
+  EfficiencySummary? _previousMonthSummary; // Для сравнения
   String? _error;
   String? _employeeName;
   String? _employeeId;
@@ -36,10 +37,44 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
   double? _avgTestScore; // Средний балл тестирования
   int _totalTests = 0; // Количество тестов
 
+  late TabController _tabController;
+  int _currentTabIndex = 0; // 0 = текущий месяц, 1 = прошлый месяц
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final newIndex = _tabController.index;
+    if (newIndex != _currentTabIndex) {
+      setState(() {
+        _currentTabIndex = newIndex;
+        // Переключаем месяц
+        if (newIndex == 0) {
+          // Текущий месяц
+          _selectedMonth = DateTime.now().month;
+          _selectedYear = DateTime.now().year;
+        } else {
+          // Прошлый месяц
+          final prevMonth = DateTime(DateTime.now().year, DateTime.now().month - 1);
+          _selectedMonth = prevMonth.month;
+          _selectedYear = prevMonth.year;
+        }
+      });
+      _loadData();
+    }
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
@@ -64,22 +99,46 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
 
       _employeeName = employeeName;
 
-      // Получаем ID сотрудника для загрузки премий/штрафов (используем телефон)
+      // Получаем ID сотрудника для загрузки премий/штрафов и рефералов
       final prefs = await SharedPreferences.getInstance();
-      _employeeId = prefs.getString('user_phone');
+      _employeeId = prefs.getString('currentEmployeeId');
 
-      // Загружаем данные эффективности за выбранный месяц
-      final data = await EfficiencyDataService.loadMonthData(
-        _selectedYear,
-        _selectedMonth,
-        forceRefresh: forceRefresh,
-      );
+      // Вычисляем предыдущий месяц для сравнения
+      final prevMonthDate = DateTime(_selectedYear, _selectedMonth - 1);
+      final prevYear = prevMonthDate.year;
+      final prevMonth = prevMonthDate.month;
 
-      // Находим данные текущего сотрудника
+      // Загружаем данные за выбранный месяц И предыдущий месяц параллельно
+      final results = await Future.wait([
+        EfficiencyDataService.loadMonthData(
+          _selectedYear,
+          _selectedMonth,
+          forceRefresh: forceRefresh,
+        ),
+        EfficiencyDataService.loadMonthData(
+          prevYear,
+          prevMonth,
+          forceRefresh: false, // Не форсируем для предыдущего месяца
+        ),
+      ]);
+
+      final data = results[0];
+      final prevData = results[1];
+
+      // Находим данные текущего сотрудника за выбранный месяц
       EfficiencySummary? mySummary;
       for (final summary in data.byEmployee) {
         if (summary.entityName == employeeName) {
           mySummary = summary;
+          break;
+        }
+      }
+
+      // Находим данные за предыдущий месяц (для сравнения)
+      EfficiencySummary? prevSummary;
+      for (final summary in prevData.byEmployee) {
+        if (summary.entityName == employeeName) {
+          prevSummary = summary;
           break;
         }
       }
@@ -120,6 +179,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
 
       setState(() {
         _summary = mySummary;
+        _previousMonthSummary = prevSummary;
         _bonusSummary = bonusSummary;
         _referralPoints = referralPoints;
         _avgTestScore = avgScore;
@@ -141,19 +201,17 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
       appBar: AppBar(
         title: const Text('Моя эффективность'),
         backgroundColor: EfficiencyUtils.primaryColor,
-        actions: [
-          MonthPickerButton(
-            selectedMonth: _selectedMonth,
-            selectedYear: _selectedYear,
-            onMonthSelected: (selection) {
-              setState(() {
-                _selectedYear = selection['year']!;
-                _selectedMonth = selection['month']!;
-              });
-              _loadData();
-            },
-          ),
-        ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'Текущий месяц'),
+            Tab(text: 'Прошлый месяц'),
+          ],
+        ),
       ),
       body: _buildBody(),
     );
@@ -473,6 +531,12 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
   Widget _buildTotalCard() {
     final isPositive = _summary!.totalPoints >= 0;
 
+    // Вычисляем изменение по сравнению с предыдущим месяцем
+    double? change;
+    if (_previousMonthSummary != null) {
+      change = _summary!.totalPoints - _previousMonthSummary!.totalPoints;
+    }
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -502,6 +566,11 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
                 color: Colors.grey,
               ),
             ),
+            // Сравнение с прошлым месяцем
+            if (change != null) ...[
+              const SizedBox(height: 8),
+              _buildComparisonRow(change),
+            ],
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -525,6 +594,41 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Строка сравнения с прошлым месяцем
+  Widget _buildComparisonRow(double change) {
+    final isImproved = change >= 0;
+    final changeText = isImproved
+        ? '+${change.toStringAsFixed(1)}'
+        : change.toStringAsFixed(1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isImproved ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isImproved ? Icons.trending_up : Icons.trending_down,
+            size: 18,
+            color: isImproved ? Colors.green[700] : Colors.red[700],
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$changeText к прошлому месяцу',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isImproved ? Colors.green[700] : Colors.red[700],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -792,9 +896,8 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
   }
 
   Widget _buildCategoriesCard() {
-    // Сортируем категории по баллам (от большего к меньшему по абсолютному значению)
-    final sortedCategories = _summary!.pointsByCategory.entries.toList()
-      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+    // Категории уже отсортированы в categorySummaries
+    final categories = _summary!.categorySummaries;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -812,7 +915,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
               ),
             ),
             const SizedBox(height: 12),
-            if (sortedCategories.isEmpty)
+            if (categories.isEmpty)
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -823,18 +926,18 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
                 ),
               )
             else
-              ...sortedCategories.map((entry) => _buildCategoryRow(entry.key, entry.value)),
+              ...categories.map((cat) => _buildCategoryRow(cat)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCategoryRow(EfficiencyCategory category, double points) {
-    final isPositive = points >= 0;
+  Widget _buildCategoryRow(CategoryData categoryData) {
+    final isPositive = categoryData.points >= 0;
     final formattedPoints = isPositive
-        ? '+${points.toStringAsFixed(2)}'
-        : points.toStringAsFixed(2);
+        ? '+${categoryData.points.toStringAsFixed(2)}'
+        : categoryData.points.toStringAsFixed(2);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -844,19 +947,19 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: _getCategoryColor(category).withOpacity(0.1),
+              color: _getCategoryColor(categoryData.baseCategory).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              _getCategoryIcon(category),
+              _getCategoryIcon(categoryData.baseCategory),
               size: 20,
-              color: _getCategoryColor(category),
+              color: _getCategoryColor(categoryData.baseCategory),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              category.displayName,
+              categoryData.name,  // Используем настоящее имя категории
               style: const TextStyle(fontSize: 15),
             ),
           ),
@@ -1076,9 +1179,18 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
     final dateFormat = DateFormat('dd.MM');
     final isPositive = record.points >= 0;
 
+    // Для штрафов берем shopAddress из rawValue
+    String shop = record.shopAddress;
+    if (shop.isEmpty && record.category == EfficiencyCategory.shiftPenalty) {
+      if (record.rawValue is Map && record.rawValue['shopAddress'] != null) {
+        shop = record.rawValue['shopAddress'];
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 45,
@@ -1098,36 +1210,28 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> {
                 Text(
                   record.categoryName,
                   style: const TextStyle(fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                // Для штрафов берем shopAddress из rawValue
-                Builder(builder: (context) {
-                  String shop = record.shopAddress;
-                  if (shop.isEmpty && record.category == EfficiencyCategory.shiftPenalty) {
-                    if (record.rawValue is Map && record.rawValue['shopAddress'] != null) {
-                      shop = record.rawValue['shopAddress'];
-                    }
-                  }
-                  if (shop.isNotEmpty) {
-                    return Text(
-                      shop,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }),
+                Text(
+                  record.formattedRawValue,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (shop.isNotEmpty)
+                  Text(
+                    shop,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[400],
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '(${record.formattedRawValue})',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
             ),
           ),
           const SizedBox(width: 8),

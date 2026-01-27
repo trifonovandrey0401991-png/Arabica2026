@@ -5,6 +5,7 @@ import '../widgets/efficiency_common_widgets.dart';
 import '../utils/efficiency_utils.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
+import '../../employees/services/employee_service.dart';
 
 /// Страница детальной информации об эффективности сотрудника
 class EmployeeEfficiencyDetailPage extends StatefulWidget {
@@ -36,8 +37,21 @@ class _EmployeeEfficiencyDetailPageState
   Future<void> _loadReferralPoints() async {
     setState(() => _isLoadingReferrals = true);
     try {
-      final points =
-          await ReferralService.getEmployeePoints(widget.summary.entityId);
+      // Загружаем всех сотрудников чтобы найти ID по имени
+      final employees = await EmployeeService.getEmployees();
+
+      // Ищем сотрудника по имени (entityId содержит имя сотрудника)
+      final employee = employees.firstWhere(
+        (e) => e.name.toLowerCase() == widget.summary.entityId.toLowerCase(),
+        orElse: () => employees.firstWhere(
+          (e) => e.name.toLowerCase().contains(widget.summary.entityId.toLowerCase()),
+          orElse: () => throw Exception('Сотрудник не найден'),
+        ),
+      );
+
+      // Получаем данные рефералов по ID сотрудника
+      final points = await ReferralService.getEmployeePoints(employee.id);
+
       if (mounted) {
         setState(() {
           _referralPoints = points;

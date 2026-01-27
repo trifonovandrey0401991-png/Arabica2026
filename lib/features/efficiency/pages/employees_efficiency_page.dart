@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'efficiency_by_shop_page.dart';
 import 'efficiency_by_employee_page.dart';
+import 'efficiency_analytics_page.dart';
 
 /// Страница выбора типа отчета эффективности
 class EmployeesEfficiencyPage extends StatelessWidget {
@@ -53,6 +54,21 @@ class EmployeesEfficiencyPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const EfficiencyByEmployeePage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildOptionCard(
+              context,
+              icon: Icons.analytics_outlined,
+              title: 'Аналитика',
+              subtitle: 'Динамика за 3 месяца',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EfficiencyAnalyticsPage(),
                   ),
                 );
               },

@@ -7,9 +7,6 @@ import '../services/pending_shift_handover_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
 import 'shift_handover_report_view_page.dart';
-import '../../envelope/models/envelope_report_model.dart';
-import '../../envelope/services/envelope_report_service.dart';
-import '../../envelope/pages/envelope_report_view_page.dart';
 import '../../shops/models/shop_model.dart';
 import '../../efficiency/models/points_settings_model.dart';
 import '../../efficiency/services/points_settings_service.dart';
@@ -23,9 +20,9 @@ class HandoverReportGroup {
   final String title;
   final String key; // Уникальный ключ для хранения состояния
   final int count;
-  final int confirmedCount; // Количество подтверждённых (для конвертов)
+  final int confirmedCount; // Количество подтверждённых
   final DateTime startDate;
-  final List<dynamic> children; // List<ShiftHandoverReport>, List<EnvelopeReport> или List<HandoverReportGroup>
+  final List<dynamic> children; // List<ShiftHandoverReport> или List<HandoverReportGroup>
 
   HandoverReportGroup({
     required this.type,
@@ -58,7 +55,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   List<PendingShiftHandover> _pendingHandovers = []; // Непройденные сдачи смен (в срок)
   List<PendingShiftHandover> _overdueHandovers = []; // Просроченные сдачи смен (не в срок)
   List<ShiftHandoverReport> _expiredReports = [];
-  List<EnvelopeReport> _envelopeReports = [];
   ShiftHandoverPointsSettings? _handoverSettings; // Настройки временных окон
   bool _isLoading = true;
   int _overdueViewedCount = 0; // Количество просмотренных просроченных (для бейджа)
@@ -69,7 +65,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(_handleTabChange);
     _loadData();
     // Отмечаем все уведомления этого типа как просмотренные
@@ -101,9 +97,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
         addresses.add(report.shopAddress);
       }
       for (var report in localReports) {
-        addresses.add(report.shopAddress);
-      }
-      for (var report in _envelopeReports) {
         addresses.add(report.shopAddress);
       }
 
@@ -301,16 +294,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
       _handoverSettings = ShiftHandoverPointsSettings.defaults();
     }
 
-    // Загружаем отчеты конвертов
-    try {
-      final envelopeReports = await EnvelopeReportService.getReports();
-      _envelopeReports = envelopeReports;
-      _envelopeReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      Logger.success('Загружено отчетов конвертов: ${envelopeReports.length}');
-    } catch (e) {
-      Logger.error('Ошибка загрузки отчетов конвертов', e);
-    }
-
     _shopsFuture = _loadShopAddresses();
 
     // Загружаем магазины из API
@@ -391,28 +374,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return filtered;
   }
 
-  List<EnvelopeReport> _applyEnvelopeFilters(List<EnvelopeReport> reports) {
-    var filtered = reports;
-
-    if (_selectedShop != null) {
-      filtered = filtered.where((r) => r.shopAddress == _selectedShop).toList();
-    }
-
-    if (_selectedEmployee != null) {
-      filtered = filtered.where((r) => r.employeeName == _selectedEmployee).toList();
-    }
-
-    if (_selectedDate != null) {
-      filtered = filtered.where((r) {
-        return r.createdAt.year == _selectedDate!.year &&
-               r.createdAt.month == _selectedDate!.month &&
-               r.createdAt.day == _selectedDate!.day;
-      }).toList();
-    }
-
-    return filtered;
-  }
-
   /// Неподтверждённые отчёты (ожидают проверки) - только менее 5 часов
   List<ShiftHandoverReport> get _awaitingReports {
     final now = DateTime.now();
@@ -441,22 +402,9 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return _applyFilters(confirmed);
   }
 
-  /// Отфильтрованные отчеты конвертов
-  List<EnvelopeReport> get _filteredEnvelopeReports {
-    return _applyEnvelopeFilters(_envelopeReports);
-  }
-
-  /// Неподтверждённые конверты
-  int get _unconfirmedEnvelopesCount {
-    return _envelopeReports.where((r) => r.status != 'confirmed').length;
-  }
-
   List<String> get _uniqueEmployees {
     final employees = <String>{};
     for (var r in _allReports) {
-      employees.add(r.employeeName);
-    }
-    for (var r in _envelopeReports) {
       employees.add(r.employeeName);
     }
     return employees.toList()..sort();
@@ -498,15 +446,13 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
               // Вкладки (3 + 2)
               _buildTwoRowTabs(),
               // Фильтры (только для вкладок с отчётами, не для "Не пройдены" и "Не в срок")
-              if (_tabController.index != 1 && _tabController.index != 2) _buildFiltersSection(),
+              if (_tabController.index != 0 && _tabController.index != 1) _buildFiltersSection(),
 
               // Вкладки с отчётами
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    // Вкладка "Конверты" (с иерархической группировкой)
-                    _buildGroupedEnvelopeReportsList(),
                     // Вкладка "Не пройдены" (в срок)
                     _buildPendingShiftsList(),
                     // Вкладка "Не в срок" (просроченные)
@@ -559,7 +505,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
                   ),
                 ),
                 Text(
-                  'Всего: ${_allReports.length} отчётов, ${_envelopeReports.length} конвертов',
+                  'Всего: ${_allReports.length} отчётов',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 13,
@@ -591,7 +537,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return newCount > 0 ? newCount : 0;
   }
 
-  /// Построение двухрядных вкладок (3 сверху, 3 снизу)
+  /// Построение двухрядных вкладок (3 сверху, 2 снизу)
   Widget _buildTwoRowTabs() {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
@@ -600,22 +546,20 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
           // Первый ряд: 3 вкладки
           Row(
             children: [
-              _buildTabButton(0, Icons.mail, 'Конверты', _envelopeReports.length, Colors.teal, badge: _unconfirmedEnvelopesCount),
+              _buildTabButton(0, Icons.schedule, 'Не пройдены', _pendingHandovers.length, Colors.orange),
               const SizedBox(width: 6),
-              _buildTabButton(1, Icons.schedule, 'Не пройдены', _pendingHandovers.length, Colors.orange),
+              _buildTabButton(1, Icons.warning_amber, 'Не в срок', _overdueHandovers.length, Colors.red, badge: _overdueUnviewedBadge),
               const SizedBox(width: 6),
-              _buildTabButton(2, Icons.warning_amber, 'Не в срок', _overdueHandovers.length, Colors.red, badge: _overdueUnviewedBadge),
+              _buildTabButton(2, Icons.hourglass_empty, 'Ожидают', _awaitingReports.length, Colors.blue),
             ],
           ),
           const SizedBox(height: 6),
-          // Второй ряд: 3 вкладки
+          // Второй ряд: 2 вкладки
           Row(
             children: [
-              _buildTabButton(3, Icons.hourglass_empty, 'Ожидают', _awaitingReports.length, Colors.blue),
+              _buildTabButton(3, Icons.check_circle, 'Подтверждённые', _allReports.where((r) => r.isConfirmed).length, Colors.green),
               const SizedBox(width: 6),
-              _buildTabButton(4, Icons.check_circle, 'Подтверждённые', _allReports.where((r) => r.isConfirmed).length, Colors.green),
-              const SizedBox(width: 6),
-              _buildTabButton(5, Icons.cancel, 'Отклонённые', _expiredReports.length + _overdueUnconfirmedReports.length, Colors.grey),
+              _buildTabButton(4, Icons.cancel, 'Отклонённые', _expiredReports.length + _overdueUnconfirmedReports.length, Colors.grey),
             ],
           ),
         ],
@@ -889,160 +833,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     );
   }
 
-  /// Виджет для списка отчетов конвертов
-  Widget _buildEnvelopeReportsList() {
-    final reports = _filteredEnvelopeReports;
-
-    if (reports.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.mail_outline, size: 64, color: Colors.white70),
-            SizedBox(height: 16),
-            Text(
-              'Нет отчетов конвертов',
-              style: TextStyle(color: Colors.white, fontSize: 18),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: reports.length,
-      itemBuilder: (context, index) {
-        final report = reports[index];
-        final isConfirmed = report.status == 'confirmed';
-        final isExpired = report.isExpired;
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          color: isExpired && !isConfirmed ? Colors.red.shade50 : null,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isConfirmed
-                  ? Colors.green
-                  : (isExpired ? Colors.red : Colors.orange),
-              child: Icon(
-                report.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
-                color: Colors.white,
-              ),
-            ),
-            title: Text(
-              report.shopAddress,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Сотрудник: ${report.employeeName}'),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: report.shiftType == 'morning'
-                            ? Colors.orange.shade100
-                            : Colors.indigo.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        report.shiftTypeText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: report.shiftType == 'morning'
-                              ? Colors.orange.shade800
-                              : Colors.indigo.shade800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${report.createdAt.day.toString().padLeft(2, '0')}.${report.createdAt.month.toString().padLeft(2, '0')}.${report.createdAt.year} '
-                      '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    Text(
-                      'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (report.expenses.isNotEmpty)
-                      Text(
-                        '(расходы: ${report.totalExpenses.toStringAsFixed(0)} руб)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.red.shade700,
-                        ),
-                      ),
-                  ],
-                ),
-                if (isConfirmed && report.rating != null)
-                  Row(
-                    children: [
-                      const Text('Оценка: ', style: TextStyle(fontSize: 12)),
-                      ...List.generate(5, (i) => Icon(
-                        i < report.rating! ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 16,
-                      )),
-                    ],
-                  ),
-                if (isConfirmed && report.confirmedByAdmin != null)
-                  Text(
-                    'Подтвердил: ${report.confirmedByAdmin}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green.shade700,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isConfirmed
-                      ? Icons.check_circle
-                      : (isExpired ? Icons.error : Icons.hourglass_empty),
-                  color: isConfirmed
-                      ? Colors.green
-                      : (isExpired ? Colors.red : Colors.orange),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_ios),
-              ],
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EnvelopeReportViewPage(
-                    report: report,
-                    isAdmin: true, // TODO: check actual admin status
-                  ),
-                ),
-              ).then((_) {
-                _loadData();
-              });
-            },
-          ),
-        );
-      },
-    );
-  }
 
   /// Виджет для списка непройденных сдач смен (в срок)
   Widget _buildPendingShiftsList() {
@@ -1807,203 +1597,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return result;
   }
 
-  /// Группировать отчёты конвертов по времени
-  List<HandoverReportGroup> _groupEnvelopeReports(List<EnvelopeReport> reports, String prefix) {
-    if (reports.isEmpty) return [];
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
-
-    List<HandoverReportGroup> result = [];
-
-    // Группируем по дням
-    Map<DateTime, List<EnvelopeReport>> byDay = {};
-    for (final report in reports) {
-      final day = DateTime(report.createdAt.year, report.createdAt.month, report.createdAt.day);
-      byDay.putIfAbsent(day, () => []).add(report);
-    }
-
-    // Сортируем дни (новые первые)
-    final sortedDays = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
-
-    // Функция подсчёта подтверждённых конвертов
-    int countConfirmed(List<EnvelopeReport> reports) {
-      return reports.where((r) => r.status == 'confirmed').length;
-    }
-
-    // Сегодня
-    if (byDay.containsKey(today)) {
-      final key = '${prefix}_today';
-      final dayReports = byDay[today]!;
-      _expandedGroups.putIfAbsent(key, () => true);
-      result.add(HandoverReportGroup(
-        type: HandoverReportGroupType.today,
-        title: 'Сегодня',
-        key: key,
-        count: dayReports.length,
-        confirmedCount: countConfirmed(dayReports),
-        startDate: today,
-        children: dayReports,
-      ));
-    }
-
-    // Вчера
-    if (byDay.containsKey(yesterday)) {
-      final key = '${prefix}_yesterday';
-      final dayReports = byDay[yesterday]!;
-      _expandedGroups.putIfAbsent(key, () => false);
-      result.add(HandoverReportGroup(
-        type: HandoverReportGroupType.yesterday,
-        title: 'Вчера (${yesterday.day})',
-        key: key,
-        count: dayReports.length,
-        confirmedCount: countConfirmed(dayReports),
-        startDate: yesterday,
-        children: dayReports,
-      ));
-    }
-
-    // Дни 2-6 дней назад
-    for (final day in sortedDays) {
-      if (day == today || day == yesterday) continue;
-      if (day.isAfter(weekAgo) || day == weekAgo) {
-        final key = '${prefix}_day_${day.year}_${day.month}_${day.day}';
-        final dayReports = byDay[day]!;
-        _expandedGroups.putIfAbsent(key, () => false);
-        result.add(HandoverReportGroup(
-          type: HandoverReportGroupType.day,
-          title: _formatDayTitle(day),
-          key: key,
-          count: dayReports.length,
-          confirmedCount: countConfirmed(dayReports),
-          startDate: day,
-          children: dayReports,
-        ));
-      }
-    }
-
-    // Недели и месяцы (7+ дней назад)
-    Map<String, Map<String, Map<DateTime, List<EnvelopeReport>>>> byMonthWeek = {};
-
-    for (final day in sortedDays) {
-      if (day == today || day == yesterday) continue;
-      if (day.isAfter(weekAgo) || day == weekAgo) continue;
-
-      final monthKey = '${day.year}-${day.month.toString().padLeft(2, '0')}';
-      final weekStart = _getWeekStart(day);
-      final weekKey = '${weekStart.year}-${weekStart.month.toString().padLeft(2, '0')}-${weekStart.day.toString().padLeft(2, '0')}';
-
-      byMonthWeek.putIfAbsent(monthKey, () => {});
-      byMonthWeek[monthKey]!.putIfAbsent(weekKey, () => {});
-      byMonthWeek[monthKey]![weekKey]![day] = byDay[day]!;
-    }
-
-    final currentMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-    final sortedMonths = byMonthWeek.keys.toList()..sort((a, b) => b.compareTo(a));
-
-    for (final monthKey in sortedMonths) {
-      final weeks = byMonthWeek[monthKey]!;
-      final sortedWeeks = weeks.keys.toList()..sort((a, b) => b.compareTo(a));
-
-      if (monthKey == currentMonth) {
-        for (final weekKey in sortedWeeks) {
-          final weekDays = weeks[weekKey]!;
-          final sortedWeekDays = weekDays.keys.toList()..sort((a, b) => b.compareTo(a));
-
-          final dayGroups = sortedWeekDays.map((day) {
-            final dayKey = '${prefix}_week_${weekKey}_day_${day.year}_${day.month}_${day.day}';
-            final dayReports = weekDays[day]!;
-            _expandedGroups.putIfAbsent(dayKey, () => false);
-            return HandoverReportGroup(
-              type: HandoverReportGroupType.day,
-              title: _formatDayTitle(day),
-              key: dayKey,
-              count: dayReports.length,
-              confirmedCount: countConfirmed(dayReports),
-              startDate: day,
-              children: dayReports,
-            );
-          }).toList();
-
-          final weekStart = _getWeekStart(sortedWeekDays.last);
-          final weekEnd = weekStart.add(const Duration(days: 6));
-          final totalCount = dayGroups.fold(0, (sum, d) => sum + d.count);
-          final totalConfirmed = dayGroups.fold(0, (sum, d) => sum + d.confirmedCount);
-
-          final wKey = '${prefix}_week_$weekKey';
-          _expandedGroups.putIfAbsent(wKey, () => false);
-          result.add(HandoverReportGroup(
-            type: HandoverReportGroupType.week,
-            title: 'Неделя ${weekStart.day}-${weekEnd.day} ${_monthNamesGenitive[weekStart.month]}',
-            key: wKey,
-            count: totalCount,
-            confirmedCount: totalConfirmed,
-            startDate: weekStart,
-            children: dayGroups,
-          ));
-        }
-      } else {
-        final parts = monthKey.split('-');
-        final monthDate = DateTime(int.parse(parts[0]), int.parse(parts[1]));
-
-        final allWeeks = sortedWeeks.map((weekKey) {
-          final weekDays = weeks[weekKey]!;
-          final sortedWeekDays = weekDays.keys.toList()..sort((a, b) => b.compareTo(a));
-
-          final dayGroups = sortedWeekDays.map((day) {
-            final dayKey = '${prefix}_month_${monthKey}_week_${weekKey}_day_${day.year}_${day.month}_${day.day}';
-            final dayReports = weekDays[day]!;
-            _expandedGroups.putIfAbsent(dayKey, () => false);
-            return HandoverReportGroup(
-              type: HandoverReportGroupType.day,
-              title: _formatDayTitle(day),
-              key: dayKey,
-              count: dayReports.length,
-              confirmedCount: countConfirmed(dayReports),
-              startDate: day,
-              children: dayReports,
-            );
-          }).toList();
-
-          final weekStart = _getWeekStart(sortedWeekDays.last);
-          final weekEnd = weekStart.add(const Duration(days: 6));
-          final totalCount = dayGroups.fold(0, (sum, d) => sum + d.count);
-          final totalConfirmed = dayGroups.fold(0, (sum, d) => sum + d.confirmedCount);
-
-          final wKey = '${prefix}_month_${monthKey}_week_$weekKey';
-          _expandedGroups.putIfAbsent(wKey, () => false);
-          return HandoverReportGroup(
-            type: HandoverReportGroupType.week,
-            title: 'Неделя ${weekStart.day}-${weekEnd.day}',
-            key: wKey,
-            count: totalCount,
-            confirmedCount: totalConfirmed,
-            startDate: weekStart,
-            children: dayGroups,
-          );
-        }).toList();
-
-        final monthTotalCount = allWeeks.fold(0, (sum, w) => sum + w.count);
-        final monthTotalConfirmed = allWeeks.fold(0, (sum, w) => sum + w.confirmedCount);
-
-        final mKey = '${prefix}_month_$monthKey';
-        _expandedGroups.putIfAbsent(mKey, () => false);
-        result.add(HandoverReportGroup(
-          type: HandoverReportGroupType.month,
-          title: '${_monthNamesNominative[monthDate.month]} ${monthDate.year}',
-          key: mKey,
-          count: monthTotalCount,
-          confirmedCount: monthTotalConfirmed,
-          startDate: monthDate,
-          children: allWeeks,
-        ));
-      }
-    }
-
-    return result;
-  }
 
   /// Построить сгруппированный список отчётов по сдаче смены
   Widget _buildGroupedHandoverReportsList(List<ShiftHandoverReport> reports, {required bool isConfirmed, required String prefix}) {
@@ -2058,34 +1651,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
     return _buildGroupedHandoverReportsList(reports, isConfirmed: false, prefix: 'expired');
   }
 
-  /// Построить сгруппированный список отчётов конвертов
-  Widget _buildGroupedEnvelopeReportsList() {
-    final reports = _filteredEnvelopeReports;
-    final groups = _groupEnvelopeReports(reports, 'envelope');
-
-    if (groups.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.mail_outline, size: 64, color: Colors.white70),
-            SizedBox(height: 16),
-            Text(
-              'Нет отчетов конвертов',
-              style: TextStyle(color: Colors.white, fontSize: 18),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: groups.length,
-      itemBuilder: (context, index) => _buildEnvelopeGroupTile(groups[index], 0),
-    );
-  }
-
   /// Рекурсивно построить плитку группы для отчётов сдачи смены
   Widget _buildHandoverGroupTile(HandoverReportGroup group, int depth) {
     final isExpanded = _expandedGroups[group.key] ?? false;
@@ -2110,128 +1675,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
             return const SizedBox();
           }),
       ],
-    );
-  }
-
-  /// Рекурсивно построить плитку группы для отчётов конвертов
-  Widget _buildEnvelopeGroupTile(HandoverReportGroup group, int depth) {
-    final isExpanded = _expandedGroups[group.key] ?? false;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildEnvelopeGroupHeader(group, depth),
-        if (isExpanded)
-          ...group.children.map((child) {
-            if (child is HandoverReportGroup) {
-              return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
-                child: _buildEnvelopeGroupTile(child, depth + 1),
-              );
-            } else if (child is EnvelopeReport) {
-              return Padding(
-                padding: EdgeInsets.only(left: 12.0 * (depth + 1)),
-                child: _buildEnvelopeReportCard(child),
-              );
-            }
-            return const SizedBox();
-          }),
-      ],
-    );
-  }
-
-  /// Построить заголовок группы для конвертов (с показателем подтверждённых)
-  Widget _buildEnvelopeGroupHeader(HandoverReportGroup group, int depth) {
-    final color = _getGroupColor(group.type);
-    final icon = _getGroupIcon(group.type);
-    final isExpanded = _expandedGroups[group.key] ?? false;
-    final allConfirmed = group.confirmedCount == group.count;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _expandedGroups[group.key] = !isExpanded;
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isExpanded ? color.withOpacity(0.15) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isExpanded ? color : color.withOpacity(0.3),
-            width: isExpanded ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            AnimatedRotation(
-              turns: isExpanded ? 0.25 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                Icons.chevron_right,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                group.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: isExpanded ? color : Colors.black87,
-                ),
-              ),
-            ),
-            // Показатель подтверждённых/всего
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: allConfirmed ? Colors.green : Colors.orange,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    allConfirmed ? Icons.check_circle : Icons.hourglass_empty,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${group.confirmedCount}/${group.count}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -2438,180 +1881,6 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
               ),
             ),
             const Icon(Icons.chevron_right, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Построить карточку отчёта конверта
-  Widget _buildEnvelopeReportCard(EnvelopeReport report) {
-    final isConfirmed = report.status == 'confirmed';
-    final isExpired = report.isExpired;
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => EnvelopeReportViewPage(
-              report: report,
-              isAdmin: true,
-            ),
-          ),
-        ).then((_) => _loadData());
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isExpired && !isConfirmed ? Colors.red.shade50 : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isConfirmed
-                ? Colors.green.withOpacity(0.3)
-                : (isExpired ? Colors.red.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isConfirmed
-                    ? Colors.green.withOpacity(0.1)
-                    : (isExpired ? Colors.red.withOpacity(0.1) : Colors.orange.withOpacity(0.1)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                report.shiftType == 'morning' ? Icons.wb_sunny : Icons.nights_stay,
-                color: isConfirmed
-                    ? Colors.green
-                    : (isExpired ? Colors.red : Colors.orange),
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    report.shopAddress,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.person, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          report.employeeName,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: report.shiftType == 'morning'
-                              ? Colors.orange.shade100
-                              : Colors.indigo.shade100,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          report.shiftTypeText,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: report.shiftType == 'morning'
-                                ? Colors.orange.shade800
-                                : Colors.indigo.shade800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Wrap(
-                          spacing: 4,
-                          children: [
-                            Text(
-                              'Итого: ${report.totalEnvelopeAmount.toStringAsFixed(0)} руб',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: Color(0xFF004D40),
-                              ),
-                            ),
-                            if (report.expenses.isNotEmpty)
-                              Text(
-                                '(расходы: ${report.totalExpenses.toStringAsFixed(0)} руб)',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.red.shade700,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  if (isConfirmed && report.rating != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        ...List.generate(5, (i) => Icon(
-                          i < report.rating! ? Icons.star : Icons.star_border,
-                          color: Colors.amber,
-                          size: 14,
-                        )),
-                        if (report.confirmedByAdmin != null) ...[
-                          const Spacer(),
-                          Text(
-                            report.confirmedByAdmin!,
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Icon(
-              isConfirmed
-                  ? Icons.check_circle
-                  : (isExpired ? Icons.error : Icons.hourglass_empty),
-              color: isConfirmed
-                  ? Colors.green
-                  : (isExpired ? Colors.red : Colors.orange),
-              size: 20,
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
           ],
         ),
       ),

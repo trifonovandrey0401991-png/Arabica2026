@@ -2,6 +2,7 @@ import '../models/task_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/cache_manager.dart';
 
 /// Сервис для работы с разовыми задачами.
 ///
@@ -20,6 +21,11 @@ import '../../../core/utils/logger.dart';
 class TaskService {
   static const String _tasksEndpoint = ApiConstants.tasksEndpoint;
   static const String _assignmentsEndpoint = ApiConstants.taskAssignmentsEndpoint;
+
+  // === Константы кэширования ===
+  static const String _cacheKeyPrefix = 'tasks';
+  static const Duration _shortCacheDuration = Duration(minutes: 2);  // Текущий месяц
+  static const Duration _longCacheDuration = Duration(minutes: 15);  // Старые месяцы
 
   /// Создать задачу (админ)
   static Future<Task?> createTask({
@@ -289,5 +295,116 @@ class TaskService {
       Logger.error('Error marking expired tasks as viewed', e);
       return false;
     }
+  }
+
+  // === МЕТОДЫ С КЭШИРОВАНИЕМ ===
+
+  /// Получить TTL кэша в зависимости от месяца
+  static Duration _getCacheDuration(int year, int month) {
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month);
+    final requestedMonth = DateTime(year, month);
+
+    // Текущий месяц - короткий TTL
+    if (requestedMonth.year == currentMonth.year &&
+        requestedMonth.month == currentMonth.month) {
+      return _shortCacheDuration;
+    }
+    // Старые месяцы - длинный TTL
+    return _longCacheDuration;
+  }
+
+  /// Создать ключ кэша для назначений сотрудника
+  static String _createMyAssignmentsCacheKey(String assigneeId, int year, int month) {
+    return '${_cacheKeyPrefix}_my_${assigneeId}_${year}_${month.toString().padLeft(2, '0')}';
+  }
+
+  /// Создать ключ кэша для всех назначений
+  static String _createAllAssignmentsCacheKey(int year, int month) {
+    return '${_cacheKeyPrefix}_all_${year}_${month.toString().padLeft(2, '0')}';
+  }
+
+  /// Получить назначения задач для работника за месяц (С КЭШИРОВАНИЕМ)
+  static Future<List<TaskAssignment>> getMyAssignmentsCached({
+    required String assigneeId,
+    required int year,
+    required int month,
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = _createMyAssignmentsCacheKey(assigneeId, year, month);
+    final monthStr = '$year-${month.toString().padLeft(2, '0')}';
+
+    if (forceRefresh) {
+      CacheManager.remove(cacheKey);
+    }
+
+    return await CacheManager.getOrFetch<List<TaskAssignment>>(
+      cacheKey,
+      () async {
+        Logger.debug('📥 Загрузка задач для $assigneeId за $monthStr с сервера...');
+
+        final queryParams = <String, String>{
+          'assigneeId': assigneeId,
+          'month': monthStr,
+        };
+
+        return await BaseHttpService.getList<TaskAssignment>(
+          endpoint: _assignmentsEndpoint,
+          fromJson: (json) => TaskAssignment.fromJson(json),
+          listKey: 'assignments',
+          queryParams: queryParams,
+        );
+      },
+      duration: _getCacheDuration(year, month),
+    );
+  }
+
+  /// Получить все назначения за месяц (С КЭШИРОВАНИЕМ)
+  static Future<List<TaskAssignment>> getAllAssignmentsCached({
+    required int year,
+    required int month,
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = _createAllAssignmentsCacheKey(year, month);
+    final monthStr = '$year-${month.toString().padLeft(2, '0')}';
+
+    if (forceRefresh) {
+      CacheManager.remove(cacheKey);
+    }
+
+    return await CacheManager.getOrFetch<List<TaskAssignment>>(
+      cacheKey,
+      () async {
+        Logger.debug('📥 Загрузка всех задач за $monthStr с сервера...');
+
+        return await BaseHttpService.getList<TaskAssignment>(
+          endpoint: _assignmentsEndpoint,
+          fromJson: (json) => TaskAssignment.fromJson(json),
+          listKey: 'assignments',
+          queryParams: {'month': monthStr},
+        );
+      },
+      duration: _getCacheDuration(year, month),
+    );
+  }
+
+  /// Очистить весь кэш задач
+  static void clearCache() {
+    CacheManager.clearByPattern(_cacheKeyPrefix);
+    Logger.debug('🗑️ Кэш задач очищен');
+  }
+
+  /// Очистить кэш для конкретного месяца
+  static void clearCacheForMonth(int year, int month) {
+    final pattern = '${_cacheKeyPrefix}_${year}_${month.toString().padLeft(2, '0')}';
+    CacheManager.clearByPattern(pattern);
+    Logger.debug('🗑️ Кэш задач очищен для $year-$month');
+  }
+
+  /// Очистить кэш для конкретного сотрудника
+  static void clearCacheForAssignee(String assigneeId) {
+    final pattern = '${_cacheKeyPrefix}_my_$assigneeId';
+    CacheManager.clearByPattern(pattern);
+    Logger.debug('🗑️ Кэш задач очищен для сотрудника $assigneeId');
   }
 }

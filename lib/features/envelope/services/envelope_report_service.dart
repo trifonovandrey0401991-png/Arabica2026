@@ -3,6 +3,8 @@ import '../models/pending_envelope_report_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class EnvelopeReportService {
   static const String baseEndpoint = ApiConstants.envelopeReportsEndpoint;
@@ -95,18 +97,40 @@ class EnvelopeReportService {
   /// Получить pending отчеты (ожидающие сдачи)
   static Future<List<PendingEnvelopeReport>> getPendingReports() async {
     Logger.debug('Загрузка pending отчетов...');
-    return await BaseHttpService.getList<PendingEnvelopeReport>(
-      endpoint: '/api/envelope-pending',
-      fromJson: (json) => PendingEnvelopeReport.fromJson(json),
-    );
+    try {
+      final uri = Uri.parse('${ApiConstants.serverUrl}/api/envelope-pending');
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PendingEnvelopeReport.fromJson(json as Map<String, dynamic>)).toList();
+      } else {
+        Logger.error('Ошибка загрузки pending отчетов: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки pending отчетов', e);
+      return [];
+    }
   }
 
   /// Получить failed отчеты (не сданные)
   static Future<List<PendingEnvelopeReport>> getFailedReports() async {
     Logger.debug('Загрузка failed отчетов...');
-    return await BaseHttpService.getList<PendingEnvelopeReport>(
-      endpoint: '/api/envelope-failed',
-      fromJson: (json) => PendingEnvelopeReport.fromJson(json),
-    );
+    try {
+      final uri = Uri.parse('${ApiConstants.serverUrl}/api/envelope-failed');
+      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PendingEnvelopeReport.fromJson(json as Map<String, dynamic>)).toList();
+      } else {
+        Logger.error('Ошибка загрузки failed отчетов: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки failed отчетов', e);
+      return [];
+    }
   }
 }

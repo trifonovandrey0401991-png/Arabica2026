@@ -5,6 +5,7 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/utils/cache_manager.dart';
+import '../../shops/services/shop_service.dart';
 
 /// Сервис загрузки и агрегации данных эффективности
 ///
@@ -85,11 +86,11 @@ class EfficiencyDataService {
 
     Logger.debug('Total efficiency records loaded: ${allRecords.length}');
 
-    // Агрегируем по магазинам
-    final byShop = _aggregateByShop(allRecords);
+    // Агрегируем по магазинам (фильтруем по реальным магазинам)
+    final byShop = await _aggregateByShop(allRecords);
 
-    // Агрегируем по сотрудникам
-    final byEmployee = _aggregateByEmployee(allRecords);
+    // Агрегируем по сотрудникам (фильтруем по реальным магазинам)
+    final byEmployee = await _aggregateByEmployee(allRecords);
 
     return EfficiencyData(
       periodStart: start,
@@ -115,21 +116,36 @@ class EfficiencyDataService {
 
     Logger.debug('Loading efficiency data via BATCH API from $start to $end (forceRefresh: $forceRefresh)');
 
-    // Загружаем настройки баллов
-    await EfficiencyCalculationService.loadAllSettings();
-
     // Формируем параметр month для API (YYYY-MM)
     final monthParam = '${start.year}-${start.month.toString().padLeft(2, '0')}';
 
     try {
-      // Делаем один batch запрос для всех отчётов
-      final result = await BaseHttpService.getRaw(
-        endpoint: '${ApiConstants.efficiencyReportsBatchEndpoint}?month=$monthParam',
-      );
+      // Загружаем ВСЁ параллельно: настройки, batch API, дополнительные источники и магазины
+      final parallelResults = await Future.wait([
+        EfficiencyCalculationService.loadAllSettings(),           // [0] настройки
+        BaseHttpService.getRaw(                                    // [1] batch API
+          endpoint: '${ApiConstants.efficiencyReportsBatchEndpoint}?month=$monthParam',
+        ),
+        loadPenaltyRecords(start, end),                           // [2] штрафы
+        loadTaskRecords(start, end),                              // [3] задачи
+        loadReviewRecords(start, end),                            // [4] отзывы
+        loadProductSearchRecords(start, end),                     // [5] поиск товара
+        loadOrderRecords(start, end),                             // [6] заказы
+        loadRkoRecords(start, end),                               // [7] РКО
+        ShopService.getShops(),                                   // [8] магазины (один раз!)
+      ]);
+
+      final result = parallelResults[1] as Map<String, dynamic>?;
+      final penaltyRecords = parallelResults[2] as List<EfficiencyRecord>;
+      final taskRecords = parallelResults[3] as List<EfficiencyRecord>;
+      final reviewRecords = parallelResults[4] as List<EfficiencyRecord>;
+      final productSearchRecords = parallelResults[5] as List<EfficiencyRecord>;
+      final orderRecords = parallelResults[6] as List<EfficiencyRecord>;
+      final rkoRecords = parallelResults[7] as List<EfficiencyRecord>;
+      final shops = parallelResults[8] as List<dynamic>;
 
       if (result == null || result['success'] != true) {
         Logger.warning('Batch API вернул пустой результат, используем fallback');
-        // Fallback к старому методу
         return loadEfficiencyData(
           startDate: startDate,
           endDate: endDate,
@@ -143,19 +159,18 @@ class EfficiencyDataService {
       Logger.debug('   - handovers: ${(result['handovers'] as List?)?.length ?? 0}');
       Logger.debug('   - attendance: ${(result['attendance'] as List?)?.length ?? 0}');
 
-      // Загружаем остальные типы отдельно (пока не добавлены в batch API)
-      final penaltyRecords = await loadPenaltyRecords(start, end);
-      final taskRecords = await loadTaskRecords(start, end);
-      final reviewRecords = await loadReviewRecords(start, end);
-      final productSearchRecords = await loadProductSearchRecords(start, end);
-      final orderRecords = await loadOrderRecords(start, end);
-      final rkoRecords = await loadRkoRecords(start, end);
+      // Парсим batch данные параллельно
+      final batchParseResults = await Future.wait([
+        parseShiftReportsFromBatch(result['shifts'] as List<dynamic>? ?? [], start, end),
+        parseRecountReportsFromBatch(result['recounts'] as List<dynamic>? ?? [], start, end),
+        parseHandoverReportsFromBatch(result['handovers'] as List<dynamic>? ?? [], start, end),
+        parseAttendanceFromBatch(result['attendance'] as List<dynamic>? ?? [], start, end),
+      ]);
 
-      // Парсим отчёты и конвертируем в EfficiencyRecord
-      final shiftRecords = await parseShiftReportsFromBatch(result['shifts'] as List<dynamic>? ?? [], start, end);
-      final recountRecords = await parseRecountReportsFromBatch(result['recounts'] as List<dynamic>? ?? [], start, end);
-      final handoverRecords = await parseHandoverReportsFromBatch(result['handovers'] as List<dynamic>? ?? [], start, end);
-      final attendanceRecords = await parseAttendanceFromBatch(result['attendance'] as List<dynamic>? ?? [], start, end);
+      final shiftRecords = batchParseResults[0];
+      final recountRecords = batchParseResults[1];
+      final handoverRecords = batchParseResults[2];
+      final attendanceRecords = batchParseResults[3];
 
       // Объединяем все записи (10 источников)
       final List<EfficiencyRecord> allRecords = [
@@ -173,22 +188,24 @@ class EfficiencyDataService {
 
       Logger.debug('Total efficiency records from BATCH API: ${allRecords.length}');
 
-      // Агрегируем по магазинам
-      final byShop = _aggregateByShop(allRecords);
+      // Создаём Set валидных адресов (магазины уже загружены!)
+      final validAddresses = shops.map((s) => s.address as String).toSet();
 
-      // Агрегируем по сотрудникам
-      final byEmployee = _aggregateByEmployee(allRecords);
+      // Агрегируем по магазинам и сотрудникам параллельно
+      final aggregationResults = await Future.wait([
+        _aggregateByShopWithAddresses(allRecords, validAddresses),
+        _aggregateByEmployeeWithAddresses(allRecords, validAddresses),
+      ]);
 
       return EfficiencyData(
         periodStart: start,
         periodEnd: end,
-        byShop: byShop,
-        byEmployee: byEmployee,
+        byShop: aggregationResults[0],
+        byEmployee: aggregationResults[1],
         allRecords: allRecords,
       );
     } catch (e) {
       Logger.error('Error loading efficiency data via batch API', e);
-      // Fallback к старому методу при ошибке
       Logger.warning('Используем fallback к старому методу загрузки');
       return loadEfficiencyData(
         startDate: startDate,
@@ -199,11 +216,25 @@ class EfficiencyDataService {
   }
 
   /// Агрегировать записи по магазинам
-  static List<EfficiencySummary> _aggregateByShop(List<EfficiencyRecord> records) {
+  /// Фильтрует только по реальным магазинам из списка
+  static Future<List<EfficiencySummary>> _aggregateByShop(List<EfficiencyRecord> records) async {
+    final shops = await ShopService.getShops();
+    final validAddresses = shops.map((s) => s.address).toSet();
+    return _aggregateByShopWithAddresses(records, validAddresses);
+  }
+
+  /// Агрегировать записи по магазинам (с уже загруженными адресами)
+  static Future<List<EfficiencySummary>> _aggregateByShopWithAddresses(
+    List<EfficiencyRecord> records,
+    Set<String> validAddresses,
+  ) async {
+    Logger.debug('Фильтрация по ${validAddresses.length} реальным магазинам');
+
     final Map<String, List<EfficiencyRecord>> byShop = {};
 
     for (final record in records) {
       if (record.shopAddress.isEmpty) continue;
+      if (!validAddresses.contains(record.shopAddress)) continue;
 
       byShop.putIfAbsent(record.shopAddress, () => []);
       byShop[record.shopAddress]!.add(record);
@@ -217,18 +248,28 @@ class EfficiencyDataService {
       );
     }).toList();
 
-    // Сортируем по общим баллам (убывание)
     summaries.sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
-
     return summaries;
   }
 
   /// Агрегировать записи по сотрудникам
-  static List<EfficiencySummary> _aggregateByEmployee(List<EfficiencyRecord> records) {
+  /// Фильтрует только записи с реальными магазинами из списка
+  static Future<List<EfficiencySummary>> _aggregateByEmployee(List<EfficiencyRecord> records) async {
+    final shops = await ShopService.getShops();
+    final validAddresses = shops.map((s) => s.address).toSet();
+    return _aggregateByEmployeeWithAddresses(records, validAddresses);
+  }
+
+  /// Агрегировать записи по сотрудникам (с уже загруженными адресами)
+  static Future<List<EfficiencySummary>> _aggregateByEmployeeWithAddresses(
+    List<EfficiencyRecord> records,
+    Set<String> validAddresses,
+  ) async {
     final Map<String, List<EfficiencyRecord>> byEmployee = {};
 
     for (final record in records) {
       if (record.employeeName.isEmpty) continue;
+      if (record.shopAddress.isEmpty || !validAddresses.contains(record.shopAddress)) continue;
 
       byEmployee.putIfAbsent(record.employeeName, () => []);
       byEmployee[record.employeeName]!.add(record);
@@ -242,9 +283,7 @@ class EfficiencyDataService {
       );
     }).toList();
 
-    // Сортируем по общим баллам (убывание)
     summaries.sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
-
     return summaries;
   }
 

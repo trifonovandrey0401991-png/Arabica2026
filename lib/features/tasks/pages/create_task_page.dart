@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../models/task_model.dart';
@@ -28,8 +29,20 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   TaskResponseType _responseType = TaskResponseType.photo;
   DateTime _deadline = DateTime.now().add(const Duration(days: 1));
   List<TaskRecipient> _recipients = [];
-  final List<File> _attachments = []; // Прикрепленные фото
+  final List<File> _attachments = [];
   bool _isSubmitting = false;
+
+  // Цвета темы
+  static const _primaryColor = Color(0xFF004D40);
+  static const _accentColor = Color(0xFF00796B);
+  static const _cardColor = Color(0xFF00574B);
+  static const _backgroundColor = Color(0xFF003D33);
+
+  @override
+  void initState() {
+    super.initState();
+    initializeDateFormatting('ru');
+  }
 
   @override
   void dispose() {
@@ -48,6 +61,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       initialDate: _deadline,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: _accentColor,
+              onPrimary: Colors.white,
+              surface: _cardColor,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (date != null && mounted) {
@@ -55,9 +81,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         context: context,
         initialTime: TimeOfDay.fromDateTime(_deadline),
         builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-            child: child!,
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: _accentColor,
+                onPrimary: Colors.white,
+                surface: _cardColor,
+                onSurface: Colors.white,
+              ),
+            ),
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+              child: child!,
+            ),
           );
         },
       );
@@ -127,7 +163,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Загружаем прикрепленные фото
       List<String> attachmentUrls = [];
       if (_attachments.isNotEmpty) {
         for (final photo in _attachments) {
@@ -151,16 +186,37 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       if (task != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Задача создана и отправлена ${_recipients.length} получателям', style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.green,
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Задача отправлена ${_recipients.length} получателям',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         Navigator.pop(context, true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ошибка при создании задачи', style: TextStyle(color: Colors.white)),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Ошибка при создании задачи', style: TextStyle(color: Colors.white)),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -171,15 +227,443 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      appBar: AppBar(
+        title: const Text('Новая задача', style: TextStyle(fontWeight: FontWeight.w600)),
+        backgroundColor: _primaryColor,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Карточка основной информации
+                    _buildCard(
+                      icon: Icons.edit_note,
+                      title: 'Основная информация',
+                      child: Column(
+                        children: [
+                          _buildTextField(
+                            controller: _titleController,
+                            label: 'Заголовок задачи',
+                            hint: 'Например: Проверить витрину',
+                            icon: Icons.title,
+                            required: true,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Введите заголовок';
+                              }
+                              return null;
+                            },
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildTextField(
+                            controller: _descriptionController,
+                            label: 'Описание',
+                            hint: 'Подробное описание задачи...',
+                            icon: Icons.description,
+                            maxLines: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Карточка типа ответа
+                    _buildCard(
+                      icon: Icons.question_answer,
+                      title: 'Тип ответа',
+                      child: _buildResponseTypeSelector(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Карточка дедлайна
+                    _buildCard(
+                      icon: Icons.schedule,
+                      title: 'Дедлайн',
+                      child: _buildDeadlinePicker(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Карточка вложений
+                    _buildCard(
+                      icon: Icons.attach_file,
+                      title: 'Прикрепленные файлы',
+                      subtitle: _attachments.isNotEmpty ? '${_attachments.length} фото' : null,
+                      child: _buildAttachmentsSection(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Карточка получателей
+                    _buildCard(
+                      icon: Icons.people,
+                      title: 'Получатели',
+                      subtitle: _recipients.isNotEmpty ? 'Выбрано: ${_recipients.length}' : null,
+                      isRequired: true,
+                      hasError: _recipients.isEmpty,
+                      child: _buildRecipientsSection(),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+
+            // Кнопка создания
+            _buildSubmitButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required Widget child,
+    bool isRequired = false,
+    bool hasError = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: hasError
+            ? Border.all(color: Colors.red.withOpacity(0.5), width: 1)
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок карточки
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _accentColor.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: Colors.white70, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (isRequired) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '*',
+                              style: TextStyle(
+                                color: hasError ? Colors.red : Colors.amber,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Разделитель
+          Container(
+            height: 1,
+            color: Colors.white.withOpacity(0.1),
+          ),
+          // Контент
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    required IconData icon,
+    int maxLines = 1,
+    bool required = false,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: required ? '$label *' : label,
+        hintText: hint,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        prefixIcon: Icon(icon, color: Colors.white54),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _accentColor, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        errorStyle: const TextStyle(color: Colors.red),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      validator: validator,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildResponseTypeSelector() {
+    return Row(
+      children: TaskResponseType.values.map((type) {
+        final isSelected = _responseType == type;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: type != TaskResponseType.values.last ? 8 : 0,
+            ),
+            child: GestureDetector(
+              onTap: () => setState(() => _responseType = type),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: isSelected ? _accentColor : Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? _accentColor : Colors.white.withOpacity(0.2),
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      _getResponseTypeIcon(type),
+                      color: isSelected ? Colors.white : Colors.white60,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      type.displayName,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  IconData _getResponseTypeIcon(TaskResponseType type) {
+    switch (type) {
+      case TaskResponseType.photo:
+        return Icons.camera_alt;
+      case TaskResponseType.photoAndText:
+        return Icons.photo_camera_back;
+      case TaskResponseType.text:
+        return Icons.text_fields;
+    }
+  }
+
+  Widget _buildDeadlinePicker() {
+    final dateFormat = DateFormat('dd MMMM yyyy, HH:mm', 'ru');
+    final now = DateTime.now();
+    final isToday = _deadline.year == now.year &&
+                    _deadline.month == now.month &&
+                    _deadline.day == now.day;
+    final isTomorrow = _deadline.year == now.year &&
+                       _deadline.month == now.month &&
+                       _deadline.day == now.day + 1;
+
+    String dateLabel;
+    if (isToday) {
+      dateLabel = 'Сегодня, ${DateFormat('HH:mm').format(_deadline)}';
+    } else if (isTomorrow) {
+      dateLabel = 'Завтра, ${DateFormat('HH:mm').format(_deadline)}';
+    } else {
+      dateLabel = dateFormat.format(_deadline);
+    }
+
+    return InkWell(
+      onTap: _selectDeadline,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _accentColor.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.event,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dateLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Нажмите для изменения',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.5),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.edit_calendar,
+                color: Colors.white70,
+                size: 20,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentsSection() {
+    return Column(
+      children: [
+        if (_attachments.isNotEmpty) ...[
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _attachments.length,
+              itemBuilder: (context, index) => _buildAttachmentPreview(index),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.camera_alt,
+                label: 'Камера',
+                onTap: _pickPhoto,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.photo_library,
+                label: 'Галерея',
+                onTap: _pickFromGallery,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildAttachmentPreview(int index) {
     return Stack(
       children: [
         Container(
-          margin: const EdgeInsets.only(right: 8),
+          margin: const EdgeInsets.only(right: 12),
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
             image: DecorationImage(
               image: FileImage(_attachments[index]),
               fit: BoxFit.cover,
@@ -188,18 +672,24 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ),
         Positioned(
           top: 4,
-          right: 12,
+          right: 16,
           child: GestureDetector(
             onTap: () => _removeAttachment(index),
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.red,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.close,
-                size: 16,
+                size: 14,
                 color: Colors.white,
               ),
             ),
@@ -209,276 +699,219 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Новая задача'),
-        backgroundColor: const Color(0xFF004D40),
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _accentColor.withOpacity(0.5)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: _accentColor, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Заголовок
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Заголовок задачи *',
-                  hintText: 'Например: Проверить витрину',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.title),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Введите заголовок';
-                  }
-                  return null;
-                },
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 16),
+    );
+  }
 
-              // Описание
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: 'Описание',
-                  hintText: 'Подробное описание задачи...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+  Widget _buildRecipientsSection() {
+    return Column(
+      children: [
+        InkWell(
+          onTap: _selectRecipients,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _recipients.isEmpty
+                    ? Colors.red.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _recipients.isEmpty
+                        ? Colors.red.withOpacity(0.2)
+                        : _accentColor.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  alignLabelWithHint: true,
+                  child: Icon(
+                    _recipients.isEmpty ? Icons.person_add : Icons.group,
+                    color: _recipients.isEmpty ? Colors.red[300] : Colors.white,
+                    size: 24,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              // Тип ответа
-              const Text(
-                'Тип ответа',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: TaskResponseType.values.map((type) {
-                  final isSelected = _responseType == type;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: type != TaskResponseType.values.last ? 8 : 0,
-                      ),
-                      child: ChoiceChip(
-                        label: Text(
-                          type.displayName,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _recipients.isEmpty
+                      ? Text(
+                          'Выберите получателей',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: isSelected ? Colors.white : Colors.black87,
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 16,
+                          ),
+                        )
+                      : Text(
+                          '${_recipients.length} ${_getRecipientsWord(_recipients.length)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _responseType = type);
-                          }
-                        },
-                        selectedColor: const Color(0xFF004D40),
-                        backgroundColor: Colors.grey[200],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-
-              // Дедлайн
-              const Text(
-                'Дедлайн',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
                 ),
-              ),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _selectDeadline,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
+                Container(
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[400]!),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, color: Color(0xFF004D40)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          dateFormat.format(_deadline),
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      const Icon(Icons.edit, color: Colors.grey),
-                    ],
+                  child: const Icon(
+                    Icons.chevron_right,
+                    color: Colors.white70,
+                    size: 20,
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              // Прикрепленные фото
-              const Text(
-                'Прикрепленные фото',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (_attachments.isNotEmpty) ...[
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _attachments.length,
-                    itemBuilder: (context, index) => _buildAttachmentPreview(index),
-                  ),
-                ),
-                const SizedBox(height: 12),
               ],
-              Row(
+            ),
+          ),
+        ),
+
+        // Список выбранных получателей
+        if (_recipients.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _recipients.map((r) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _accentColor.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _accentColor.withOpacity(0.5)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickPhoto,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Камера'),
+                  Text(
+                    r.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickFromGallery,
-                      icon: const Icon(Icons.photo_library),
-                      label: const Text('Галерея'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Получатели
-              const Text(
-                'Получатели',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _selectRecipients,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: _recipients.isEmpty ? Colors.red[300]! : Colors.grey[400]!,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.people,
-                        color: _recipients.isEmpty ? Colors.red : const Color(0xFF004D40),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _recipients.isEmpty
-                            ? Text(
-                                'Выберите получателей *',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
-                                ),
-                              )
-                            : Text(
-                                'Выбрано: ${_recipients.length} человек',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                      ),
-                      const Icon(Icons.chevron_right, color: Colors.grey),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Список выбранных получателей
-              if (_recipients.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _recipients.map((r) => Chip(
-                    label: Text(r.name, style: const TextStyle(fontSize: 12)),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () {
                       setState(() {
                         _recipients.remove(r);
                       });
                     },
-                  )).toList(),
-                ),
-              ],
-
-              const SizedBox(height: 32),
-
-              // Кнопка создания
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isFormValid && !_isSubmitting ? _createTask : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white70,
                     ),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          'СОЗДАТЬ ЗАДАЧУ',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
+                ],
               ),
-            ],
+            )).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _getRecipientsWord(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return 'человек';
+    } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
+      return 'человека';
+    } else {
+      return 'человек';
+    }
+  }
+
+  Widget _buildSubmitButton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _isFormValid && !_isSubmitting ? _createTask : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _isFormValid ? _accentColor : Colors.grey[700],
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.grey[700],
+              disabledForegroundColor: Colors.white54,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: _isFormValid ? 4 : 0,
+            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isFormValid ? Icons.send : Icons.block,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _isFormValid ? 'СОЗДАТЬ ЗАДАЧУ' : 'ЗАПОЛНИТЕ ВСЕ ПОЛЯ',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

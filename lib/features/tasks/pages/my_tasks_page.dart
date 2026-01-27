@@ -6,6 +6,7 @@ import '../models/task_model.dart';
 import '../models/recurring_task_model.dart';
 import '../services/task_service.dart';
 import '../services/recurring_task_service.dart';
+import '../widgets/task_common_widgets.dart';
 import 'task_response_page.dart';
 import 'recurring_task_response_page.dart';
 
@@ -40,6 +41,10 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
   String? _employeeId;
   String? _employeeName;
 
+  // Фильтр по месяцу
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
+
   late TabController _tabController;
 
   @override
@@ -68,7 +73,7 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     _loadAssignments();
   }
 
-  Future<void> _loadAssignments() async {
+  Future<void> _loadAssignments({bool forceRefresh = false}) async {
     setState(() => _isLoading = true);
 
     try {
@@ -76,14 +81,23 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
         setState(() => _isLoading = false);
         return;
       }
-      final assignments = await TaskService.getMyAssignments(_employeeId!);
+
+      // Используем кэшированный метод
+      final assignments = await TaskService.getMyAssignmentsCached(
+        assigneeId: _employeeId!,
+        year: _selectedYear,
+        month: _selectedMonth,
+        forceRefresh: forceRefresh,
+      );
       assignments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       List<RecurringTaskInstance> recurringInstances = [];
       if (_userPhone != null && _userPhone!.isNotEmpty) {
         try {
+          final yearMonth = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
           recurringInstances = await RecurringTaskService.getInstancesForAssignee(
             assigneePhone: _userPhone!,
+            yearMonth: yearMonth,
           );
           recurringInstances.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         } catch (e) {
@@ -192,13 +206,59 @@ class _MyTasksPageState extends State<MyTasksPage> with SingleTickerProviderStat
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Мои Задачи'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Мои Задачи'),
+            Text(
+              TaskUtils.getMonthName(_selectedMonth, _selectedYear),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         backgroundColor: _primaryColor,
         elevation: 0,
         actions: [
+          // Кнопка выбора месяца
+          PopupMenuButton<Map<String, dynamic>>(
+            icon: const Icon(Icons.calendar_month),
+            tooltip: 'Выбрать месяц',
+            onSelected: (monthData) {
+              setState(() {
+                _selectedYear = monthData['year'] as int;
+                _selectedMonth = monthData['month'] as int;
+              });
+              _loadAssignments();
+            },
+            itemBuilder: (context) {
+              final months = TaskUtils.generateMonthsList(count: 6);
+              return months.map((m) {
+                final isSelected = m['year'] == _selectedYear && m['month'] == _selectedMonth;
+                return PopupMenuItem<Map<String, dynamic>>(
+                  value: m,
+                  child: Row(
+                    children: [
+                      if (isSelected)
+                        const Icon(Icons.check, size: 18, color: _primaryColor)
+                      else
+                        const SizedBox(width: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        m['name'] as String,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? _primaryColor : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadAssignments,
+            onPressed: () => _loadAssignments(forceRefresh: true),
             tooltip: 'Обновить',
           ),
         ],

@@ -120,7 +120,17 @@ class EfficiencyRecord {
     required this.sourceId,
   });
 
-  String get categoryName => category.displayName;
+  /// Название категории для отображения
+  /// Для штрафов берём из rawValue (настоящее название с сервера)
+  String get categoryName {
+    if (category == EfficiencyCategory.shiftPenalty && rawValue is Map) {
+      final customName = rawValue['categoryName'];
+      if (customName != null && customName.toString().isNotEmpty) {
+        return customName.toString();
+      }
+    }
+    return category.displayName;
+  }
 
   /// Форматированное значение для отображения
   String get formattedRawValue {
@@ -145,10 +155,16 @@ class EfficiencyRecord {
         return rawValue == true ? 'Принят' : 'Отклонен';
       case EfficiencyCategory.shiftPenalty:
         if (rawValue is Map) {
+          // Показываем причину штрафа если есть
+          final reason = rawValue['reason'];
+          if (reason != null && reason.toString().isNotEmpty) {
+            return reason.toString();
+          }
+          // Иначе показываем смену
           final shift = rawValue['shiftType'] == 'morning' ? 'Утро' : 'Вечер';
-          return 'Не пройдена ($shift)';
+          return 'Штраф ($shift)';
         }
-        return 'Не пройдена';
+        return 'Штраф';
       case EfficiencyCategory.tasks:
         if (rawValue is Map) {
           final status = rawValue['status'];
@@ -211,7 +227,7 @@ class EfficiencySummary {
   final double totalPoints; // earnedPoints - lostPoints
   final int recordsCount;
   final List<EfficiencyRecord> records;
-  final Map<EfficiencyCategory, double> pointsByCategory;
+  final List<CategoryData> categorySummaries; // Группировка по categoryName
 
   EfficiencySummary({
     required this.entityId,
@@ -221,7 +237,7 @@ class EfficiencySummary {
     required this.totalPoints,
     required this.recordsCount,
     required this.records,
-    required this.pointsByCategory,
+    required this.categorySummaries,
   });
 
   /// Создать сводку из списка записей
@@ -232,7 +248,9 @@ class EfficiencySummary {
   }) {
     double earned = 0;
     double lost = 0;
-    final Map<EfficiencyCategory, double> byCategory = {};
+    // Группируем по categoryName (для штрафов разные имена)
+    final Map<String, double> pointsByCategoryName = {};
+    final Map<String, EfficiencyCategory> categoryByName = {};
 
     for (final record in records) {
       if (record.points >= 0) {
@@ -241,8 +259,21 @@ class EfficiencySummary {
         lost += record.points.abs();
       }
 
-      byCategory[record.category] = (byCategory[record.category] ?? 0) + record.points;
+      // Используем categoryName вместо enum для группировки
+      final categoryName = record.categoryName;
+      pointsByCategoryName[categoryName] = (pointsByCategoryName[categoryName] ?? 0) + record.points;
+      categoryByName[categoryName] = record.category;
     }
+
+    // Преобразуем в List<CategoryData> и сортируем по абсолютному значению
+    final summaries = pointsByCategoryName.entries.map((entry) {
+      return CategoryData(
+        name: entry.key,
+        baseCategory: categoryByName[entry.key]!,
+        points: entry.value,
+      );
+    }).toList()
+      ..sort((a, b) => b.points.abs().compareTo(a.points.abs()));
 
     return EfficiencySummary(
       entityId: entityId,
@@ -252,7 +283,7 @@ class EfficiencySummary {
       totalPoints: earned - lost,
       recordsCount: records.length,
       records: records,
-      pointsByCategory: byCategory,
+      categorySummaries: summaries,
     );
   }
 
@@ -347,22 +378,25 @@ class EfficiencyPenalty {
   }
 
   /// Преобразовать штраф в EfficiencyRecord
-  /// Для штрафов типа 'shop' заполняется только shopAddress
-  /// Для штрафов типа 'employee' заполняется только employeeName
-  /// Это предотвращает двойной учет при агрегации по магазинам/сотрудникам
-  /// shopAddress всегда сохраняется в rawValue для отображения в деталях
+  /// Для штрафов типа 'shop': заполняется только shopAddress
+  /// Для штрафов типа 'employee': заполняются и employeeName, и shopAddress
+  ///   - employeeName для группировки по сотрудникам
+  ///   - shopAddress для агрегации в статистику магазина
   EfficiencyRecord toRecord() {
     return EfficiencyRecord(
       id: id,
       category: EfficiencyCategory.shiftPenalty,
-      shopAddress: type == 'shop' ? shopAddress : '',
-      employeeName: type == 'employee' ? entityId : '',
+      // Для employee-штрафов также заполняем shopAddress для агрегации в магазин
+      shopAddress: shopAddress,
+      employeeName: type == 'employee' ? (employeeName ?? entityName) : '',
       date: DateTime.tryParse(date) ?? DateTime.now(),
       points: points,
       rawValue: {
         'shiftType': shiftType,
         'reason': reason,
-        'shopAddress': shopAddress,  // Всегда сохраняем для отображения
+        'shopAddress': shopAddress,
+        'employeeName': employeeName ?? entityName,
+        'categoryName': categoryName,
       },
       sourceId: id,
     );
@@ -379,6 +413,19 @@ class EfficiencyPenalty {
         return shiftLabel ?? '';
     }
   }
+}
+
+/// Данные категории для отображения (группировка по categoryName)
+class CategoryData {
+  final String name;           // Название категории для отображения
+  final EfficiencyCategory baseCategory;  // Базовая категория (enum) для иконки/цвета
+  final double points;
+
+  CategoryData({
+    required this.name,
+    required this.baseCategory,
+    required this.points,
+  });
 }
 
 /// Данные эффективности за период

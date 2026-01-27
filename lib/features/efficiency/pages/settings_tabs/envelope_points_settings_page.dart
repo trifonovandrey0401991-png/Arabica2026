@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/points_settings_model.dart';
 import '../../services/points_settings_service.dart';
+import '../../widgets/settings_widgets.dart';
 
 /// Page for configuring envelope points settings (Конверт)
 class EnvelopePointsSettingsPage extends StatefulWidget {
@@ -20,6 +20,12 @@ class _EnvelopePointsSettingsPageState
   double _submittedPoints = 1.0;
   double _notSubmittedPoints = -3.0;
 
+  // Time window settings
+  String _morningStartTime = '08:00';
+  String _morningEndTime = '12:00';
+  String _eveningStartTime = '08:00';
+  String _eveningEndTime = '12:00';
+
   // Gradient colors for this page (deep orange theme)
   static const _gradientColors = [Color(0xFFff6a00), Color(0xFFee0979)];
 
@@ -38,6 +44,10 @@ class _EnvelopePointsSettingsPageState
       setState(() {
         _submittedPoints = settings.submittedPoints;
         _notSubmittedPoints = settings.notSubmittedPoints;
+        _morningStartTime = settings.morningStartTime;
+        _morningEndTime = settings.morningEndTime;
+        _eveningStartTime = settings.eveningStartTime;
+        _eveningEndTime = settings.eveningEndTime;
         _isLoading = false;
       });
     } catch (e) {
@@ -60,6 +70,10 @@ class _EnvelopePointsSettingsPageState
       final result = await PointsSettingsService.saveEnvelopePointsSettings(
         submittedPoints: _submittedPoints,
         notSubmittedPoints: _notSubmittedPoints,
+        morningStartTime: _morningStartTime,
+        morningEndTime: _morningEndTime,
+        eveningStartTime: _eveningStartTime,
+        eveningEndTime: _eveningEndTime,
       );
 
       if (result != null) {
@@ -112,67 +126,11 @@ class _EnvelopePointsSettingsPageState
           : Column(
               children: [
                 // Заголовок
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: _gradientColors,
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.mail_outlined,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Сдача конверта',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'Баллы за сдачу/несдачу конверта в конце смены',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                SettingsHeaderCard(
+                  icon: Icons.mail_outlined,
+                  title: 'Сдача конверта',
+                  subtitle: 'Баллы за сдачу/несдачу конверта в конце смены',
+                  gradientColors: _gradientColors,
                 ),
                 // Контент
                 Expanded(
@@ -182,7 +140,7 @@ class _EnvelopePointsSettingsPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Submitted points slider
-                        _buildSliderSection(
+                        SettingsSliderWidget(
                           title: 'Конверт сдан',
                           subtitle: 'Награда за сданный конверт',
                           value: _submittedPoints,
@@ -197,7 +155,7 @@ class _EnvelopePointsSettingsPageState
                         const SizedBox(height: 16),
 
                         // Not submitted points slider
-                        _buildSliderSection(
+                        SettingsSliderWidget(
                           title: 'Конверт не сдан',
                           subtitle: 'Штраф за несданный конверт',
                           value: _notSubmittedPoints,
@@ -211,14 +169,76 @@ class _EnvelopePointsSettingsPageState
                         ),
                         const SizedBox(height: 24),
 
-                        // Preview section
-                        _buildSectionTitle('Предпросмотр'),
+                        // Time windows section
+                        SettingsSectionTitle(
+                          title: 'Временные окна для сдачи конверта',
+                          gradientColors: _gradientColors,
+                        ),
+                        const SizedBox(height: 8),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Text(
+                            'Укажите временное окно на следующий день, в течение которого должен быть сдан конверт',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF607D8B),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        _buildPreviewTable(),
+                        TimeWindowsSection(
+                          windows: [
+                            TimeWindowPickerWidget(
+                              icon: Icons.wb_sunny_outlined,
+                              iconColor: Colors.orange,
+                              title: 'После утренней смены',
+                              startTime: _morningStartTime,
+                              endTime: _morningEndTime,
+                              onStartChanged: (time) => setState(() => _morningStartTime = time),
+                              onEndChanged: (time) => setState(() => _morningEndTime = time),
+                              primaryColor: _gradientColors[0],
+                              startLabel: 'Начало',
+                              endLabel: 'Дедлайн',
+                            ),
+                            TimeWindowPickerWidget(
+                              icon: Icons.nights_stay_outlined,
+                              iconColor: Colors.indigo,
+                              title: 'После вечерней смены',
+                              startTime: _eveningStartTime,
+                              endTime: _eveningEndTime,
+                              onStartChanged: (time) => setState(() => _eveningStartTime = time),
+                              onEndChanged: (time) => setState(() => _eveningEndTime = time),
+                              primaryColor: _gradientColors[0],
+                              startLabel: 'Начало',
+                              endLabel: 'Дедлайн',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Preview section
+                        SettingsSectionTitle(
+                          title: 'Предпросмотр',
+                          gradientColors: _gradientColors,
+                        ),
+                        const SizedBox(height: 12),
+                        BinaryPreviewWidget(
+                          positiveLabel: 'Сдан',
+                          negativeLabel: 'Не сдан',
+                          positivePoints: _submittedPoints,
+                          negativePoints: _notSubmittedPoints,
+                          gradientColors: _gradientColors,
+                          valueColumnTitle: 'Статус',
+                        ),
                         const SizedBox(height: 24),
 
                         // Save button
-                        _buildSaveButton(),
+                        SettingsSaveButton(
+                          isSaving: _isSaving,
+                          onPressed: _saveSettings,
+                          gradientColors: _gradientColors,
+                        ),
                         const SizedBox(height: 16),
                       ],
                     ),
@@ -226,375 +246,6 @@ class _EnvelopePointsSettingsPageState
                 ),
               ],
             ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _gradientColors,
-            ),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2D3436),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSliderSection({
-    required String title,
-    required String subtitle,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required ValueChanged<double> onChanged,
-    required String valueLabel,
-    Color accentColor = const Color(0xFFff6a00),
-    IconData icon = Icons.tune,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: accentColor, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3436),
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accentColor.withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    valueLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: accentColor,
-                inactiveTrackColor: accentColor.withOpacity(0.2),
-                thumbColor: accentColor,
-                overlayColor: accentColor.withOpacity(0.2),
-                trackHeight: 6,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-              ),
-              child: Slider(
-                value: value,
-                min: min,
-                max: max,
-                divisions: divisions,
-                onChanged: onChanged,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    min.toString(),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    max.toString(),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPreviewTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: _gradientColors,
-                ),
-              ),
-              child: const Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Статус',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Баллы',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Submitted row
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Сдан',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '+${_submittedPoints.toStringAsFixed(2)}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Not submitted row
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.cancel, color: Colors.red, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Не сдан',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _notSubmittedPoints.toStringAsFixed(2),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _gradientColors,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _gradientColors[0].withOpacity(0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: _isSaving ? null : _saveSettings,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: _isSaving
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.save_outlined, size: 22),
-                  SizedBox(width: 10),
-                  Text(
-                    'Сохранить настройки',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-      ),
     );
   }
 }

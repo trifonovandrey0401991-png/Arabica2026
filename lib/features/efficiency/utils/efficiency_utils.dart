@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/efficiency_data_model.dart';
 
 /// Утилиты для работы с эффективностью
@@ -100,5 +101,109 @@ class EfficiencyUtils {
       case EfficiencyCategory.tasks:
         return Colors.deepPurple;
     }
+  }
+
+  // ===== ЭКСПОРТ ДАННЫХ =====
+
+  /// Форматировать данные эффективности для экспорта (текстовый формат)
+  ///
+  /// [summary] - сводка эффективности (магазина или сотрудника)
+  /// [monthName] - название месяца для заголовка
+  /// [isShop] - true для магазина, false для сотрудника
+  static String formatForExport({
+    required EfficiencySummary summary,
+    required String monthName,
+    required bool isShop,
+  }) {
+    final buffer = StringBuffer();
+    final dateFormat = DateFormat('dd.MM.yyyy');
+
+    // Заголовок
+    buffer.writeln('═══════════════════════════════════════');
+    buffer.writeln('ЭФФЕКТИВНОСТЬ: ${summary.entityName}');
+    buffer.writeln('Период: $monthName');
+    buffer.writeln('═══════════════════════════════════════');
+    buffer.writeln();
+
+    // Общие баллы
+    buffer.writeln('ИТОГО: ${summary.formattedTotal} баллов');
+    buffer.writeln('  Заработано: +${summary.earnedPoints.toStringAsFixed(1)}');
+    buffer.writeln('  Потеряно:   -${summary.lostPoints.toStringAsFixed(1)}');
+    buffer.writeln();
+
+    // По категориям
+    buffer.writeln('ПО КАТЕГОРИЯМ:');
+    buffer.writeln('───────────────────────────────────────');
+
+    // Категории уже отсортированы в categorySummaries
+    for (final category in summary.categorySummaries) {
+      final formattedPoints = category.points >= 0
+          ? '+${category.points.toStringAsFixed(2)}'
+          : category.points.toStringAsFixed(2);
+      buffer.writeln('  ${category.name.padRight(25)} $formattedPoints');
+    }
+    buffer.writeln();
+
+    // Записи (последние 30)
+    buffer.writeln('ЗАПИСИ (${summary.recordsCount} всего):');
+    buffer.writeln('───────────────────────────────────────');
+
+    final sortedRecords = List<EfficiencyRecord>.from(summary.records)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final recentRecords = sortedRecords.take(30);
+
+    for (final record in recentRecords) {
+      final date = dateFormat.format(record.date);
+      final points = record.formattedPoints;
+      final category = record.categoryName;
+      final secondary = isShop ? record.employeeName : record.shopAddress;
+
+      buffer.write('  $date  $category');
+      if (secondary.isNotEmpty) {
+        buffer.write(' ($secondary)');
+      }
+      buffer.writeln('  $points');
+    }
+
+    buffer.writeln();
+    buffer.writeln('───────────────────────────────────────');
+    buffer.writeln('Экспортировано: ${dateFormat.format(DateTime.now())}');
+
+    return buffer.toString();
+  }
+
+  /// Форматировать данные эффективности в CSV формат
+  static String formatForExportCsv({
+    required EfficiencySummary summary,
+    required String monthName,
+    required bool isShop,
+  }) {
+    final buffer = StringBuffer();
+    final dateFormat = DateFormat('dd.MM.yyyy');
+
+    // Заголовок CSV
+    buffer.writeln('Дата,Категория,${isShop ? "Сотрудник" : "Магазин"},Значение,Баллы');
+
+    // Записи
+    final sortedRecords = List<EfficiencyRecord>.from(summary.records)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    for (final record in sortedRecords) {
+      final date = dateFormat.format(record.date);
+      final category = record.categoryName;
+      final secondary = isShop ? record.employeeName : record.shopAddress;
+      final rawValue = record.formattedRawValue;
+      final points = record.points.toStringAsFixed(2);
+
+      // Экранируем запятые в тексте
+      final escapedSecondary = secondary.contains(',')
+          ? '"$secondary"'
+          : secondary;
+
+      buffer.writeln('$date,$category,$escapedSecondary,$rawValue,$points');
+    }
+
+    return buffer.toString();
   }
 }

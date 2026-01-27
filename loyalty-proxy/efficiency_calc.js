@@ -4,7 +4,7 @@
 // Полный расчёт эффективности сотрудника за месяц
 // Используются те же формулы что и в Flutter приложении
 //
-// 10 категорий:
+// 12 категорий:
 // 1. Shift (пересменка) - rating 1-10
 // 2. Recount (пересчёт) - rating 1-10
 // 3. ShiftHandover (сдача смены) - rating 1-10
@@ -15,6 +15,8 @@
 // 8. Orders (заказы) - boolean
 // 9. RKO (РКО) - boolean
 // 10. Tasks (задачи: recurring + regular) - boolean
+// 11. AttendancePenalties (автоштрафы: attendance, envelope и др.) - штрафные баллы
+// 12. Envelope (конверты - сдача наличных) - boolean
 //
 // Все настройки загружаются из /var/www/points-settings/
 // =====================================================
@@ -33,6 +35,8 @@ const PRODUCT_QUESTIONS_DIR = '/var/www/product-questions';
 const RKO_DIR = '/var/www/rko';
 const TASKS_DIR = '/var/www/tasks';
 const RECURRING_TASKS_DIR = '/var/www/recurring-tasks';
+const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
+const ENVELOPE_REPORTS_DIR = '/var/www/envelope-reports';
 
 // =====================================================
 // HELPER: Линейная интерполяция для rating-based settings
@@ -138,6 +142,13 @@ function getRkoSettings() {
   return loadSettings('rko_points_settings.json', {
     hasRkoPoints: 1.0,
     noRkoPoints: -3.0,
+  });
+}
+
+function getEnvelopeSettings() {
+  return loadSettings('envelope_points_settings.json', {
+    submittedPoints: 0,
+    notSubmittedPoints: -5,
   });
 }
 
@@ -505,12 +516,90 @@ function calculateTasksPoints(employeeId, month) {
 }
 
 /**
+ * Рассчитать все автоматические штрафы (attendance, envelope, etc.)
+ * Читает файл /var/www/efficiency-penalties/YYYY-MM.json
+ */
+function calculateAttendancePenalties(employeeId, month) {
+  try {
+    if (!fs.existsSync(EFFICIENCY_PENALTIES_DIR)) return 0;
+
+    // Читаем файл штрафов за месяц
+    const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
+    if (!fs.existsSync(penaltiesFile)) return 0;
+
+    const content = fs.readFileSync(penaltiesFile, 'utf8');
+    const penalties = JSON.parse(content);
+
+    if (!Array.isArray(penalties)) return 0;
+
+    // Фильтруем штрафы для этого сотрудника за этот месяц
+    // Проверяем оба поля: entityId (новый формат) и employeeId (старый формат)
+    let totalPenalty = 0;
+    for (const penalty of penalties) {
+      const matchesEmployee = (penalty.employeeId === employeeId) || (penalty.entityId === employeeId);
+      const matchesMonth = penalty.date && penalty.date.startsWith(month);
+
+      if (matchesEmployee && matchesMonth) {
+        totalPenalty += penalty.points || 0;
+      }
+    }
+
+    return totalPenalty;
+  } catch (e) {
+    console.error('Error calculating attendance penalties:', e);
+    return 0;
+  }
+}
+
+/**
  * Рассчитать заказы (orders) - TODO: интеграция с Lichi CRM API
  */
 function calculateOrdersPoints(employeeId, month) {
   // TODO: Получить заказы из Lichi CRM API
   // Пока возвращаем 0
   return 0;
+}
+
+/**
+ * Рассчитать баллы за конверты (envelope - сдача наличных)
+ *
+ * @param {string} employeeName - Имя сотрудника (envelope-reports не содержат employeeId)
+ * @param {string} month - Месяц в формате YYYY-MM
+ * @returns {number} - Сумма баллов за конверты
+ */
+function calculateEnvelopePoints(employeeName, month) {
+  try {
+    if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) return 0;
+
+    const settings = getEnvelopeSettings();
+    const files = fs.readdirSync(ENVELOPE_REPORTS_DIR);
+    let totalPoints = 0;
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      const content = fs.readFileSync(path.join(ENVELOPE_REPORTS_DIR, file), 'utf8');
+      const envelope = JSON.parse(content);
+
+      // Фильтруем по имени сотрудника и месяцу
+      if (envelope.employeeName === employeeName &&
+          envelope.createdAt && envelope.createdAt.startsWith(month)) {
+
+        // Если конверт подтвержден (status: "confirmed") - 0 баллов
+        // Если не подтвержден (status: "pending" или другой) - штраф -5
+        const isConfirmed = envelope.status === 'confirmed';
+        const points = isConfirmed
+          ? settings.submittedPoints
+          : settings.notSubmittedPoints;
+        totalPoints += points;
+      }
+    }
+
+    return totalPoints;
+  } catch (e) {
+    console.error('Error calculating envelope points:', e);
+    return 0;
+  }
 }
 
 // =====================================================
@@ -524,7 +613,7 @@ function calculateOrdersPoints(employeeId, month) {
  * @param {string} employeeName - Имя сотрудника
  * @param {string} shopAddress - Адрес магазина (для отзывов и РКО)
  * @param {string} month - Месяц в формате YYYY-MM
- * @returns {object} - Детальная информация о баллах
+ * @returns {object} - Детальная информация о баллах (12 категорий)
  */
 function calculateFullEfficiency(employeeId, employeeName, shopAddress, month) {
   try {
@@ -533,12 +622,14 @@ function calculateFullEfficiency(employeeId, employeeName, shopAddress, month) {
       recount: calculateRecountPoints(employeeId, employeeName, month),
       handover: calculateHandoverPoints(employeeId, employeeName, month),
       attendance: calculateAttendancePoints(employeeId, month),
+      attendancePenalties: calculateAttendancePenalties(employeeId, month),
       test: calculateTestPoints(employeeId, employeeName, month),
       reviews: calculateReviewsPoints(shopAddress, month),
       productSearch: calculateProductSearchPoints(employeeId, month),
       rko: calculateRkoPoints(shopAddress, month),
       tasks: calculateTasksPoints(employeeId, month),
       orders: calculateOrdersPoints(employeeId, month),
+      envelope: calculateEnvelopePoints(employeeName, month),
     };
 
     const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
@@ -562,10 +653,12 @@ module.exports = {
   calculateRecountPoints,
   calculateHandoverPoints,
   calculateAttendancePoints,
+  calculateAttendancePenalties,
   calculateTestPoints,
   calculateReviewsPoints,
   calculateProductSearchPoints,
   calculateRkoPoints,
   calculateTasksPoints,
   calculateOrdersPoints,
+  calculateEnvelopePoints,
 };
