@@ -237,26 +237,57 @@ module.exports = function setupRatingWheelAPI(app) {
   app.get('/api/ratings', async (req, res) => {
     try {
       const month = req.query.month || getCurrentMonth();
-      console.log(`📊 GET /api/ratings month=${month}`);
+      const forceRefresh = req.query.forceRefresh === 'true';
+      console.log(`📊 GET /api/ratings month=${month} forceRefresh=${forceRefresh}`);
 
-      // Проверяем есть ли сохраненный рейтинг
+      // Создать директорию если не существует
+      if (!fs.existsSync(RATINGS_DIR)) {
+        fs.mkdirSync(RATINGS_DIR, { recursive: true });
+      }
+
       const filePath = path.join(RATINGS_DIR, `${month}.json`);
 
-      if (fs.existsSync(filePath)) {
+      // Проверяем нужно ли использовать кэш
+      const currentMonth = getCurrentMonth();
+      const shouldCache = month !== currentMonth; // Кэшируем только завершённые месяцы
+
+      // Проверяем есть ли сохраненный рейтинг (если не forceRefresh)
+      if (!forceRefresh && fs.existsSync(filePath)) {
         const content = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(content);
-        return res.json({ success: true, ratings: data.ratings, month, monthName: getMonthName(month) });
+        console.log(`✅ Рейтинг загружен из кэша (calculatedAt: ${data.calculatedAt})`);
+        return res.json({
+          success: true,
+          ratings: data.ratings,
+          month,
+          monthName: getMonthName(month),
+          cached: true,
+          calculatedAt: data.calculatedAt
+        });
       }
 
       // Рассчитываем рейтинг
+      console.log(`🔄 Расчёт рейтинга за ${month}...`);
       const ratings = calculateRatings(month);
+
+      // Сохраняем в кэш если нужно
+      if (shouldCache) {
+        const data = {
+          month,
+          calculatedAt: new Date().toISOString(),
+          ratings
+        };
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+        console.log(`💾 Рейтинг сохранён в кэш: ${filePath}`);
+      }
 
       res.json({
         success: true,
         ratings,
         month,
         monthName: getMonthName(month),
-        calculated: true
+        calculated: true,
+        cached: false
       });
     } catch (error) {
       console.error('❌ Ошибка получения рейтинга:', error);
@@ -316,6 +347,45 @@ module.exports = function setupRatingWheelAPI(app) {
       res.json({ success: true, history: result });
     } catch (error) {
       console.error('❌ Ошибка получения рейтинга сотрудника:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/ratings/cache - очистить кэш рейтингов
+  app.delete('/api/ratings/cache', async (req, res) => {
+    try {
+      const month = req.query.month; // Если не указан - удалить все
+      console.log(`🗑️ DELETE /api/ratings/cache month=${month || 'all'}`);
+
+      if (!fs.existsSync(RATINGS_DIR)) {
+        return res.json({ success: true, message: 'Кэш уже пуст' });
+      }
+
+      if (month) {
+        // Удалить кэш для конкретного месяца
+        const filePath = path.join(RATINGS_DIR, `${month}.json`);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`✅ Кэш рейтинга за ${month} удалён`);
+          return res.json({ success: true, message: `Кэш за ${month} удалён` });
+        } else {
+          return res.json({ success: true, message: `Кэш за ${month} не найден` });
+        }
+      } else {
+        // Удалить весь кэш
+        const files = fs.readdirSync(RATINGS_DIR);
+        let deletedCount = 0;
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            fs.unlinkSync(path.join(RATINGS_DIR, file));
+            deletedCount++;
+          }
+        }
+        console.log(`✅ Удалено ${deletedCount} файлов кэша`);
+        return res.json({ success: true, message: `Удалено ${deletedCount} файлов кэша` });
+      }
+    } catch (error) {
+      console.error('❌ Ошибка очистки кэша:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -427,6 +497,8 @@ module.exports = function setupRatingWheelAPI(app) {
         return res.json({ success: true, availableSpins: 0, month: null });
       }
 
+      const now = new Date();
+
       // Ищем прокрутки для этого сотрудника
       const files = fs.readdirSync(spinsDir);
       let totalSpins = 0;
@@ -436,6 +508,13 @@ module.exports = function setupRatingWheelAPI(app) {
         if (!file.endsWith('.json')) continue;
         const content = fs.readFileSync(path.join(spinsDir, file), 'utf8');
         const data = JSON.parse(content);
+
+        // Проверяем срок истечения
+        const expiresAt = data.expiresAt || data.spins?.[employeeId]?.expiresAt;
+        if (expiresAt && new Date(expiresAt) < now) {
+          console.log(`⏰ Прокрутки для ${file} истекли (${expiresAt})`);
+          continue; // Пропускаем истёкшие прокрутки
+        }
 
         if (data.spins && data.spins[employeeId]) {
           const empSpins = data.spins[employeeId];
@@ -475,6 +554,8 @@ module.exports = function setupRatingWheelAPI(app) {
         return res.status(400).json({ success: false, error: 'Нет доступных прокруток' });
       }
 
+      const now = new Date();
+
       // Находим месяц с доступными прокрутками
       const files = fs.readdirSync(spinsDir);
       let spinMonth = null;
@@ -487,6 +568,13 @@ module.exports = function setupRatingWheelAPI(app) {
         const content = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(content);
 
+        // Проверяем срок истечения
+        const expiresAt = data.expiresAt || data.spins?.[employeeId]?.expiresAt;
+        if (expiresAt && new Date(expiresAt) < now) {
+          console.log(`⏰ Прокрутки для ${file} истекли (${expiresAt}), пропускаем`);
+          continue; // Пропускаем истёкшие прокрутки
+        }
+
         if (data.spins && data.spins[employeeId] && data.spins[employeeId].available > 0) {
           spinMonth = file.replace('.json', '');
           spinData = data;
@@ -496,7 +584,7 @@ module.exports = function setupRatingWheelAPI(app) {
       }
 
       if (!spinData) {
-        return res.status(400).json({ success: false, error: 'Нет доступных прокруток' });
+        return res.status(400).json({ success: false, error: 'Нет доступных прокруток или прокрутки истекли' });
       }
 
       // Получаем настройки секторов
@@ -646,6 +734,11 @@ async function assignWheelSpins(month, top3) {
       fs.mkdirSync(spinsDir, { recursive: true });
     }
 
+    // Вычисляем срок истечения: конец следующего месяца после награждаемого
+    const [year, monthNum] = month.split('-').map(Number);
+    const expiryDate = new Date(year, monthNum + 1, 0, 23, 59, 59); // Последний день следующего месяца
+    const expiresAt = expiryDate.toISOString();
+
     const filePath = path.join(spinsDir, `${month}.json`);
     const spins = {};
 
@@ -658,18 +751,20 @@ async function assignWheelSpins(month, top3) {
         position: i + 1,
         available: spinCount,
         used: 0,
-        assignedAt: new Date().toISOString()
+        assignedAt: new Date().toISOString(),
+        expiresAt
       };
     }
 
     const data = {
       month,
       assignedAt: new Date().toISOString(),
+      expiresAt, // Глобальный срок истечения для всех прокруток
       spins
     };
 
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-    console.log(`✅ Прокрутки выданы топ-3 за ${month}`);
+    console.log(`✅ Прокрутки выданы топ-3 за ${month} (истекают: ${expiresAt})`);
   } catch (e) {
     console.error('Ошибка выдачи прокруток:', e);
   }
