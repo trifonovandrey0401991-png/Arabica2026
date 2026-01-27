@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/efficiency_data_model.dart';
 import '../utils/efficiency_utils.dart';
 
@@ -326,6 +327,355 @@ class EfficiencyEmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ===== ВИДЖЕТЫ ДЛЯ DETAIL СТРАНИЦ =====
+
+/// Карточка с общими баллами для detail страниц
+class EfficiencyDetailTotalCard extends StatelessWidget {
+  final EfficiencySummary summary;
+  final String monthName;
+
+  const EfficiencyDetailTotalCard({
+    super.key,
+    required this.summary,
+    required this.monthName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isPositive = summary.totalPoints >= 0;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text(
+              monthName,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              summary.formattedTotal,
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: isPositive ? Colors.green[700] : Colors.red[700],
+              ),
+            ),
+            const Text(
+              'баллов',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _DetailStatItem(
+                  value: '+${summary.earnedPoints.toStringAsFixed(1)}',
+                  label: 'Заработано',
+                  color: Colors.green,
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.grey[300],
+                ),
+                _DetailStatItem(
+                  value: '-${summary.lostPoints.toStringAsFixed(1)}',
+                  label: 'Потеряно',
+                  color: Colors.red,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Внутренний виджет статистики для detail карточки
+class _DetailStatItem extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+
+  const _DetailStatItem({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Карточка с категориями для detail страниц
+class EfficiencyDetailCategoriesCard extends StatelessWidget {
+  final EfficiencySummary summary;
+
+  const EfficiencyDetailCategoriesCard({
+    super.key,
+    required this.summary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Сортируем категории по баллам (от большего к меньшему по абсолютному значению)
+    final sortedCategories = summary.pointsByCategory.entries.toList()
+      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'По категориям',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: EfficiencyUtils.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (sortedCategories.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Нет данных',
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                ),
+              )
+            else
+              ...sortedCategories.map((entry) => _buildCategoryRow(entry.key, entry.value)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryRow(EfficiencyCategory category, double points) {
+    final isPositive = points >= 0;
+    final formattedPoints = isPositive
+        ? '+${points.toStringAsFixed(2)}'
+        : points.toStringAsFixed(2);
+
+    final color = EfficiencyUtils.getCategoryColor(category);
+    final icon = EfficiencyUtils.getCategoryIcon(category);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              category.displayName,
+              style: const TextStyle(fontSize: 15),
+            ),
+          ),
+          Text(
+            formattedPoints,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: isPositive ? Colors.green[700] : Colors.red[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Карточка с последними записями для detail страниц
+class EfficiencyDetailRecentRecordsCard extends StatelessWidget {
+  final EfficiencySummary summary;
+  /// Показывать имя сотрудника (для страницы магазина) или адрес магазина (для страницы сотрудника)
+  final bool showEmployeeName;
+
+  const EfficiencyDetailRecentRecordsCard({
+    super.key,
+    required this.summary,
+    this.showEmployeeName = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Сортируем записи по дате (новые сначала)
+    final sortedRecords = List<EfficiencyRecord>.from(summary.records)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    // Берем последние 20 записей
+    final recentRecords = sortedRecords.take(20).toList();
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Последние записи',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: EfficiencyUtils.primaryColor,
+                  ),
+                ),
+                Text(
+                  'Всего: ${summary.recordsCount}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (recentRecords.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Нет записей',
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                ),
+              )
+            else
+              ...recentRecords.map((record) => _buildRecordRow(record)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordRow(EfficiencyRecord record) {
+    final dateFormat = DateFormat('dd.MM');
+    final isPositive = record.points >= 0;
+
+    // Определяем вторичную информацию (имя сотрудника или адрес магазина)
+    String secondaryInfo = '';
+    if (showEmployeeName) {
+      secondaryInfo = record.employeeName;
+    } else {
+      // Для штрафов берем shopAddress из rawValue
+      secondaryInfo = record.shopAddress;
+      if (secondaryInfo.isEmpty && record.category == EfficiencyCategory.shiftPenalty) {
+        if (record.rawValue is Map && record.rawValue['shopAddress'] != null) {
+          secondaryInfo = record.rawValue['shopAddress'];
+        }
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 45,
+            child: Text(
+              dateFormat.format(record.date),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  record.categoryName,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                if (secondaryInfo.isNotEmpty)
+                  Text(
+                    secondaryInfo,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '(${record.formattedRawValue})',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            record.formattedPoints,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isPositive ? Colors.green[700] : Colors.red[700],
             ),
           ),
         ],
