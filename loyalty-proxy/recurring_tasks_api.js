@@ -94,10 +94,11 @@ function saveInstances(yearMonth, instances) {
 // ==================== ГЕНЕРАЦИЯ ЗАДАЧ ====================
 
 // Генерация экземпляров для одного шаблона (при создании)
-function generateInstancesForTemplate(template, date) {
+async function generateInstancesForTemplate(template, date) {
   const yearMonth = getYearMonth(date);
   let instances = loadInstances(yearMonth);
   let generatedCount = 0;
+  const newInstances = []; // Для отправки push после сохранения
 
   for (const assignee of template.assignees) {
     const instanceId = generateInstanceId(template.id, date, assignee.id || assignee.phone);
@@ -131,12 +132,30 @@ function generateInstancesForTemplate(template, date) {
     };
 
     instances.push(newInstance);
+    newInstances.push(newInstance);
     generatedCount++;
   }
 
   if (generatedCount > 0) {
     saveInstances(yearMonth, instances);
     console.log('Generated', generatedCount, 'instances for new template:', template.id);
+
+    // Отправляем push-уведомления о новой задаче
+    for (const instance of newInstances) {
+      if (instance.assigneePhone) {
+        try {
+          await sendPushToPhone(
+            instance.assigneePhone,
+            'Новая циклическая задача',
+            instance.title,
+            { type: 'new_recurring_task', instanceId: instance.id, recurringTaskId: instance.recurringTaskId }
+          );
+          console.log('Sent push for new recurring task to:', instance.assigneePhone);
+        } catch (pushErr) {
+          console.error('Failed to send push for new recurring task:', pushErr.message);
+        }
+      }
+    }
   }
 
   return generatedCount;
@@ -564,7 +583,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks - Создать шаблон
-  app.post('/api/recurring-tasks', (req, res) => {
+  app.post('/api/recurring-tasks', async (req, res) => {
     try {
       const {
         title,
@@ -619,7 +638,7 @@ function setupRecurringTasksAPI(app) {
       const today = getToday();
       const dayOfWeek = new Date(today + 'T00:00:00').getDay();
       if (newTask.daysOfWeek.includes(dayOfWeek)) {
-        generateInstancesForTemplate(newTask, today);
+        await generateInstancesForTemplate(newTask, today);
       }
 
       res.json({ success: true, task: newTask });
