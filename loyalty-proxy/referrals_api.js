@@ -9,44 +9,66 @@ const EMPLOYEES_DIR = '/var/www/employees';
 const CLIENTS_DIR = '/var/www/clients';
 const POINTS_SETTINGS_DIR = '/var/www/points-settings';
 const REFERRALS_VIEWED_FILE = '/var/www/referrals-viewed.json';
+const REFERRALS_CACHE_FILE = '/var/www/cache/referral-stats/stats.json';
+const CACHE_VALIDITY_MINUTES = 5; // Кэш актуален 5 минут
 
-// Создаем директорию для настроек если нет
+// Создаем директории если нет
 if (!fs.existsSync(POINTS_SETTINGS_DIR)) {
   fs.mkdirSync(POINTS_SETTINGS_DIR, { recursive: true });
+}
+
+const cacheDir = path.dirname(REFERRALS_CACHE_FILE);
+if (!fs.existsSync(cacheDir)) {
+  fs.mkdirSync(cacheDir, { recursive: true });
 }
 
 // =====================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // =====================================================
 
-// Получить следующий свободный referralCode
+// Получить следующий свободный referralCode (ФАЗА 1.2: с переиспользованием)
 function getNextReferralCode() {
   try {
     if (!fs.existsSync(EMPLOYEES_DIR)) return 1;
 
     const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
-    const usedCodes = new Set();
+    const usedCodes = new Set(); // Коды активных сотрудников
+    const inactiveCodes = []; // Коды уволенных/неактивных сотрудников
 
     for (const file of files) {
       try {
         const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
         const employee = JSON.parse(content);
+
         if (employee.referralCode) {
-          usedCodes.add(employee.referralCode);
+          // Если сотрудник активен - код занят
+          if (employee.isActive === true || employee.isActive === undefined) {
+            usedCodes.add(employee.referralCode);
+          } else {
+            // Если сотрудник неактивен - код можно переиспользовать
+            inactiveCodes.push(employee.referralCode);
+          }
         }
       } catch (e) {
         // Игнорируем ошибки чтения
       }
     }
 
-    // Ищем первый свободный код от 1 до 1000
-    for (let code = 1; code <= 1000; code++) {
+    // Приоритет 1: переиспользуем код уволенного сотрудника
+    if (inactiveCodes.length > 0) {
+      const recycledCode = Math.min(...inactiveCodes); // Берем наименьший код
+      console.log(`♻️ Переиспользуем код ${recycledCode} от неактивного сотрудника`);
+      return recycledCode;
+    }
+
+    // Приоритет 2: ищем свободный код от 1 до 10000 (увеличен лимит!)
+    for (let code = 1; code <= 10000; code++) {
       if (!usedCodes.has(code)) {
         return code;
       }
     }
 
-    return null; // Все коды заняты
+    return null; // Все коды заняты (маловероятно)
   } catch (error) {
     console.error('Ошибка получения следующего referralCode:', error);
     return 1;
@@ -263,10 +285,175 @@ function countUnviewedReferrals(clients, employees, lastViewedAt) {
 }
 
 // =====================================================
+// АНТИФРОД (ФАЗА 1.3)
+// =====================================================
+
+const DAILY_REFERRAL_LIMIT = 20; // Максимум приглашений в день от одного сотрудника
+const ANTIFRAUD_LOG_FILE = '/var/www/logs/referral-antifraud.log';
+
+// Проверка лимита приглашений для referralCode
+function checkReferralLimit(referralCode) {
+  try {
+    const clients = getAllClients();
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // Считаем приглашения от этого кода сегодня
+    let todayCount = 0;
+    for (const client of clients) {
+      if (client.referredBy === referralCode) {
+        const referredAt = client.referredAt ? new Date(client.referredAt) :
+                          (client.createdAt ? new Date(client.createdAt) : null);
+        if (referredAt && referredAt >= todayStart) {
+          todayCount++;
+        }
+      }
+    }
+
+    const limitExceeded = todayCount >= DAILY_REFERRAL_LIMIT;
+
+    if (limitExceeded) {
+      const employee = findEmployeeByReferralCode(referralCode);
+      const employeeName = employee ? employee.name : `Код ${referralCode}`;
+      console.warn(`⚠️ АНТИФРОД: Превышен лимит приглашений для ${employeeName}: ${todayCount}/${DAILY_REFERRAL_LIMIT}`);
+
+      // Логируем в файл
+      logAntifraud(`LIMIT_EXCEEDED: referralCode=${referralCode}, employee=${employeeName}, count=${todayCount}`);
+    }
+
+    return {
+      allowed: !limitExceeded,
+      todayCount,
+      limit: DAILY_REFERRAL_LIMIT,
+      remaining: Math.max(0, DAILY_REFERRAL_LIMIT - todayCount)
+    };
+  } catch (error) {
+    console.error('Ошибка проверки лимита рефералов:', error);
+    // В случае ошибки разрешаем (не блокируем легитимных пользователей)
+    return { allowed: true, todayCount: 0, limit: DAILY_REFERRAL_LIMIT, remaining: DAILY_REFERRAL_LIMIT };
+  }
+}
+
+// Логирование подозрительной активности
+function logAntifraud(message) {
+  try {
+    const logDir = path.dirname(ANTIFRAUD_LOG_FILE);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString();
+    const logLine = `[${timestamp}] ${message}\n`;
+
+    fs.appendFileSync(ANTIFRAUD_LOG_FILE, logLine, 'utf8');
+  } catch (error) {
+    console.error('Ошибка записи в лог антифрода:', error);
+  }
+}
+
+// =====================================================
+// КЭШИРОВАНИЕ СТАТИСТИКИ (ФАЗА 1.1)
+// =====================================================
+
+// Прочитать кэш статистики
+function readStatsCache() {
+  try {
+    if (fs.existsSync(REFERRALS_CACHE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(REFERRALS_CACHE_FILE, 'utf8'));
+      return data;
+    }
+    return null;
+  } catch (error) {
+    console.error('Ошибка чтения кэша статистики:', error);
+    return null;
+  }
+}
+
+// Проверить актуальность кэша
+function isCacheValid(cache) {
+  if (!cache || !cache.lastUpdated) return false;
+
+  const cacheTime = new Date(cache.lastUpdated);
+  const now = new Date();
+  const diffMinutes = (now - cacheTime) / (1000 * 60);
+
+  return diffMinutes < CACHE_VALIDITY_MINUTES;
+}
+
+// Пересчитать и сохранить кэш статистики
+function rebuildStatsCache() {
+  try {
+    console.log('🔄 Пересчет кэша статистики рефералов...');
+
+    const employees = getAllEmployees();
+    const clients = getAllClients();
+    const statsMap = {};
+
+    // Считаем статистику для каждого сотрудника с referralCode
+    for (const employee of employees) {
+      if (employee.referralCode) {
+        const stats = calculateReferralStats(employee.referralCode, clients);
+        statsMap[employee.id] = {
+          employeeId: employee.id,
+          employeeName: employee.name,
+          referralCode: employee.referralCode,
+          today: stats.today,
+          currentMonth: stats.currentMonth,
+          previousMonth: stats.previousMonth,
+          total: stats.total,
+          clients: stats.clients // Сохраняем список клиентов в кэше
+        };
+      }
+    }
+
+    const cache = {
+      lastUpdated: new Date().toISOString(),
+      stats: statsMap,
+      totalClients: clients.length,
+      unassignedCount: clients.filter(c => !c.referredBy).length
+    };
+
+    fs.writeFileSync(REFERRALS_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf8');
+    console.log(`✅ Кэш статистики обновлен: ${Object.keys(statsMap).length} сотрудников`);
+
+    return cache;
+  } catch (error) {
+    console.error('❌ Ошибка пересчета кэша:', error);
+    return null;
+  }
+}
+
+// Получить статистику (с кэшированием)
+function getCachedStats(forceRefresh = false) {
+  const cache = readStatsCache();
+
+  // Если кэш валиден и не требуется принудительное обновление
+  if (!forceRefresh && cache && isCacheValid(cache)) {
+    console.log('✅ Используем кэш статистики (актуален)');
+    return cache;
+  }
+
+  // Иначе пересчитываем
+  return rebuildStatsCache();
+}
+
+// Инвалидировать кэш (вызывается при создании клиента с referredBy)
+function invalidateStatsCache() {
+  try {
+    if (fs.existsSync(REFERRALS_CACHE_FILE)) {
+      fs.unlinkSync(REFERRALS_CACHE_FILE);
+      console.log('🗑️ Кэш статистики инвалидирован');
+    }
+  } catch (error) {
+    console.error('Ошибка инвалидации кэша:', error);
+  }
+}
+
+// =====================================================
 // ЭКСПОРТ ФУНКЦИИ НАСТРОЙКИ API
 // =====================================================
 
-module.exports = function setupReferralsAPI(app) {
+function setupReferralsAPI(app) {
 
   // GET /api/referrals/unviewed-count - количество непросмотренных приглашений
   app.get('/api/referrals/unviewed-count', (req, res) => {
@@ -316,14 +503,14 @@ module.exports = function setupReferralsAPI(app) {
     }
   });
 
-  // GET /api/referrals/validate-code/:code - валидация кода
+  // GET /api/referrals/validate-code/:code - валидация кода (ФАЗА 1.2: лимит 10000)
   app.get('/api/referrals/validate-code/:code', (req, res) => {
     try {
       const code = parseInt(req.params.code, 10);
       console.log(`GET /api/referrals/validate-code/${code}`);
 
-      if (isNaN(code) || code < 1 || code > 1000) {
-        return res.json({ success: true, valid: false, message: 'Код должен быть от 1 до 1000' });
+      if (isNaN(code) || code < 1 || code > 10000) {
+        return res.json({ success: true, valid: false, message: 'Код должен быть от 1 до 10000' });
       }
 
       const employee = findEmployeeByReferralCode(code);
@@ -347,44 +534,39 @@ module.exports = function setupReferralsAPI(app) {
     }
   });
 
-  // GET /api/referrals/stats - статистика всех сотрудников
+  // GET /api/referrals/stats - статистика всех сотрудников (с кэшированием)
   app.get('/api/referrals/stats', (req, res) => {
     try {
-      console.log('GET /api/referrals/stats');
+      const forceRefresh = req.query.refresh === 'true';
+      console.log(`GET /api/referrals/stats (refresh=${forceRefresh})`);
 
-      const employees = getAllEmployees();
-      const clients = getAllClients();
-      const totalClients = clients.length;
+      const cache = getCachedStats(forceRefresh);
 
-      // Считаем неучтенных клиентов (без referredBy)
-      const unassignedCount = clients.filter(c => !c.referredBy).length;
-
-      // Собираем статистику по каждому сотруднику с referralCode
-      const employeeStats = [];
-
-      for (const employee of employees) {
-        if (employee.referralCode) {
-          const stats = calculateReferralStats(employee.referralCode, clients);
-          employeeStats.push({
-            employeeId: employee.id,
-            employeeName: employee.name,
-            referralCode: employee.referralCode,
-            today: stats.today,
-            currentMonth: stats.currentMonth,
-            previousMonth: stats.previousMonth,
-            total: stats.total
-          });
-        }
+      if (!cache) {
+        return res.status(500).json({ success: false, error: 'Не удалось получить статистику' });
       }
+
+      // Преобразуем statsMap в массив для клиента
+      const employeeStats = Object.values(cache.stats).map(stat => ({
+        employeeId: stat.employeeId,
+        employeeName: stat.employeeName,
+        referralCode: stat.referralCode,
+        today: stat.today,
+        currentMonth: stat.currentMonth,
+        previousMonth: stat.previousMonth,
+        total: stat.total
+      }));
 
       // Сортируем по общему количеству (убывание)
       employeeStats.sort((a, b) => b.total - a.total);
 
       res.json({
         success: true,
-        totalClients,
-        unassignedCount,
-        employeeStats
+        totalClients: cache.totalClients,
+        unassignedCount: cache.unassignedCount,
+        employeeStats,
+        cached: true,
+        lastUpdated: cache.lastUpdated
       });
     } catch (error) {
       console.error('Ошибка получения статистики:', error);
@@ -392,11 +574,12 @@ module.exports = function setupReferralsAPI(app) {
     }
   });
 
-  // GET /api/referrals/stats/:employeeId - статистика одного сотрудника
+  // GET /api/referrals/stats/:employeeId - статистика одного сотрудника (с кэшированием)
   app.get('/api/referrals/stats/:employeeId', (req, res) => {
     try {
       const { employeeId } = req.params;
-      console.log(`GET /api/referrals/stats/${employeeId}`);
+      const forceRefresh = req.query.refresh === 'true';
+      console.log(`GET /api/referrals/stats/${employeeId} (refresh=${forceRefresh})`);
 
       // Ищем сотрудника
       const employeeFile = path.join(EMPLOYEES_DIR, `${employeeId}.json`);
@@ -409,26 +592,55 @@ module.exports = function setupReferralsAPI(app) {
       if (!employee.referralCode) {
         return res.json({
           success: true,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          referralCode: null,
           stats: {
             today: 0,
             currentMonth: 0,
             previousMonth: 0,
             total: 0,
             clients: []
-          }
+          },
+          cached: false
         });
       }
 
-      const clients = getAllClients();
-      const stats = calculateReferralStats(employee.referralCode, clients);
+      // Пытаемся получить из кэша
+      const cache = getCachedStats(forceRefresh);
 
-      res.json({
-        success: true,
-        employeeId: employee.id,
-        employeeName: employee.name,
-        referralCode: employee.referralCode,
-        stats
-      });
+      if (cache && cache.stats[employeeId]) {
+        const cachedStats = cache.stats[employeeId];
+        res.json({
+          success: true,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          referralCode: employee.referralCode,
+          stats: {
+            today: cachedStats.today,
+            currentMonth: cachedStats.currentMonth,
+            previousMonth: cachedStats.previousMonth,
+            total: cachedStats.total,
+            clients: cachedStats.clients
+          },
+          cached: true,
+          lastUpdated: cache.lastUpdated
+        });
+      } else {
+        // Если кэша нет или сотрудник не в кэше - считаем напрямую
+        console.warn(`⚠️ Сотрудник ${employeeId} не найден в кэше, считаем напрямую`);
+        const clients = getAllClients();
+        const stats = calculateReferralStats(employee.referralCode, clients);
+
+        res.json({
+          success: true,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          referralCode: employee.referralCode,
+          stats,
+          cached: false
+        });
+      }
     } catch (error) {
       console.error('Ошибка получения статистики сотрудника:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -499,11 +711,26 @@ module.exports = function setupReferralsAPI(app) {
 
       if (fs.existsSync(settingsFile)) {
         const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
-        res.json({ success: true, settings });
+
+        // ОБРАТНАЯ СОВМЕСТИМОСТЬ: старый формат {pointsPerReferral: 1} -> новый формат
+        if (settings.pointsPerReferral !== undefined && settings.basePoints === undefined) {
+          const compatibleSettings = {
+            basePoints: settings.pointsPerReferral,
+            milestoneThreshold: 0, // Милестоуны отключены
+            milestonePoints: settings.pointsPerReferral,
+            updatedAt: settings.updatedAt || new Date().toISOString()
+          };
+          res.json({ success: true, settings: compatibleSettings });
+        } else {
+          // Новый формат уже есть
+          res.json({ success: true, settings });
+        }
       } else {
-        // Дефолтные настройки
+        // Дефолтные настройки (новый формат)
         const defaultSettings = {
-          pointsPerReferral: 1,
+          basePoints: 1,
+          milestoneThreshold: 0, // Милестоуны отключены по умолчанию
+          milestonePoints: 1,
           updatedAt: new Date().toISOString()
         };
         res.json({ success: true, settings: defaultSettings });
@@ -521,13 +748,17 @@ module.exports = function setupReferralsAPI(app) {
 
       const settingsFile = path.join(POINTS_SETTINGS_DIR, 'referrals.json');
 
+      // Новый формат: базовые баллы + милестоуны
       const settings = {
-        pointsPerReferral: req.body.pointsPerReferral || 1,
+        basePoints: req.body.basePoints !== undefined ? req.body.basePoints : 1,
+        milestoneThreshold: req.body.milestoneThreshold !== undefined ? req.body.milestoneThreshold : 0,
+        milestonePoints: req.body.milestonePoints !== undefined ? req.body.milestonePoints : 1,
         updatedAt: new Date().toISOString()
       };
 
       fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
 
+      console.log(`✅ Настройки сохранены: base=${settings.basePoints}, threshold=${settings.milestoneThreshold}, milestone=${settings.milestonePoints}`);
       res.json({ success: true, settings });
     } catch (error) {
       console.error('Ошибка сохранения настроек:', error);
@@ -535,19 +766,74 @@ module.exports = function setupReferralsAPI(app) {
     }
   });
 
+  // =====================================================
+  // РАСЧЕТ БАЛЛОВ С МИЛЕСТОУНАМИ
+  // =====================================================
+
+  /**
+   * Рассчитать баллы с учетом милестоунов (каждый N-й клиент получает бонус вместо базовых баллов)
+   *
+   * @param {number} referralsCount - количество приглашенных клиентов
+   * @param {number} basePoints - базовые баллы за каждого клиента
+   * @param {number} milestoneThreshold - каждый N-й клиент получает бонус (0 = отключено)
+   * @param {number} milestonePoints - бонусные баллы за каждого N-го клиента
+   * @returns {number} - итоговое количество баллов
+   *
+   * Примеры:
+   * - 10 клиентов, base=1, threshold=5, milestone=3:
+   *   клиенты 1,2,3,4,6,7,8,9 = 8*1 = 8
+   *   клиенты 5,10 = 2*3 = 6
+   *   ИТОГО: 14 баллов
+   *
+   * - 10 клиентов, base=1, threshold=0 (отключено), milestone=3:
+   *   все 10 клиентов = 10*1 = 10 баллов (старое поведение)
+   */
+  function calculateReferralPointsWithMilestone(referralsCount, basePoints, milestoneThreshold, milestonePoints) {
+    // Если threshold = 0, милестоуны отключены - используем старую логику
+    if (milestoneThreshold === 0) {
+      return referralsCount * basePoints;
+    }
+
+    let totalPoints = 0;
+
+    for (let i = 1; i <= referralsCount; i++) {
+      // Каждый N-й клиент получает milestone вместо base
+      if (i % milestoneThreshold === 0) {
+        totalPoints += milestonePoints;
+      } else {
+        totalPoints += basePoints;
+      }
+    }
+
+    return totalPoints;
+  }
+
   // GET /api/referrals/employee-points/:employeeId - баллы сотрудника за текущий месяц
   app.get('/api/referrals/employee-points/:employeeId', (req, res) => {
     try {
       const { employeeId } = req.params;
       console.log(`GET /api/referrals/employee-points/${employeeId}`);
 
-      // Получаем настройки баллов
+      // Получаем настройки баллов (новый формат с милестоунами)
       const settingsFile = path.join(POINTS_SETTINGS_DIR, 'referrals.json');
-      let pointsPerReferral = 1;
+      let basePoints = 1;
+      let milestoneThreshold = 0;
+      let milestonePoints = 1;
 
       if (fs.existsSync(settingsFile)) {
         const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
-        pointsPerReferral = settings.pointsPerReferral || 1;
+
+        // ОБРАТНАЯ СОВМЕСТИМОСТЬ: старый формат {pointsPerReferral: 1}
+        if (settings.pointsPerReferral !== undefined && settings.basePoints === undefined) {
+          basePoints = settings.pointsPerReferral;
+          milestoneThreshold = 0; // Милестоуны отключены
+          milestonePoints = settings.pointsPerReferral;
+        } else {
+          // Новый формат
+          basePoints = settings.basePoints !== undefined ? settings.basePoints : 1;
+          milestoneThreshold = settings.milestoneThreshold !== undefined ? settings.milestoneThreshold : 0;
+          milestonePoints = settings.milestonePoints !== undefined ? settings.milestonePoints : 1;
+        }
       }
 
       // Ищем сотрудника
@@ -564,20 +850,42 @@ module.exports = function setupReferralsAPI(app) {
           currentMonthPoints: 0,
           previousMonthPoints: 0,
           currentMonthReferrals: 0,
-          previousMonthReferrals: 0
+          previousMonthReferrals: 0,
+          pointsPerReferral: basePoints,
+          basePoints,
+          milestoneThreshold,
+          milestonePoints
         });
       }
 
       const clients = getAllClients();
       const stats = calculateReferralStats(employee.referralCode, clients);
 
+      // Рассчитываем баллы с учетом милестоунов
+      const currentMonthPoints = calculateReferralPointsWithMilestone(
+        stats.currentMonth,
+        basePoints,
+        milestoneThreshold,
+        milestonePoints
+      );
+
+      const previousMonthPoints = calculateReferralPointsWithMilestone(
+        stats.previousMonth,
+        basePoints,
+        milestoneThreshold,
+        milestonePoints
+      );
+
       res.json({
         success: true,
-        currentMonthPoints: stats.currentMonth * pointsPerReferral,
-        previousMonthPoints: stats.previousMonth * pointsPerReferral,
+        currentMonthPoints,
+        previousMonthPoints,
         currentMonthReferrals: stats.currentMonth,
         previousMonthReferrals: stats.previousMonth,
-        pointsPerReferral
+        pointsPerReferral: basePoints, // Для обратной совместимости со старым клиентом
+        basePoints,
+        milestoneThreshold,
+        milestonePoints
       });
     } catch (error) {
       console.error('Ошибка получения баллов:', error);
@@ -585,5 +893,67 @@ module.exports = function setupReferralsAPI(app) {
     }
   });
 
+  // PATCH /api/clients/:phone/referral-status - обновить статус реферала (ФАЗА 2.1)
+  app.patch('/api/clients/:phone/referral-status', (req, res) => {
+    try {
+      const { phone } = req.params;
+      const { status } = req.body;
+
+      console.log(`PATCH /api/clients/${phone}/referral-status -> ${status}`);
+
+      // Валидация статуса
+      const validStatuses = ['registered', 'first_purchase', 'active'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          error: `Некорректный статус. Допустимые: ${validStatuses.join(', ')}`
+        });
+      }
+
+      const normalizedPhone = phone.replace(/[\s\+]/g, '');
+      const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
+      const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
+
+      if (!fs.existsSync(clientFile)) {
+        return res.status(404).json({ success: false, error: 'Клиент не найден' });
+      }
+
+      const client = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+
+      // Обновляем статус только если есть referredBy
+      if (!client.referredBy) {
+        return res.status(400).json({
+          success: false,
+          error: 'Клиент не является рефералом'
+        });
+      }
+
+      client.referralStatus = status;
+      client.updatedAt = new Date().toISOString();
+
+      // Добавляем в историю
+      if (!client.referralStatusHistory) {
+        client.referralStatusHistory = [];
+      }
+      client.referralStatusHistory.push({
+        status,
+        date: new Date().toISOString()
+      });
+
+      fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
+
+      console.log(`✅ Статус реферала обновлен: ${phone} -> ${status}`);
+      res.json({ success: true, client });
+    } catch (error) {
+      console.error('Ошибка обновления статуса реферала:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('Referrals API initialized');
-};
+}
+
+// Экспортируем функцию настройки API и утилиты
+module.exports = setupReferralsAPI;
+module.exports.invalidateStatsCache = invalidateStatsCache;
+module.exports.checkReferralLimit = checkReferralLimit;

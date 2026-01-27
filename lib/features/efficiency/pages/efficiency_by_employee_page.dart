@@ -4,6 +4,8 @@ import '../services/efficiency_data_service.dart';
 import '../widgets/efficiency_common_widgets.dart';
 import '../utils/efficiency_utils.dart';
 import 'employee_efficiency_detail_page.dart';
+import '../../referrals/services/referral_service.dart';
+import '../../referrals/models/referral_stats_model.dart';
 
 /// Страница списка эффективности по сотрудникам
 class EfficiencyByEmployeePage extends StatefulWidget {
@@ -19,6 +21,8 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   String? _error;
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
+  Map<String, EmployeeReferralPoints> _referralPointsByEmployee = {};
+  bool _isLoadingReferrals = false;
 
   @override
   void initState() {
@@ -42,11 +46,49 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
         _data = data;
         _isLoading = false;
       });
+
+      // Загружаем данные о приглашениях после основных данных
+      _loadReferralPoints();
     } catch (e) {
       setState(() {
         _error = 'Ошибка загрузки данных: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadReferralPoints() async {
+    if (_data == null || _data!.byEmployee.isEmpty) return;
+
+    setState(() => _isLoadingReferrals = true);
+
+    final employeeIds = _data!.byEmployee.map((s) => s.entityId).toList();
+
+    try {
+      final Map<String, EmployeeReferralPoints> pointsMap = {};
+
+      // Загружаем данные для всех сотрудников параллельно
+      await Future.wait(employeeIds.map((employeeId) async {
+        try {
+          final points = await ReferralService.getEmployeePoints(employeeId);
+          if (points != null) {
+            pointsMap[employeeId] = points;
+          }
+        } catch (e) {
+          // Игнорируем ошибки для отдельных сотрудников
+        }
+      }));
+
+      if (mounted) {
+        setState(() {
+          _referralPointsByEmployee = pointsMap;
+          _isLoadingReferrals = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingReferrals = false);
+      }
     }
   }
 
@@ -246,6 +288,38 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
                   ],
                 ),
               ),
+              if (_referralPointsByEmployee.containsKey(summary.entityId) &&
+                  (_referralPointsByEmployee[summary.entityId]!.currentMonthPoints > 0 ||
+                   _referralPointsByEmployee[summary.entityId]!.currentMonthReferrals > 0))
+                Padding(
+                  padding: const EdgeInsets.only(left: 44, top: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.person_add_alt_outlined,
+                        size: 14,
+                        color: Colors.teal[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Приглашения: ${_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals} клиент${_getReferralsEnding(_referralPointsByEmployee[summary.entityId]!.currentMonthReferrals)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '+${_referralPointsByEmployee[summary.entityId]!.currentMonthPoints}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.only(left: 44),
@@ -256,5 +330,13 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
         ),
       ),
     );
+  }
+
+  String _getReferralsEnding(int count) {
+    if (count % 10 == 1 && count % 100 != 11) return '';
+    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) {
+      return 'а';
+    }
+    return 'ов';
   }
 }

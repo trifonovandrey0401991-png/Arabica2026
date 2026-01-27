@@ -228,4 +228,42 @@ class ReferralService {
       Logger.error('Ошибка отметки как просмотренные', e);
     }
   }
+
+  /// Получить настройки баллов за приглашения (новый формат с милестоунами)
+  static Future<ReferralsPointsSettings> getPointsSettings() async {
+    try {
+      final result = await BaseHttpService.getRaw(
+        endpoint: _pointsSettingsEndpoint,
+      );
+
+      if (result != null && result['settings'] != null) {
+        return ReferralsPointsSettings.fromJson(result['settings']);
+      }
+      return ReferralsPointsSettings(
+        basePoints: 1,
+        milestoneThreshold: 0,
+        milestonePoints: 1,
+      );
+    } catch (e) {
+      Logger.error('Ошибка получения настроек баллов', e);
+      return ReferralsPointsSettings(
+        basePoints: 1,
+        milestoneThreshold: 0,
+        milestonePoints: 1,
+      );
+    }
+  }
+
+  /// Обновить настройки баллов за приглашения (новый формат с милестоунами)
+  static Future<bool> updatePointsSettings(ReferralsPointsSettings settings) async {
+    try {
+      return await BaseHttpService.simplePost(
+        endpoint: _pointsSettingsEndpoint,
+        body: settings.toJson(),
+      );
+    } catch (e) {
+      Logger.error('Ошибка обновления настроек баллов', e);
+      return false;
+    }
+  }
 }

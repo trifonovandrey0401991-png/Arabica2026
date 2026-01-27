@@ -12,6 +12,7 @@ import 'settings_tabs/product_search_points_settings_page.dart';
 import 'settings_tabs/orders_points_settings_page.dart';
 import 'settings_tabs/task_points_settings_page.dart';
 import 'settings_tabs/envelope_points_settings_page.dart';
+import '../../referrals/pages/referrals_points_settings_page.dart';
 
 /// Page for configuring efficiency points settings
 class PointsSettingsPage extends StatefulWidget {
@@ -104,6 +105,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       gradientColors: [const Color(0xFFee0979), const Color(0xFFff6a00)],
     ),
     _PointsCategory(
+      id: 'referrals',
+      title: 'Приглашения',
+      icon: Icons.person_add_alt_outlined,
+      description: 'Баллы за приглашенных клиентов',
+      gradientColors: [const Color(0xFF00897B), const Color(0xFF26A69A)],
+    ),
+    _PointsCategory(
       id: 'fortune_wheel',
       title: 'Колесо Удачи',
       icon: Icons.casino_outlined,
@@ -188,6 +196,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
         context,
         MaterialPageRoute(
           builder: (context) => const EnvelopePointsSettingsPage(),
+        ),
+      );
+    } else if (categoryId == 'referrals') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ReferralsPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'fortune_wheel') {
