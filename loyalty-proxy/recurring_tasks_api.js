@@ -58,6 +58,7 @@ function saveJsonFile(filePath, data) {
 
 const TEMPLATES_FILE = path.join(RECURRING_TASKS_DIR, 'all.json');
 const SCHEDULER_STATE_FILE = path.join(RECURRING_TASKS_DIR, 'scheduler-state.json');
+const REMINDERS_SENT_FILE = path.join(RECURRING_TASKS_DIR, 'reminders-sent.json');
 
 function loadTemplates() {
   return loadJsonFile(TEMPLATES_FILE, []);
@@ -293,6 +294,117 @@ async function checkExpiredTasks() {
   return expiredCount;
 }
 
+// ==================== НАПОМИНАНИЯ ====================
+
+function loadRemindersSent() {
+  return loadJsonFile(REMINDERS_SENT_FILE, {});
+}
+
+function saveRemindersSent(data) {
+  saveJsonFile(REMINDERS_SENT_FILE, data);
+}
+
+// Получить текущее время в формате HH:MM
+function getCurrentTime() {
+  const now = new Date();
+  // Московское время (UTC+3)
+  const moscowOffset = 3 * 60;
+  const utcOffset = now.getTimezoneOffset();
+  const moscowTime = new Date(now.getTime() + (moscowOffset + utcOffset) * 60 * 1000);
+
+  const hours = moscowTime.getHours().toString().padStart(2, '0');
+  const minutes = moscowTime.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+// Проверить, попадает ли текущее время в окно напоминания (±3 минуты)
+function isTimeInWindow(currentTime, reminderTime) {
+  const [curH, curM] = currentTime.split(':').map(Number);
+  const [remH, remM] = reminderTime.split(':').map(Number);
+
+  const curMinutes = curH * 60 + curM;
+  const remMinutes = remH * 60 + remM;
+
+  // Окно ±3 минуты (для 5-минутного интервала планировщика)
+  return Math.abs(curMinutes - remMinutes) <= 3;
+}
+
+async function sendScheduledReminders() {
+  const today = getToday();
+  const yearMonth = getYearMonth(today);
+  const currentTime = getCurrentTime();
+
+  console.log(`Checking reminders at ${currentTime} Moscow time...`);
+
+  // Загружаем задачи за сегодня
+  const instances = loadInstances(yearMonth);
+  const todayInstances = instances.filter(i => i.date === today && i.status === 'pending');
+
+  if (todayInstances.length === 0) {
+    return 0;
+  }
+
+  // Загружаем отправленные напоминания
+  let remindersSent = loadRemindersSent();
+
+  // Очищаем старые записи (старше 2 дней)
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  Object.keys(remindersSent).forEach(key => {
+    if (key < twoDaysAgo) {
+      delete remindersSent[key];
+    }
+  });
+
+  // Инициализируем сегодняшний день
+  if (!remindersSent[today]) {
+    remindersSent[today] = {};
+  }
+
+  let sentCount = 0;
+
+  for (const instance of todayInstances) {
+    const reminderTimes = instance.reminderTimes || [];
+
+    for (let i = 0; i < reminderTimes.length; i++) {
+      const reminderTime = reminderTimes[i];
+      const reminderKey = `${instance.id}_${i}`;
+
+      // Пропускаем если уже отправлено
+      if (remindersSent[today][reminderKey]) {
+        continue;
+      }
+
+      // Проверяем, попадает ли текущее время в окно напоминания
+      if (isTimeInWindow(currentTime, reminderTime)) {
+        // Отправляем push
+        if (instance.assigneePhone) {
+          await sendPushToPhone(
+            instance.assigneePhone,
+            '⏰ Напоминание о задаче',
+            `"${instance.title}" - нужно выполнить до ${instance.deadline.split('T')[1].substring(0, 5)}`,
+            { type: 'recurring_task_reminder', instanceId: instance.id, reminderIndex: i }
+          );
+
+          console.log(`  📢 Reminder ${i + 1} sent to ${instance.assigneeName} for task "${instance.title}"`);
+          sentCount++;
+        }
+
+        // Отмечаем как отправленное
+        remindersSent[today][reminderKey] = new Date().toISOString();
+      }
+    }
+  }
+
+  // Сохраняем состояние
+  saveRemindersSent(remindersSent);
+
+  if (sentCount > 0) {
+    console.log(`Sent ${sentCount} reminders`);
+  }
+
+  return sentCount;
+}
+
 // ==================== ПЛАНИРОВЩИК ====================
 
 function startScheduler() {
@@ -316,6 +428,9 @@ function startScheduler() {
       state.lastExpiredCheck = new Date().toISOString();
       saveSchedulerState(state);
 
+      // Отправка напоминаний по расписанию
+      await sendScheduledReminders();
+
     } catch (e) {
       console.error('Scheduler error:', e);
     }
@@ -333,6 +448,7 @@ function startScheduler() {
         saveSchedulerState(state);
       }
       await checkExpiredTasks();
+      await sendScheduledReminders();
     } catch (e) {
       console.error('Initial scheduler run error:', e);
     }
@@ -624,6 +740,17 @@ function setupRecurringTasksAPI(app) {
       res.json({ success: true, expiredCount: count });
     } catch (e) {
       console.error('Error checking expired:', e);
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // POST /api/recurring-tasks/send-reminders - Ручная отправка напоминаний (для тестирования)
+  app.post('/api/recurring-tasks/send-reminders', async (req, res) => {
+    try {
+      const count = await sendScheduledReminders();
+      res.json({ success: true, sentCount: count, currentTime: getCurrentTime() });
+    } catch (e) {
+      console.error('Error sending reminders:', e);
       res.status(500).json({ success: false, error: e.message });
     }
   });
