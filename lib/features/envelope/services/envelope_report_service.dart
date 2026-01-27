@@ -1,4 +1,5 @@
 import '../models/envelope_report_model.dart';
+import '../models/pending_envelope_report_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
@@ -88,6 +89,24 @@ class EnvelopeReportService {
       },
       fromJson: (json) => EnvelopeReport.fromJson(json),
       itemKey: 'report',
+    );
+  }
+
+  /// Получить pending отчеты (ожидающие сдачи)
+  static Future<List<PendingEnvelopeReport>> getPendingReports() async {
+    Logger.debug('Загрузка pending отчетов...');
+    return await BaseHttpService.getList<PendingEnvelopeReport>(
+      endpoint: '/api/envelope-pending',
+      fromJson: (json) => PendingEnvelopeReport.fromJson(json),
+    );
+  }
+
+  /// Получить failed отчеты (не сданные)
+  static Future<List<PendingEnvelopeReport>> getFailedReports() async {
+    Logger.debug('Загрузка failed отчетов...');
+    return await BaseHttpService.getList<PendingEnvelopeReport>(
+      endpoint: '/api/envelope-failed',
+      fromJson: (json) => PendingEnvelopeReport.fromJson(json),
     );
   }
 }

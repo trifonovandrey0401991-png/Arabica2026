@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/logger.dart';
 import '../models/envelope_report_model.dart';
+import '../models/pending_envelope_report_model.dart';
 import '../services/envelope_report_service.dart';
 import 'envelope_report_view_page.dart';
 
@@ -12,27 +13,43 @@ class EnvelopeReportsListPage extends StatefulWidget {
   State<EnvelopeReportsListPage> createState() => _EnvelopeReportsListPageState();
 }
 
-class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
+class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   String? _selectedShop;
   String? _selectedEmployee;
   DateTime? _selectedDate;
   List<EnvelopeReport> _allReports = [];
+  List<PendingEnvelopeReport> _pendingReports = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final reports = await EnvelopeReportService.getReports();
+      final pendingReports = await EnvelopeReportService.getPendingReports();
       // Сортируем по дате (новые сверху)
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      pendingReports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       setState(() {
         _allReports = reports;
+        _pendingReports = pendingReports;
         _isLoading = false;
       });
     } catch (e) {
@@ -61,6 +78,59 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
     }
 
     return reports;
+  }
+
+  // Вкладка 1: В Очереди (pending отчеты из автоматизации)
+  List<PendingEnvelopeReport> get _queueReports {
+    var reports = _pendingReports.where((r) => r.status == 'pending').toList();
+
+    // Применяем фильтры
+    if (_selectedShop != null) {
+      reports = reports.where((r) => r.shopAddress == _selectedShop).toList();
+    }
+    if (_selectedDate != null) {
+      reports = reports.where((r) {
+        return r.createdAt.year == _selectedDate!.year &&
+               r.createdAt.month == _selectedDate!.month &&
+               r.createdAt.day == _selectedDate!.day;
+      }).toList();
+    }
+
+    return reports;
+  }
+
+  // Вкладка 2: Не Сданы (failed отчеты из автоматизации)
+  List<PendingEnvelopeReport> get _notSubmittedReports {
+    var reports = _pendingReports.where((r) => r.status == 'failed').toList();
+
+    // Применяем фильтры
+    if (_selectedShop != null) {
+      reports = reports.where((r) => r.shopAddress == _selectedShop).toList();
+    }
+    if (_selectedDate != null) {
+      reports = reports.where((r) {
+        return r.createdAt.year == _selectedDate!.year &&
+               r.createdAt.month == _selectedDate!.month &&
+               r.createdAt.day == _selectedDate!.day;
+      }).toList();
+    }
+
+    return reports;
+  }
+
+  // Вкладка 3: Ожидают (все pending)
+  List<EnvelopeReport> get _awaitingReports {
+    return _filteredReports.where((r) => r.status == 'pending').toList();
+  }
+
+  // Вкладка 4: Подтверждены
+  List<EnvelopeReport> get _confirmedReports {
+    return _filteredReports.where((r) => r.status == 'confirmed').toList();
+  }
+
+  // Вкладка 5: Отклонены (просроченные)
+  List<EnvelopeReport> get _rejectedReports {
+    return _filteredReports.where((r) => r.isExpired).toList();
   }
 
   List<String> get _uniqueShops {
@@ -110,6 +180,34 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
         ),
         child: Column(
           children: [
+            // Tab buttons (2 rows)
+            Container(
+              color: Colors.white.withOpacity(0.1),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Column(
+                children: [
+                  // Первый ряд
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(child: _buildTabButton(0, 'В Очереди', _queueReports.length)),
+                      Expanded(child: _buildTabButton(1, 'Не Сданы', _notSubmittedReports.length)),
+                      Expanded(child: _buildTabButton(2, 'Ожидают', _awaitingReports.length)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Второй ряд
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(child: _buildTabButton(3, 'Подтверждены', _confirmedReports.length)),
+                      Expanded(child: _buildTabButton(4, 'Отклонены', _rejectedReports.length)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
             // Фильтры
             Container(
               padding: const EdgeInsets.all(16),
@@ -204,29 +302,102 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
               ),
             ),
 
-            // Список отчетов
+            // TabBarView с отчетами
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : _filteredReports.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Отчеты не найдены',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredReports.length,
-                          itemBuilder: (context, index) {
-                            final report = _filteredReports[index];
-                            return _buildReportCard(report);
-                          },
-                        ),
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildPendingReportsList(_queueReports, 'В очереди отчетов нет'),
+                        _buildPendingReportsList(_notSubmittedReports, 'Несданных отчетов нет'),
+                        _buildReportsList(_awaitingReports, 'Ожидающих отчетов нет'),
+                        _buildReportsList(_confirmedReports, 'Подтвержденных отчетов нет'),
+                        _buildReportsList(_rejectedReports, 'Отклоненных отчетов нет'),
+                      ],
+                    ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTabButton(int index, String label, int count) {
+    final isSelected = _tabController.index == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: ElevatedButton(
+        onPressed: () {
+          setState(() {
+            _tabController.animateTo(index);
+          });
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+          foregroundColor: isSelected ? const Color(0xFF004D40) : Colors.white,
+          elevation: isSelected ? 4 : 0,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF004D40) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF004D40),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportsList(List<EnvelopeReport> reports, String emptyMessage) {
+    if (reports.isEmpty) {
+      return Center(
+        child: Text(
+          emptyMessage,
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: reports.length,
+      itemBuilder: (context, index) {
+        final report = reports[index];
+        return _buildReportCard(report);
+      },
     );
   }
 
@@ -317,6 +488,74 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage> {
           ).then((_) => _loadData());
         },
       ),
+    );
+  }
+
+  Widget _buildPendingReportCard(PendingEnvelopeReport report) {
+    final isFailed = report.status == 'failed';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: isFailed ? Colors.red : Colors.orange,
+          child: Icon(
+            isFailed ? Icons.cancel : Icons.access_time,
+            color: Colors.white,
+          ),
+        ),
+        title: Text(
+          report.shopAddress,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Смена: ${report.shiftTypeText}'),
+            Text(
+              'Дата: ${report.date} • Дедлайн: ${report.deadline}',
+            ),
+            Row(
+              children: [
+                Icon(
+                  isFailed ? Icons.warning : Icons.schedule,
+                  color: isFailed ? Colors.red : Colors.orange,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  report.statusText,
+                  style: TextStyle(
+                    color: isFailed ? Colors.red : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingReportsList(List<PendingEnvelopeReport> reports, String emptyMessage) {
+    if (reports.isEmpty) {
+      return Center(
+        child: Text(
+          emptyMessage,
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: reports.length,
+      itemBuilder: (context, index) {
+        final report = reports[index];
+        return _buildPendingReportCard(report);
+      },
     );
   }
 }

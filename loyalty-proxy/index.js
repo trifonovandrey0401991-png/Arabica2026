@@ -42,6 +42,7 @@ const setupRecountPointsAPI = require("./recount_points_api");
 const app = express();
 const setupRatingWheelAPI = require("./rating_wheel_api");
 const setupReferralsAPI = require("./referrals_api");
+const { invalidateStatsCache, checkReferralLimit } = require("./referrals_api");
 const { setupTasksAPI } = require("./tasks_api");
 const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
 const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = require("./report_notifications_api");
@@ -57,6 +58,7 @@ const { startRecountAutomationScheduler } = require("./api/recount_automation_sc
 const { startRkoAutomationScheduler, getPendingReports: getPendingRkoReports, getFailedReports: getFailedRkoReports } = require("./api/rko_automation_scheduler");
 const { startShiftHandoverAutomationScheduler, getPendingReports: getPendingShiftHandoverReports, getFailedReports: getFailedShiftHandoverReports, markPendingAsCompleted: markShiftHandoverPendingCompleted, sendAdminNewReportNotification: sendShiftHandoverNewReportNotification } = require("./api/shift_handover_automation_scheduler");
 const { startAttendanceAutomationScheduler, getPendingReports: getPendingAttendanceReports, getFailedReports: getFailedAttendanceReports, canMarkAttendance, markPendingAsCompleted: markAttendancePendingCompleted } = require("./api/attendance_automation_scheduler");
+const { startScheduler: startEnvelopeAutomationScheduler } = require("./api/envelope_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
@@ -5369,6 +5371,76 @@ app.delete('/api/envelope-reports/:id', async (req, res) => {
   }
 });
 
+// GET /api/envelope-pending - получить pending отчеты
+app.get('/api/envelope-pending', async (req, res) => {
+  try {
+    console.log('GET /api/envelope-pending');
+    const pendingDir = '/var/www/envelope-pending';
+    const reports = [];
+
+    if (fs.existsSync(pendingDir)) {
+      const files = await fs.promises.readdir(pendingDir);
+
+      for (const file of files) {
+        if (file.startsWith('pending_env_')) {
+          try {
+            const content = await fs.promises.readFile(path.join(pendingDir, file), 'utf8');
+            const data = JSON.parse(content);
+            if (data.status === 'pending') {
+              reports.push(data);
+            }
+          } catch (e) {
+            console.error(`Ошибка чтения ${file}:`, e);
+          }
+        }
+      }
+    }
+
+    // Сортируем по дате создания (новые первыми)
+    reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(reports);
+  } catch (error) {
+    console.error('Ошибка получения pending отчетов:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/envelope-failed - получить failed отчеты
+app.get('/api/envelope-failed', async (req, res) => {
+  try {
+    console.log('GET /api/envelope-failed');
+    const pendingDir = '/var/www/envelope-pending';
+    const reports = [];
+
+    if (fs.existsSync(pendingDir)) {
+      const files = await fs.promises.readdir(pendingDir);
+
+      for (const file of files) {
+        if (file.startsWith('pending_env_')) {
+          try {
+            const content = await fs.promises.readFile(path.join(pendingDir, file), 'utf8');
+            const data = JSON.parse(content);
+            if (data.status === 'failed') {
+              reports.push(data);
+            }
+          } catch (e) {
+            console.error(`Ошибка чтения ${file}:`, e);
+          }
+        }
+      }
+    }
+
+    // Сортируем по дате создания (новые первыми)
+    reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(reports);
+  } catch (error) {
+    console.error('Ошибка получения failed отчетов:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ========== API для клиентов ==========
 const CLIENTS_DIR = '/var/www/clients';
 if (!fs.existsSync(CLIENTS_DIR)) {
@@ -5416,6 +5488,21 @@ app.post('/api/clients', async (req, res) => {
     }
     const isNewReferral = req.body.referredBy && (!existingClient || !existingClient.referredBy);
 
+    // ФАЗА 1.3: Проверка лимита рефералов (антифрод)
+    if (isNewReferral) {
+      const limitCheck = checkReferralLimit(parseInt(req.body.referredBy, 10));
+      if (!limitCheck.allowed) {
+        console.warn(`⚠️ АНТИФРОД: Блокировка приглашения от кода ${req.body.referredBy} (лимит превышен)`);
+        return res.status(429).json({
+          success: false,
+          error: `Превышен дневной лимит приглашений для этого кода. Попробуйте завтра.`,
+          limitExceeded: true,
+          todayCount: limitCheck.todayCount,
+          limit: limitCheck.limit
+        });
+      }
+    }
+
     const client = {
       phone: normalizedPhone,
       name: req.body.name || '',
@@ -5423,6 +5510,11 @@ app.post('/api/clients', async (req, res) => {
       fcmToken: req.body.fcmToken || null,
       referredBy: req.body.referredBy || null,
       referredAt: req.body.referredBy ? new Date().toISOString() : null,
+      // ФАЗА 2.1: Статус реферала (registered, first_purchase, active)
+      referralStatus: req.body.referredBy ? 'registered' : null,
+      referralStatusHistory: req.body.referredBy ? [
+        { status: 'registered', date: new Date().toISOString() }
+      ] : [],
       createdAt: existingClient?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -5454,6 +5546,13 @@ app.post('/api/clients', async (req, res) => {
         console.log(`✅ Push отправлен админам о новом приглашении: ${clientName} -> ${employeeName}`);
       } catch (pushError) {
         console.error('Ошибка отправки push о приглашении:', pushError);
+      }
+
+      // Инвалидируем кэш статистики рефералов (ФАЗА 1.1)
+      try {
+        invalidateStatsCache();
+      } catch (cacheError) {
+        console.error('Ошибка инвалидации кэша рефералов:', cacheError);
       }
     }
 
@@ -7818,6 +7917,9 @@ startShiftHandoverAutomationScheduler();
 
 // Start Attendance automation scheduler (auto-create reports, check deadlines, penalties)
 startAttendanceAutomationScheduler();
+
+// Start Envelope automation scheduler (auto-create reports, check deadlines, penalties)
+startEnvelopeAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
