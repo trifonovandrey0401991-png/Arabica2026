@@ -332,17 +332,18 @@ function isTimeInWindow(currentTime, reminderTime) {
 async function sendScheduledReminders() {
   const today = getToday();
   const yearMonth = getYearMonth(today);
-  const currentTime = getCurrentTime();
-
-  console.log(`Checking reminders at ${currentTime} Moscow time...`);
 
   // Загружаем задачи за сегодня
   const instances = loadInstances(yearMonth);
   const todayInstances = instances.filter(i => i.date === today && i.status === 'pending');
 
+  // Ранний выход если нет активных задач - без логирования
   if (todayInstances.length === 0) {
     return 0;
   }
+
+  const currentTime = getCurrentTime();
+  console.log(`Checking ${todayInstances.length} pending tasks for reminders at ${currentTime} Moscow...`);
 
   // Загружаем отправленные напоминания
   let remindersSent = loadRemindersSent();
