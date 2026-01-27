@@ -766,48 +766,6 @@ function setupReferralsAPI(app) {
     }
   });
 
-  // =====================================================
-  // РАСЧЕТ БАЛЛОВ С МИЛЕСТОУНАМИ
-  // =====================================================
-
-  /**
-   * Рассчитать баллы с учетом милестоунов (каждый N-й клиент получает бонус вместо базовых баллов)
-   *
-   * @param {number} referralsCount - количество приглашенных клиентов
-   * @param {number} basePoints - базовые баллы за каждого клиента
-   * @param {number} milestoneThreshold - каждый N-й клиент получает бонус (0 = отключено)
-   * @param {number} milestonePoints - бонусные баллы за каждого N-го клиента
-   * @returns {number} - итоговое количество баллов
-   *
-   * Примеры:
-   * - 10 клиентов, base=1, threshold=5, milestone=3:
-   *   клиенты 1,2,3,4,6,7,8,9 = 8*1 = 8
-   *   клиенты 5,10 = 2*3 = 6
-   *   ИТОГО: 14 баллов
-   *
-   * - 10 клиентов, base=1, threshold=0 (отключено), milestone=3:
-   *   все 10 клиентов = 10*1 = 10 баллов (старое поведение)
-   */
-  function calculateReferralPointsWithMilestone(referralsCount, basePoints, milestoneThreshold, milestonePoints) {
-    // Если threshold = 0, милестоуны отключены - используем старую логику
-    if (milestoneThreshold === 0) {
-      return referralsCount * basePoints;
-    }
-
-    let totalPoints = 0;
-
-    for (let i = 1; i <= referralsCount; i++) {
-      // Каждый N-й клиент получает milestone вместо base
-      if (i % milestoneThreshold === 0) {
-        totalPoints += milestonePoints;
-      } else {
-        totalPoints += basePoints;
-      }
-    }
-
-    return totalPoints;
-  }
-
   // GET /api/referrals/employee-points/:employeeId - баллы сотрудника за текущий месяц
   app.get('/api/referrals/employee-points/:employeeId', (req, res) => {
     try {
@@ -953,7 +911,50 @@ function setupReferralsAPI(app) {
   console.log('Referrals API initialized');
 }
 
+// =====================================================
+// РАСЧЕТ БАЛЛОВ С МИЛЕСТОУНАМИ (ЭКСПОРТИРУЕМАЯ УТИЛИТА)
+// =====================================================
+
+/**
+ * Рассчитать баллы с учетом милестоунов (каждый N-й клиент получает бонус вместо базовых баллов)
+ *
+ * @param {number} referralsCount - количество приглашенных клиентов
+ * @param {number} basePoints - базовые баллы за каждого клиента
+ * @param {number} milestoneThreshold - каждый N-й клиент получает бонус (0 = отключено)
+ * @param {number} milestonePoints - бонусные баллы за каждого N-го клиента
+ * @returns {number} - итоговое количество баллов
+ *
+ * Примеры:
+ * - 10 клиентов, base=1, threshold=5, milestone=3:
+ *   клиенты 1,2,3,4,6,7,8,9 = 8*1 = 8
+ *   клиенты 5,10 = 2*3 = 6
+ *   ИТОГО: 14 баллов
+ *
+ * - 10 клиентов, base=1, threshold=0 (отключено), milestone=3:
+ *   все 10 клиентов = 10*1 = 10 баллов (старое поведение)
+ */
+function calculateReferralPointsWithMilestone(referralsCount, basePoints, milestoneThreshold, milestonePoints) {
+  // Если threshold = 0, милестоуны отключены - используем старую логику
+  if (milestoneThreshold === 0) {
+    return referralsCount * basePoints;
+  }
+
+  let totalPoints = 0;
+
+  for (let i = 1; i <= referralsCount; i++) {
+    // Каждый N-й клиент получает milestone вместо base
+    if (i % milestoneThreshold === 0) {
+      totalPoints += milestonePoints;
+    } else {
+      totalPoints += basePoints;
+    }
+  }
+
+  return totalPoints;
+}
+
 // Экспортируем функцию настройки API и утилиты
 module.exports = setupReferralsAPI;
 module.exports.invalidateStatsCache = invalidateStatsCache;
 module.exports.checkReferralLimit = checkReferralLimit;
+module.exports.calculateReferralPointsWithMilestone = calculateReferralPointsWithMilestone;

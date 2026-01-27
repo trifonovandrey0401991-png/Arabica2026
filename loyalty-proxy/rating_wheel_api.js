@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 
 const RATINGS_DIR = '/var/www/employee-ratings';
 const FORTUNE_WHEEL_DIR = '/var/www/fortune-wheel';
@@ -102,7 +103,7 @@ function getEfficiencyPoints(employeeId, month) {
   }
 }
 
-// Получить баллы за рефералов
+// Получить баллы за рефералов (с поддержкой милестоунов)
 function getReferralPoints(employeeId, month) {
   try {
     const referralsDir = '/var/www/referral-clients';
@@ -122,15 +123,30 @@ function getReferralPoints(employeeId, month) {
       }
     }
 
-    // Получить настройки баллов за рефералов
+    // Получить настройки баллов за рефералов (новый формат с милестоунами)
     const settingsPath = '/var/www/points-settings/referrals.json';
-    let pointsPerReferral = 1;
+    let basePoints = 1;
+    let milestoneThreshold = 0;
+    let milestonePoints = 1;
+
     if (fs.existsSync(settingsPath)) {
       const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      pointsPerReferral = settings.pointsPerReferral || 1;
+
+      // ОБРАТНАЯ СОВМЕСТИМОСТЬ: старый формат {pointsPerReferral: 1}
+      if (settings.pointsPerReferral !== undefined && settings.basePoints === undefined) {
+        basePoints = settings.pointsPerReferral;
+        milestoneThreshold = 0; // Милестоуны отключены
+        milestonePoints = settings.pointsPerReferral;
+      } else {
+        // Новый формат с милестоунами
+        basePoints = settings.basePoints !== undefined ? settings.basePoints : 1;
+        milestoneThreshold = settings.milestoneThreshold !== undefined ? settings.milestoneThreshold : 0;
+        milestonePoints = settings.milestonePoints !== undefined ? settings.milestonePoints : 1;
+      }
     }
 
-    return count * pointsPerReferral;
+    // Рассчитать баллы с учетом милестоунов
+    return calculateReferralPointsWithMilestone(count, basePoints, milestoneThreshold, milestonePoints);
   } catch (e) {
     console.error('Ошибка подсчета рефералов:', e);
     return 0;
