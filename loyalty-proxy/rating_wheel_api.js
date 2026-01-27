@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
+const { calculateFullEfficiency } = require('./efficiency_calc');
 
 const RATINGS_DIR = '/var/www/employee-ratings';
 const FORTUNE_WHEEL_DIR = '/var/www/fortune-wheel';
@@ -65,41 +66,16 @@ function getShiftsCount(employeeId, month) {
   }
 }
 
-// Получить баллы эффективности сотрудника за месяц
-function getEfficiencyPoints(employeeId, month) {
+// Получить полную эффективность сотрудника за месяц (все 10 категорий)
+function getFullEfficiency(employeeId, employeeName, month) {
   try {
-    // Читаем из efficiency-data или считаем по отчетам
-    // Для простоты - возвращаем сумму из efficiency-penalties (штрафы хранятся там)
-    // и считаем бонусы из отчетов
-
-    let totalPoints = 0;
-
-    // Штрафы за пересменки
-    if (fs.existsSync(EFFICIENCY_DIR)) {
-      const files = fs.readdirSync(EFFICIENCY_DIR);
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-        const content = fs.readFileSync(path.join(EFFICIENCY_DIR, file), 'utf8');
-        const penalty = JSON.parse(content);
-
-        if (penalty.date && penalty.date.startsWith(month)) {
-          if (penalty.type === 'employee' && penalty.entityId === employeeId) {
-            totalPoints += penalty.points || 0;
-          }
-        }
-      }
-    }
-
-    // TODO: Добавить подсчет баллов из других источников
-    // (пересменки, пересчеты, тесты, отзывы и т.д.)
-    // Пока возвращаем базовые баллы за смены
-    const shifts = getShiftsCount(employeeId, month);
-    totalPoints += shifts * 1.0; // 1 балл за смену (attendance)
-
-    return totalPoints;
+    // Используем модуль efficiency_calc для полного расчёта
+    // shopAddress передаём пустым, так как reviews и RKO привязаны к магазину
+    const result = calculateFullEfficiency(employeeId, employeeName, '', month);
+    return result;
   } catch (e) {
-    console.error('Ошибка подсчета баллов:', e);
-    return 0;
+    console.error('Ошибка подсчета эффективности:', e);
+    return { total: 0, breakdown: {} };
   }
 }
 
@@ -188,8 +164,14 @@ function calculateRatings(month) {
   const ratings = [];
 
   for (const emp of employees) {
+    // Подсчёт смен для нормализации
     const shiftsCount = getShiftsCount(emp.id, month);
-    const totalPoints = getEfficiencyPoints(emp.id, month);
+
+    // ПОЛНАЯ эффективность (все 10 категорий)
+    const efficiency = getFullEfficiency(emp.id, emp.name, month);
+    const totalPoints = efficiency.total;
+
+    // Рефералы с милестоунами
     const referralPoints = getReferralPoints(emp.id, month);
 
     // Нормализованный рейтинг = (баллы / смены) + рефералы
@@ -203,7 +185,8 @@ function calculateRatings(month) {
       totalPoints,
       shiftsCount,
       referralPoints,
-      normalizedRating
+      normalizedRating,
+      efficiencyBreakdown: efficiency.breakdown, // Детализация по категориям
     });
   }
 
