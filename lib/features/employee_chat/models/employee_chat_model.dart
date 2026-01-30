@@ -4,7 +4,8 @@ import 'employee_chat_message_model.dart';
 enum EmployeeChatType {
   general,
   shop,
-  private;
+  private,
+  group; // НОВЫЙ - пользовательские группы
 
   static EmployeeChatType fromString(String? type) {
     switch (type) {
@@ -14,6 +15,8 @@ enum EmployeeChatType {
         return EmployeeChatType.shop;
       case 'private':
         return EmployeeChatType.private;
+      case 'group':
+        return EmployeeChatType.group;
       default:
         return EmployeeChatType.general;
     }
@@ -27,6 +30,8 @@ enum EmployeeChatType {
         return 'shop';
       case EmployeeChatType.private:
         return 'private';
+      case EmployeeChatType.group:
+        return 'group';
     }
   }
 }
@@ -37,7 +42,11 @@ class EmployeeChat {
   final EmployeeChatType type;
   final String name;
   final String? shopAddress;
+  final String? imageUrl; // Картинка группы
+  final String? creatorPhone; // Создатель группы
+  final String? creatorName; // Имя создателя
   final List<String> participants;
+  final Map<String, String>? participantNames; // {phone: name}
   final int unreadCount;
   final EmployeeChatMessage? lastMessage;
 
@@ -46,20 +55,38 @@ class EmployeeChat {
     required this.type,
     required this.name,
     this.shopAddress,
+    this.imageUrl,
+    this.creatorPhone,
+    this.creatorName,
     this.participants = const [],
+    this.participantNames,
     this.unreadCount = 0,
     this.lastMessage,
   });
 
   factory EmployeeChat.fromJson(Map<String, dynamic> json) {
+    // Парсим participantNames
+    Map<String, String>? participantNamesMap;
+    if (json['participantNames'] != null && json['participantNames'] is Map) {
+      participantNamesMap = Map<String, String>.from(
+        (json['participantNames'] as Map).map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        ),
+      );
+    }
+
     return EmployeeChat(
       id: json['id'] ?? '',
       type: EmployeeChatType.fromString(json['type']),
       name: json['name'] ?? '',
       shopAddress: json['shopAddress'],
+      imageUrl: json['imageUrl'],
+      creatorPhone: json['creatorPhone'],
+      creatorName: json['creatorName'],
       participants: json['participants'] != null
           ? List<String>.from(json['participants'])
           : [],
+      participantNames: participantNamesMap,
       unreadCount: json['unreadCount'] ?? 0,
       lastMessage: json['lastMessage'] != null
           ? EmployeeChatMessage.fromJson(json['lastMessage'])
@@ -72,7 +99,11 @@ class EmployeeChat {
     'type': type.value,
     'name': name,
     'shopAddress': shopAddress,
+    'imageUrl': imageUrl,
+    'creatorPhone': creatorPhone,
+    'creatorName': creatorName,
     'participants': participants,
+    'participantNames': participantNames,
     'unreadCount': unreadCount,
     'lastMessage': lastMessage?.toJson(),
   };
@@ -86,6 +117,8 @@ class EmployeeChat {
         return '🏪';
       case EmployeeChatType.private:
         return '👤';
+      case EmployeeChatType.group:
+        return '👥';
     }
   }
 
@@ -97,6 +130,8 @@ class EmployeeChat {
       case EmployeeChatType.shop:
         return shopAddress ?? name;
       case EmployeeChatType.private:
+        return name;
+      case EmployeeChatType.group:
         return name;
     }
   }
@@ -117,5 +152,24 @@ class EmployeeChat {
   /// Время последнего сообщения
   String get lastMessageTime {
     return lastMessage?.formattedTime ?? '';
+  }
+
+  /// Проверка что пользователь - создатель группы
+  bool isCreator(String phone) {
+    if (type != EmployeeChatType.group || creatorPhone == null) {
+      return false;
+    }
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+    final normalizedCreator = creatorPhone!.replaceAll(RegExp(r'[\s+]'), '');
+    return normalizedPhone == normalizedCreator;
+  }
+
+  /// Количество участников (для групп)
+  int get participantsCount => participants.length;
+
+  /// Получить имя участника по телефону
+  String getParticipantName(String phone) {
+    final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+    return participantNames?[normalizedPhone] ?? phone;
   }
 }

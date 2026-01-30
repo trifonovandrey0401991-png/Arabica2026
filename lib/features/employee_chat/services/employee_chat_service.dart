@@ -324,6 +324,125 @@ class EmployeeChatService {
       return 0;
     }
   }
+
+  // ===== ГРУППОВЫЕ ЧАТЫ =====
+
+  /// Создать группу (только для админов)
+  static Future<EmployeeChat?> createGroup({
+    required String creatorPhone,
+    required String creatorName,
+    required String name,
+    String? imageUrl,
+    required List<String> participants,
+  }) async {
+    Logger.debug('📝 Создание группы "$name"...');
+    return await BaseHttpService.post<EmployeeChat>(
+      endpoint: '$baseEndpoint/group',
+      body: {
+        'creatorPhone': creatorPhone,
+        'creatorName': creatorName,
+        'name': name,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        'participants': participants,
+      },
+      fromJson: (json) => EmployeeChat.fromJson(json),
+      itemKey: 'chat',
+    );
+  }
+
+  /// Обновить группу (только создатель)
+  static Future<EmployeeChat?> updateGroup({
+    required String groupId,
+    required String requesterPhone,
+    String? name,
+    String? imageUrl,
+  }) async {
+    Logger.debug('📝 Обновление группы $groupId...');
+    return await BaseHttpService.put<EmployeeChat>(
+      endpoint: '$baseEndpoint/group/$groupId',
+      body: {
+        'requesterPhone': requesterPhone,
+        if (name != null) 'name': name,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+      },
+      fromJson: (json) => EmployeeChat.fromJson(json),
+      itemKey: 'chat',
+    );
+  }
+
+  /// Получить информацию о группе
+  static Future<EmployeeChat?> getGroupInfo(String groupId) async {
+    Logger.debug('📥 Получение информации о группе $groupId...');
+    return await BaseHttpService.get<EmployeeChat>(
+      endpoint: '$baseEndpoint/group/$groupId',
+      fromJson: (json) => EmployeeChat.fromJson(json),
+      itemKey: 'group',
+    );
+  }
+
+  /// Добавить участников в группу (только создатель)
+  static Future<bool> addGroupMembers({
+    required String groupId,
+    required String requesterPhone,
+    required List<String> phones,
+  }) async {
+    Logger.debug('➕ Добавление участников в группу $groupId...');
+    return await BaseHttpService.simplePost(
+      endpoint: '$baseEndpoint/group/$groupId/members',
+      body: {
+        'requesterPhone': requesterPhone,
+        'phones': phones,
+      },
+    );
+  }
+
+  /// Удалить участника из группы (только создатель)
+  static Future<bool> removeGroupMember({
+    required String groupId,
+    required String requesterPhone,
+    required String phone,
+  }) async {
+    Logger.debug('➖ Удаление участника $phone из группы...');
+    final normalized = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+    return await BaseHttpService.delete(
+      endpoint: '$baseEndpoint/group/$groupId/members/$phone?requesterPhone=$normalized',
+    );
+  }
+
+  /// Выйти из группы
+  static Future<bool> leaveGroup(String groupId, String phone) async {
+    Logger.debug('🚪 Выход из группы $groupId...');
+    return await BaseHttpService.simplePost(
+      endpoint: '$baseEndpoint/group/$groupId/leave',
+      body: {'phone': phone},
+    );
+  }
+
+  /// Удалить группу (только создатель)
+  static Future<bool> deleteGroup(String groupId, String requesterPhone) async {
+    Logger.debug('🗑️ Удаление группы $groupId...');
+    final normalized = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
+    return await BaseHttpService.delete(
+      endpoint: '$baseEndpoint/group/$groupId?requesterPhone=$normalized',
+    );
+  }
+
+  /// Загрузить фото группы (используем общий upload)
+  static Future<String?> uploadGroupPhoto(File photoFile) async {
+    return await uploadMessagePhoto(photoFile);
+  }
+
+  // ===== ПОЛУЧЕНИЕ СПИСКА КЛИЕНТОВ =====
+
+  /// Получить список клиентов для выбора в группу
+  static Future<List<ChatClient>> getClientsForGroupSelection() async {
+    Logger.debug('📥 Загрузка списка клиентов для группы...');
+    return await BaseHttpService.getList<ChatClient>(
+      endpoint: '/api/clients/list',
+      fromJson: (json) => ChatClient.fromJson(json),
+      listKey: 'clients',
+    );
+  }
 }
 
 /// Модель участника чата магазина
@@ -343,4 +462,26 @@ class ShopChatMember {
     name: json['name'] ?? '',
     position: json['position'] ?? '',
   );
+}
+
+/// Модель клиента для выбора в группу
+class ChatClient {
+  final String phone;
+  final String? name;
+  final int points;
+
+  ChatClient({
+    required this.phone,
+    this.name,
+    this.points = 0,
+  });
+
+  factory ChatClient.fromJson(Map<String, dynamic> json) => ChatClient(
+    phone: json['phone'] ?? '',
+    name: json['name'],
+    points: json['points'] ?? 0,
+  );
+
+  /// Отображаемое имя (имя или телефон)
+  String get displayName => name ?? phone;
 }

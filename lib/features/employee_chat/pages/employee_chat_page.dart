@@ -8,6 +8,7 @@ import '../services/employee_chat_service.dart';
 import '../services/chat_websocket_service.dart';
 import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
+import 'group_info_page.dart';
 
 /// Страница чата
 class EmployeeChatPage extends StatefulWidget {
@@ -791,18 +792,47 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
 
   AppBar _buildNormalAppBar() {
     return AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: Row(
         children: [
-          Text(
-            widget.chat.displayName,
-            style: const TextStyle(fontSize: 16),
-          ),
-          if (widget.chat.type == EmployeeChatType.shop)
-            Text(
-              widget.chat.shopAddress ?? '',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+          // Аватар для групп
+          if (widget.chat.type == EmployeeChatType.group) ...[
+            GestureDetector(
+              onTap: _openGroupInfo,
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.purple[200],
+                backgroundImage: widget.chat.imageUrl != null
+                    ? NetworkImage(widget.chat.imageUrl!)
+                    : null,
+                child: widget.chat.imageUrl == null
+                    ? const Icon(Icons.group, size: 20, color: Colors.white)
+                    : null,
+              ),
             ),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.chat.displayName,
+                  style: const TextStyle(fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (widget.chat.type == EmployeeChatType.shop)
+                  Text(
+                    widget.chat.shopAddress ?? '',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                  ),
+                if (widget.chat.type == EmployeeChatType.group)
+                  Text(
+                    '${widget.chat.participantsCount} участников',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
       backgroundColor: const Color(0xFF004D40),
@@ -812,6 +842,13 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
           onPressed: () => setState(() => _isSearching = true),
           tooltip: 'Поиск',
         ),
+        // Кнопка информации о группе
+        if (widget.chat.type == EmployeeChatType.group)
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: _openGroupInfo,
+            tooltip: 'О группе',
+          ),
         if (widget.isAdmin)
           IconButton(
             icon: const Icon(Icons.delete_sweep),
@@ -825,6 +862,25 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         ),
       ],
     );
+  }
+
+  void _openGroupInfo() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GroupInfoPage(
+          chat: widget.chat,
+          currentUserPhone: widget.userPhone,
+        ),
+      ),
+    );
+
+    // Если вышли из группы или удалили её - возвращаемся назад
+    if (result == 'left' || result == 'deleted') {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   AppBar _buildSearchAppBar() {

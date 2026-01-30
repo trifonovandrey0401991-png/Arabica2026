@@ -5,16 +5,19 @@ import '../../employees/services/employee_service.dart';
 import '../../employees/pages/employees_page.dart' show Employee;
 import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
+import 'create_group_page.dart';
 
 /// Страница создания нового чата
 class NewChatPage extends StatefulWidget {
   final String userPhone;
   final String userName;
+  final bool isAdmin;
 
   const NewChatPage({
     super.key,
     required this.userPhone,
     required this.userName,
+    this.isAdmin = false,
   });
 
   @override
@@ -28,10 +31,12 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   bool _isLoading = true;
   String _searchQuery = '';
 
+  int get _tabCount => widget.isAdmin ? 4 : 3;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: _tabCount, vsync: this);
     _loadData();
   }
 
@@ -155,6 +160,22 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     }
   }
 
+  Future<void> _openCreateGroup() async {
+    final result = await Navigator.push<EmployeeChat>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateGroupPage(
+          creatorPhone: widget.userPhone,
+          creatorName: widget.userName,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      Navigator.pop(context, result);
+    }
+  }
+
   List<Employee> get _filteredEmployees {
     if (_searchQuery.isEmpty) return _employees;
     final query = _searchQuery.toLowerCase();
@@ -178,13 +199,18 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
       appBar: AppBar(
         title: const Text('Новый чат'),
         backgroundColor: const Color(0xFF004D40),
+        foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
-          tabs: const [
-            Tab(icon: Icon(Icons.public), text: 'Общий'),
-            Tab(icon: Icon(Icons.person), text: 'Личный'),
-            Tab(icon: Icon(Icons.store), text: 'Магазин'),
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: [
+            const Tab(icon: Icon(Icons.public), text: 'Общий'),
+            const Tab(icon: Icon(Icons.person), text: 'Личный'),
+            const Tab(icon: Icon(Icons.store), text: 'Магазин'),
+            if (widget.isAdmin)
+              const Tab(icon: Icon(Icons.group_add), text: 'Группа'),
           ],
         ),
       ),
@@ -216,6 +242,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
                       _buildGeneralTab(),
                       _buildPrivateTab(),
                       _buildShopTab(),
+                      if (widget.isAdmin) _buildGroupTab(),
                     ],
                   ),
                 ),
@@ -354,6 +381,61 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
           onTap: () => _openShopChat(shop),
         );
       },
+    );
+  }
+
+  Widget _buildGroupTab() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.purple[100],
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                '👥',
+                style: TextStyle(fontSize: 48),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Создать группу',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Группа с любыми участниками: сотрудниками и клиентами',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: _openCreateGroup,
+            icon: const Icon(Icons.add),
+            label: const Text('Создать группу'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF004D40),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

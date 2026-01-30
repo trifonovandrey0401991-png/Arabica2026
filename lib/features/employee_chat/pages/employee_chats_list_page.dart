@@ -136,6 +136,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
         builder: (context) => NewChatPage(
           userPhone: _userPhone!,
           userName: _userName!,
+          isAdmin: _isAdmin,
         ),
       ),
     );
@@ -236,17 +237,9 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
 
   Widget _buildChatTile(EmployeeChat chat) {
     final showMembersButton = _isAdmin && chat.type == EmployeeChatType.shop;
-    // ignore: avoid_print
-    print('🔍 Chat: ${chat.name}, type=${chat.type}, isAdmin=$_isAdmin, showButton=$showMembersButton');
 
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: _getChatColor(chat.type),
-        child: Text(
-          chat.typeIcon,
-          style: const TextStyle(fontSize: 20),
-        ),
-      ),
+      leading: _buildChatAvatar(chat),
       title: Row(
         children: [
           Expanded(
@@ -316,6 +309,25 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
     );
   }
 
+  Widget _buildChatAvatar(EmployeeChat chat) {
+    // Для групп показываем imageUrl если есть
+    if (chat.type == EmployeeChatType.group && chat.imageUrl != null) {
+      return CircleAvatar(
+        backgroundImage: NetworkImage(chat.imageUrl!),
+        backgroundColor: Colors.purple[100],
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+
+    return CircleAvatar(
+      backgroundColor: _getChatColor(chat.type),
+      child: Text(
+        chat.typeIcon,
+        style: const TextStyle(fontSize: 20),
+      ),
+    );
+  }
+
   Color _getChatColor(EmployeeChatType type) {
     switch (type) {
       case EmployeeChatType.general:
@@ -324,6 +336,8 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
         return Colors.orange[100]!;
       case EmployeeChatType.private:
         return Colors.green[100]!;
+      case EmployeeChatType.group:
+        return Colors.purple[100]!;
     }
   }
 }

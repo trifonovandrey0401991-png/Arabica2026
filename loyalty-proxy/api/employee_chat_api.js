@@ -12,8 +12,10 @@ try {
 
 const EMPLOYEE_CHATS_DIR = '/var/www/employee-chats';
 const EMPLOYEES_DIR = '/var/www/employees';
+const CLIENTS_DIR = '/var/www/clients';
 const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
 const MESSAGE_RETENTION_DAYS = 90;
+const MAX_GROUP_PARTICIPANTS = 100;
 
 // Ensure directory exists
 if (!fs.existsSync(EMPLOYEE_CHATS_DIR)) {
@@ -216,8 +218,96 @@ async function getChatParticipants(chat, excludePhone) {
   } else if (chat.type === 'private') {
     // Other participant
     return (chat.participants || []).filter(p => p !== excludePhone);
+  } else if (chat.type === 'group') {
+    // All group participants except sender
+    return (chat.participants || []).filter(p => p !== excludePhone);
   }
   return [];
+}
+
+// Helper: Delete chat file (async)
+async function deleteChat(chatId) {
+  const sanitizedId = chatId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const filePath = path.join(EMPLOYEE_CHATS_DIR, `${sanitizedId}.json`);
+  try {
+    await fsPromises.unlink(filePath);
+    console.log(`🗑️ Удалён чат: ${chatId}`);
+    return true;
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      console.error(`Error deleting chat ${chatId}:`, e.message);
+    }
+    return false;
+  }
+}
+
+// Helper: Get participant name (employee or client) (async)
+async function getParticipantName(phone) {
+  const normalizedPhone = phone.replace(/[\s+]/g, '');
+
+  // Сначала ищем в сотрудниках
+  const employees = await getAllEmployees();
+  const employee = employees.find(e => {
+    const empPhone = (e.phone || '').replace(/[\s+]/g, '');
+    return empPhone === normalizedPhone;
+  });
+  if (employee && employee.name) {
+    return employee.name;
+  }
+
+  // Затем в клиентах
+  const clientFile = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
+  try {
+    await fsPromises.access(clientFile);
+    const content = await fsPromises.readFile(clientFile, 'utf8');
+    const client = JSON.parse(content);
+    if (client.name) {
+      return client.name;
+    }
+  } catch (e) {
+    // Файл не существует или ошибка парсинга - возвращаем телефон
+  }
+
+  return phone; // Если не найден, возвращаем телефон
+}
+
+// Helper: Get all clients for group selection (async)
+async function getClientsForGroupSelection() {
+  const clients = [];
+  try {
+    await fsPromises.access(CLIENTS_DIR);
+    const files = await fsPromises.readdir(CLIENTS_DIR);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    for (const file of jsonFiles) {
+      try {
+        const content = await fsPromises.readFile(path.join(CLIENTS_DIR, file), 'utf8');
+        const data = JSON.parse(content);
+        clients.push({
+          phone: file.replace('.json', ''),
+          name: data.name || null,
+          points: data.points || 0
+        });
+      } catch (e) {
+        // Skip invalid files
+      }
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      console.error('Error reading clients directory:', e.message);
+    }
+  }
+  return clients;
+}
+
+// Helper: Generate random string for group ID
+function randomString(length) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 function setupEmployeeChatAPI(app) {
@@ -298,6 +388,13 @@ function setupEmployeeChatAPI(app) {
               if (!isAdminUser && (!chat.shopMembers || !chat.shopMembers.includes(phone))) continue;
             }
 
+            // For group chats, only show if user is a participant (or if admin - show all)
+            if (chat.type === 'group') {
+              const normalizedPhone = phone.replace(/[\s+]/g, '');
+              const normalizedParticipants = (chat.participants || []).map(p => p.replace(/[\s+]/g, ''));
+              if (!isAdminUser && !normalizedParticipants.includes(normalizedPhone)) continue;
+            }
+
             const unread = (chat.messages || []).filter(m =>
               m.senderPhone !== phone && !(m.readBy || []).includes(phone)
             ).length;
@@ -308,6 +405,10 @@ function setupEmployeeChatAPI(app) {
               name: chat.name,
               shopAddress: chat.shopAddress,
               participants: chat.participants,
+              participantNames: chat.participantNames,
+              imageUrl: chat.imageUrl,
+              creatorPhone: chat.creatorPhone,
+              creatorName: chat.creatorName,
               unreadCount: unread,
               lastMessage: chat.messages?.length > 0
                 ? chat.messages[chat.messages.length - 1]
@@ -959,6 +1060,320 @@ function setupEmployeeChatAPI(app) {
       res.json({ success: true, message: forwardedMessage });
     } catch (error) {
       console.error('Error forwarding message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== GET CLIENTS LIST FOR GROUP SELECTION =====
+  app.get('/api/clients/list', async (req, res) => {
+    try {
+      console.log('GET /api/clients/list');
+      const clients = await getClientsForGroupSelection();
+      res.json({ success: true, clients });
+    } catch (error) {
+      console.error('Error getting clients list:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== CREATE GROUP CHAT (admin only) =====
+  app.post('/api/employee-chats/group', async (req, res) => {
+    try {
+      const { creatorPhone, creatorName, name, imageUrl, participants } = req.body;
+      console.log('POST /api/employee-chats/group:', name, 'creator:', creatorPhone, 'participants:', participants?.length);
+
+      // Валидация
+      if (!creatorPhone || !name || !participants || !Array.isArray(participants) || participants.length === 0) {
+        return res.status(400).json({ success: false, error: 'creatorPhone, name and participants are required' });
+      }
+
+      // Проверка что создатель - админ
+      if (!(await isAdminPhone(creatorPhone))) {
+        console.log('❌ Отказ: создание группы без прав админа');
+        return res.status(403).json({ success: false, error: 'Только администраторы могут создавать группы' });
+      }
+
+      // Проверка лимита участников
+      if (participants.length > MAX_GROUP_PARTICIPANTS) {
+        return res.status(400).json({ success: false, error: `Максимум ${MAX_GROUP_PARTICIPANTS} участников в группе` });
+      }
+
+      const groupId = `group_${Date.now()}_${randomString(8)}`;
+      const normalizedCreatorPhone = creatorPhone.replace(/[\s+]/g, '');
+
+      // Собрать имена участников
+      const participantNames = {};
+      participantNames[normalizedCreatorPhone] = creatorName || await getParticipantName(creatorPhone);
+
+      // Нормализуем телефоны участников и получаем их имена
+      const normalizedParticipants = [normalizedCreatorPhone];
+      for (const phone of participants) {
+        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        if (normalizedPhone !== normalizedCreatorPhone && !normalizedParticipants.includes(normalizedPhone)) {
+          normalizedParticipants.push(normalizedPhone);
+          participantNames[normalizedPhone] = await getParticipantName(phone);
+        }
+      }
+
+      const chat = {
+        id: groupId,
+        type: 'group',
+        name: name.trim(),
+        imageUrl: imageUrl || null,
+        creatorPhone: normalizedCreatorPhone,
+        creatorName: creatorName || await getParticipantName(creatorPhone),
+        participants: normalizedParticipants,
+        participantNames,
+        messages: [],
+        createdAt: new Date().toISOString()
+      };
+
+      await saveChat(chat);
+      console.log(`✅ Создана группа "${name}" с ${normalizedParticipants.length} участниками`);
+
+      res.json({ success: true, chat });
+    } catch (error) {
+      console.error('Error creating group:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== UPDATE GROUP CHAT (creator only) =====
+  app.put('/api/employee-chats/group/:groupId', async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const { requesterPhone, name, imageUrl } = req.body;
+      console.log('PUT /api/employee-chats/group/:groupId:', groupId, 'requester:', requesterPhone);
+
+      if (!requesterPhone) {
+        return res.status(400).json({ success: false, error: 'requesterPhone is required' });
+      }
+
+      const chat = await loadChat(groupId);
+      if (!chat || chat.type !== 'group') {
+        return res.status(404).json({ success: false, error: 'Группа не найдена' });
+      }
+
+      // Только создатель может редактировать
+      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      if (chat.creatorPhone !== normalizedRequester) {
+        console.log('❌ Отказ: редактирование группы не создателем');
+        return res.status(403).json({ success: false, error: 'Только создатель может редактировать группу' });
+      }
+
+      if (name !== undefined && name.trim()) {
+        chat.name = name.trim();
+      }
+      if (imageUrl !== undefined) {
+        chat.imageUrl = imageUrl || null;
+      }
+
+      await saveChat(chat);
+      console.log(`✅ Группа "${chat.name}" обновлена`);
+
+      res.json({ success: true, chat });
+    } catch (error) {
+      console.error('Error updating group:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== ADD MEMBERS TO GROUP (creator only) =====
+  app.post('/api/employee-chats/group/:groupId/members', async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const { requesterPhone, phones } = req.body;
+      console.log('POST /api/employee-chats/group/:groupId/members:', groupId, 'phones:', phones?.length);
+
+      if (!requesterPhone || !phones || !Array.isArray(phones) || phones.length === 0) {
+        return res.status(400).json({ success: false, error: 'requesterPhone and phones array are required' });
+      }
+
+      const chat = await loadChat(groupId);
+      if (!chat || chat.type !== 'group') {
+        return res.status(404).json({ success: false, error: 'Группа не найдена' });
+      }
+
+      // Только создатель может добавлять участников
+      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      if (chat.creatorPhone !== normalizedRequester) {
+        console.log('❌ Отказ: добавление участников не создателем');
+        return res.status(403).json({ success: false, error: 'Только создатель может добавлять участников' });
+      }
+
+      // Проверка лимита
+      if ((chat.participants || []).length + phones.length > MAX_GROUP_PARTICIPANTS) {
+        return res.status(400).json({ success: false, error: `Максимум ${MAX_GROUP_PARTICIPANTS} участников в группе` });
+      }
+
+      // Добавляем новых участников
+      for (const phone of phones) {
+        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        if (!chat.participants.includes(normalizedPhone)) {
+          chat.participants.push(normalizedPhone);
+          chat.participantNames[normalizedPhone] = await getParticipantName(phone);
+        }
+      }
+
+      await saveChat(chat);
+      console.log(`✅ Добавлено ${phones.length} участников в группу "${chat.name}"`);
+
+      res.json({ success: true, participants: chat.participants, participantNames: chat.participantNames });
+    } catch (error) {
+      console.error('Error adding group members:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== REMOVE MEMBER FROM GROUP (creator only) =====
+  app.delete('/api/employee-chats/group/:groupId/members/:phone', async (req, res) => {
+    try {
+      const { groupId, phone } = req.params;
+      const { requesterPhone } = req.query;
+      console.log('DELETE /api/employee-chats/group/:groupId/members/:phone:', groupId, phone, 'requester:', requesterPhone);
+
+      if (!requesterPhone) {
+        return res.status(400).json({ success: false, error: 'requesterPhone is required' });
+      }
+
+      const chat = await loadChat(groupId);
+      if (!chat || chat.type !== 'group') {
+        return res.status(404).json({ success: false, error: 'Группа не найдена' });
+      }
+
+      // Только создатель может удалять участников
+      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      if (chat.creatorPhone !== normalizedRequester) {
+        console.log('❌ Отказ: удаление участника не создателем');
+        return res.status(403).json({ success: false, error: 'Только создатель может удалять участников' });
+      }
+
+      const normalizedPhone = phone.replace(/[\s+]/g, '');
+
+      // Нельзя удалить создателя
+      if (normalizedPhone === chat.creatorPhone) {
+        return res.status(400).json({ success: false, error: 'Нельзя удалить создателя группы' });
+      }
+
+      const idx = chat.participants.indexOf(normalizedPhone);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Участник не найден в группе' });
+      }
+
+      chat.participants.splice(idx, 1);
+      delete chat.participantNames[normalizedPhone];
+
+      await saveChat(chat);
+      console.log(`✅ Участник ${phone} удалён из группы "${chat.name}"`);
+
+      res.json({ success: true, participants: chat.participants });
+    } catch (error) {
+      console.error('Error removing group member:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== LEAVE GROUP (participant) =====
+  app.post('/api/employee-chats/group/:groupId/leave', async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const { phone } = req.body;
+      console.log('POST /api/employee-chats/group/:groupId/leave:', groupId, 'phone:', phone);
+
+      if (!phone) {
+        return res.status(400).json({ success: false, error: 'phone is required' });
+      }
+
+      const chat = await loadChat(groupId);
+      if (!chat || chat.type !== 'group') {
+        return res.status(404).json({ success: false, error: 'Группа не найдена' });
+      }
+
+      const normalizedPhone = phone.replace(/[\s+]/g, '');
+
+      // Создатель не может выйти - должен удалить группу
+      if (normalizedPhone === chat.creatorPhone) {
+        return res.status(400).json({ success: false, error: 'Создатель не может выйти из группы. Удалите группу вместо этого.' });
+      }
+
+      const idx = chat.participants.indexOf(normalizedPhone);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: 'Вы не являетесь участником этой группы' });
+      }
+
+      chat.participants.splice(idx, 1);
+      delete chat.participantNames[normalizedPhone];
+
+      await saveChat(chat);
+      console.log(`✅ Участник ${phone} вышел из группы "${chat.name}"`);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== DELETE GROUP (creator only) =====
+  app.delete('/api/employee-chats/group/:groupId', async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const { requesterPhone } = req.query;
+      console.log('DELETE /api/employee-chats/group/:groupId:', groupId, 'requester:', requesterPhone);
+
+      if (!requesterPhone) {
+        return res.status(400).json({ success: false, error: 'requesterPhone is required' });
+      }
+
+      const chat = await loadChat(groupId);
+      if (!chat || chat.type !== 'group') {
+        return res.status(404).json({ success: false, error: 'Группа не найдена' });
+      }
+
+      // Только создатель может удалить группу
+      const normalizedRequester = requesterPhone.replace(/[\s+]/g, '');
+      if (chat.creatorPhone !== normalizedRequester) {
+        console.log('❌ Отказ: удаление группы не создателем');
+        return res.status(403).json({ success: false, error: 'Только создатель может удалить группу' });
+      }
+
+      await deleteChat(groupId);
+      console.log(`✅ Группа "${chat.name}" удалена`);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== GET GROUP INFO =====
+  app.get('/api/employee-chats/group/:groupId', async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      console.log('GET /api/employee-chats/group/:groupId:', groupId);
+
+      const chat = await loadChat(groupId);
+      if (!chat || chat.type !== 'group') {
+        return res.status(404).json({ success: false, error: 'Группа не найдена' });
+      }
+
+      res.json({
+        success: true,
+        group: {
+          id: chat.id,
+          name: chat.name,
+          imageUrl: chat.imageUrl,
+          creatorPhone: chat.creatorPhone,
+          creatorName: chat.creatorName,
+          participants: chat.participants,
+          participantNames: chat.participantNames,
+          createdAt: chat.createdAt,
+          updatedAt: chat.updatedAt
+        }
+      });
+    } catch (error) {
+      console.error('Error getting group info:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
