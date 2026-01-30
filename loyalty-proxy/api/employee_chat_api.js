@@ -2,6 +2,14 @@ const fs = require('fs');
 const fsPromises = fs.promises;
 const path = require('path');
 
+// WebSocket уведомления (опционально, если модуль загружен)
+let wsNotify = null;
+try {
+  wsNotify = require('./employee_chat_websocket');
+} catch (e) {
+  console.log('⚠️ WebSocket модуль не загружен, real-time уведомления отключены');
+}
+
 const EMPLOYEE_CHATS_DIR = '/var/www/employee-chats';
 const EMPLOYEES_DIR = '/var/www/employees';
 const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
@@ -425,6 +433,11 @@ function setupEmployeeChatAPI(app) {
         });
       }
 
+      // WebSocket: мгновенное уведомление о новом сообщении
+      if (wsNotify) {
+        wsNotify.notifyNewMessage(chatId, message, senderPhone);
+      }
+
       res.json({ success: true, message });
     } catch (error) {
       console.error('Error sending message:', error);
@@ -696,6 +709,11 @@ function setupEmployeeChatAPI(app) {
 
       await saveChat(chat);
 
+      // WebSocket: уведомление об очистке чата
+      if (wsNotify && deletedCount > 0) {
+        wsNotify.notifyChatCleared(chatId, deletedCount);
+      }
+
       res.json({ success: true, deletedCount });
     } catch (error) {
       console.error('Error clearing chat messages:', error);
@@ -728,6 +746,11 @@ function setupEmployeeChatAPI(app) {
 
       chat.messages.splice(idx, 1);
       await saveChat(chat);
+
+      // WebSocket: уведомление об удалении сообщения
+      if (wsNotify) {
+        wsNotify.notifyMessageDeleted(chatId, messageId);
+      }
 
       res.json({ success: true });
     } catch (error) {

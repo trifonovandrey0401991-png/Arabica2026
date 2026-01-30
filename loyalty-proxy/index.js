@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const fetch = require('node-fetch');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -66,6 +67,7 @@ const { setupShopProductsAPI } = require("./api/shop_products_api");
 const { setupMasterCatalogAPI } = require("./api/master_catalog_api");
 const { setupGeofenceAPI } = require("./api/geofence_api");
 const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
+const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 
 // Rate Limiting - защита от DDoS и brute-force атак
 let rateLimit;
@@ -7884,7 +7886,14 @@ app.get('/api/efficiency/reports-batch', async (req, res) => {
 
 // Initialize Job Applications API
 setupJobApplicationsAPI(app);
-app.listen(3000, () => console.log("Proxy listening on port 3000"));
+
+// Создаём HTTP сервер для поддержки WebSocket
+const server = http.createServer(app);
+
+// Инициализируем WebSocket для чата
+setupChatWebSocket(server);
+
+server.listen(3000, () => console.log("Proxy listening on port 3000 (HTTP + WebSocket)"));
 setupRecountPointsAPI(app);
 setupReferralsAPI(app);
 setupRatingWheelAPI(app);

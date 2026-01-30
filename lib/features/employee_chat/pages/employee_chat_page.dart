@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/employee_chat_model.dart';
 import '../models/employee_chat_message_model.dart';
 import '../services/employee_chat_service.dart';
+import '../services/chat_websocket_service.dart';
 import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
 
@@ -37,11 +38,22 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   bool _isSending = false;
   Timer? _refreshTimer;
 
+  // WebSocket
+  StreamSubscription? _newMessageSub;
+  StreamSubscription? _messageDeletedSub;
+  StreamSubscription? _chatClearedSub;
+  StreamSubscription? _typingSub;
+
+  // Typing indicator
+  String? _typingPhone;
+  Timer? _typingDebounceTimer;
+
   @override
   void initState() {
     super.initState();
     _loadMessages();
     _startAutoRefresh();
+    _setupWebSocket();
   }
 
   @override
@@ -49,13 +61,90 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     _messageController.dispose();
     _scrollController.dispose();
     _refreshTimer?.cancel();
+    _typingDebounceTimer?.cancel();
+    _newMessageSub?.cancel();
+    _messageDeletedSub?.cancel();
+    _chatClearedSub?.cancel();
+    _typingSub?.cancel();
     super.dispose();
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    // Увеличиваем интервал так как WebSocket доставляет сообщения мгновенно
+    // Polling оставляем как fallback на случай проблем с WebSocket
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) _loadMessages(silent: true);
     });
+  }
+
+  void _setupWebSocket() {
+    final ws = ChatWebSocketService.instance;
+
+    // Подключаемся если ещё не подключены
+    ws.connect(widget.userPhone);
+
+    // Новые сообщения
+    _newMessageSub = ws.onNewMessage.listen((event) {
+      if (event.chatId == widget.chat.id && mounted) {
+        // Проверяем что сообщение ещё не добавлено
+        if (!_messages.any((m) => m.id == event.message.id)) {
+          setState(() {
+            _messages.add(event.message);
+          });
+          // Скроллим если мы внизу
+          if (_scrollController.hasClients &&
+              _scrollController.position.pixels >=
+                  _scrollController.position.maxScrollExtent - 100) {
+            _scrollToBottom();
+          }
+          // Отмечаем как прочитанное
+          EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
+        }
+      }
+    });
+
+    // Удаление сообщений
+    _messageDeletedSub = ws.onMessageDeleted.listen((event) {
+      if (event.chatId == widget.chat.id && mounted) {
+        setState(() {
+          _messages.removeWhere((m) => m.id == event.messageId);
+        });
+      }
+    });
+
+    // Очистка чата
+    _chatClearedSub = ws.onChatCleared.listen((event) {
+      if (event.chatId == widget.chat.id && mounted) {
+        setState(() {
+          _messages.clear();
+        });
+      }
+    });
+
+    // Typing indicator
+    _typingSub = ws.onTyping.listen((event) {
+      if (event.chatId == widget.chat.id &&
+          event.phone != widget.userPhone &&
+          mounted) {
+        setState(() {
+          _typingPhone = event.isTyping ? event.phone : null;
+        });
+      }
+    });
+  }
+
+  void _onTextChanged(String text) {
+    // Отправляем typing event с debounce
+    _typingDebounceTimer?.cancel();
+    if (text.isNotEmpty) {
+      ChatWebSocketService.instance.sendTypingStart(widget.chat.id);
+      // Автоматически остановить через 3 секунды если пользователь перестал печатать
+      _typingDebounceTimer = Timer(const Duration(seconds: 3), () {
+        ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
+      });
+    } else {
+      ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
+    }
   }
 
   Future<void> _loadMessages({bool silent = false}) async {
@@ -519,11 +608,30 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
                         },
                       ),
           ),
+          // Typing indicator
+          if (_typingPhone != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'печатает...',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
           ChatInputField(
             controller: _messageController,
             isSending: _isSending,
-            onSend: () => _sendMessage(),
+            onSend: () {
+              // Останавливаем typing при отправке
+              ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
+              _sendMessage();
+            },
             onAttach: _showImageSourceDialog,
+            onChanged: _onTextChanged,
           ),
         ],
       ),

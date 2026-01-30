@@ -6,6 +6,7 @@ class ChatInputField extends StatelessWidget {
   final bool isSending;
   final VoidCallback onSend;
   final VoidCallback onAttach;
+  final ValueChanged<String>? onChanged;
 
   const ChatInputField({
     super.key,
@@ -13,6 +14,7 @@ class ChatInputField extends StatelessWidget {
     required this.isSending,
     required this.onSend,
     required this.onAttach,
+    this.onChanged,
   });
 
   @override
@@ -59,6 +61,7 @@ class ChatInputField extends StatelessWidget {
                     vertical: 8,
                   ),
                 ),
+                onChanged: onChanged,
                 onSubmitted: (_) => onSend(),
               ),
             ),
