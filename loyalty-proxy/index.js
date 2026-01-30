@@ -68,6 +68,7 @@ const { setupMasterCatalogAPI } = require("./api/master_catalog_api");
 const { setupGeofenceAPI } = require("./api/geofence_api");
 const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
+const { setupMediaAPI } = require("./api/media_api");
 
 // Rate Limiting - защита от DDoS и brute-force атак
 let rateLimit;
@@ -235,6 +236,28 @@ const productQuestionPhotoStorage = multer.diskStorage({
 const uploadProductQuestionPhoto = multer({
   storage: productQuestionPhotoStorage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+});
+
+// Настройка multer для загрузки медиа в чате
+const chatMediaStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = '/var/www/chat-media';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const ext = file.originalname.split('.').pop() || 'jpg';
+    const safeName = `chat_${timestamp}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
+    cb(null, safeName);
+  }
+});
+
+const uploadChatMedia = multer({
+  storage: chatMediaStorage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB
 });
 
 // URL Google Apps Script для регистрации, лояльности и ролей
@@ -7912,6 +7935,7 @@ setupShopProductsAPI(app);
 setupMasterCatalogAPI(app);
 setupGeofenceAPI(app, sendPushToPhone);
 setupEmployeeChatAPI(app);
+setupMediaAPI(app, uploadChatMedia);
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();
