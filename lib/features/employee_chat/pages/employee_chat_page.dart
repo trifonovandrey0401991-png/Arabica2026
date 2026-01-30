@@ -389,6 +389,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     final deletedCount = await EmployeeChatService.clearChatMessages(
       widget.chat.id,
       mode,
+      requesterPhone: widget.userPhone,
     );
 
     if (mounted) {

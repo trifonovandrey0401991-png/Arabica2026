@@ -150,10 +150,12 @@ class EmployeeChatService {
   }
 
   /// Удалить сообщение (только для админов)
-  static Future<bool> deleteMessage(String chatId, String messageId) async {
-    Logger.debug('🗑️ Удаление сообщения $messageId из чата $chatId...');
+  /// [requesterPhone] - телефон запрашивающего (должен быть админом)
+  static Future<bool> deleteMessage(String chatId, String messageId, {required String requesterPhone}) async {
+    Logger.debug('🗑️ Удаление сообщения $messageId из чата $chatId (requester: $requesterPhone)...');
+    final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
     return await BaseHttpService.delete(
-      endpoint: '$baseEndpoint/$chatId/messages/$messageId',
+      endpoint: '$baseEndpoint/$chatId/messages/$messageId?requesterPhone=$normalizedPhone',
     );
   }
 
@@ -178,24 +180,31 @@ class EmployeeChatService {
     );
   }
 
-  /// Удалить сотрудника из чата магазина
-  static Future<bool> removeShopChatMember(String shopAddress, String phone) async {
-    Logger.debug('➖ Удаление сотрудника $phone из чата магазина $shopAddress...');
+  /// Удалить сотрудника из чата магазина (только для админов)
+  /// [requesterPhone] - телефон запрашивающего (должен быть админом)
+  static Future<bool> removeShopChatMember(String shopAddress, String phone, {required String requesterPhone}) async {
+    Logger.debug('➖ Удаление сотрудника $phone из чата магазина $shopAddress (requester: $requesterPhone)...');
+    final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
     return await BaseHttpService.delete(
-      endpoint: '$baseEndpoint/shop/$shopAddress/members/$phone',
+      endpoint: '$baseEndpoint/shop/$shopAddress/members/$phone?requesterPhone=$normalizedPhone',
     );
   }
 
   // ===== ОЧИСТКА СООБЩЕНИЙ =====
 
-  /// Очистить сообщения чата
+  /// Очистить сообщения чата (только для админов)
   /// mode: "previous_month" - удалить за предыдущий месяц, "all" - удалить все
-  static Future<int> clearChatMessages(String chatId, String mode) async {
-    Logger.debug('🗑️ Очистка сообщений чата $chatId (режим: $mode)...');
+  /// [requesterPhone] - телефон запрашивающего (должен быть админом)
+  static Future<int> clearChatMessages(String chatId, String mode, {required String requesterPhone}) async {
+    Logger.debug('🗑️ Очистка сообщений чата $chatId (режим: $mode, requester: $requesterPhone)...');
     try {
+      final normalizedPhone = requesterPhone.replaceAll(RegExp(r'[\s+]'), '');
       final response = await BaseHttpService.postRaw(
         endpoint: '$baseEndpoint/$chatId/clear',
-        body: {'mode': mode},
+        body: {
+          'mode': mode,
+          'requesterPhone': normalizedPhone,
+        },
       );
       if (response != null && response['deletedCount'] != null) {
         return response['deletedCount'] as int;

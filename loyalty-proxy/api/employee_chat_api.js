@@ -86,6 +86,18 @@ function getEmployeeByPhone(phone) {
   return employees.find(e => e.phone === phone);
 }
 
+// Helper: Check if phone belongs to admin
+function isAdminPhone(phone) {
+  if (!phone) return false;
+  const normalizedPhone = phone.replace(/[\s+]/g, '');
+  const employees = getAllEmployees();
+  const employee = employees.find(e => {
+    const empPhone = (e.phone || '').replace(/[\s+]/g, '');
+    return empPhone === normalizedPhone;
+  });
+  return employee?.isAdmin === true;
+}
+
 // Helper: Create private chat ID (sorted phones)
 function createPrivateChatId(phone1, phone2) {
   const sorted = [phone1, phone2].sort();
@@ -557,11 +569,18 @@ function setupEmployeeChatAPI(app) {
     }
   });
 
-  // ===== REMOVE MEMBER FROM SHOP CHAT =====
+  // ===== REMOVE MEMBER FROM SHOP CHAT (admin only) =====
   app.delete('/api/employee-chats/shop/:shopAddress/members/:phone', async (req, res) => {
     try {
       const { shopAddress, phone } = req.params;
-      console.log('DELETE /api/employee-chats/shop/:shopAddress/members/:phone:', shopAddress, phone);
+      const { requesterPhone } = req.query;
+      console.log('DELETE /api/employee-chats/shop/:shopAddress/members/:phone:', shopAddress, phone, 'requester:', requesterPhone);
+
+      // Проверка авторизации: только админ может удалять участников
+      if (!requesterPhone || !isAdminPhone(requesterPhone)) {
+        console.log('❌ Отказ: удаление участника чата без прав админа');
+        return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
+      }
 
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const chatId = `shop_${sanitizedAddress}`;
@@ -587,12 +606,18 @@ function setupEmployeeChatAPI(app) {
     }
   });
 
-  // ===== CLEAR CHAT MESSAGES =====
+  // ===== CLEAR CHAT MESSAGES (admin only) =====
   app.post('/api/employee-chats/:chatId/clear', async (req, res) => {
     try {
       const { chatId } = req.params;
-      const { mode } = req.body; // "previous_month" | "all"
-      console.log('POST /api/employee-chats/:chatId/clear:', chatId, 'mode:', mode);
+      const { mode, requesterPhone } = req.body; // "previous_month" | "all"
+      console.log('POST /api/employee-chats/:chatId/clear:', chatId, 'mode:', mode, 'requester:', requesterPhone);
+
+      // Проверка авторизации: только админ может очищать чат
+      if (!requesterPhone || !isAdminPhone(requesterPhone)) {
+        console.log('❌ Отказ: очистка чата без прав админа');
+        return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
+      }
 
       const chat = loadChat(chatId);
       if (!chat) {
@@ -633,7 +658,14 @@ function setupEmployeeChatAPI(app) {
   app.delete('/api/employee-chats/:chatId/messages/:messageId', async (req, res) => {
     try {
       const { chatId, messageId } = req.params;
-      console.log('DELETE /api/employee-chats/:chatId/messages/:messageId:', chatId, messageId);
+      const { requesterPhone } = req.query;
+      console.log('DELETE /api/employee-chats/:chatId/messages/:messageId:', chatId, messageId, 'requester:', requesterPhone);
+
+      // Проверка авторизации: только админ может удалять сообщения
+      if (!requesterPhone || !isAdminPhone(requesterPhone)) {
+        console.log('❌ Отказ: удаление сообщения без прав админа');
+        return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
+      }
 
       const chat = loadChat(chatId);
       if (!chat) {

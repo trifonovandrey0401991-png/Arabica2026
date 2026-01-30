@@ -122,6 +122,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage> {
       MaterialPageRoute(
         builder: (context) => ShopChatMembersPage(
           shopAddress: chat.shopAddress ?? chat.displayName,
+          userPhone: _userPhone ?? '',
         ),
       ),
     );

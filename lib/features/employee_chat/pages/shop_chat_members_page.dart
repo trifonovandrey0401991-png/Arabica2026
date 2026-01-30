@@ -6,10 +6,12 @@ import '../../employees/pages/employees_page.dart';
 /// Страница управления участниками чата магазина
 class ShopChatMembersPage extends StatefulWidget {
   final String shopAddress;
+  final String userPhone; // Телефон админа для авторизации
 
   const ShopChatMembersPage({
     super.key,
     required this.shopAddress,
+    required this.userPhone,
   });
 
   @override
@@ -181,6 +183,7 @@ class _ShopChatMembersPageState extends State<ShopChatMembersPage> {
       final success = await EmployeeChatService.removeShopChatMember(
         widget.shopAddress,
         member.phone,
+        requesterPhone: widget.userPhone,
       );
 
       if (success) {
