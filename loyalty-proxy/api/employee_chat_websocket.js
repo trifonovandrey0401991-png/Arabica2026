@@ -384,6 +384,46 @@ function notifyChatCleared(chatId, deletedCount) {
 }
 
 /**
+ * Оповестить о добавлении реакции
+ */
+function notifyReactionAdded(chatId, messageId, reaction, phone) {
+  const notification = {
+    type: 'reaction_added',
+    chatId,
+    messageId,
+    reaction,
+    phone,
+    timestamp: new Date().toISOString()
+  };
+
+  for (const sockets of connections.values()) {
+    for (const socket of sockets) {
+      sendToSocket(socket, notification);
+    }
+  }
+}
+
+/**
+ * Оповестить об удалении реакции
+ */
+function notifyReactionRemoved(chatId, messageId, reaction, phone) {
+  const notification = {
+    type: 'reaction_removed',
+    chatId,
+    messageId,
+    reaction,
+    phone,
+    timestamp: new Date().toISOString()
+  };
+
+  for (const sockets of connections.values()) {
+    for (const socket of sockets) {
+      sendToSocket(socket, notification);
+    }
+  }
+}
+
+/**
  * Проверить онлайн ли пользователь
  */
 function isUserOnline(phone) {
@@ -421,6 +461,8 @@ module.exports = {
   notifyNewMessage,
   notifyMessageDeleted,
   notifyChatCleared,
+  notifyReactionAdded,
+  notifyReactionRemoved,
   isUserOnline,
   getOnlineUsers,
   getConnectionsCount

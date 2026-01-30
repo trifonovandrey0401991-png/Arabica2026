@@ -30,6 +30,8 @@ class ChatWebSocketService {
   final _onlineStatusController = StreamController<ChatWebSocketOnlineStatus>.broadcast();
   final _messageDeletedController = StreamController<ChatWebSocketMessageDeleted>.broadcast();
   final _chatClearedController = StreamController<ChatWebSocketChatCleared>.broadcast();
+  final _reactionAddedController = StreamController<ChatWebSocketReaction>.broadcast();
+  final _reactionRemovedController = StreamController<ChatWebSocketReaction>.broadcast();
   final _connectionStatusController = StreamController<bool>.broadcast();
 
   // Публичные streams
@@ -38,6 +40,8 @@ class ChatWebSocketService {
   Stream<ChatWebSocketOnlineStatus> get onOnlineStatus => _onlineStatusController.stream;
   Stream<ChatWebSocketMessageDeleted> get onMessageDeleted => _messageDeletedController.stream;
   Stream<ChatWebSocketChatCleared> get onChatCleared => _chatClearedController.stream;
+  Stream<ChatWebSocketReaction> get onReactionAdded => _reactionAddedController.stream;
+  Stream<ChatWebSocketReaction> get onReactionRemoved => _reactionRemovedController.stream;
   Stream<bool> get onConnectionStatus => _connectionStatusController.stream;
 
   bool get isConnected => _isConnected;
@@ -217,6 +221,36 @@ class ChatWebSocketService {
           }
           break;
 
+        case 'reaction_added':
+          final chatId = message['chatId'] as String?;
+          final messageId = message['messageId'] as String?;
+          final reaction = message['reaction'] as String?;
+          final phone = message['phone'] as String?;
+          if (chatId != null && messageId != null && reaction != null && phone != null) {
+            _reactionAddedController.add(ChatWebSocketReaction(
+              chatId: chatId,
+              messageId: messageId,
+              reaction: reaction,
+              phone: phone,
+            ));
+          }
+          break;
+
+        case 'reaction_removed':
+          final chatId = message['chatId'] as String?;
+          final messageId = message['messageId'] as String?;
+          final reaction = message['reaction'] as String?;
+          final phone = message['phone'] as String?;
+          if (chatId != null && messageId != null && reaction != null && phone != null) {
+            _reactionRemovedController.add(ChatWebSocketReaction(
+              chatId: chatId,
+              messageId: messageId,
+              reaction: reaction,
+              phone: phone,
+            ));
+          }
+          break;
+
         case 'pong':
           // Ответ на ping, соединение живо
           break;
@@ -268,6 +302,8 @@ class ChatWebSocketService {
     _onlineStatusController.close();
     _messageDeletedController.close();
     _chatClearedController.close();
+    _reactionAddedController.close();
+    _reactionRemovedController.close();
     _connectionStatusController.close();
     _instance = null;
   }
@@ -313,4 +349,18 @@ class ChatWebSocketChatCleared {
   final int deletedCount;
 
   ChatWebSocketChatCleared({required this.chatId, required this.deletedCount});
+}
+
+class ChatWebSocketReaction {
+  final String chatId;
+  final String messageId;
+  final String reaction;
+  final String phone;
+
+  ChatWebSocketReaction({
+    required this.chatId,
+    required this.messageId,
+    required this.reaction,
+    required this.phone,
+  });
 }

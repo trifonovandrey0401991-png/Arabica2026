@@ -759,6 +759,210 @@ function setupEmployeeChatAPI(app) {
     }
   });
 
+  // ===== SEARCH MESSAGES IN CHAT =====
+  app.get('/api/employee-chats/:chatId/messages/search', async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const { query, limit = 50 } = req.query;
+      console.log('GET /api/employee-chats/:chatId/messages/search:', chatId, 'query:', query);
+
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({ success: false, error: 'Query must be at least 2 characters' });
+      }
+
+      const chat = await loadChat(chatId);
+      if (!chat) {
+        return res.json({ success: true, messages: [] });
+      }
+
+      const searchQuery = query.toLowerCase().trim();
+      const messages = (chat.messages || [])
+        .filter(m =>
+          (m.text && m.text.toLowerCase().includes(searchQuery)) ||
+          (m.senderName && m.senderName.toLowerCase().includes(searchQuery))
+        )
+        .slice(-parseInt(limit));
+
+      res.json({ success: true, messages, total: messages.length });
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== ADD REACTION TO MESSAGE =====
+  app.post('/api/employee-chats/:chatId/messages/:messageId/reactions', async (req, res) => {
+    try {
+      const { chatId, messageId } = req.params;
+      const { phone, reaction } = req.body; // reaction: emoji string like "👍", "❤️", etc.
+      console.log('POST /api/employee-chats/:chatId/messages/:messageId/reactions:', chatId, messageId, phone, reaction);
+
+      if (!phone || !reaction) {
+        return res.status(400).json({ success: false, error: 'phone and reaction are required' });
+      }
+
+      const chat = await loadChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ success: false, error: 'Chat not found' });
+      }
+
+      const message = (chat.messages || []).find(m => m.id === messageId);
+      if (!message) {
+        return res.status(404).json({ success: false, error: 'Message not found' });
+      }
+
+      // Инициализируем reactions если нет
+      if (!message.reactions) {
+        message.reactions = {};
+      }
+
+      // Добавляем реакцию: reactions = { "👍": ["phone1", "phone2"], "❤️": ["phone3"] }
+      if (!message.reactions[reaction]) {
+        message.reactions[reaction] = [];
+      }
+
+      // Проверяем, не ставил ли уже этот пользователь эту реакцию
+      if (!message.reactions[reaction].includes(phone)) {
+        message.reactions[reaction].push(phone);
+      }
+
+      await saveChat(chat);
+
+      // WebSocket: уведомление о реакции
+      if (wsNotify) {
+        wsNotify.notifyReactionAdded(chatId, messageId, reaction, phone);
+      }
+
+      res.json({ success: true, reactions: message.reactions });
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== REMOVE REACTION FROM MESSAGE =====
+  app.delete('/api/employee-chats/:chatId/messages/:messageId/reactions', async (req, res) => {
+    try {
+      const { chatId, messageId } = req.params;
+      const { phone, reaction } = req.query;
+      console.log('DELETE /api/employee-chats/:chatId/messages/:messageId/reactions:', chatId, messageId, phone, reaction);
+
+      if (!phone || !reaction) {
+        return res.status(400).json({ success: false, error: 'phone and reaction are required' });
+      }
+
+      const chat = await loadChat(chatId);
+      if (!chat) {
+        return res.status(404).json({ success: false, error: 'Chat not found' });
+      }
+
+      const message = (chat.messages || []).find(m => m.id === messageId);
+      if (!message) {
+        return res.status(404).json({ success: false, error: 'Message not found' });
+      }
+
+      if (message.reactions && message.reactions[reaction]) {
+        const idx = message.reactions[reaction].indexOf(phone);
+        if (idx !== -1) {
+          message.reactions[reaction].splice(idx, 1);
+          // Удаляем пустые реакции
+          if (message.reactions[reaction].length === 0) {
+            delete message.reactions[reaction];
+          }
+        }
+      }
+
+      await saveChat(chat);
+
+      // WebSocket: уведомление об удалении реакции
+      if (wsNotify) {
+        wsNotify.notifyReactionRemoved(chatId, messageId, reaction, phone);
+      }
+
+      res.json({ success: true, reactions: message.reactions || {} });
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== FORWARD MESSAGE =====
+  app.post('/api/employee-chats/:targetChatId/messages/forward', async (req, res) => {
+    try {
+      const { targetChatId } = req.params;
+      const { sourceChatId, sourceMessageId, senderPhone, senderName } = req.body;
+      console.log('POST /api/employee-chats/:targetChatId/messages/forward:', targetChatId, 'from:', sourceChatId, sourceMessageId);
+
+      if (!sourceChatId || !sourceMessageId || !senderPhone) {
+        return res.status(400).json({ success: false, error: 'sourceChatId, sourceMessageId and senderPhone are required' });
+      }
+
+      // Загружаем исходный чат и сообщение
+      const sourceChat = await loadChat(sourceChatId);
+      if (!sourceChat) {
+        return res.status(404).json({ success: false, error: 'Source chat not found' });
+      }
+
+      const sourceMessage = (sourceChat.messages || []).find(m => m.id === sourceMessageId);
+      if (!sourceMessage) {
+        return res.status(404).json({ success: false, error: 'Source message not found' });
+      }
+
+      // Загружаем целевой чат
+      let targetChat = await loadChat(targetChatId);
+      if (!targetChat) {
+        return res.status(404).json({ success: false, error: 'Target chat not found' });
+      }
+
+      // Создаём пересланное сообщение
+      const forwardedMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        chatId: targetChatId,
+        senderPhone,
+        senderName: senderName || senderPhone,
+        text: sourceMessage.text || '',
+        imageUrl: sourceMessage.imageUrl || null,
+        timestamp: new Date().toISOString(),
+        readBy: [senderPhone],
+        // Информация о пересылке
+        forwardedFrom: {
+          chatId: sourceChatId,
+          messageId: sourceMessageId,
+          originalSenderName: sourceMessage.senderName,
+          originalTimestamp: sourceMessage.timestamp
+        }
+      };
+
+      if (!targetChat.messages) targetChat.messages = [];
+      targetChat.messages.push(forwardedMessage);
+      await saveChat(targetChat);
+
+      // Push уведомления
+      const recipients = await getChatParticipants(targetChat, senderPhone);
+      const tokens = await getFcmTokens(recipients);
+
+      if (tokens.length > 0) {
+        const title = targetChat.type === 'private' ? senderName : targetChat.name;
+        const body = `${senderName}: [Пересланное сообщение]`;
+        sendPushNotification(tokens, title, body, {
+          type: 'employee_chat',
+          chatId: targetChatId,
+          messageId: forwardedMessage.id
+        });
+      }
+
+      // WebSocket: уведомление о новом сообщении
+      if (wsNotify) {
+        wsNotify.notifyNewMessage(targetChatId, forwardedMessage, senderPhone);
+      }
+
+      res.json({ success: true, message: forwardedMessage });
+    } catch (error) {
+      console.error('Error forwarding message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   console.log('Employee Chat API initialized');
 }
 

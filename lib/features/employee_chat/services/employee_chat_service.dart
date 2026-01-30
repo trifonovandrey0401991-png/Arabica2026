@@ -159,6 +159,115 @@ class EmployeeChatService {
     );
   }
 
+  // ===== ПОИСК СООБЩЕНИЙ =====
+
+  /// Поиск сообщений в чате
+  static Future<List<EmployeeChatMessage>> searchMessages(
+    String chatId,
+    String query, {
+    int limit = 50,
+  }) async {
+    Logger.debug('🔍 Поиск сообщений в чате $chatId: "$query"...');
+    return await BaseHttpService.getList<EmployeeChatMessage>(
+      endpoint: '$baseEndpoint/$chatId/messages/search',
+      fromJson: (json) => EmployeeChatMessage.fromJson(json),
+      listKey: 'messages',
+      queryParams: {
+        'query': query,
+        'limit': limit.toString(),
+      },
+    );
+  }
+
+  // ===== РЕАКЦИИ НА СООБЩЕНИЯ =====
+
+  /// Добавить реакцию к сообщению
+  static Future<Map<String, List<String>>?> addReaction({
+    required String chatId,
+    required String messageId,
+    required String phone,
+    required String reaction,
+  }) async {
+    Logger.debug('👍 Добавление реакции $reaction к сообщению $messageId...');
+    try {
+      final response = await BaseHttpService.postRaw(
+        endpoint: '$baseEndpoint/$chatId/messages/$messageId/reactions',
+        body: {
+          'phone': phone,
+          'reaction': reaction,
+        },
+      );
+      if (response != null && response['reactions'] != null) {
+        final rawReactions = response['reactions'] as Map<String, dynamic>;
+        Map<String, List<String>> result = {};
+        for (final entry in rawReactions.entries) {
+          if (entry.value is List) {
+            result[entry.key] = List<String>.from(entry.value);
+          }
+        }
+        return result;
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка добавления реакции', e);
+      return null;
+    }
+  }
+
+  /// Удалить реакцию с сообщения
+  static Future<Map<String, List<String>>?> removeReaction({
+    required String chatId,
+    required String messageId,
+    required String phone,
+    required String reaction,
+  }) async {
+    Logger.debug('👎 Удаление реакции $reaction с сообщения $messageId...');
+    try {
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
+      final response = await BaseHttpService.deleteWithResponse(
+        endpoint: '$baseEndpoint/$chatId/messages/$messageId/reactions?phone=$normalizedPhone&reaction=$reaction',
+      );
+      if (response != null && response['reactions'] != null) {
+        final rawReactions = response['reactions'] as Map<String, dynamic>;
+        Map<String, List<String>> result = {};
+        for (final entry in rawReactions.entries) {
+          if (entry.value is List) {
+            result[entry.key] = List<String>.from(entry.value);
+          }
+        }
+        return result;
+      }
+      return {};
+    } catch (e) {
+      Logger.error('Ошибка удаления реакции', e);
+      return null;
+    }
+  }
+
+  // ===== ПЕРЕСЫЛКА СООБЩЕНИЙ =====
+
+  /// Переслать сообщение в другой чат
+  static Future<EmployeeChatMessage?> forwardMessage({
+    required String targetChatId,
+    required String sourceChatId,
+    required String sourceMessageId,
+    required String senderPhone,
+    required String senderName,
+  }) async {
+    Logger.debug('➡️ Пересылка сообщения $sourceMessageId в чат $targetChatId...');
+    return await BaseHttpService.post<EmployeeChatMessage>(
+      endpoint: '$baseEndpoint/$targetChatId/messages/forward',
+      body: {
+        'sourceChatId': sourceChatId,
+        'sourceMessageId': sourceMessageId,
+        'senderPhone': senderPhone,
+        'senderName': senderName,
+      },
+      fromJson: (json) => EmployeeChatMessage.fromJson(json),
+      itemKey: 'message',
+    );
+  }
+
   // ===== УПРАВЛЕНИЕ УЧАСТНИКАМИ ЧАТА МАГАЗИНА =====
 
   /// Получить участников чата магазина
