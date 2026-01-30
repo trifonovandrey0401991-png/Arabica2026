@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fsPromises = fs.promises;
 const path = require('path');
 
 const EMPLOYEE_CHATS_DIR = '/var/www/employee-chats';
@@ -25,31 +26,45 @@ try {
   console.warn('⚠️ Firebase Admin not available for employee chat notifications:', e.message);
 }
 
-// Helper: Load chat file
-function loadChat(chatId) {
+// Helper: Load chat file (async)
+async function loadChat(chatId) {
   const sanitizedId = chatId.replace(/[^a-zA-Z0-9_\-]/g, '_');
   const filePath = path.join(EMPLOYEE_CHATS_DIR, `${sanitizedId}.json`);
 
-  if (fs.existsSync(filePath)) {
+  try {
+    await fsPromises.access(filePath);
+    const content = await fsPromises.readFile(filePath, 'utf8');
     try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (e) {
-      console.error(`Error loading chat ${chatId}:`, e);
+      return JSON.parse(content);
+    } catch (parseError) {
+      console.error(`JSON parse error for chat ${chatId}:`, parseError.message);
+      // Попробуем восстановить - вернём пустой чат
+      return null;
     }
+  } catch (e) {
+    // Файл не существует - это нормально
+    if (e.code !== 'ENOENT') {
+      console.error(`Error loading chat ${chatId}:`, e.message);
+    }
+    return null;
   }
-  return null;
 }
 
-// Helper: Save chat file
-function saveChat(chat) {
+// Helper: Save chat file (async)
+async function saveChat(chat) {
   const sanitizedId = chat.id.replace(/[^a-zA-Z0-9_\-]/g, '_');
   const filePath = path.join(EMPLOYEE_CHATS_DIR, `${sanitizedId}.json`);
   chat.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(chat, null, 2), 'utf8');
+  try {
+    await fsPromises.writeFile(filePath, JSON.stringify(chat, null, 2), 'utf8');
+  } catch (e) {
+    console.error(`Error saving chat ${chat.id}:`, e.message);
+    throw e;
+  }
 }
 
-// Helper: Clean old messages (older than retention days)
-function cleanOldMessages(chat) {
+// Helper: Clean old messages (older than retention days) - async
+async function cleanOldMessages(chat) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - MESSAGE_RETENTION_DAYS);
 
@@ -57,40 +72,51 @@ function cleanOldMessages(chat) {
     const originalLength = chat.messages.length;
     chat.messages = chat.messages.filter(m => new Date(m.timestamp) > cutoffDate);
     if (chat.messages.length !== originalLength) {
-      saveChat(chat);
+      await saveChat(chat);
     }
   }
   return chat;
 }
 
-// Helper: Get all employees
-function getAllEmployees() {
+// Helper: Get all employees (async)
+async function getAllEmployees() {
   const employees = [];
-  if (fs.existsSync(EMPLOYEES_DIR)) {
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
-    for (const file of files) {
+  try {
+    await fsPromises.access(EMPLOYEES_DIR);
+    const files = await fsPromises.readdir(EMPLOYEES_DIR);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+    for (const file of jsonFiles) {
       try {
-        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
-        employees.push(JSON.parse(content));
-      } catch (e) {
-        console.error(`Error reading employee file ${file}:`, e);
+        const content = await fsPromises.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
+        try {
+          employees.push(JSON.parse(content));
+        } catch (parseError) {
+          console.error(`JSON parse error for employee file ${file}:`, parseError.message);
+        }
+      } catch (readError) {
+        console.error(`Error reading employee file ${file}:`, readError.message);
       }
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      console.error('Error reading employees directory:', e.message);
     }
   }
   return employees;
 }
 
-// Helper: Get employee by phone
-function getEmployeeByPhone(phone) {
-  const employees = getAllEmployees();
+// Helper: Get employee by phone (async)
+async function getEmployeeByPhone(phone) {
+  const employees = await getAllEmployees();
   return employees.find(e => e.phone === phone);
 }
 
-// Helper: Check if phone belongs to admin
-function isAdminPhone(phone) {
+// Helper: Check if phone belongs to admin (async)
+async function isAdminPhone(phone) {
   if (!phone) return false;
   const normalizedPhone = phone.replace(/[\s+]/g, '');
-  const employees = getAllEmployees();
+  const employees = await getAllEmployees();
   const employee = employees.find(e => {
     const empPhone = (e.phone || '').replace(/[\s+]/g, '');
     return empPhone === normalizedPhone;
@@ -104,19 +130,26 @@ function createPrivateChatId(phone1, phone2) {
   return `private_${sorted[0]}_${sorted[1]}`;
 }
 
-// Helper: Get FCM tokens for phones
-function getFcmTokens(phones) {
+// Helper: Get FCM tokens for phones (async)
+async function getFcmTokens(phones) {
   const tokens = [];
   for (const phone of phones) {
     const tokenFile = path.join(FCM_TOKENS_DIR, `${phone}.json`);
-    if (fs.existsSync(tokenFile)) {
+    try {
+      await fsPromises.access(tokenFile);
+      const content = await fsPromises.readFile(tokenFile, 'utf8');
       try {
-        const data = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+        const data = JSON.parse(content);
         if (data.token) {
           tokens.push({ phone, token: data.token });
         }
-      } catch (e) {
-        console.error(`Error reading FCM token for ${phone}:`, e);
+      } catch (parseError) {
+        console.error(`JSON parse error for FCM token ${phone}:`, parseError.message);
+      }
+    } catch (e) {
+      // Файл не существует - это нормально, у пользователя может не быть токена
+      if (e.code !== 'ENOENT') {
+        console.error(`Error reading FCM token for ${phone}:`, e.message);
       }
     }
   }
@@ -161,11 +194,12 @@ async function sendPushNotification(tokens, title, body, data) {
   }
 }
 
-// Helper: Get chat participants for notifications
-function getChatParticipants(chat, excludePhone) {
+// Helper: Get chat participants for notifications (async)
+async function getChatParticipants(chat, excludePhone) {
   if (chat.type === 'general') {
     // All employees except sender
-    return getAllEmployees()
+    const employees = await getAllEmployees();
+    return employees
       .filter(e => e.phone && e.phone !== excludePhone)
       .map(e => e.phone);
   } else if (chat.type === 'shop') {
@@ -193,7 +227,7 @@ function setupEmployeeChatAPI(app) {
       const chats = [];
 
       // 1. General chat (always exists)
-      let generalChat = loadChat('general');
+      let generalChat = await loadChat('general');
       if (!generalChat) {
         generalChat = {
           id: 'general',
@@ -203,9 +237,9 @@ function setupEmployeeChatAPI(app) {
           participants: [],
           createdAt: new Date().toISOString()
         };
-        saveChat(generalChat);
+        await saveChat(generalChat);
       }
-      generalChat = cleanOldMessages(generalChat);
+      generalChat = await cleanOldMessages(generalChat);
 
       const generalUnread = (generalChat.messages || []).filter(m =>
         m.senderPhone !== phone && !(m.readBy || []).includes(phone)
@@ -222,15 +256,24 @@ function setupEmployeeChatAPI(app) {
       });
 
       // 2. Shop chats and private chats
-      if (fs.existsSync(EMPLOYEE_CHATS_DIR)) {
-        const files = fs.readdirSync(EMPLOYEE_CHATS_DIR).filter(f => f.endsWith('.json'));
+      try {
+        await fsPromises.access(EMPLOYEE_CHATS_DIR);
+        const allFiles = await fsPromises.readdir(EMPLOYEE_CHATS_DIR);
+        const files = allFiles.filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           if (file === 'general.json') continue;
 
           try {
-            let chat = JSON.parse(fs.readFileSync(path.join(EMPLOYEE_CHATS_DIR, file), 'utf8'));
-            chat = cleanOldMessages(chat);
+            const content = await fsPromises.readFile(path.join(EMPLOYEE_CHATS_DIR, file), 'utf8');
+            let chat;
+            try {
+              chat = JSON.parse(content);
+            } catch (parseError) {
+              console.error(`JSON parse error for chat file ${file}:`, parseError.message);
+              continue;
+            }
+            chat = await cleanOldMessages(chat);
 
             // For private chats, only show if user is participant
             if (chat.type === 'private') {
@@ -238,7 +281,7 @@ function setupEmployeeChatAPI(app) {
 
               // Get other participant's name
               const otherPhone = chat.participants.find(p => p !== phone);
-              const otherEmployee = getEmployeeByPhone(otherPhone);
+              const otherEmployee = await getEmployeeByPhone(otherPhone);
               chat.name = otherEmployee?.name || otherPhone;
             }
 
@@ -263,8 +306,13 @@ function setupEmployeeChatAPI(app) {
                 : null
             });
           } catch (e) {
-            console.error(`Error processing chat file ${file}:`, e);
+            console.error(`Error processing chat file ${file}:`, e.message);
           }
+        }
+      } catch (e) {
+        // Directory doesn't exist - это нормально при первом запуске
+        if (e.code !== 'ENOENT') {
+          console.error('Error reading chats directory:', e.message);
         }
       }
 
@@ -289,12 +337,12 @@ function setupEmployeeChatAPI(app) {
       const { phone, limit = 50, before } = req.query;
       console.log('GET /api/employee-chats/:chatId/messages:', chatId);
 
-      let chat = loadChat(chatId);
+      let chat = await loadChat(chatId);
       if (!chat) {
         return res.json({ success: true, messages: [] });
       }
 
-      chat = cleanOldMessages(chat);
+      chat = await cleanOldMessages(chat);
       let messages = chat.messages || [];
 
       // Pagination
@@ -329,7 +377,7 @@ function setupEmployeeChatAPI(app) {
         });
       }
 
-      let chat = loadChat(chatId);
+      let chat = await loadChat(chatId);
       if (!chat) {
         // Create chat if doesn't exist (for general)
         if (chatId === 'general') {
@@ -359,16 +407,17 @@ function setupEmployeeChatAPI(app) {
 
       if (!chat.messages) chat.messages = [];
       chat.messages.push(message);
-      saveChat(chat);
+      await saveChat(chat);
 
       // Send push notifications
-      const recipients = getChatParticipants(chat, senderPhone);
-      const tokens = getFcmTokens(recipients);
+      const recipients = await getChatParticipants(chat, senderPhone);
+      const tokens = await getFcmTokens(recipients);
 
       if (tokens.length > 0) {
         const title = chat.type === 'private' ? senderName : chat.name;
         const body = imageUrl ? `${senderName}: [Фото]` : `${senderName}: ${text.substring(0, 100)}`;
 
+        // Push отправляется асинхронно, не ждём результата
         sendPushNotification(tokens, title, body, {
           type: 'employee_chat',
           chatId: chatId,
@@ -394,7 +443,7 @@ function setupEmployeeChatAPI(app) {
         return res.status(400).json({ success: false, error: 'phone is required' });
       }
 
-      const chat = loadChat(chatId);
+      const chat = await loadChat(chatId);
       if (!chat) {
         return res.status(404).json({ success: false, error: 'Chat not found' });
       }
@@ -409,7 +458,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       if (updated) {
-        saveChat(chat);
+        await saveChat(chat);
       }
 
       res.json({ success: true });
@@ -430,11 +479,11 @@ function setupEmployeeChatAPI(app) {
       }
 
       const chatId = createPrivateChatId(phone1, phone2);
-      let chat = loadChat(chatId);
+      let chat = await loadChat(chatId);
 
       if (!chat) {
-        const employee1 = getEmployeeByPhone(phone1);
-        const employee2 = getEmployeeByPhone(phone2);
+        const employee1 = await getEmployeeByPhone(phone1);
+        const employee2 = await getEmployeeByPhone(phone2);
 
         chat = {
           id: chatId,
@@ -448,7 +497,7 @@ function setupEmployeeChatAPI(app) {
           messages: [],
           createdAt: new Date().toISOString()
         };
-        saveChat(chat);
+        await saveChat(chat);
       }
 
       res.json({ success: true, chat });
@@ -470,7 +519,7 @@ function setupEmployeeChatAPI(app) {
 
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const chatId = `shop_${sanitizedAddress}`;
-      let chat = loadChat(chatId);
+      let chat = await loadChat(chatId);
 
       if (!chat) {
         chat = {
@@ -482,7 +531,7 @@ function setupEmployeeChatAPI(app) {
           messages: [],
           createdAt: new Date().toISOString()
         };
-        saveChat(chat);
+        await saveChat(chat);
       }
 
       res.json({ success: true, chat });
@@ -500,7 +549,7 @@ function setupEmployeeChatAPI(app) {
 
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const chatId = `shop_${sanitizedAddress}`;
-      const chat = loadChat(chatId);
+      const chat = await loadChat(chatId);
 
       if (!chat) {
         return res.status(404).json({ success: false, error: 'Shop chat not found' });
@@ -509,7 +558,7 @@ function setupEmployeeChatAPI(app) {
       // Получаем информацию о каждом участнике
       const members = [];
       for (const phone of (chat.shopMembers || [])) {
-        const employee = getEmployeeByPhone(phone);
+        const employee = await getEmployeeByPhone(phone);
         members.push({
           phone,
           name: employee?.name || phone,
@@ -537,7 +586,7 @@ function setupEmployeeChatAPI(app) {
 
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const chatId = `shop_${sanitizedAddress}`;
-      let chat = loadChat(chatId);
+      let chat = await loadChat(chatId);
 
       if (!chat) {
         // Создаём чат если не существует
@@ -560,7 +609,7 @@ function setupEmployeeChatAPI(app) {
         }
       }
 
-      saveChat(chat);
+      await saveChat(chat);
 
       res.json({ success: true, shopMembers: chat.shopMembers });
     } catch (error) {
@@ -577,14 +626,14 @@ function setupEmployeeChatAPI(app) {
       console.log('DELETE /api/employee-chats/shop/:shopAddress/members/:phone:', shopAddress, phone, 'requester:', requesterPhone);
 
       // Проверка авторизации: только админ может удалять участников
-      if (!requesterPhone || !isAdminPhone(requesterPhone)) {
+      if (!requesterPhone || !(await isAdminPhone(requesterPhone))) {
         console.log('❌ Отказ: удаление участника чата без прав админа');
         return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
       }
 
       const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
       const chatId = `shop_${sanitizedAddress}`;
-      const chat = loadChat(chatId);
+      const chat = await loadChat(chatId);
 
       if (!chat) {
         return res.status(404).json({ success: false, error: 'Shop chat not found' });
@@ -597,7 +646,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       chat.shopMembers.splice(idx, 1);
-      saveChat(chat);
+      await saveChat(chat);
 
       res.json({ success: true, shopMembers: chat.shopMembers });
     } catch (error) {
@@ -614,12 +663,12 @@ function setupEmployeeChatAPI(app) {
       console.log('POST /api/employee-chats/:chatId/clear:', chatId, 'mode:', mode, 'requester:', requesterPhone);
 
       // Проверка авторизации: только админ может очищать чат
-      if (!requesterPhone || !isAdminPhone(requesterPhone)) {
+      if (!requesterPhone || !(await isAdminPhone(requesterPhone))) {
         console.log('❌ Отказ: очистка чата без прав админа');
         return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
       }
 
-      const chat = loadChat(chatId);
+      const chat = await loadChat(chatId);
       if (!chat) {
         return res.status(404).json({ success: false, error: 'Chat not found' });
       }
@@ -645,7 +694,7 @@ function setupEmployeeChatAPI(app) {
         return res.status(400).json({ success: false, error: 'Invalid mode. Use "previous_month" or "all"' });
       }
 
-      saveChat(chat);
+      await saveChat(chat);
 
       res.json({ success: true, deletedCount });
     } catch (error) {
@@ -662,12 +711,12 @@ function setupEmployeeChatAPI(app) {
       console.log('DELETE /api/employee-chats/:chatId/messages/:messageId:', chatId, messageId, 'requester:', requesterPhone);
 
       // Проверка авторизации: только админ может удалять сообщения
-      if (!requesterPhone || !isAdminPhone(requesterPhone)) {
+      if (!requesterPhone || !(await isAdminPhone(requesterPhone))) {
         console.log('❌ Отказ: удаление сообщения без прав админа');
         return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
       }
 
-      const chat = loadChat(chatId);
+      const chat = await loadChat(chatId);
       if (!chat) {
         return res.status(404).json({ success: false, error: 'Chat not found' });
       }
@@ -678,7 +727,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       chat.messages.splice(idx, 1);
-      saveChat(chat);
+      await saveChat(chat);
 
       res.json({ success: true });
     } catch (error) {
