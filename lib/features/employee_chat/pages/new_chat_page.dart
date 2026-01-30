@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/employee_chat_model.dart';
 import '../services/employee_chat_service.dart';
 import '../../employees/services/employee_service.dart';
@@ -7,7 +8,7 @@ import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
 import 'create_group_page.dart';
 
-/// Страница создания нового чата
+/// Страница создания нового чата с улучшенным визуалом
 class NewChatPage extends StatefulWidget {
   final String userPhone;
   final String userName;
@@ -30,6 +31,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   List<Shop> _shops = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  final _searchFocusNode = FocusNode();
 
   int get _tabCount => widget.isAdmin ? 4 : 3;
 
@@ -43,6 +45,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   @override
   void dispose() {
     _tabController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -66,8 +69,17 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка загрузки: $e'),
-            backgroundColor: Colors.red,
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Ошибка загрузки данных')),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -75,6 +87,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   }
 
   Future<void> _openGeneralChat() async {
+    HapticFeedback.lightImpact();
     // Общий чат уже существует, просто возвращаем его
     final chat = EmployeeChat(
       id: 'general',
@@ -87,6 +100,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   }
 
   Future<void> _openPrivateChat(Employee employee) async {
+    HapticFeedback.selectionClick();
     setState(() => _isLoading = true);
 
     try {
@@ -108,9 +122,17 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка создания чата'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Ошибка создания чата'),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           );
         }
@@ -121,7 +143,9 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -129,6 +153,7 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   }
 
   Future<void> _openShopChat(Shop shop) async {
+    HapticFeedback.selectionClick();
     setState(() => _isLoading = true);
 
     try {
@@ -140,9 +165,17 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка создания чата'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Ошибка создания чата'),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           );
         }
@@ -153,7 +186,9 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -161,13 +196,26 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   }
 
   Future<void> _openCreateGroup() async {
+    HapticFeedback.lightImpact();
     final result = await Navigator.push<EmployeeChat>(
       context,
-      MaterialPageRoute(
-        builder: (context) => CreateGroupPage(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => CreateGroupPage(
           creatorPhone: widget.userPhone,
           creatorName: widget.userName,
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          );
+        },
       ),
     );
 
@@ -196,45 +244,153 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Новый чат'),
-        backgroundColor: const Color(0xFF004D40),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF00695C), Color(0xFF004D40)],
+            ),
+          ),
+        ),
+        title: const Text(
+          'Новый чат',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
         foregroundColor: Colors.white,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: [
-            const Tab(icon: Icon(Icons.public), text: 'Общий'),
-            const Tab(icon: Icon(Icons.person), text: 'Личный'),
-            const Tab(icon: Icon(Icons.store), text: 'Магазин'),
-            if (widget.isAdmin)
-              const Tab(icon: Icon(Icons.group_add), text: 'Группа'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.1),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white60,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+              ),
+              tabs: [
+                const Tab(icon: Icon(Icons.public_rounded, size: 22), text: 'Общий'),
+                const Tab(icon: Icon(Icons.person_rounded, size: 22), text: 'Личный'),
+                const Tab(icon: Icon(Icons.store_rounded, size: 22), text: 'Магазин'),
+                if (widget.isAdmin)
+                  const Tab(icon: Icon(Icons.group_add_rounded, size: 22), text: 'Группа'),
+              ],
+            ),
+          ),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF004D40).withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: const CircularProgressIndicator(
+                      color: Color(0xFF004D40),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Загрузка...',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : Column(
               children: [
-                Padding(
+                // Поле поиска
+                Container(
                   padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Поиск...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
                       ),
-                      filled: true,
-                      fillColor: Colors.grey[100],
+                    ],
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.grey[200]!,
+                        width: 1,
+                      ),
                     ),
-                    onChanged: (value) {
-                      setState(() => _searchQuery = value);
-                    },
+                    child: TextField(
+                      focusNode: _searchFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Поиск сотрудника или магазина...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 15,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: Colors.grey[500],
+                          size: 22,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear_rounded,
+                                  color: Colors.grey[500],
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() => _searchQuery = value);
+                      },
+                    ),
                   ),
                 ),
+                // Вкладки
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -253,51 +409,120 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Widget _buildGeneralTab() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.blue[100],
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                '🌐',
-                style: TextStyle(fontSize: 48),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Анимированный аватар
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: child,
+                );
+              },
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF42A5F5), Color(0xFF1976D2)],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1976D2).withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.public_rounded,
+                    size: 56,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Общий чат',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 28),
+            const Text(
+              'Общий чат',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Чат для всех сотрудников',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Чат для всех сотрудников компании',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _openGeneralChat,
-            icon: const Icon(Icons.arrow_forward),
-            label: const Text('Открыть чат'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            const SizedBox(height: 36),
+            // Кнопка с градиентом
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF00695C), Color(0xFF004D40)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF004D40).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openGeneralChat,
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.chat_rounded, color: Colors.white, size: 22),
+                        SizedBox(width: 12),
+                        Text(
+                          'Открыть чат',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -310,11 +535,36 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_off, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _searchQuery.isEmpty ? Icons.people_outline_rounded : Icons.search_off_rounded,
+                size: 56,
+                color: Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 20),
             Text(
               _searchQuery.isEmpty ? 'Нет сотрудников' : 'Ничего не найдено',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Список сотрудников пуст'
+                  : 'Попробуйте изменить запрос',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -322,24 +572,131 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: employees.length,
       itemBuilder: (context, index) {
         final employee = employees[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.green[100],
-            child: Text(
-              employee.name.isNotEmpty ? employee.name[0].toUpperCase() : '?',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 300 + (index * 50).clamp(0, 300)),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(30 * (1 - value), 0),
+              child: Opacity(
+                opacity: value,
+                child: child,
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _openPrivateChat(employee),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      // Аватар с градиентом
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.green[400]!,
+                              Colors.green[700]!,
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            employee.name.isNotEmpty ? employee.name[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // Информация
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              employee.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  size: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  employee.phone ?? 'Нет телефона',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Иконка чата
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF004D40).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          color: Color(0xFF004D40),
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          title: Text(employee.name),
-          subtitle: Text(employee.phone ?? ''),
-          trailing: const Icon(Icons.chat_bubble_outline),
-          onTap: () => _openPrivateChat(employee),
         );
       },
     );
@@ -353,11 +710,36 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.store_mall_directory, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _searchQuery.isEmpty ? Icons.store_mall_directory_outlined : Icons.search_off_rounded,
+                size: 56,
+                color: Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 20),
             Text(
               _searchQuery.isEmpty ? 'Нет магазинов' : 'Ничего не найдено',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Список магазинов пуст'
+                  : 'Попробуйте изменить запрос',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -365,20 +747,130 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: shops.length,
       itemBuilder: (context, index) {
         final shop = shops[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.orange[100],
-            child: const Text(
-              '🏪',
-              style: TextStyle(fontSize: 20),
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 300 + (index * 50).clamp(0, 300)),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(30 * (1 - value), 0),
+              child: Opacity(
+                opacity: value,
+                child: child,
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _openShopChat(shop),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      // Аватар магазина
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.orange[400]!,
+                              Colors.deepOrange[600]!,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.orange.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.store_rounded,
+                            size: 26,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      // Адрес
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              shop.address,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.people_outline_rounded,
+                                  size: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Чат магазина',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Иконка чата
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          color: Colors.orange[700],
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          title: Text(shop.address),
-          trailing: const Icon(Icons.chat_bubble_outline),
-          onTap: () => _openShopChat(shop),
         );
       },
     );
@@ -386,56 +878,177 @@ class _NewChatPageState extends State<NewChatPage> with SingleTickerProviderStat
 
   Widget _buildGroupTab() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.purple[100],
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                '👥',
-                style: TextStyle(fontSize: 48),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Анимированный аватар
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: child,
+                );
+              },
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7B1FA2).withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.groups_rounded,
+                    size: 56,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Создать группу',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Группа с любыми участниками: сотрудниками и клиентами',
+            const SizedBox(height: 28),
+            const Text(
+              'Создать группу',
               style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
               ),
-              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _openCreateGroup,
-            icon: const Icon(Icons.add),
-            label: const Text('Создать группу'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF004D40),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Группа с любыми участниками:\nсотрудниками и клиентами',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[700],
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            // Преимущества группы
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildFeatureRow(Icons.group_add_rounded, 'Добавляйте участников'),
+                  const Divider(height: 20),
+                  _buildFeatureRow(Icons.image_rounded, 'Загружайте фото группы'),
+                  const Divider(height: 20),
+                  _buildFeatureRow(Icons.edit_rounded, 'Редактируйте название'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            // Кнопка с градиентом
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7B1FA2).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openCreateGroup,
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                        SizedBox(width: 12),
+                        Text(
+                          'Создать группу',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildFeatureRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.purple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: const Color(0xFF7B1FA2), size: 20),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+            ),
+          ),
+        ),
+        Icon(
+          Icons.check_circle_rounded,
+          color: Colors.green[400],
+          size: 20,
+        ),
+      ],
     );
   }
 }

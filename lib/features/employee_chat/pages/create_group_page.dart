@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/employee_chat_model.dart';
 import '../services/employee_chat_service.dart';
-import '../../employees/models/employee_model.dart';
+import '../../employees/pages/employees_page.dart' show Employee;
 import '../../employees/services/employee_service.dart';
 
 /// Страница создания группы
@@ -51,7 +51,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     try {
       // Загружаем сотрудников и клиентов параллельно
       final results = await Future.wait([
-        EmployeeService.getAllEmployees(),
+        EmployeeService.getEmployees(),
         EmployeeChatService.getClientsForGroupSelection(),
       ]);
 

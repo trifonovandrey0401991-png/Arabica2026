@@ -31,6 +31,12 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
     _loadUserRole();
   }
 
+  void _refreshRecipes() {
+    setState(() {
+      _recipesFuture = Recipe.loadRecipesFromServer();
+    });
+  }
+
   Future<void> _loadUserRole() async {
     try {
       final roleData = await UserRoleService.loadUserRole();
@@ -44,6 +50,11 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
           // Создаем TabController в зависимости от роли
           if (_userRole == UserRole.admin) {
             _tabController = TabController(length: 2, vsync: this);
+            _tabController!.addListener(() {
+              if (_tabController!.index == 0 && !_tabController!.indexIsChanging) {
+                _refreshRecipes();
+              }
+            });
           } else {
             _tabController = TabController(length: 1, vsync: this);
           }

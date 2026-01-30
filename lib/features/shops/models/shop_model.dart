@@ -30,13 +30,37 @@ class Shop {
 
   /// Создать Shop из JSON
   factory Shop.fromJson(Map<String, dynamic> json) {
+    // Парсинг и валидация координат
+    double? parsedLat;
+    double? parsedLon;
+
+    if (json['latitude'] != null) {
+      final lat = json['latitude'] is double
+          ? json['latitude']
+          : double.tryParse(json['latitude'].toString());
+      // Валидация: широта от -90 до 90
+      if (lat != null && lat >= -90 && lat <= 90) {
+        parsedLat = lat;
+      }
+    }
+
+    if (json['longitude'] != null) {
+      final lon = json['longitude'] is double
+          ? json['longitude']
+          : double.tryParse(json['longitude'].toString());
+      // Валидация: долгота от -180 до 180
+      if (lon != null && lon >= -180 && lon <= 180) {
+        parsedLon = lon;
+      }
+    }
+
     return Shop(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
       icon: Icons.store, // Fallback, используйте iconWidget вместо Icon(shop.icon)
-      latitude: json['latitude'] != null ? (json['latitude'] is double ? json['latitude'] : double.tryParse(json['latitude'].toString())) : null,
-      longitude: json['longitude'] != null ? (json['longitude'] is double ? json['longitude'] : double.tryParse(json['longitude'].toString())) : null,
+      latitude: parsedLat,
+      longitude: parsedLon,
     );
   }
 

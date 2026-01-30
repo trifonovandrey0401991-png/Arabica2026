@@ -145,19 +145,22 @@ class LoyaltyService {
     return settings.promoText;
   }
 
-  /// Сохранить настройки акции на сервер
+  /// Сохранить настройки акции на сервер (только для админа)
   static Future<bool> savePromoSettings({
     required String promoText,
     required int pointsRequired,
     required int drinksToGive,
+    required String employeePhone,
   }) async {
     try {
+      final normalizedPhone = employeePhone.replaceAll(RegExp(r'[\s\+]'), '');
       final success = await BaseHttpService.simplePost(
         endpoint: '/api/loyalty-promo',
         body: {
           'promoText': promoText,
           'pointsRequired': pointsRequired,
           'drinksToGive': drinksToGive,
+          'employeePhone': normalizedPhone,
         },
       );
 
@@ -235,6 +238,13 @@ class LoyaltyService {
       // Загружаем настройки акции с нашего сервера
       final settings = await fetchPromoSettings();
       final info = LoyaltyInfo.fromJson(result['client'], settings: settings);
+
+      // Синхронизируем freeDrinksGiven в нашей базе клиентов
+      try {
+        await syncFreeDrinksGiven(normalizedPhone, info.freeDrinks);
+      } catch (e) {
+        Logger.error('Ошибка синхронизации freeDrinksGiven', e);
+      }
 
       return info;
     } catch (e, stackTrace) {
@@ -333,6 +343,21 @@ class LoyaltyService {
     } catch (e) {
       Logger.error('Ошибка обновления счётчика бесплатных напитков', e);
       rethrow;
+    }
+  }
+
+  /// Синхронизировать freeDrinksGiven с данными из внешнего API лояльности
+  static Future<void> syncFreeDrinksGiven(String phone, int freeDrinks) async {
+    try {
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      await BaseHttpService.postRaw(
+        endpoint: '/api/clients/$normalizedPhone/sync-free-drinks',
+        body: {'freeDrinksGiven': freeDrinks},
+      );
+      Logger.debug('🔄 Синхронизация freeDrinksGiven: $freeDrinks для $normalizedPhone');
+    } catch (e) {
+      // Не критично, просто логируем
+      Logger.error('Ошибка синхронизации freeDrinksGiven', e);
     }
   }
 }

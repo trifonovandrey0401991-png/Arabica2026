@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 
@@ -91,10 +92,16 @@ class _LoyaltyPromoManagementPageState extends State<LoyaltyPromoManagementPage>
     });
 
     try {
+      // Получаем phone текущего пользователя для проверки роли
+      // Проверяем оба ключа - для клиентов (user_phone) и сотрудников (userPhone)
+      final prefs = await SharedPreferences.getInstance();
+      final employeePhone = prefs.getString('userPhone') ?? prefs.getString('user_phone') ?? '';
+
       final success = await LoyaltyService.savePromoSettings(
         promoText: _promoTextController.text.trim(),
         pointsRequired: pointsRequired,
         drinksToGive: drinksToGive,
+        employeePhone: employeePhone,
       );
 
       if (success) {

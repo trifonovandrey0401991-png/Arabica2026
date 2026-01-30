@@ -50,20 +50,24 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       CacheManager.remove('shops_list');
 
       final shops = await ShopService.getShops();
-      Logger.debug('📋 Загружено магазинов: ${shops.length}');
-      for (var shop in shops) {
+
+      // Фильтруем магазины с пустым ID (битые записи)
+      final validShops = shops.where((shop) => shop.id.isNotEmpty).toList();
+
+      Logger.debug('📋 Загружено магазинов: ${validShops.length}');
+      for (var shop in validShops) {
         Logger.debug('   - ${shop.name} (ID: ${shop.id})');
       }
 
       // Загружаем настройки для каждого магазина
       final Map<String, ShopSettings?> settings = {};
-      for (var shop in shops) {
+      for (var shop in validShops) {
         final settingsData = await _loadShopSettings(shop.address);
         settings[shop.address] = settingsData;
       }
 
       setState(() {
-        _shops = shops;
+        _shops = validShops;
         _settings = settings;
         _isLoading = false;
       });
@@ -1614,18 +1618,42 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
                     ],
                   ),
                 ),
-                // Кнопка редактирования
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF004D40).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.edit_rounded,
-                    color: Color(0xFF004D40),
-                    size: 22,
-                  ),
+                // Кнопки редактирования и удаления
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF004D40).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Color(0xFF004D40),
+                        size: 22,
+                      ),
+                    ),
+                    // Показываем кнопку удаления только если у магазина есть ID
+                    if (shop.id.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _confirmDeleteShop(shop),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.red,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -1633,6 +1661,210 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
         ),
       ),
     );
+  }
+
+  /// Показать диалог подтверждения удаления магазина
+  Future<void> _confirmDeleteShop(Shop shop) async {
+    // Защита от удаления магазинов с пустым ID
+    if (shop.id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Невозможно удалить магазин с пустым ID'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить магазин?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Вы действительно хотите удалить магазин?',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.store, color: Color(0xFF004D40), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          shop.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    shop.address,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.amber[800], size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Это действие нельзя отменить',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.amber[900],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteShop(shop);
+    }
+  }
+
+  /// Удалить магазин
+  Future<void> _deleteShop(Shop shop) async {
+    // Показываем индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final success = await ShopService.deleteShop(shop.id);
+
+      if (!mounted) return;
+
+      // Закрываем индикатор загрузки
+      Navigator.pop(context);
+
+      if (success) {
+        // Показываем успешное сообщение
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Магазин "${shop.name}" успешно удален'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+
+        // Обновляем список магазинов
+        await _loadShops();
+      } else {
+        // Показываем ошибку
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Не удалось удалить магазин'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      // Закрываем индикатор загрузки
+      Navigator.pop(context);
+
+      // Показываем ошибку
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Ошибка: $e'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildStatusBadge(String text, Color color, IconData icon) {

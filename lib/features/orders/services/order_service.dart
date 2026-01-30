@@ -54,7 +54,7 @@ class OrderService {
           items: [],
           itemsData: itemsData,
           totalPrice: (orderData['totalPrice'] as num).toDouble(),
-          createdAt: DateTime.parse(orderData['createdAt']),
+          createdAt: DateTime.parse(orderData['createdAt']).toLocal(),
           comment: orderData['comment'] as String?,
           status: orderData['status'] ?? 'pending',
           acceptedBy: orderData['acceptedBy'] as String?,

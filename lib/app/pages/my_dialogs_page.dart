@@ -15,6 +15,9 @@ import '../../features/reviews/models/review_model.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/reviews/pages/client_reviews_list_page.dart';
 import '../../core/utils/logger.dart';
+import '../../features/employee_chat/models/employee_chat_model.dart';
+import '../../features/employee_chat/pages/employee_chat_page.dart';
+import '../../features/employee_chat/services/client_group_chat_service.dart';
 
 /// Страница "Мои диалоги" для клиента
 class MyDialogsPage extends StatefulWidget {
@@ -22,6 +25,33 @@ class MyDialogsPage extends StatefulWidget {
 
   @override
   State<MyDialogsPage> createState() => _MyDialogsPageState();
+}
+
+/// Тип диалога для сортировки
+enum _DialogType {
+  network,
+  management,
+  reviews,
+  productSearch,
+  personalDialog,
+  groupChat,
+}
+
+/// Элемент диалога для унифицированной сортировки
+class _DialogItem {
+  final _DialogType type;
+  final int unreadCount;
+  final DateTime? lastMessageTime;
+  final dynamic data; // Оригинальные данные
+
+  _DialogItem({
+    required this.type,
+    required this.unreadCount,
+    this.lastMessageTime,
+    this.data,
+  });
+
+  bool get hasUnread => unreadCount > 0;
 }
 
 class _MyDialogsPageState extends State<MyDialogsPage> {
@@ -32,6 +62,12 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
   List<Review> _clientReviews = [];
   int _reviewsUnreadCount = 0;
   bool _isLoading = true;
+
+  // Групповые чаты для клиента
+  List<EmployeeChat> _clientGroups = [];
+  int _groupsUnreadCount = 0;
+  String? _userPhone;
+  String? _userName;
 
   @override
   void initState() {
@@ -44,11 +80,16 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
 
     final prefs = await SharedPreferences.getInstance();
     final phone = prefs.getString('user_phone') ?? '';
+    final userName = prefs.getString('user_name') ?? phone;
 
     if (phone.isEmpty) {
       setState(() => _isLoading = false);
       return;
     }
+
+    // Сохраняем для использования в навигации
+    _userPhone = phone;
+    _userName = userName;
 
     // Загружаем сетевые сообщения
     final networkData = await NetworkMessageService.getNetworkMessages(phone);
@@ -96,8 +137,28 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     if (mounted) {
       setState(() {
         _productQuestionData = productQuestionData;
-        _isLoading = false;
       });
+    }
+
+    // Загружаем групповые чаты клиента
+    try {
+      final groups = await ClientGroupChatService.getClientGroupChats(phone);
+      int unreadCount = 0;
+      for (final group in groups) {
+        unreadCount += group.unreadCount;
+      }
+      if (mounted) {
+        setState(() {
+          _clientGroups = groups;
+          _groupsUnreadCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки групповых чатов', e);
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -214,46 +275,149 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     );
   }
 
-  Widget _buildContent() {
-    final hasNetworkMessages = _networkData?.hasMessages ?? false;
-    final hasManagementMessages = _managementData?.hasMessages ?? false;
-    final hasReviews = _clientReviews.isNotEmpty;
-    final hasProductQuestions = _productQuestionData?.hasQuestions ?? false;
-    final hasPersonalDialogs = _personalDialogs.isNotEmpty;
+  /// Собрать все диалоги в единый список для сортировки
+  List<_DialogItem> _buildDialogItems() {
+    final items = <_DialogItem>[];
 
-    if (!hasNetworkMessages && !hasManagementMessages && !hasReviews && !hasProductQuestions && !hasPersonalDialogs) {
+    // Сообщение от Всей Сети
+    if (_networkData?.hasMessages ?? false) {
+      final lastMessage = _networkData!.messages.isNotEmpty
+          ? _networkData!.messages.last
+          : null;
+      DateTime? timestamp;
+      if (lastMessage != null) {
+        try {
+          timestamp = DateTime.parse(lastMessage.timestamp);
+        } catch (_) {}
+      }
+      items.add(_DialogItem(
+        type: _DialogType.network,
+        unreadCount: _networkData!.unreadCount,
+        lastMessageTime: timestamp,
+      ));
+    }
+
+    // Связь с Руководством
+    if (_managementData?.hasMessages ?? false) {
+      final lastMessage = _managementData!.messages.isNotEmpty
+          ? _managementData!.messages.last
+          : null;
+      DateTime? timestamp;
+      if (lastMessage != null) {
+        try {
+          timestamp = DateTime.parse(lastMessage.timestamp);
+        } catch (_) {}
+      }
+      items.add(_DialogItem(
+        type: _DialogType.management,
+        unreadCount: _managementData!.unreadCount,
+        lastMessageTime: timestamp,
+      ));
+    }
+
+    // Отзывы
+    if (_clientReviews.isNotEmpty) {
+      final lastReview = _clientReviews.first;
+      items.add(_DialogItem(
+        type: _DialogType.reviews,
+        unreadCount: _reviewsUnreadCount,
+        lastMessageTime: lastReview.createdAt,
+      ));
+    }
+
+    // Поиск Товара (общий)
+    if (_productQuestionData?.hasQuestions ?? false) {
+      items.add(_DialogItem(
+        type: _DialogType.productSearch,
+        unreadCount: _productQuestionData!.unreadCount,
+        lastMessageTime: null, // Нет общего timestamp
+      ));
+    }
+
+    // Персональные диалоги
+    for (final dialog in _personalDialogs) {
+      final lastMessage = dialog.getLastMessage();
+      DateTime? timestamp;
+      if (lastMessage != null) {
+        try {
+          timestamp = DateTime.parse(lastMessage.timestamp);
+        } catch (_) {}
+      }
+      items.add(_DialogItem(
+        type: _DialogType.personalDialog,
+        unreadCount: dialog.hasUnreadFromEmployee ? 1 : 0,
+        lastMessageTime: timestamp,
+        data: dialog,
+      ));
+    }
+
+    // Групповые чаты
+    for (final group in _clientGroups) {
+      items.add(_DialogItem(
+        type: _DialogType.groupChat,
+        unreadCount: group.unreadCount,
+        lastMessageTime: group.lastMessage?.timestamp,
+        data: group,
+      ));
+    }
+
+    return items;
+  }
+
+  /// Отсортировать диалоги: с непрочитанными вверх, затем по времени
+  List<_DialogItem> _sortDialogItems(List<_DialogItem> items) {
+    items.sort((a, b) {
+      // Сначала по наличию непрочитанных (с непрочитанными вверх)
+      if (a.hasUnread && !b.hasUnread) return -1;
+      if (!a.hasUnread && b.hasUnread) return 1;
+
+      // Затем по времени последнего сообщения (новые вверх)
+      final aTime = a.lastMessageTime ?? DateTime(1970);
+      final bTime = b.lastMessageTime ?? DateTime(1970);
+      return bTime.compareTo(aTime);
+    });
+    return items;
+  }
+
+  /// Построить виджет для элемента диалога
+  Widget _buildDialogItemWidget(_DialogItem item) {
+    switch (item.type) {
+      case _DialogType.network:
+        return _buildNetworkCard();
+      case _DialogType.management:
+        return _buildManagementCard();
+      case _DialogType.reviews:
+        return _buildReviewsCard();
+      case _DialogType.productSearch:
+        return _buildProductSearchCard();
+      case _DialogType.personalDialog:
+        return _buildPersonalDialogCard(item.data as PersonalProductDialog);
+      case _DialogType.groupChat:
+        return _buildGroupChatCard(item.data as EmployeeChat);
+    }
+  }
+
+  Widget _buildContent() {
+    // Собираем все диалоги
+    final items = _buildDialogItems();
+
+    if (items.isEmpty) {
       return _buildEmptyState();
     }
 
-    return ListView(
+    // Сортируем: непрочитанные вверх, затем по времени
+    final sortedItems = _sortDialogItems(items);
+
+    return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      children: [
-        // Сообщение от Всей Сети
-        if (hasNetworkMessages) ...[
-          _buildNetworkCard(),
-          const SizedBox(height: 12),
-        ],
-        // Связь с Руководством
-        if (hasManagementMessages) ...[
-          _buildManagementCard(),
-          const SizedBox(height: 12),
-        ],
-        // Отзывы
-        if (hasReviews) ...[
-          _buildReviewsCard(),
-          const SizedBox(height: 12),
-        ],
-        // Поиск Товара (общий)
-        if (hasProductQuestions) ...[
-          _buildProductSearchCard(),
-          const SizedBox(height: 12),
-        ],
-        // Персональные диалоги
-        ..._personalDialogs.map((dialog) => Padding(
+      itemCount: sortedItems.length,
+      itemBuilder: (context, index) {
+        final item = sortedItems[index];
+        return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: _buildPersonalDialogCard(dialog),
-        )),
-      ],
+          child: _buildDialogItemWidget(item),
+        );
+      },
     );
   }
 
@@ -309,6 +473,7 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
     required List<Color> gradientColors,
     required int unreadCount,
     required VoidCallback onTap,
+    String? imageUrl,
   }) {
     final hasUnread = unreadCount > 0;
 
@@ -333,16 +498,18 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Иконка с градиентом
+                // Иконка с градиентом или фото
                 Container(
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: gradientColors,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: imageUrl == null
+                        ? LinearGradient(
+                            colors: gradientColors,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
@@ -355,9 +522,34 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Center(
-                        child: Icon(icon, color: Colors.white, size: 28),
-                      ),
+                      if (imageUrl != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            imageUrl,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: gradientColors,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Center(
+                                child: Icon(icon, color: Colors.white, size: 28),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Center(
+                          child: Icon(icon, color: Colors.white, size: 28),
+                        ),
                       if (hasUnread)
                         Positioned(
                           right: -6,
@@ -582,6 +774,44 @@ class _MyDialogsPageState extends State<MyDialogsPage> {
             builder: (context) => ProductQuestionPersonalDialogPage(
               dialogId: dialog.id,
               shopAddress: dialog.shopAddress,
+            ),
+          ),
+        );
+        _loadDialogs();
+      },
+    );
+  }
+
+  Widget _buildGroupChatCard(EmployeeChat group) {
+    final lastMsg = group.lastMessage;
+    String subtitle = 'Нет сообщений';
+    String? timestamp;
+
+    if (lastMsg != null) {
+      subtitle = '${lastMsg.senderName}: ${lastMsg.text}';
+      if (subtitle.length > 50) subtitle = '${subtitle.substring(0, 47)}...';
+      timestamp = lastMsg.formattedTime;
+    }
+
+    return _buildDialogCard(
+      title: group.name,
+      subtitle: subtitle,
+      timestamp: timestamp,
+      icon: Icons.groups_rounded,
+      accentColor: Colors.purple[700]!,
+      gradientColors: [Colors.purple[400]!, Colors.deepPurple[400]!],
+      unreadCount: group.unreadCount,
+      imageUrl: group.imageUrl,
+      onTap: () async {
+        if (_userPhone == null) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EmployeeChatPage(
+              chat: group,
+              userPhone: _userPhone!,
+              userName: _userName ?? _userPhone!,
+              isAdmin: false, // Клиент никогда не админ
             ),
           ),
         );

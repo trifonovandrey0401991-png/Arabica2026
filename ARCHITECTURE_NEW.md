@@ -7006,11 +7006,11 @@ flowchart TB
 
 ### 13.1 Обзор модуля
 
-**Назначение:** Централизованная страница для клиента, объединяющая все типы диалогов с сетью кофеен: сетевые сообщения, связь с руководством, отзывы, поиск товара (общий и персональные диалоги).
+**Назначение:** Централизованная страница для клиента, объединяющая все типы диалогов с сетью кофеен: сетевые сообщения, связь с руководством, отзывы, поиск товара (общий и персональные диалоги), **а также групповые чаты сотрудников**, в которые клиент был добавлен.
 
 **Роли:**
-- **Клиент:** Просматривает все диалоги, счётчик непрочитанных
-- **Админ/Сотрудник:** НЕ используют эту страницу (есть отдельные админские интерфейсы)
+- **Клиент:** Просматривает все диалоги (6 типов), участвует в групповых чатах, видит счётчик непрочитанных
+- **Админ/Сотрудник:** НЕ используют эту страницу (есть отдельные админские интерфейсы, см. секцию 27)
 
 **Файлы модуля:**
 ```
@@ -7040,9 +7040,20 @@ lib/features/product_questions/
     ├── product_question_client_dialog_page.dart    # Общий диалог поиска товара
     └── product_question_personal_dialog_page.dart  # Персональный диалог с магазином
 
+lib/features/employee_chat/                # НОВОЕ: Интеграция с чатами сотрудников
+├── models/
+│   ├── employee_chat_model.dart           # Модель чата (group, private, shop, general)
+│   └── employee_chat_message_model.dart   # Модель сообщения
+├── pages/
+│   └── employee_chat_page.dart            # Страница чата (используется клиентом для групп)
+└── services/
+    ├── employee_chat_service.dart         # Основной сервис чатов
+    └── client_group_chat_service.dart     # Сервис групповых чатов для клиента
+
 loyalty-proxy/api/
 ├── clients_api.js                         # Endpoints для диалогов клиента
-└── product_questions_api.js               # Endpoints для поиска товара
+├── product_questions_api.js               # Endpoints для поиска товара
+└── employee_chat_api.js                   # Endpoints для чатов сотрудников (включая группы)
 ```
 
 ---
@@ -7056,6 +7067,12 @@ loyalty-proxy/api/
 | **Отзывы** | `/api/reviews` | `Review` | `ClientReviewsListPage` | Отзывы клиента по магазинам |
 | **Поиск товара (общий)** | `/api/product-questions/client/:phone` | `ProductQuestion` | `ProductQuestionClientDialogPage` | Общий чат для всех вопросов |
 | **Поиск товара (персональный)** | `/api/product-question-dialogs/client/:phone` | `PersonalProductDialog` | `ProductQuestionPersonalDialogPage` | Диалоги с конкретными магазинами |
+| **Групповые чаты** | `/api/employee-chats?phone=:phone` | `EmployeeChat` | `EmployeeChatPage` | Групповые чаты, в которые клиент добавлен админом |
+
+**Особенности групповых чатов для клиентов:**
+- Клиент видит ТОЛЬКО группы, где он в `participants`
+- `isAdmin: false` жёстко задан — клиент не может удалять сообщения/редактировать группу
+- Фильтрация происходит на сервере через `ClientGroupChatService`
 
 ---
 
@@ -7110,10 +7127,40 @@ classDiagram
         +getTotalUnreadCount() int
     }
 
+    class ClientGroupChatService {
+        +getClientGroupChats(phone) List~EmployeeChat~
+        +getUnreadCount(phone) int
+    }
+
+    class EmployeeChat {
+        +String id
+        +EmployeeChatType type
+        +String name
+        +String? imageUrl
+        +String? creatorPhone
+        +List~String~ participants
+        +int unreadCount
+        +EmployeeChatMessage? lastMessage
+    }
+
+    class EmployeeChatMessage {
+        +String id
+        +String chatId
+        +String senderPhone
+        +String senderName
+        +String text
+        +String? imageUrl
+        +DateTime timestamp
+        +List~String~ readBy
+    }
+
     NetworkDialogData "1" *-- "0..*" NetworkMessage
     ManagementDialogData "1" *-- "0..*" ManagementMessage
+    EmployeeChat "1" *-- "0..*" EmployeeChatMessage
     MyDialogsCounterService ..> NetworkDialogData : использует
     MyDialogsCounterService ..> ManagementDialogData : использует
+    MyDialogsCounterService ..> ClientGroupChatService : использует
+    ClientGroupChatService ..> EmployeeChat : возвращает
 ```
 
 ---
@@ -7126,12 +7173,13 @@ flowchart TB
         MDP[MyDialogsPage<br/>Главная страница]
     end
 
-    subgraph DIALOGS["💬 ТИПЫ ДИАЛОГОВ"]
+    subgraph DIALOGS["💬 ТИПЫ ДИАЛОГОВ (6)"]
         ND[NetworkDialogPage<br/>Сетевые]
         MD[ManagementDialogPage<br/>Руководство]
         CR[ClientReviewsListPage<br/>Отзывы]
         PQ[ProductQuestionClientDialogPage<br/>Поиск товара]
         PP[ProductQuestionPersonalDialogPage<br/>Персональные]
+        GC[EmployeeChatPage<br/>Групповые чаты]
     end
 
     subgraph SERVICES["⚙️ СЕРВИСЫ"]
@@ -7140,12 +7188,14 @@ flowchart TB
         MMS[ManagementMessageService]
         RS[ReviewService]
         PQS[ProductQuestionService]
+        CGCS[ClientGroupChatService]
     end
 
     subgraph SERVER["🖥️ СЕРВЕР"]
-        API["/api/client-dialogs/*<br/>/api/reviews/*<br/>/api/product-questions/*"]
+        API["/api/client-dialogs/*<br/>/api/reviews/*<br/>/api/product-questions/*<br/>/api/employee-chats/*"]
         FS[File Storage]
         PUSH[Push Notifications]
+        WS[WebSocket]
     end
 
     MDP --> MDCS
@@ -7153,26 +7203,34 @@ flowchart TB
     MDCS --> MMS
     MDCS --> RS
     MDCS --> PQS
+    MDCS --> CGCS
 
     MDP --> ND
     MDP --> MD
     MDP --> CR
     MDP --> PQ
     MDP --> PP
+    MDP --> GC
 
     ND --> NMS
     MD --> MMS
     CR --> RS
     PQ --> PQS
     PP --> PQS
+    GC --> CGCS
 
     NMS --> API
     MMS --> API
     RS --> API
     PQS --> API
+    CGCS --> API
 
     API --> FS
     API --> PUSH
+    API --> WS
+
+    style GC fill:#9C27B0,color:#fff
+    style CGCS fill:#7B1FA2,color:#fff
 ```
 
 ---
@@ -7188,6 +7246,7 @@ sequenceDiagram
     participant MMS as ManagementService
     participant RS as ReviewService
     participant PQS as ProductQuestionService
+    participant CGCS as ClientGroupChatService
     participant API as Server API
 
     C->>MDP: Открывает "Мои диалоги"
@@ -7218,10 +7277,17 @@ sequenceDiagram
         PQS->>API: GET /api/product-question-dialogs/client/:phone
         API-->>PQS: [PersonalDialog]
         PQS-->>MDCS: List<PersonalProductDialog>
+
+        MDCS->>CGCS: getUnreadCount(phone)
+        CGCS->>API: GET /api/employee-chats?phone=:phone&isAdmin=false
+        Note over API: Фильтрация: только группы<br/>где клиент в participants
+        API-->>CGCS: {chats: [EmployeeChat]}
+        CGCS-->>MDCS: groupsUnreadCount
     end
 
-    MDCS-->>MDP: totalUnread (сумма всех)
+    MDCS-->>MDP: totalUnread (сумма всех 6 типов)
     MDP->>C: Отображает диалоги с счётчиками
+    Note over MDP: Сортировка: непрочитанные вверх,<br/>затем по времени последнего сообщения
 ```
 
 ---
@@ -7361,6 +7427,7 @@ flowchart TB
 | **Отзывы** | `hasUnreadFromAdmin` | `hasUnreadFromClient` | При открытии `ReviewDetailPage` |
 | **Поиск товара** | `unreadCount` | - | При открытии диалога |
 | **Персональные** | `hasUnreadFromEmployee` | `hasUnreadFromClient` | При открытии персонального диалога |
+| **Групповые чаты** | `unreadCount` (по `readBy`) | `unreadCount` (по `readBy`) | При открытии `EmployeeChatPage` → `POST /api/employee-chats/:chatId/read` |
 
 ---
 
@@ -7372,9 +7439,74 @@ flowchart TB
 | **ManagementMessages** | → | Диалог с руководством |
 | **Reviews** | → | Список отзывов клиента |
 | **ProductQuestions** | → | Общий диалог + персональные |
-| **MyDialogsCounter** | ← | Подсчёт всех непрочитанных |
+| **EmployeeChat** | → | Групповые чаты (через `ClientGroupChatService`) |
+| **MyDialogsCounter** | ← | Подсчёт всех непрочитанных (6 типов) |
 | **MainMenu** | ← | Бейдж на кнопке "Мои диалоги" |
 | **Firebase/Push** | → | Уведомления о новых сообщениях |
+| **WebSocket** | → | Real-time обновления в групповых чатах |
+
+---
+
+### 13.13 Сортировка диалогов
+
+**Алгоритм сортировки:**
+Все диалоги объединяются в единый список `_DialogItem` и сортируются:
+
+1. **Сначала по наличию непрочитанных** — диалоги с `unreadCount > 0` вверху
+2. **Затем по времени последнего сообщения** — новые вверху
+
+```dart
+items.sort((a, b) {
+  // Сначала по наличию непрочитанных (с непрочитанными вверх)
+  if (a.hasUnread && !b.hasUnread) return -1;
+  if (!a.hasUnread && b.hasUnread) return 1;
+
+  // Затем по времени последнего сообщения (новые вверх)
+  final aTime = a.lastMessageTime ?? DateTime(1970);
+  final bTime = b.lastMessageTime ?? DateTime(1970);
+  return bTime.compareTo(aTime);
+});
+```
+
+**Типы диалогов для сортировки:**
+```dart
+enum _DialogType {
+  network,       // Сетевые сообщения
+  management,    // Связь с руководством
+  reviews,       // Отзывы
+  productSearch, // Поиск товара (общий)
+  personalDialog,// Персональные диалоги
+  groupChat,     // Групповые чаты
+}
+```
+
+---
+
+### 13.14 ClientGroupChatService
+
+**Назначение:** Сервис-обёртка для получения групповых чатов клиента из модуля Employee Chat.
+
+```dart
+class ClientGroupChatService {
+  /// Получить только групповые чаты для клиента
+  /// Фильтрует все чаты и возвращает только type == group
+  static Future<List<EmployeeChat>> getClientGroupChats(String phone) async {
+    final allChats = await EmployeeChatService.getChats(phone, isAdmin: false);
+    return allChats.where((chat) => chat.type == EmployeeChatType.group).toList();
+  }
+
+  /// Получить количество непрочитанных сообщений в группах
+  static Future<int> getUnreadCount(String phone) async {
+    final groups = await getClientGroupChats(phone);
+    return groups.fold(0, (sum, chat) => sum + chat.unreadCount);
+  }
+}
+```
+
+**Важно:**
+- Сервер фильтрует группы по `participants` — клиент видит ТОЛЬКО те группы, где он добавлен
+- `isAdmin: false` всегда передаётся для клиентов
+- Клиент НЕ может удалять сообщения, редактировать группу или добавлять участников
 
 ---
 
@@ -11874,6 +12006,7 @@ String get shiftDisplayName {
 
 ## Следующие разделы (TODO)
 
+- [x] 1. Управление данными - МАГАЗИНЫ
 - [x] 2. Управление данными - СОТРУДНИКИ
 - [x] 3. Управление данными - ГРАФИК РАБОТЫ
 - [x] 4. Система отчётности - ПЕРЕСМЕНКИ
@@ -11894,7 +12027,13 @@ String get shiftDisplayName {
 - [x] 19. Аналитика - ЭФФЕКТИВНОСТЬ
 - [x] 20. Управление задачами - ЗАДАЧИ
 - [x] 21. HR-модуль - УСТРОИТЬСЯ НА РАБОТУ
-- [ ] 22. Реферальная система - ПРИГЛАШЕНИЯ
+- [x] 22. Реферальная система - ПРИГЛАШЕНИЯ
+- [x] 23. Рейтинг и Колесо Удачи - FORTUNE WHEEL
+- [x] 24. Система заказов - КОРЗИНА, МЕНЮ, РЕЦЕПТЫ
+- [x] 25. Геолокация - МАГАЗИНЫ НА КАРТЕ С ГЕОФЕНСИНГОМ
+- [x] 26. Клиентский модуль - КАРТА ЛОЯЛЬНОСТИ И БОНУСЫ
+- [x] 27. Коммуникации - ЧАТ СОТРУДНИКОВ (Employee Chat)
+- [x] 28. Клиентский модуль - МОИ ДИАЛОГИ (Расширенная интеграция)
 
 ---
 
@@ -13645,3 +13784,2086 @@ lib/features/
 
 ---
 
+## 24. Система заказов, меню и рецептов
+
+### 24.1 Обзор модуля
+
+**Назначение:** Комплексная система для управления заказами клиентов, меню напитков и рецептами. Включает корзину, оформление заказов, отчёты для админов и интеграцию с рецептами.
+
+**Компоненты системы:**
+- 🛒 **Корзина** — локальное хранение товаров перед заказом
+- 📋 **Мои заказы** — история заказов клиента
+- 📊 **Отчёты (Заказы клиентов)** — админ-панель для обработки заказов
+- 🍽️ **Меню** — каталог товаров для выбора
+- 📖 **Рецепты** — база рецептов напитков (связана с меню)
+
+**Файлы модуля:**
+```
+lib/features/orders/
+├── pages/
+│   ├── cart_page.dart              # Страница корзины
+│   ├── orders_page.dart            # Мои заказы (клиент)
+│   └── orders_report_page.dart     # Отчёты заказов (админ)
+├── services/
+│   ├── order_service.dart          # API сервис заказов
+│   └── order_timeout_settings_service.dart  # Настройки таймаута
+
+lib/features/menu/
+├── pages/
+│   └── menu_page.dart              # Страница меню + модель MenuItem
+└── services/
+    └── menu_service.dart           # API сервис меню
+
+lib/features/recipes/
+├── models/
+│   └── recipe_model.dart           # Модель рецепта
+├── pages/
+│   ├── recipes_list_page.dart      # Список рецептов
+│   ├── recipe_view_page.dart       # Просмотр рецепта
+│   ├── recipe_form_page.dart       # Форма создания/редактирования
+│   └── recipe_list_edit_page.dart  # Редактирование (админ)
+└── services/
+    └── recipe_service.dart         # API сервис рецептов
+
+lib/shared/providers/
+├── cart_provider.dart              # Состояние корзины
+└── order_provider.dart             # Состояние заказов + модель Order
+
+loyalty-proxy/
+└── modules/
+    └── orders.js                   # API заказов на сервере
+```
+
+---
+
+### 24.2 Модели данных
+
+```mermaid
+classDiagram
+    class MenuItem {
+        +String id
+        +String name
+        +String price
+        +String category
+        +String shop
+        +String photoId
+        +String? photoUrl
+        +String? imageUrl
+        +bool hasNetworkPhoto
+        +fromJson(Map) MenuItem
+        +toJson() Map
+    }
+
+    class CartItem {
+        +MenuItem menuItem
+        +int quantity
+        +double totalPrice
+    }
+
+    class Order {
+        +String id
+        +List~CartItem~ items
+        +List~Map~ itemsData
+        +double totalPrice
+        +DateTime createdAt
+        +String? comment
+        +String status
+        +String? acceptedBy
+        +String? rejectedBy
+        +String? rejectionReason
+        +int? orderNumber
+        +String? clientPhone
+        +String? clientName
+        +String? shopAddress
+        +fromJson(Map) Order
+        +toJson() Map
+    }
+
+    class Recipe {
+        +String id
+        +String name
+        +String category
+        +String? photoUrl
+        +String? photoId
+        +String ingredients
+        +String steps
+        +String? recipe
+        +String? price
+        +DateTime? createdAt
+        +DateTime? updatedAt
+        +String? photoUrlOrId
+        +String recipeText
+        +fromJson(Map) Recipe
+        +toJson() Map
+    }
+
+    MenuItem "1" --* "0..*" CartItem : содержится в
+    CartItem "1..*" --* "1" Order : формирует
+    Recipe "1" --> "0..1" MenuItem : связан с меню
+```
+
+---
+
+### 24.3 Статусы заказов
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Создание заказа
+    pending --> completed: Принят сотрудником
+    pending --> rejected: Отклонён сотрудником
+    pending --> unconfirmed: 24+ часов без ответа
+
+    completed --> [*]: Выполнен
+    rejected --> [*]: Отказано
+    unconfirmed --> completed: Позднее принят
+    unconfirmed --> rejected: Позднее отклонён
+
+    note right of pending
+        status: 'pending'
+        acceptedBy: null
+        rejectedBy: null
+    end note
+
+    note right of completed
+        status: 'completed'
+        acceptedBy: "Имя сотрудника"
+    end note
+
+    note right of rejected
+        status: 'rejected'
+        rejectedBy: "Имя сотрудника"
+        rejectionReason: "Причина"
+    end note
+
+    note right of unconfirmed
+        Вычисляется клиентом:
+        pending + 24h + no response
+    end note
+```
+
+---
+
+### 24.4 Архитектура компонентов
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["📱 Клиент"]
+        MENU[MenuPage<br/>Выбор товаров]
+        CART[CartPage<br/>Корзина]
+        ORDERS[OrdersPage<br/>Мои заказы]
+    end
+
+    subgraph ADMIN["👨‍💼 Админ/Сотрудник"]
+        REPORT[OrdersReportPage<br/>4 вкладки]
+        RECIPES_EDIT[RecipeListEditPage<br/>Редактирование рецептов]
+    end
+
+    subgraph PROVIDERS["🔄 Providers"]
+        CART_PROV[CartProvider<br/>Состояние корзины]
+        ORDER_PROV[OrderProvider<br/>Состояние заказов]
+    end
+
+    subgraph SERVICES["⚙️ Services"]
+        ORDER_SVC[OrderService]
+        MENU_SVC[MenuService]
+        RECIPE_SVC[RecipeService]
+    end
+
+    subgraph SERVER["🖥️ Сервер"]
+        ORDERS_API[/api/orders]
+        RECIPES_API[/api/recipes]
+        MENU_API[/api/menu]
+    end
+
+    subgraph STORAGE["💾 Хранилище"]
+        ORDERS_DIR[/var/www/orders/]
+        RECIPES_DIR[/var/www/recipes/]
+        PHOTOS_DIR[/var/www/recipe-photos/]
+    end
+
+    MENU --> CART_PROV
+    CART --> CART_PROV
+    CART --> ORDER_PROV
+    ORDERS --> ORDER_PROV
+
+    REPORT --> ORDER_SVC
+    RECIPES_EDIT --> RECIPE_SVC
+
+    ORDER_PROV --> ORDER_SVC
+    ORDER_SVC --> ORDERS_API
+    RECIPE_SVC --> RECIPES_API
+    MENU_SVC --> MENU_API
+
+    ORDERS_API --> ORDERS_DIR
+    RECIPES_API --> RECIPES_DIR
+    RECIPES_API --> PHOTOS_DIR
+```
+
+---
+
+### 24.5 Поток данных: Создание заказа
+
+```mermaid
+sequenceDiagram
+    participant U as Клиент
+    participant M as MenuPage
+    participant CP as CartProvider
+    participant C as CartPage
+    participant OP as OrderProvider
+    participant OS as OrderService
+    participant API as Server API
+    participant DB as /var/www/orders/
+
+    U->>M: Выбирает товар
+    M->>CP: addItem(MenuItem)
+    CP-->>M: notifyListeners()
+
+    U->>C: Переход в корзину
+    C->>CP: Отображение items
+    U->>C: Добавляет комментарий
+    U->>C: Нажимает "Заказать"
+
+    C->>OP: createOrder(items, totalPrice, comment, shopAddress)
+    OP->>OS: createOrder(clientPhone, clientName, ...)
+    OS->>API: POST /api/orders
+
+    Note over API: Генерация orderNumber
+    Note over API: status = 'pending'
+
+    API->>DB: Сохранение order_{id}.json
+    DB-->>API: success
+    API-->>OS: { success, order }
+    OS-->>OP: Order
+    OP-->>C: success
+
+    C->>CP: clear()
+    Note over CP: Очистка корзины
+
+    C->>U: Переход в OrdersPage
+```
+
+---
+
+### 24.6 Поток данных: Обработка заказа админом
+
+```mermaid
+sequenceDiagram
+    participant A as Админ
+    participant R as OrdersReportPage
+    participant OS as OrderService
+    participant API as Server API
+    participant DB as /var/www/orders/
+    participant FCM as Firebase Cloud Messaging
+    participant CL as Клиент
+
+    A->>R: Открывает вкладку "Ожидают"
+    R->>OS: getAllOrders(status: 'pending')
+    OS->>API: GET /api/orders?status=pending
+    API->>DB: Чтение файлов заказов
+    DB-->>API: orders[]
+    API-->>OS: { orders }
+    OS-->>R: List<Order>
+
+    A->>R: Выбирает заказ #123
+    R->>R: Показывает детали
+
+    alt Принять заказ
+        A->>R: Нажимает "Принять"
+        R->>OS: updateOrderStatus(id, 'completed', acceptedBy)
+        OS->>API: PATCH /api/orders/:id
+        API->>DB: Обновление order_{id}.json
+        API->>FCM: Отправка push клиенту
+        FCM-->>CL: "Заказ #123 принят"
+        API-->>OS: { success, order }
+        OS-->>R: Order (updated)
+    else Отклонить заказ
+        A->>R: Нажимает "Отклонить"
+        A->>R: Вводит причину
+        R->>OS: updateOrderStatus(id, 'rejected', rejectedBy, reason)
+        OS->>API: PATCH /api/orders/:id
+        API->>DB: Обновление order_{id}.json
+        API->>FCM: Отправка push клиенту
+        FCM-->>CL: "Заказ #123 отклонён: причина"
+        API-->>OS: { success, order }
+        OS-->>R: Order (updated)
+    end
+```
+
+---
+
+### 24.7 Структура хранения данных
+
+**Директория заказов:** `/var/www/orders/`
+
+```
+/var/www/orders/
+├── order-counter.json              # Глобальный счётчик номеров
+├── {orderId}.json                  # Файлы заказов
+├── orders-viewed-rejected.json     # Timestamp просмотра отклонённых
+└── orders-viewed-unconfirmed.json  # Timestamp просмотра неподтверждённых
+```
+
+**Структура файла заказа:**
+```json
+{
+  "id": "uuid-string",
+  "orderNumber": 49,
+  "clientPhone": "79991234567",
+  "clientName": "Иван Иванов",
+  "shopAddress": "ул. Ленина, 1",
+  "items": [
+    {
+      "name": "Эспрессо",
+      "price": "120",
+      "quantity": 2,
+      "total": 240,
+      "photoId": "coffee_01",
+      "imageUrl": "https://arabica26.ru/recipe-photos/espresso.jpg"
+    }
+  ],
+  "totalPrice": 240,
+  "comment": "Без сахара",
+  "status": "pending",
+  "createdAt": "2026-01-28T16:52:00.000Z",
+  "updatedAt": "2026-01-28T16:52:00.000Z",
+  "acceptedBy": null,
+  "rejectedBy": null,
+  "rejectionReason": null
+}
+```
+
+**Директория рецептов:** `/var/www/recipes/`
+
+```
+/var/www/recipes/
+├── recipe_{timestamp}.json         # Файлы рецептов
+
+/var/www/recipe-photos/
+├── {recipeId}.jpg                  # Фото рецептов
+```
+
+**Структура файла рецепта:**
+```json
+{
+  "id": "recipe_1769617698584",
+  "name": "малиновый",
+  "category": "Малина",
+  "price": "100",
+  "ingredients": "Малина, молоко, сироп",
+  "steps": "1. Смешать ингредиенты\n2. Взбить",
+  "photoUrl": "/recipe-photos/recipe_1769617698584.jpg",
+  "createdAt": "2026-01-28T13:48:18.584Z",
+  "updatedAt": "2026-01-28T13:48:18.584Z"
+}
+```
+
+---
+
+### 24.8 API Endpoints
+
+#### Заказы
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| `POST` | `/api/orders` | Создать заказ |
+| `GET` | `/api/orders` | Получить заказы (фильтры: clientPhone, status, shopAddress) |
+| `GET` | `/api/orders/:id` | Получить заказ по ID |
+| `PATCH` | `/api/orders/:id` | Обновить статус заказа |
+| `GET` | `/api/orders/unviewed-count` | Счётчик непросмотренных |
+| `POST` | `/api/orders/mark-viewed/:type` | Отметить как просмотренные |
+
+**Создание заказа (POST /api/orders):**
+```json
+// Request
+{
+  "clientPhone": "79991234567",
+  "clientName": "Иван",
+  "shopAddress": "ул. Ленина, 1",
+  "items": [
+    { "name": "Эспрессо", "price": "120", "quantity": 2, "photoId": "..." }
+  ],
+  "totalPrice": 240,
+  "comment": "Без сахара"
+}
+
+// Response
+{
+  "success": true,
+  "order": {
+    "id": "uuid",
+    "orderNumber": 50,
+    "status": "pending",
+    "createdAt": "2026-01-28T19:52:00.000Z",
+    ...
+  }
+}
+```
+
+**Обновление статуса (PATCH /api/orders/:id):**
+```json
+// Request (принять)
+{
+  "status": "completed",
+  "acceptedBy": "Андрей В"
+}
+
+// Request (отклонить)
+{
+  "status": "rejected",
+  "rejectedBy": "Андрей В",
+  "rejectionReason": "Нет ингредиентов"
+}
+```
+
+#### Рецепты
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| `GET` | `/api/recipes` | Получить все рецепты |
+| `GET` | `/api/recipes/:id` | Получить рецепт по ID |
+| `POST` | `/api/recipes` | Создать рецепт (админ) |
+| `PUT` | `/api/recipes/:id` | Обновить рецепт (админ) |
+| `DELETE` | `/api/recipes/:id` | Удалить рецепт (админ) |
+| `POST` | `/api/recipes/upload-photo` | Загрузить фото (multipart) |
+
+#### Меню
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| `GET` | `/api/menu` | Получить все товары меню |
+| `GET` | `/api/menu/:id` | Получить товар по ID |
+| `POST` | `/api/menu` | Создать товар (админ) |
+| `PUT` | `/api/menu/:id` | Обновить товар (админ) |
+| `DELETE` | `/api/menu/:id` | Удалить товар (админ) |
+
+---
+
+### 24.9 Обработка изображений
+
+```mermaid
+flowchart TB
+    subgraph SOURCES["Источники изображений"]
+        NET[photoUrl<br/>Сетевое фото]
+        ASSET[photoId<br/>Локальный asset]
+        NONE[Нет фото]
+    end
+
+    subgraph PRIORITY["Приоритет загрузки"]
+        P1["1. photoUrl → Image.network()"]
+        P2["2. photoId → Image.asset()"]
+        P3["3. Placeholder → Icon"]
+    end
+
+    subgraph DISPLAY["Отображение"]
+        IMG[Изображение товара]
+        PLACEHOLDER[Иконка кофе<br/>с градиентом]
+    end
+
+    NET --> P1
+    ASSET --> P2
+    NONE --> P3
+
+    P1 -->|success| IMG
+    P1 -->|error| P2
+    P2 -->|success| IMG
+    P2 -->|error| P3
+    P3 --> PLACEHOLDER
+```
+
+**Код обработки изображений:**
+```dart
+Widget _buildItemImage(MenuItem item) {
+  if (item.hasNetworkPhoto) {
+    return Image.network(
+      item.imageUrl!,
+      errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(),
+    );
+  } else if (item.photoId.isNotEmpty) {
+    return Image.asset(
+      'assets/images/${item.photoId}.jpg',
+      errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(),
+    );
+  } else {
+    return _buildNoPhotoPlaceholder();
+  }
+}
+
+Widget _buildNoPhotoPlaceholder() {
+  return Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Color(0xFF004D40).withOpacity(0.15), Color(0xFF00695C).withOpacity(0.1)],
+      ),
+    ),
+    child: Icon(Icons.local_cafe_rounded, color: Color(0xFF004D40)),
+  );
+}
+```
+
+---
+
+### 24.10 Интерфейс отчётов (OrdersReportPage)
+
+```mermaid
+flowchart TB
+    subgraph TABS["4 вкладки (2×2)"]
+        T1["⏳ Ожидают<br/>status=pending"]
+        T2["✅ Выполнено<br/>status=completed"]
+        T3["❌ Отказано<br/>status=rejected"]
+        T4["⚠️ Не подтв.<br/>unconfirmed"]
+    end
+
+    subgraph ACTIONS["Действия"]
+        A1[Принять заказ]
+        A2[Отклонить заказ]
+        A3[Просмотр деталей]
+    end
+
+    T1 --> A1
+    T1 --> A2
+    T2 --> A3
+    T3 --> A3
+    T4 --> A1
+    T4 --> A2
+```
+
+**Определение "неподтверждённого" заказа:**
+```dart
+bool _isUnconfirmedOrder(Order order) {
+  if (order.status != 'pending') return false;
+  if (order.acceptedBy != null && order.acceptedBy!.isNotEmpty) return false;
+  if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) return false;
+
+  final hoursSinceCreated = DateTime.now().difference(order.createdAt).inHours;
+  return hoursSinceCreated >= 24;
+}
+```
+
+---
+
+### 24.11 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph ORDERS["ЗАКАЗЫ"]
+        CART[Корзина]
+        MY_ORDERS[Мои заказы]
+        REPORT[Отчёты заказов]
+    end
+
+    subgraph MENU_RECIPES["МЕНЮ & РЕЦЕПТЫ"]
+        MENU[Меню]
+        RECIPES[Рецепты]
+    end
+
+    subgraph RELATED["СВЯЗАННЫЕ МОДУЛИ"]
+        SHOPS[Магазины<br/>shopAddress]
+        EMPLOYEES[Сотрудники<br/>acceptedBy/rejectedBy]
+        NOTIFICATIONS[Уведомления<br/>FCM push]
+        EFFICIENCY[Эффективность<br/>баллы за заказы]
+    end
+
+    RECIPES --> MENU
+    MENU --> CART
+    CART --> MY_ORDERS
+    MY_ORDERS --> REPORT
+
+    SHOPS --> CART
+    SHOPS --> REPORT
+    EMPLOYEES --> REPORT
+    REPORT --> NOTIFICATIONS
+    REPORT --> EFFICIENCY
+```
+
+**Таблица зависимостей:**
+
+| Модуль | Использует | Что берёт |
+|--------|------------|-----------|
+| **Корзина** | MenuItem, Shop | Товары для заказа, адрес магазина |
+| **Мои заказы** | Order | История заказов клиента |
+| **Отчёты** | Order, Employee | Заказы для обработки, имена сотрудников |
+| **Меню** | Recipe | Рецепты как товары меню |
+| **Эффективность** | Order | Баллы за обработанные заказы |
+| **Уведомления** | Order | Push при изменении статуса |
+
+---
+
+### 24.12 Обработка времени (UTC → Local)
+
+**Проблема:** Сервер хранит время в UTC, клиент должен показывать локальное.
+
+**Решение:**
+```dart
+// В Order.fromJson (order_provider.dart)
+createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+
+// В _formatDateTime (orders_report_page.dart)
+String _formatDateTime(String? isoDate) {
+  if (isoDate == null || isoDate.isEmpty) return '';
+  try {
+    final date = DateTime.parse(isoDate).toLocal();  // ← .toLocal()
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year;
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$day.$month.$year $hour:$minute';
+  } catch (e) {
+    return '';
+  }
+}
+```
+
+---
+
+### 24.13 Уведомления о заказах
+
+**Push-уведомления клиенту:**
+
+| Событие | Заголовок | Тело |
+|---------|-----------|------|
+| Заказ принят | `Заказ #123 принят` | `Ваш заказ принят сотрудником Андрей В` |
+| Заказ отклонён | `Заказ #123 не принят` | `Причина: Нет ингредиентов` |
+
+**Push-уведомления админам:**
+
+| Событие | Заголовок | Тело |
+|---------|-----------|------|
+| Новый заказ | `Новый заказ #123` | `Иван Иванов - ул. Ленина, 1` |
+
+**FCM токены:** `/var/www/fcm-tokens/{clientPhone}.json`
+
+---
+
+### 24.14 Критические предупреждения
+
+**⚠️ ВАЖНО: Система заказов интегрирована с уведомлениями и эффективностью!**
+
+**🔒 Защищённые файлы (НЕ ТРОГАТЬ!):**
+
+```
+lib/features/orders/
+├── pages/
+│   ├── cart_page.dart              # ✅ Корзина
+│   ├── orders_page.dart            # ✅ Мои заказы
+│   └── orders_report_page.dart     # ✅ Отчёты
+└── services/
+    └── order_service.dart          # ✅ API сервис
+
+lib/features/menu/
+└── pages/
+    └── menu_page.dart              # ✅ Меню + MenuItem
+
+lib/features/recipes/                # ✅ Все файлы
+
+lib/shared/providers/
+├── cart_provider.dart              # ✅ Состояние корзины
+└── order_provider.dart             # ✅ Состояние заказов
+
+loyalty-proxy/modules/
+└── orders.js                       # ✅ API заказов
+```
+
+**💾 Критические данные:**
+
+```
+/var/www/
+├── orders/                         # ✅ Заказы
+│   └── order-counter.json          # ✅ Глобальный счётчик
+├── recipes/                        # ✅ Рецепты
+└── recipe-photos/                  # ✅ Фото рецептов
+```
+
+**🚫 Что НЕ делать:**
+
+- ❌ Не изменять формат orderNumber (глобальный счётчик)
+- ❌ Не удалять order-counter.json
+- ❌ Не менять структуру статусов (pending/completed/rejected)
+- ❌ Не изменять логику определения unconfirmed (24 часа)
+- ❌ Не убирать .toLocal() при парсинге createdAt
+
+**✅ Безопасные изменения:**
+
+- ✅ Изменение UI карточек заказов
+- ✅ Добавление новых полей в рецепты
+- ✅ Изменение placeholder изображений
+- ✅ Добавление новых категорий в меню
+- ✅ Изменение текстов уведомлений
+
+---
+
+## 25. Геолокация - МАГАЗИНЫ НА КАРТЕ С ГЕОФЕНСИНГОМ
+
+### 25.1 Обзор модуля
+
+**Назначение:** Интерактивная карта магазинов с системой геофенсинг push-уведомлений для клиентов. Когда клиент входит в радиус магазина, система автоматически отправляет push-уведомление с приглашением посетить кофейню.
+
+**Основные компоненты:**
+1. **Карта магазинов** — интерактивная карта Google Maps с маркерами всех магазинов
+2. **Геолокация пользователя** — определение текущего местоположения с проверкой сервисов
+3. **Геофенсинг** — фоновая проверка входа клиента в радиус магазина (WorkManager)
+4. **Push-уведомления** — автоматическая отправка при входе в зону магазина
+5. **Настройки геозоны** — радиус, тексты уведомлений, cooldown (только админ)
+
+**Файлы модуля:**
+```
+lib/features/shops/
+├── models/
+│   └── shop_model.dart                    # Модель магазина с валидацией координат
+└── pages/
+    └── shops_on_map_page.dart             # Главная страница с TabBar
+
+lib/core/services/
+└── background_gps_service.dart            # Фоновый сервис проверки геозоны
+```
+
+**Серверные модули:**
+```
+loyalty-proxy/
+└── api/
+    └── geofence_api.js                    # API геофенсинга
+```
+
+**Серверные данные:**
+```
+/var/www/
+├── geofence-settings.json                 # Настройки геозоны
+├── geofence-notifications/                # История уведомлений
+│   └── {phone}_{date}.json               # Уведомления по телефону и дате
+└── shops/
+    └── shop_*.json                        # Магазины с координатами
+```
+
+---
+
+### 25.2 Модели данных
+
+```mermaid
+classDiagram
+    class Shop {
+        +String id
+        +String name
+        +String address
+        +double? latitude
+        +double? longitude
+        +IconData icon
+        +fromJson(Map) Shop
+        +toJson() Map
+        +hasValidCoordinates() bool
+    }
+
+    class GeofenceSettings {
+        +bool enabled
+        +int radiusMeters
+        +String notificationTitle
+        +String notificationBody
+        +int cooldownHours
+        +DateTime updatedAt
+        +String updatedBy
+    }
+
+    class GeofenceNotification {
+        +String phone
+        +String shopId
+        +String shopName
+        +String shopAddress
+        +DateTime sentAt
+        +int distance
+    }
+
+    Shop "1" -- "*" GeofenceNotification : triggers
+    GeofenceSettings "1" -- "*" GeofenceNotification : configures
+```
+
+---
+
+### 25.3 Архитектура геофенсинга
+
+```mermaid
+flowchart TB
+    subgraph CLIENT["📱 Flutter App"]
+        BG[BackgroundGpsService<br/>WorkManager]
+        MAP[ShopsOnMapPage<br/>Google Maps]
+        SET[Настройки геозоны<br/>TabBar - только админ]
+    end
+
+    subgraph SERVER["🖥️ Node.js Server"]
+        API[geofence_api.js]
+        PUSH[sendPushToPhone]
+        SHOPS[/var/www/shops/]
+        SETTINGS[geofence-settings.json]
+        HISTORY[geofence-notifications/]
+    end
+
+    subgraph LOGIC["⚙️ Логика проверки"]
+        L1[1. Загрузить настройки]
+        L2[2. Загрузить магазины]
+        L3[3. Рассчитать расстояние<br/>Haversine]
+        L4[4. Проверить cooldown]
+        L5[5. Отправить push]
+        L6[6. Записать в историю]
+    end
+
+    BG -->|каждые 15 мин| API
+    MAP -->|загрузка| SHOPS
+    SET -->|сохранение| SETTINGS
+
+    API --> L1 --> L2 --> L3
+    L3 -->|в радиусе| L4
+    L4 -->|cooldown OK| L5
+    L5 --> L6
+
+    L5 --> PUSH
+    L6 --> HISTORY
+
+    style CLIENT fill:#1565C0,color:#fff
+    style SERVER fill:#2E7D32,color:#fff
+    style LOGIC fill:#F57C00,color:#fff
+```
+
+---
+
+### 25.4 Формула расчёта расстояния (Haversine)
+
+```javascript
+function calculateGpsDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Радиус Земли в метрах
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // расстояние в метрах
+}
+```
+
+**Точность:** ±1 метр на расстояниях до 10 км.
+
+---
+
+### 25.5 Жизненный цикл push-уведомления
+
+```mermaid
+sequenceDiagram
+    participant WM as WorkManager<br/>(каждые 15 мин)
+    participant GPS as Geolocator
+    participant API as /api/geofence/client-check
+    participant DB as Shops JSON
+    participant PUSH as FCM Push
+    participant HIST as Notifications History
+
+    WM->>GPS: getCurrentPosition()
+    GPS-->>WM: Position(lat, lon)
+
+    WM->>API: POST {phone, lat, lon}
+
+    API->>API: loadGeofenceSettings()
+    Note over API: enabled: true<br/>radiusMeters: 500<br/>cooldownHours: 24
+
+    API->>DB: loadShopsWithCoordinates()
+    DB-->>API: 8 магазинов
+
+    loop Для каждого магазина
+        API->>API: calculateGpsDistance()
+        alt distance <= radiusMeters
+            API->>HIST: wasNotificationSentRecently()?
+            alt cooldown OK
+                API->>PUSH: sendPushToPhone()
+                PUSH-->>API: success
+                API->>HIST: saveNotificationRecord()
+                API-->>WM: {triggered: true}
+            else cooldown активен
+                Note over API: Пропускаем магазин
+            end
+        end
+    end
+
+    API-->>WM: {triggered: false}
+```
+
+---
+
+### 25.6 UI компоненты
+
+#### Вкладки (TabBar)
+
+| Вкладка | Доступ | Описание |
+|---------|--------|----------|
+| **Магазины** | Все | Интерактивная карта с маркерами |
+| **Настройки** | Только админ | Настройки геофенсинга |
+
+#### Карта магазинов
+
+```dart
+GoogleMap(
+  initialCameraPosition: CameraPosition(
+    target: LatLng(44.05, 43.05), // Центр региона
+    zoom: 10,
+  ),
+  markers: _markers,           // Маркеры магазинов
+  myLocationEnabled: true,     // Показать текущую позицию
+  onMapCreated: (controller) => _mapController = controller,
+)
+```
+
+#### Настройки геозоны (админ)
+
+| Поле | Тип | По умолчанию | Описание |
+|------|-----|--------------|----------|
+| `enabled` | Switch | true | Включить/выключить геофенсинг |
+| `radiusMeters` | TextField | 500 | Радиус срабатывания (метры) |
+| `notificationTitle` | TextField | "Arabica рядом!" | Заголовок push |
+| `notificationBody` | TextField | "Заходите за кофе!" | Текст push |
+| `cooldownHours` | TextField | 24 | Пауза между push (часы) |
+
+---
+
+### 25.7 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/geofence-settings` | Получить настройки геозоны |
+| POST | `/api/geofence-settings` | Обновить настройки (админ) |
+| POST | `/api/geofence/client-check` | Проверить геозону клиента |
+| GET | `/api/geofence/stats` | Статистика уведомлений (админ) |
+
+#### Примеры запросов
+
+**Проверка геозоны:**
+```bash
+curl -X POST http://server/api/geofence/client-check \
+  -H 'Content-Type: application/json' \
+  -d '{"clientPhone":"79991234567","latitude":44.09009,"longitude":42.9725}'
+```
+
+**Ответ (сработало):**
+```json
+{
+  "success": true,
+  "triggered": true,
+  "shopId": "shop_1765708207571",
+  "shopAddress": "Лермонтов,Комсомольская 1",
+  "distance": 150
+}
+```
+
+**Ответ (cooldown):**
+```json
+{
+  "success": true,
+  "triggered": false,
+  "reason": "not_in_radius",
+  "debug": {
+    "closestShop": "Арабика Лермонтов",
+    "closestDistance": 150,
+    "radiusMeters": 500,
+    "shopsChecked": 8
+  }
+}
+```
+
+---
+
+### 25.8 Фоновый сервис (WorkManager)
+
+```dart
+// background_gps_service.dart
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    if (task == 'checkClientGeofence') {
+      await checkClientGeofence();
+    }
+    return true;
+  });
+}
+
+Future<void> checkClientGeofence() async {
+  // 1. Проверить что пользователь - клиент (не сотрудник)
+  final role = prefs.getString('userRole');
+  if (role == 'admin' || role == 'employee') return;
+
+  // 2. Получить текущую позицию
+  final position = await Geolocator.getCurrentPosition();
+
+  // 3. Отправить на сервер для проверки
+  final response = await http.post(
+    Uri.parse('$baseUrl/api/geofence/client-check'),
+    body: jsonEncode({
+      'clientPhone': phone,
+      'latitude': position.latitude,
+      'longitude': position.longitude,
+    }),
+  );
+
+  // Push отправляется сервером через FCM
+}
+```
+
+**Регистрация задачи:**
+```dart
+Workmanager().registerPeriodicTask(
+  'clientGeofenceCheck',
+  'checkClientGeofence',
+  frequency: Duration(minutes: 15),
+  constraints: Constraints(
+    networkType: NetworkType.connected,
+  ),
+);
+```
+
+---
+
+### 25.9 Исправленные баги
+
+| Баг | Причина | Решение |
+|-----|---------|---------|
+| Приложение зависает при определении геолокации | Нет проверки сервиса геолокации | Добавлена проверка `isLocationServiceEnabled()` |
+| Таймаут геолокации не работает | Не использовался timeout | Добавлен `timeLimit: Duration(seconds: 10)` |
+| Ошибка при deniedForever | Не обрабатывался статус | Добавлена обработка с диалогом открытия настроек |
+| Crash анимации при >10 магазинах | `easeOutBack` возвращает >1.0 | Добавлен `.clamp(0.0, 1.0)` после transform |
+| Невалидные координаты | Нет валидации в модели | Добавлена проверка lat ∈ [-90, 90], lon ∈ [-180, 180] |
+
+---
+
+### 25.10 Интеграции
+
+```mermaid
+flowchart LR
+    subgraph GEOFENCE["🗺️ Геофенсинг"]
+        GEO[geofence_api.js]
+    end
+
+    subgraph SHOPS["🏪 Магазины"]
+        SHOP_DATA[/var/www/shops/]
+    end
+
+    subgraph FCM["🔔 Уведомления"]
+        PUSH[sendPushToPhone]
+        TOKENS[fcm_tokens.json]
+    end
+
+    subgraph CLIENT["📱 Клиент"]
+        APP[Flutter App]
+        WM[WorkManager]
+    end
+
+    SHOP_DATA --> GEO
+    GEO --> PUSH
+    TOKENS --> PUSH
+    WM --> GEO
+
+    style GEOFENCE fill:#E65100,color:#fff
+    style SHOPS fill:#1565C0,color:#fff
+    style FCM fill:#7B1FA2,color:#fff
+    style CLIENT fill:#2E7D32,color:#fff
+```
+
+---
+
+### 25.11 Структура данных
+
+#### geofence-settings.json
+```json
+{
+  "enabled": true,
+  "radiusMeters": 500,
+  "notificationTitle": "Arabica рядом!",
+  "notificationBody": "Вы рядом с нашей кофейней. Заходите за ароматным кофе!",
+  "cooldownHours": 24,
+  "updatedAt": "2026-01-30T18:36:54.262Z",
+  "updatedBy": "admin"
+}
+```
+
+#### geofence-notifications/{phone}_{date}.json
+```json
+[
+  {
+    "phone": "79054443224",
+    "shopId": "shop_1765708207571",
+    "shopName": "Арабика Лермонтов,Комсомольская 1",
+    "shopAddress": "Лермонтов,Комсомольская 1 (На Площади)",
+    "sentAt": "2026-01-30T18:45:30.123Z",
+    "distance": 150
+  }
+]
+```
+
+---
+
+### 25.12 Безопасность и ограничения
+
+**Защита от спама:**
+- Cooldown 24 часа между уведомлениями для одного магазина
+- Проверка FCM токена перед отправкой
+- Валидация координат на сервере
+
+**Ограничения:**
+- WorkManager проверяет каждые 15 минут (ограничение Android)
+- GPS может быть неточным внутри зданий
+- Требуется разрешение на фоновую геолокацию
+
+**Приватность:**
+- История уведомлений хранится 7 дней
+- Автоматическая очистка старых файлов
+
+---
+
+### 25.13 Критические предупреждения
+
+**⚠️ НЕ изменять:**
+- Формулу Haversine (calculateGpsDistance)
+- Логику cooldown (wasNotificationSentRecently)
+- Структуру файлов geofence-notifications/
+- Валидацию координат в shop_model.dart
+- Анимацию с clamp в shops_on_map_page.dart
+
+**✅ Безопасные изменения:**
+- Тексты уведомлений (через UI настроек)
+- Радиус срабатывания (через UI)
+- Период cooldown (через UI)
+- Включение/выключение геофенсинга
+
+---
+
+### 25.14 Тестирование
+
+**Команды для тестирования:**
+
+```bash
+# Проверить настройки
+curl http://server/api/geofence-settings
+
+# Симулировать вход в зону (координаты магазина)
+curl -X POST http://server/api/geofence/client-check \
+  -H 'Content-Type: application/json' \
+  -d '{"clientPhone":"79054443224","latitude":44.09009,"longitude":42.9725}'
+
+# Статистика за сегодня
+curl http://server/api/geofence/stats
+```
+
+**На эмуляторе:**
+1. Extended Controls → Location
+2. Установить координаты рядом с магазином
+3. Подождать 15 минут или вызвать API вручную
+
+---
+
+## 26. Клиентский модуль - КАРТА ЛОЯЛЬНОСТИ И БОНУСЫ
+
+### Общее описание
+
+Система лояльности для клиентов кофейни Arabica. Работает по принципу "купи N напитков - получи M бесплатно". Включает:
+- **Карта лояльности клиента** - отображение баллов, QR-код для сканирования
+- **Сканер для сотрудников** - начисление баллов и выдача бесплатных напитков
+- **Управление акцией** - настройка условий (только для админа)
+- **Синхронизация** - связь с внешним Loyalty API и локальной базой клиентов
+
+### Архитектура
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         ВНЕШНИЙ LOYALTY API                         │
+│                    (arabica26.ru основной сервер)                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  POST /?action=register    - регистрация клиента                    │
+│  GET  /?action=getClient   - получить данные клиента (phone/qr)     │
+│  POST /?action=addPoint    - начислить 1 балл                       │
+│  POST /?action=redeem      - списать баллы, выдать напиток          │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↕
+┌─────────────────────────────────────────────────────────────────────┐
+│                        НАШИ API ENDPOINTS                           │
+│                   (loyalty-proxy/index.js)                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  GET  /api/loyalty-promo               - настройки акции            │
+│  POST /api/loyalty-promo               - сохранить настройки (admin)│
+│  POST /api/clients/:phone/free-drink   - увеличить freeDrinksGiven  │
+│  POST /api/clients/:phone/sync-free-drinks - синхронизация          │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↕
+┌─────────────────────────────────────────────────────────────────────┐
+│                      FLUTTER ПРИЛОЖЕНИЕ                             │
+├─────────────────────────────────────────────────────────────────────┤
+│  LoyaltyPage              - карта лояльности клиента                │
+│  LoyaltyScannerPage       - сканер QR для сотрудников               │
+│  LoyaltyPromoManagementPage - настройка акции (админ)               │
+│  LoyaltyService           - бизнес-логика                           │
+│  LoyaltyStorage           - локальное кэширование                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Структура файлов
+
+**Flutter (lib/features/loyalty/):**
+
+| Файл | Описание |
+|------|----------|
+| `pages/loyalty_page.dart` | Карта лояльности клиента (QR, баллы, бесплатные напитки) |
+| `pages/loyalty_scanner_page.dart` | Сканер QR для сотрудников (начисление/списание) |
+| `pages/loyalty_promo_management_page.dart` | Настройки акции (только админ) |
+| `services/loyalty_service.dart` | API-запросы, бизнес-логика |
+| `services/loyalty_storage.dart` | Локальное кэширование |
+
+**Серверный код (loyalty-proxy/):**
+
+| Файл | Описание |
+|------|----------|
+| `index.js` (строки ~7876-7980) | Endpoints для настроек акции и синхронизации |
+
+**Серверные данные:**
+
+| Путь | Описание |
+|------|----------|
+| `/var/www/loyalty-promo.json` | Настройки акции (pointsRequired, drinksToGive, promoText) |
+| `/var/www/clients/*.json` | Данные клиентов (freeDrinksGiven) |
+
+### Модели данных
+
+**LoyaltyPromoSettings:**
+```dart
+class LoyaltyPromoSettings {
+  final String promoText;       // Текст условий акции
+  final int pointsRequired;     // Сколько баллов нужно (напр. 9)
+  final int drinksToGive;       // Сколько напитков выдать (напр. 1)
+}
+```
+
+**LoyaltyInfo:**
+```dart
+class LoyaltyInfo {
+  final String name;            // Имя клиента
+  final String phone;           // Телефон
+  final String qr;              // QR-код (UUID)
+  final int points;             // Текущие баллы
+  final int freeDrinks;         // Всего выдано бесплатных напитков
+  final String promoText;       // Текст условий акции
+  final bool readyForRedeem;    // Достаточно ли баллов для списания
+  final int pointsRequired;     // Настройка: сколько баллов нужно
+  final int drinksToGive;       // Настройка: сколько напитков выдать
+}
+```
+
+**loyalty-promo.json:**
+```json
+{
+  "promoText": "При покупке 9 напитков 10-й бесплатно",
+  "pointsRequired": 9,
+  "drinksToGive": 1,
+  "updatedAt": "2026-01-30T19:32:31.036Z",
+  "updatedBy": "79054443224"
+}
+```
+
+### API Endpoints
+
+**Внешний Loyalty API (основной сервер):**
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| POST | `/?action=register` | Регистрация нового клиента |
+| GET | `/?action=getClient&phone=X` | Получить клиента по телефону |
+| GET | `/?action=getClient&qr=X` | Получить клиента по QR-коду |
+| POST | `/?action=addPoint` | Начислить 1 балл |
+| POST | `/?action=redeem` | Списать баллы, выдать напиток |
+
+**Наши endpoints (loyalty-proxy):**
+
+| Метод | Endpoint | Описание | Доступ |
+|-------|----------|----------|--------|
+| GET | `/api/loyalty-promo` | Получить настройки акции | Все |
+| POST | `/api/loyalty-promo` | Сохранить настройки акции | Только админ |
+| POST | `/api/clients/:phone/free-drink` | Увеличить freeDrinksGiven | Внутренний |
+| POST | `/api/clients/:phone/sync-free-drinks` | Синхронизировать freeDrinksGiven | Внутренний |
+
+### Жизненный цикл
+
+**1. Клиент накапливает баллы:**
+```
+Сотрудник сканирует QR → addPoint() → points++ → UI показывает прогресс
+```
+
+**2. Клиент получает бесплатный напиток (при points >= pointsRequired):**
+```
+1. Сотрудник видит "Списать баллы" → нажимает
+2. redeem() → points = 0, freeDrinks++
+3. incrementFreeDrinksGiven() → freeDrinksGiven++ в локальной базе
+4. Сотрудник выдаёт напиток
+```
+
+**3. Синхронизация при загрузке данных клиента:**
+```
+fetchByPhone() → загрузка из внешнего API → syncFreeDrinksGiven() →
+обновление freeDrinksGiven в локальной базе клиентов
+```
+
+### Связи с другими модулями
+
+| Модуль | Связь |
+|--------|-------|
+| **Клиенты** (`/api/clients`) | freeDrinksGiven хранится в файлах клиентов |
+| **Сотрудники** (`/api/employees`) | Проверка роли админа для сохранения настроек |
+| **SharedPreferences** | user_phone / userPhone для авторизации |
+| **QR Scanner** | mobile_scanner для сканирования QR кодов |
+
+### Проверка роли администратора
+
+Сохранение настроек акции (`POST /api/loyalty-promo`) защищено:
+
+```javascript
+// Серверная проверка
+const employee = findEmployeeByPhone(normalizedPhone);
+if (!employee || !employee.isAdmin) {
+  return res.status(403).json({
+    success: false,
+    error: "Доступ только для администраторов"
+  });
+}
+```
+
+**Flutter-код получает телефон:**
+```dart
+final employeePhone = prefs.getString('userPhone') ??
+                      prefs.getString('user_phone') ?? '';
+```
+
+### Кэширование
+
+**На сервере:**
+- Настройки акции читаются из файла при каждом запросе
+
+**На клиенте (LoyaltyService):**
+```dart
+static LoyaltyPromoSettings? _cachedSettings;
+static DateTime? _cacheTime;
+static const _cacheDuration = Duration(minutes: 5);
+
+// Кэш очищается после сохранения настроек
+static void clearSettingsCache() {
+  _cachedSettings = null;
+  _cacheTime = null;
+}
+```
+
+### UI компоненты
+
+**LoyaltyPage (для клиентов):**
+- QR-код клиента
+- Прогресс баллов (N/M)
+- Визуализация баллов (звёздочки)
+- Количество выданных бесплатных напитков
+- Текст условий акции
+- Кнопка настроек (только для админа)
+
+**LoyaltyScannerPage (для сотрудников):**
+- Камера для сканирования QR
+- Ручной ввод QR-кода
+- Информация о клиенте после сканирования
+- Кнопка "Списать баллы" (когда достаточно баллов)
+- Автоматическое начисление балла при сканировании
+
+**LoyaltyPromoManagementPage (для админа):**
+- Поле "Сколько купить" (pointsRequired)
+- Поле "Сколько выдать" (drinksToGive)
+- Текст условий акции
+- Кнопка сохранения
+
+### Обработка ошибок
+
+**На клиенте:**
+```dart
+// Деление на ноль при pointsRequired = 0
+value: pointsRequired > 0
+    ? (info.points.clamp(0, pointsRequired)) / pointsRequired
+    : 0.0
+
+// Пустой Wrap при pointsRequired = 0
+if (pointsRequired > 0)
+  Wrap(children: List.generate(pointsRequired, ...))
+```
+
+**На сервере:**
+```javascript
+// Защита от пустого employeePhone
+if (!employeePhone) {
+  return res.status(403).json({ error: "Требуется авторизация" });
+}
+
+// Защита от несуществующего сотрудника
+if (!employee) {
+  return res.status(403).json({ error: "Сотрудник не найден" });
+}
+```
+
+### Тестирование
+
+**Команды для тестирования:**
+
+```bash
+# Получить настройки акции
+curl https://arabica26.ru/api/loyalty-promo
+
+# Получить данные клиента
+curl "https://arabica26.ru/?action=getClient&phone=79054443224"
+
+# Начислить балл
+curl -X POST https://arabica26.ru/ \
+  -H "Content-Type: application/json" \
+  -d '{"action":"addPoint","qr":"UUID-клиента"}'
+
+# Списать баллы
+curl -X POST https://arabica26.ru/ \
+  -H "Content-Type: application/json" \
+  -d '{"action":"redeem","qr":"UUID-клиента"}'
+
+# Сохранить настройки (только админ)
+curl -X POST https://arabica26.ru/api/loyalty-promo \
+  -H "Content-Type: application/json" \
+  -d '{"promoText":"9+1","pointsRequired":9,"drinksToGive":1,"employeePhone":"79054443224"}'
+
+# Синхронизация freeDrinksGiven
+curl -X POST https://arabica26.ru/api/clients/79054443224/sync-free-drinks \
+  -H "Content-Type: application/json" \
+  -d '{"freeDrinksGiven":5}'
+```
+
+### ⚠️ КРИТИЧЕСКИЕ ПРЕДУПРЕЖДЕНИЯ
+
+1. **НЕ изменять логику addPoint/redeem** — это внешний API
+2. **НЕ изменять структуру LoyaltyInfo** — используется во многих местах
+3. **НЕ убирать проверку роли** в POST /api/loyalty-promo
+4. **НЕ изменять ключи SharedPreferences** (userPhone, user_phone)
+5. **Защита от деления на ноль** — всегда проверять pointsRequired > 0
+
+---
+
+## 27. Коммуникации - ЧАТ СОТРУДНИКОВ (Employee Chat)
+
+### 27.1 Обзор модуля
+
+**Назначение:** Внутренняя система коммуникаций для сотрудников с поддержкой общих чатов, чатов магазинов, приватных сообщений и групповых чатов. Интегрирована с "Мои диалоги" для клиентов.
+
+**Основные возможности:**
+1. **Общий чат** — единый чат для всех сотрудников компании
+2. **Чат магазина** — чат для сотрудников конкретного магазина
+3. **Приватные сообщения** — личная переписка между двумя пользователями
+4. **Групповые чаты** — создаваемые пользователем группы с участниками
+5. **Отправка фото** — поддержка изображений в сообщениях
+6. **Реальное время** — WebSocket для мгновенных уведомлений
+7. **Push-уведомления** — FCM для новых сообщений
+
+**Файлы модуля:**
+```
+lib/features/employee_chat/
+├── models/
+│   ├── employee_chat_model.dart           # EmployeeChat, EmployeeChatType
+│   └── employee_chat_message_model.dart   # EmployeeChatMessage
+├── pages/
+│   ├── employee_chat_list_page.dart       # Список всех чатов
+│   ├── employee_chat_page.dart            # Страница конкретного чата
+│   └── create_group_chat_page.dart        # Создание групповых чатов
+└── services/
+    ├── employee_chat_service.dart         # HTTP API сервис
+    ├── chat_websocket_service.dart        # WebSocket для реального времени
+    └── client_group_chat_service.dart     # Сервис для клиентов (групповые чаты)
+
+loyalty-proxy/
+└── api/
+    └── employee_chat_api.js               # Серверный API
+```
+
+**Точки входа:**
+- **Панель работника** → Чат сотрудников (полный доступ)
+- **Мои диалоги** → Групповые чаты (только для клиентов, добавленных в группы)
+
+---
+
+### 27.2 Модели данных
+
+```mermaid
+classDiagram
+    class EmployeeChatType {
+        <<enumeration>>
+        general
+        shop
+        private
+        group
+        +fromString(String?) EmployeeChatType
+        +value String
+    }
+
+    class EmployeeChat {
+        +String id
+        +EmployeeChatType type
+        +String name
+        +String? shopAddress
+        +String? imageUrl
+        +String? creatorPhone
+        +String? creatorName
+        +List~String~ participants
+        +Map~String,String~? participantNames
+        +int unreadCount
+        +EmployeeChatMessage? lastMessage
+        +fromJson(Map) EmployeeChat
+        +toJson() Map
+        +typeIcon String
+        +displayName String
+        +lastMessagePreview String
+        +lastMessageTime String
+        +isCreator(String phone) bool
+        +participantsCount int
+        +getParticipantName(String phone) String
+    }
+
+    class EmployeeChatMessage {
+        +String id
+        +String chatId
+        +String senderPhone
+        +String senderName
+        +String text
+        +String? imageUrl
+        +DateTime timestamp
+        +bool isRead
+        +fromJson(Map) EmployeeChatMessage
+        +toJson() Map
+        +formattedTime String
+        +formattedDate String
+    }
+
+    EmployeeChat --> EmployeeChatType : type
+    EmployeeChat --> EmployeeChatMessage : lastMessage
+```
+
+---
+
+### 27.3 Типы чатов
+
+| Тип | ID формат | Описание | Доступ |
+|-----|-----------|----------|--------|
+| **general** | `general` | Общий чат всех сотрудников | Все сотрудники |
+| **shop** | `shop_{shopAddress}` | Чат магазина | Сотрудники магазина |
+| **private** | `private_{phone1}_{phone2}` | Личная переписка | Только 2 участника |
+| **group** | `group_{uuid}` | Групповой чат | Участники из `participants[]` |
+
+---
+
+### 27.4 Архитектура системы
+
+```mermaid
+flowchart TB
+    subgraph Flutter["Flutter App"]
+        ECP[EmployeeChatPage]
+        ECLP[EmployeeChatListPage]
+        CGCP[CreateGroupChatPage]
+        ECS[EmployeeChatService]
+        CWS[ChatWebSocketService]
+        CGCS[ClientGroupChatService]
+    end
+
+    subgraph Server["loyalty-proxy"]
+        API[employee_chat_api.js]
+        WS[WebSocket Server]
+        FCM[Firebase FCM]
+    end
+
+    subgraph Storage["Файловое хранилище"]
+        MSG[/var/www/employee-chats/]
+        IMG[/var/www/chat-images/]
+        GRP[/var/www/employee-chat-groups/]
+    end
+
+    ECLP --> ECS
+    ECP --> ECS
+    ECP --> CWS
+    CGCP --> ECS
+    CGCS --> ECS
+
+    ECS --> API
+    CWS --> WS
+
+    API --> MSG
+    API --> IMG
+    API --> GRP
+    API --> FCM
+
+    WS --> CWS
+```
+
+---
+
+### 27.5 HTTP API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/employee-chats` | Список чатов пользователя |
+| GET | `/api/employee-chats/:chatId/messages` | Сообщения чата |
+| POST | `/api/employee-chats/messages` | Отправить сообщение |
+| POST | `/api/employee-chats/messages/read` | Пометить как прочитанные |
+| POST | `/api/employee-chat-groups` | Создать групповой чат |
+| PUT | `/api/employee-chat-groups/:id` | Обновить группу |
+| DELETE | `/api/employee-chat-groups/:id` | Удалить группу |
+| POST | `/api/employee-chat-groups/:id/participants` | Добавить участников |
+| DELETE | `/api/employee-chat-groups/:id/participants/:phone` | Удалить участника |
+| DELETE | `/api/employee-chats/messages/:id` | Удалить сообщение (админ) |
+
+---
+
+### 27.6 WebSocket протокол
+
+**Подключение:**
+```
+wss://arabica26.ru/ws/employee-chat?phone={userPhone}
+```
+
+**Формат сообщений:**
+
+```javascript
+// Новое сообщение (сервер → клиент)
+{
+  "type": "new_message",
+  "chatId": "group_abc123",
+  "message": {
+    "id": "msg_xyz",
+    "senderPhone": "79001234567",
+    "senderName": "Иван",
+    "text": "Привет!",
+    "timestamp": "2026-01-31T10:30:00.000Z"
+  }
+}
+
+// Сообщение прочитано
+{
+  "type": "message_read",
+  "chatId": "group_abc123",
+  "messageIds": ["msg_xyz"]
+}
+
+// Пользователь печатает
+{
+  "type": "typing",
+  "chatId": "group_abc123",
+  "phone": "79001234567"
+}
+```
+
+---
+
+### 27.7 Серверная фильтрация доступа
+
+```javascript
+// employee_chat_api.js - фильтрация чатов
+async function getChatsForUser(phone, isAdmin) {
+  const allChats = [];
+
+  // General chat - только для сотрудников
+  if (isAdmin || isEmployee(phone)) {
+    allChats.push(generalChat);
+  }
+
+  // Shop chats - только для сотрудников магазина
+  for (const shopChat of shopChats) {
+    if (isAdmin || userWorksAtShop(phone, shopChat.shopAddress)) {
+      allChats.push(shopChat);
+    }
+  }
+
+  // Private chats - только участники
+  for (const privateChat of privateChats) {
+    if (privateChat.participants.includes(phone)) {
+      allChats.push(privateChat);
+    }
+  }
+
+  // Group chats - КРИТИЧЕСКАЯ ФИЛЬТРАЦИЯ
+  for (const groupChat of groupChats) {
+    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedParticipants = groupChat.participants.map(p => p.replace(/[\s+]/g, ''));
+
+    // Админ видит все, остальные - только если в participants
+    if (isAdmin || normalizedParticipants.includes(normalizedPhone)) {
+      allChats.push(groupChat);
+    }
+  }
+
+  return allChats;
+}
+```
+
+---
+
+### 27.8 Интеграция с "Мои диалоги"
+
+**Как клиенты получают доступ к групповым чатам:**
+
+```mermaid
+sequenceDiagram
+    participant Admin as Админ
+    participant Server as Сервер
+    participant Client as Клиент
+    participant MyDialogs as Мои диалоги
+
+    Admin->>Server: Создать группу + добавить клиента в participants
+    Server->>Server: Сохранить в /employee-chat-groups/
+
+    Client->>MyDialogs: Открыть "Мои диалоги"
+    MyDialogs->>Server: GET /api/employee-chats (isAdmin=false)
+    Server->>Server: Фильтрация: клиент в participants?
+    Server-->>MyDialogs: Только группы где клиент участник
+
+    MyDialogs->>Client: Показать секцию "Групповые чаты"
+    Client->>MyDialogs: Открыть группу
+    MyDialogs->>Server: GET /api/employee-chats/:chatId/messages
+    Server-->>Client: Сообщения группы
+```
+
+**ClientGroupChatService:**
+
+```dart
+/// Сервис для получения групповых чатов клиента
+class ClientGroupChatService {
+  /// Получить только групповые чаты для клиента
+  static Future<List<EmployeeChat>> getClientGroupChats(String phone) async {
+    final allChats = await EmployeeChatService.getChats(phone, isAdmin: false);
+    // Фильтруем: только группы (не general, не shop, не private)
+    return allChats.where((chat) => chat.type == EmployeeChatType.group).toList();
+  }
+
+  /// Получить количество непрочитанных сообщений в группах
+  static Future<int> getUnreadCount(String phone) async {
+    final groups = await getClientGroupChats(phone);
+    return groups.fold(0, (sum, chat) => sum + chat.unreadCount);
+  }
+}
+```
+
+---
+
+### 27.9 Структура хранения данных
+
+```
+/var/www/
+├── employee-chats/
+│   ├── general.json                    # Общий чат
+│   ├── shop_Тверская_12.json          # Чат магазина
+│   └── private_79001234567_79007654321.json  # Приватный
+├── employee-chat-groups/
+│   ├── group_abc123.json              # Групповой чат
+│   └── group_def456.json
+└── chat-images/
+    ├── img_2026-01-31_abc.jpg         # Фото из сообщений
+    └── group_abc123_avatar.jpg        # Аватар группы
+```
+
+**Формат файла группы:**
+```json
+{
+  "id": "group_abc123",
+  "type": "group",
+  "name": "Маркетинг",
+  "imageUrl": "/chat-images/group_abc123_avatar.jpg",
+  "creatorPhone": "79001234567",
+  "creatorName": "Иван Админов",
+  "participants": ["79001234567", "79002345678", "79003456789"],
+  "participantNames": {
+    "79001234567": "Иван Админов",
+    "79002345678": "Мария Кассирова",
+    "79003456789": "Пётр Клиентов"
+  },
+  "createdAt": "2026-01-15T10:00:00.000Z"
+}
+```
+
+**Формат сообщения:**
+```json
+{
+  "id": "msg_xyz123",
+  "chatId": "group_abc123",
+  "senderPhone": "79001234567",
+  "senderName": "Иван Админов",
+  "text": "Всем привет!",
+  "imageUrl": null,
+  "timestamp": "2026-01-31T10:30:00.000Z",
+  "isRead": false
+}
+```
+
+---
+
+### 27.10 Push-уведомления
+
+**Отправка уведомления о новом сообщении:**
+
+```javascript
+// employee_chat_api.js
+async function sendMessageNotification(chatId, message, recipients) {
+  const chat = await getChat(chatId);
+
+  for (const phone of recipients) {
+    // Не отправляем отправителю
+    if (phone === message.senderPhone) continue;
+
+    const tokens = await getDeviceTokens(phone);
+    if (!tokens.length) continue;
+
+    const notification = {
+      title: chat.type === 'private'
+        ? message.senderName
+        : `${chat.name}: ${message.senderName}`,
+      body: message.imageUrl && !message.text
+        ? '[Фото]'
+        : message.text.substring(0, 100),
+      data: {
+        type: 'employee_chat',
+        chatId: chatId,
+        messageId: message.id
+      }
+    };
+
+    await admin.messaging().sendToDevice(tokens, { notification, data: notification.data });
+  }
+}
+```
+
+---
+
+### 27.11 Связи с другими модулями
+
+```mermaid
+flowchart TB
+    subgraph EMPLOYEE_CHAT["EMPLOYEE CHAT"]
+        EC[EmployeeChat]
+        ECM[EmployeeChatMessage]
+        ECS[EmployeeChatService]
+        CGCS[ClientGroupChatService]
+    end
+
+    subgraph MY_DIALOGS["МОИ ДИАЛОГИ (Section 13)"]
+        MDP[MyDialogsPage]
+        MDCS[MyDialogsCounterService]
+    end
+
+    subgraph EMPLOYEES["СОТРУДНИКИ"]
+        EMP[Employee]
+        ES[EmployeesService]
+    end
+
+    subgraph SHOPS["МАГАЗИНЫ"]
+        SHOP[Shop]
+        SS[ShopsService]
+    end
+
+    subgraph NOTIFICATIONS["УВЕДОМЛЕНИЯ"]
+        FCM[Firebase FCM]
+        WS[WebSocket]
+    end
+
+    %% Связи My Dialogs → Employee Chat
+    MDP --> CGCS
+    MDCS --> CGCS
+    CGCS --> ECS
+
+    %% Связи Employee Chat → Employees/Shops
+    ECS --> ES
+    ECS --> SS
+
+    %% Связи с уведомлениями
+    ECS --> FCM
+    ECS --> WS
+```
+
+---
+
+### 27.12 Таблица зависимостей
+
+| Модуль | Использует | Что берёт |
+|--------|-----------|-----------|
+| **Мои диалоги** | ← | Групповые чаты для клиентов через ClientGroupChatService |
+| **Employees** | ✅ | employeeName, employeePhone для отображения |
+| **Shops** | ✅ | shopAddress для чатов магазинов |
+| **Firebase FCM** | ✅ | Push-уведомления о новых сообщениях |
+| **WebSocket** | ✅ | Реальное время: new_message, typing, read |
+
+---
+
+### 27.13 Безопасность
+
+**Правила доступа:**
+
+| Роль | General | Shop | Private | Group |
+|------|---------|------|---------|-------|
+| Админ | ✅ Полный | ✅ Все магазины | ✅ Свои | ✅ Все |
+| Сотрудник | ✅ Полный | ✅ Свой магазин | ✅ Свои | ✅ Где участник |
+| Клиент | ❌ | ❌ | ❌ | ✅ Где участник |
+
+**Критические проверки на сервере:**
+
+```javascript
+// 1. Проверка доступа к чату
+if (chatType === 'group' && !isAdmin) {
+  const normalizedPhone = phone.replace(/[\s+]/g, '');
+  const normalizedParticipants = chat.participants.map(p => p.replace(/[\s+]/g, ''));
+  if (!normalizedParticipants.includes(normalizedPhone)) {
+    return res.status(403).json({ error: 'Нет доступа к чату' });
+  }
+}
+
+// 2. Проверка права на удаление сообщения
+if (!isAdmin && message.senderPhone !== userPhone) {
+  return res.status(403).json({ error: 'Нельзя удалить чужое сообщение' });
+}
+
+// 3. Проверка права на редактирование группы
+if (!isAdmin && group.creatorPhone !== userPhone) {
+  return res.status(403).json({ error: 'Только создатель может редактировать группу' });
+}
+```
+
+---
+
+### 27.14 API для тестирования
+
+```bash
+# Получить список чатов
+curl "https://arabica26.ru/api/employee-chats?phone=79001234567&isAdmin=false"
+
+# Получить сообщения чата
+curl "https://arabica26.ru/api/employee-chats/group_abc123/messages?phone=79001234567"
+
+# Отправить сообщение
+curl -X POST https://arabica26.ru/api/employee-chats/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chatId": "group_abc123",
+    "senderPhone": "79001234567",
+    "senderName": "Иван",
+    "text": "Привет!"
+  }'
+
+# Создать группу
+curl -X POST https://arabica26.ru/api/employee-chat-groups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Тестовая группа",
+    "creatorPhone": "79001234567",
+    "creatorName": "Иван Админов",
+    "participants": ["79001234567", "79002345678"]
+  }'
+
+# Добавить участника в группу
+curl -X POST https://arabica26.ru/api/employee-chat-groups/group_abc123/participants \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "79003456789",
+    "name": "Новый участник"
+  }'
+
+# Удалить участника из группы
+curl -X DELETE "https://arabica26.ru/api/employee-chat-groups/group_abc123/participants/79003456789"
+```
+
+---
+
+### 27.15 ⚠️ КРИТИЧЕСКИЕ ПРЕДУПРЕЖДЕНИЯ
+
+1. **НЕ изменять фильтрацию групп по participants** — это основа безопасности
+2. **НЕ давать клиентам доступ к general/shop чатам** — только группы
+3. **НЕ изменять нормализацию телефонов** — `replace(/[\s+]/g, '')`
+4. **НЕ удалять проверку isAdmin** — это определяет уровень доступа
+5. **Всегда проверять права** перед удалением сообщений/групп
+6. **WebSocket требует переподключения** при потере связи
+
+---
+
+## 28. Клиентский модуль - МОИ ДИАЛОГИ (Расширенная секция)
+
+> **Примечание:** Основная документация в секции 13. Здесь описана интеграция с Employee Chat.
+
+### 28.1 Сортировка диалогов
+
+**Алгоритм приоритетной сортировки:**
+
+```dart
+List<_DialogItem> _sortDialogItems(List<_DialogItem> items) {
+  items.sort((a, b) {
+    // Приоритет 1: Непрочитанные сообщения вверху
+    if (a.hasUnread && !b.hasUnread) return -1;
+    if (!a.hasUnread && b.hasUnread) return 1;
+
+    // Приоритет 2: По времени последнего сообщения
+    final aTime = a.lastMessageTime ?? DateTime(1970);
+    final bTime = b.lastMessageTime ?? DateTime(1970);
+    return bTime.compareTo(aTime); // Новые выше
+  });
+  return items;
+}
+```
+
+### 28.2 6 типов диалогов
+
+| Тип | Иконка | Цвет | Источник данных |
+|-----|--------|------|-----------------|
+| Network | `public_rounded` | Blue | ClientNetworkService |
+| Management | `support_agent_rounded` | Orange | ClientManagementService |
+| Reviews | `star_rounded` | Amber | ReviewsService |
+| ProductSearch | `search_rounded` | Green | ProductQuestionsService |
+| PersonalDialog | `chat_bubble_rounded` | Teal | ClientPersonalDialogsService |
+| **GroupChat** | `groups_rounded` | Purple | **ClientGroupChatService** |
+
+### 28.3 Интеграция счётчика непрочитанных
+
+```dart
+// MyDialogsCounterService._calculateTotalCount()
+Future<int> _calculateTotalCount() async {
+  int total = 0;
+
+  // ... существующие диалоги ...
+
+  // Групповые чаты
+  try {
+    final groupsUnread = await ClientGroupChatService.getUnreadCount(phone);
+    total += groupsUnread;
+  } catch (e) {
+    Logger.error('Ошибка загрузки групповых чатов для счётчика', e);
+  }
+
+  return total;
+}
+```
+
+---
+
+  ## Следующие разделы (TODO)
+
+- [x] 1. Управление данными - МАГАЗИНЫ
+- [x] 2. Управление данными - СОТРУДНИКИ
+- [x] 3. Управление данными - ГРАФИК РАБОТЫ
+- [x] 4. Система отчётности - ПЕРЕСМЕНКИ
+- [x] 5. Система отчётности - ПЕРЕСЧЁТЫ
+- [x] 6. ИИ-интеллект - РАСПОЗНАВАНИЕ ТОВАРОВ
+- [x] 7. Система отчётности - РКО
+- [x] 8. Система отчётности - СДАТЬ СМЕНУ
+- [x] 9. Система отчётности - ПОСЕЩАЕМОСТЬ
+- [x] 10. Система передачи смен - ПЕРЕДАТЬ СМЕНУ
+- [x] 11. Аналитика - KPI
+- [x] 12. Клиентский модуль - ОТЗЫВЫ
+- [x] 13. Клиентский модуль - МОИ ДИАЛОГИ
+- [x] 14. Клиентский модуль - ПОИСК ТОВАРА
+- [x] 15. Система обучения - ТЕСТИРОВАНИЕ
+- [x] 16. Финансы - КОНВЕРТЫ
+- [x] 17. Финансы - ГЛАВНАЯ КАССА
+- [x] 18. Настройки баллов - ЭФФЕКТИВНОСТЬ
+- [x] 19. Аналитика - ЭФФЕКТИВНОСТЬ
+- [x] 20. Управление задачами - ЗАДАЧИ
+- [x] 21. HR-модуль - УСТРОИТЬСЯ НА РАБОТУ
+- [x] 22. Реферальная система - ПРИГЛАШЕНИЯ
+- [x] 23. Рейтинг и Колесо Удачи - FORTUNE WHEEL
+- [x] 24. Система заказов - КОРЗИНА, МЕНЮ, РЕЦЕПТЫ
+- [x] 25. Геолокация - МАГАЗИНЫ НА КАРТЕ С ГЕОФЕНСИНГОМ
+- [x] 26. Клиентский модуль - КАРТА ЛОЯЛЬНОСТИ И БОНУСЫ
+- [x] 27. Коммуникации - ЧАТ СОТРУДНИКОВ (Employee Chat)
+- [x] 28. Клиентский модуль - МОИ ДИАЛОГИ (Расширенная интеграция)

@@ -138,6 +138,31 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
     return searchTokens.every((token) => normalizedItem.contains(token));
   }
 
+  /// Заглушка для товара без фото
+  Widget _buildNoPhotoPlaceholder({double? height, double? width}) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF004D40).withOpacity(0.15),
+            const Color(0xFF00695C).withOpacity(0.1),
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.local_cafe_rounded,
+          size: 48,
+          color: Color(0xFF004D40),
+        ),
+      ),
+    );
+  }
+
   /// Строит виджет изображения для MenuItem
   Widget _buildItemImage(MenuItem item, {double? height, double? width, BoxFit fit = BoxFit.cover}) {
     if (item.hasNetworkPhoto) {
@@ -167,27 +192,19 @@ class _MenuPageState extends State<MenuPage> with SingleTickerProviderStateMixin
             ),
           );
         },
-        errorBuilder: (_, __, ___) => Image.asset(
-          'assets/images/no_photo.png',
-          height: height,
-          width: width,
-          fit: fit,
-        ),
+        errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(height: height, width: width),
       );
-    } else {
+    } else if (item.photoId.isNotEmpty) {
       final imagePath = 'assets/images/${item.photoId}.jpg';
       return Image.asset(
         imagePath,
         height: height,
         width: width,
         fit: fit,
-        errorBuilder: (_, __, ___) => Image.asset(
-          'assets/images/no_photo.png',
-          height: height,
-          width: width,
-          fit: fit,
-        ),
+        errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(height: height, width: width),
       );
+    } else {
+      return _buildNoPhotoPlaceholder(height: height, width: width);
     }
   }
 

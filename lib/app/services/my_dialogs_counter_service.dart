@@ -4,6 +4,7 @@ import '../../features/clients/services/management_message_service.dart';
 import '../../features/reviews/services/review_service.dart';
 import '../../features/product_questions/services/product_question_service.dart';
 import '../../core/utils/logger.dart';
+import '../../features/employee_chat/services/client_group_chat_service.dart';
 
 /// Сервис для получения общего количества непрочитанных сообщений в "Мои диалоги"
 class MyDialogsCounterService {
@@ -65,6 +66,14 @@ class MyDialogsCounterService {
         }
       } catch (e) {
         Logger.error('Ошибка загрузки персональных диалогов для счётчика', e);
+      }
+
+      // Групповые чаты
+      try {
+        final groupsUnread = await ClientGroupChatService.getUnreadCount(phone);
+        total += groupsUnread;
+      } catch (e) {
+        Logger.error('Ошибка загрузки групповых чатов для счётчика', e);
       }
 
       Logger.debug('Общий счётчик "Мои диалоги": $total');

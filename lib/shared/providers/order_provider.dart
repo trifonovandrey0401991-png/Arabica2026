@@ -72,7 +72,7 @@ class Order {
       items: [], // Упрощенная версия
       itemsData: itemsData,
       totalPrice: (json['totalPrice'] as num).toDouble(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       comment: json['comment'] as String?,
       status: json['status'] as String? ?? 'pending',
       acceptedBy: json['acceptedBy'] as String?,

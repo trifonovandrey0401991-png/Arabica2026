@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/employee_chat_model.dart';
 import '../models/employee_chat_message_model.dart';
@@ -10,7 +11,7 @@ import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
 import 'group_info_page.dart';
 
-/// Страница чата
+/// Страница чата с улучшенным визуалом
 class EmployeeChatPage extends StatefulWidget {
   final EmployeeChat chat;
   final String userPhone;
@@ -29,7 +30,8 @@ class EmployeeChatPage extends StatefulWidget {
   State<EmployeeChatPage> createState() => _EmployeeChatPageState();
 }
 
-class _EmployeeChatPageState extends State<EmployeeChatPage> {
+class _EmployeeChatPageState extends State<EmployeeChatPage>
+    with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
@@ -50,6 +52,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   // Typing indicator
   String? _typingPhone;
   Timer? _typingDebounceTimer;
+  late AnimationController _typingAnimationController;
 
   // Search mode
   bool _isSearching = false;
@@ -60,6 +63,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   @override
   void initState() {
     super.initState();
+    _typingAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
     _loadMessages();
     _startAutoRefresh();
     _setupWebSocket();
@@ -72,6 +79,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     _searchController.dispose();
     _refreshTimer?.cancel();
     _typingDebounceTimer?.cancel();
+    _typingAnimationController.dispose();
     _newMessageSub?.cancel();
     _messageDeletedSub?.cancel();
     _chatClearedSub?.cancel();
@@ -82,8 +90,6 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   }
 
   void _startAutoRefresh() {
-    // Увеличиваем интервал так как WebSocket доставляет сообщения мгновенно
-    // Polling оставляем как fallback на случай проблем с WebSocket
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) _loadMessages(silent: true);
     });
@@ -91,31 +97,24 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
 
   void _setupWebSocket() {
     final ws = ChatWebSocketService.instance;
-
-    // Подключаемся если ещё не подключены
     ws.connect(widget.userPhone);
 
-    // Новые сообщения
     _newMessageSub = ws.onNewMessage.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
-        // Проверяем что сообщение ещё не добавлено
         if (!_messages.any((m) => m.id == event.message.id)) {
           setState(() {
             _messages.add(event.message);
           });
-          // Скроллим если мы внизу
           if (_scrollController.hasClients &&
               _scrollController.position.pixels >=
                   _scrollController.position.maxScrollExtent - 100) {
             _scrollToBottom();
           }
-          // Отмечаем как прочитанное
           EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
         }
       }
     });
 
-    // Удаление сообщений
     _messageDeletedSub = ws.onMessageDeleted.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
         setState(() {
@@ -124,7 +123,6 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
       }
     });
 
-    // Очистка чата
     _chatClearedSub = ws.onChatCleared.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
         setState(() {
@@ -133,7 +131,6 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
       }
     });
 
-    // Typing indicator
     _typingSub = ws.onTyping.listen((event) {
       if (event.chatId == widget.chat.id &&
           event.phone != widget.userPhone &&
@@ -144,14 +141,12 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
       }
     });
 
-    // Реакция добавлена
     _reactionAddedSub = ws.onReactionAdded.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
         _updateMessageReaction(event.messageId, event.reaction, event.phone, true);
       }
     });
 
-    // Реакция удалена
     _reactionRemovedSub = ws.onReactionRemoved.listen((event) {
       if (event.chatId == widget.chat.id && mounted) {
         _updateMessageReaction(event.messageId, event.reaction, event.phone, false);
@@ -190,11 +185,9 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   }
 
   void _onTextChanged(String text) {
-    // Отправляем typing event с debounce
     _typingDebounceTimer?.cancel();
     if (text.isNotEmpty) {
       ChatWebSocketService.instance.sendTypingStart(widget.chat.id);
-      // Автоматически остановить через 3 секунды если пользователь перестал печатать
       _typingDebounceTimer = Timer(const Duration(seconds: 3), () {
         ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
       });
@@ -217,26 +210,19 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
       if (mounted) {
         final wasEmpty = _messages.isEmpty;
         final hadNewMessages = messages.length > _messages.length;
-
-        // Проверяем, находится ли пользователь внизу списка
         final isAtBottom = _scrollController.hasClients &&
             _scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 100;
+                _scrollController.position.maxScrollExtent - 100;
 
         setState(() {
           _messages = messages;
           _isLoading = false;
         });
 
-        // Отмечаем как прочитанное
         if (messages.isNotEmpty) {
           EmployeeChatService.markAsRead(widget.chat.id, widget.userPhone);
         }
 
-        // Скроллим к последнему сообщению если:
-        // - первая загрузка (wasEmpty)
-        // - пользователь уже был внизу и пришли новые сообщения
-        // - не silent режим и есть новые сообщения
         if (wasEmpty || (hadNewMessages && (isAtBottom || !silent))) {
           _scrollToBottom();
         }
@@ -249,6 +235,8 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
             SnackBar(
               content: Text('Ошибка загрузки: $e'),
               backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
@@ -263,7 +251,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
+            curve: Curves.easeOutCubic,
           );
         }
       });
@@ -272,11 +260,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
 
   Future<void> _sendMessage({String? imageUrl}) async {
     final text = _messageController.text.trim();
-
     if (text.isEmpty && imageUrl == null) return;
 
     setState(() => _isSending = true);
     _messageController.clear();
+    HapticFeedback.lightImpact();
 
     try {
       final message = await EmployeeChatService.sendMessage(
@@ -297,9 +285,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         if (mounted) {
           setState(() => _isSending = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка отправки сообщения'),
+            SnackBar(
+              content: const Text('Ошибка отправки сообщения'),
               backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
@@ -311,6 +301,8 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
           SnackBar(
             content: Text('Ошибка: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -323,61 +315,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         source: ImageSource.gallery,
         imageQuality: 85,
       );
-
       if (image == null) return;
-
-      setState(() => _isSending = true);
-
-      // Показываем индикатор загрузки
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                ),
-                SizedBox(width: 16),
-                Text('Загрузка фото...'),
-              ],
-            ),
-            duration: Duration(seconds: 30),
-          ),
-        );
-      }
-
-      final photoUrl = await EmployeeChatService.uploadMessagePhoto(File(image.path));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
-
-      if (photoUrl != null) {
-        await _sendMessage(imageUrl: photoUrl);
-      } else {
-        if (mounted) {
-          setState(() => _isSending = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка загрузки фото'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      await _uploadAndSendImage(File(image.path));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        setState(() => _isSending = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _showImageError(e);
     }
   }
 
@@ -387,87 +328,144 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         source: ImageSource.camera,
         imageQuality: 85,
       );
-
       if (image == null) return;
-
-      setState(() => _isSending = true);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                ),
-                SizedBox(width: 16),
-                Text('Загрузка фото...'),
-              ],
-            ),
-            duration: Duration(seconds: 30),
-          ),
-        );
-      }
-
-      final photoUrl = await EmployeeChatService.uploadMessagePhoto(File(image.path));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
-
-      if (photoUrl != null) {
-        await _sendMessage(imageUrl: photoUrl);
-      } else {
-        if (mounted) {
-          setState(() => _isSending = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ошибка загрузки фото'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      await _uploadAndSendImage(File(image.path));
     } catch (e) {
+      _showImageError(e);
+    }
+  }
+
+  Future<void> _uploadAndSendImage(File imageFile) async {
+    setState(() => _isSending = true);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                  backgroundColor: Colors.white.withOpacity(0.3),
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text('Загрузка фото...'),
+            ],
+          ),
+          duration: const Duration(seconds: 30),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: const Color(0xFF004D40),
+        ),
+      );
+    }
+
+    final photoUrl = await EmployeeChatService.uploadMessagePhoto(imageFile);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    }
+
+    if (photoUrl != null) {
+      await _sendMessage(imageUrl: photoUrl);
+    } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         setState(() => _isSending = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка: $e'),
+            content: const Text('Ошибка загрузки фото'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
     }
   }
 
+  void _showImageError(dynamic e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      setState(() => _isSending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Камера'),
-              onTap: () {
-                Navigator.pop(context);
-                _takePhoto();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Галерея'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndSendImage();
-              },
-            ),
-          ],
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Отправить фото',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: Color(0xFF004D40)),
+                ),
+                title: const Text('Камера'),
+                subtitle: const Text('Сделать фото'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _takePhoto();
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_library, color: Colors.purple),
+                ),
+                title: const Text('Галерея'),
+                subtitle: const Text('Выбрать из галереи'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSendImage();
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -477,8 +475,22 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Очистить сообщения'),
-        content: const Text('Выберите период для удаления:'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_sweep, color: Colors.red),
+            ),
+            const SizedBox(width: 12),
+            const Text('Очистить чат'),
+          ],
+        ),
+        content: const Text('Выберите период для удаления сообщений:'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -489,15 +501,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
               Navigator.pop(context);
               _confirmClearMessages('previous_month', 'за предыдущий месяц');
             },
-            child: const Text('За предыдущий месяц'),
+            child: const Text('За прошлый месяц'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _confirmClearMessages('all', 'все');
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Все сообщения'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Все'),
           ),
         ],
       ),
@@ -508,7 +523,8 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Вы уверены?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Подтверждение'),
         content: Text(
           'Будут удалены $periodText сообщения.\nЭто действие нельзя отменить.',
         ),
@@ -522,7 +538,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
               Navigator.pop(context);
               await _clearMessages(mode);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
             child: const Text('Удалить'),
           ),
         ],
@@ -530,13 +549,11 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     );
   }
 
-  // ===== РЕАКЦИИ И ПЕРЕСЫЛКА =====
-
   Future<void> _handleReaction(EmployeeChatMessage message, String reaction) async {
+    HapticFeedback.selectionClick();
     final hasReaction = message.hasReactionFrom(widget.userPhone, reaction);
 
     if (hasReaction) {
-      // Удаляем реакцию
       await EmployeeChatService.removeReaction(
         chatId: widget.chat.id,
         messageId: message.id,
@@ -544,7 +561,6 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         reaction: reaction,
       );
     } else {
-      // Добавляем реакцию
       await EmployeeChatService.addReaction(
         chatId: widget.chat.id,
         messageId: message.id,
@@ -555,17 +571,15 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   }
 
   void _showForwardDialog(EmployeeChatMessage message) {
-    // TODO: Показать диалог выбора чата для пересылки
-    // Пока показываем простой snackbar
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Функция пересылки будет доступна в следующем обновлении'),
-        backgroundColor: Color(0xFF004D40),
+      SnackBar(
+        content: const Text('Функция пересылки будет доступна в следующем обновлении'),
+        backgroundColor: const Color(0xFF004D40),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
-
-  // ===== ПОИСК =====
 
   Future<void> _searchMessages(String query) async {
     if (query.length < 2) {
@@ -600,21 +614,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     final index = _messages.indexWhere((m) => m.id == messageId);
     if (index == -1) return;
 
-    // Закрываем поиск
     setState(() {
       _isSearching = false;
       _searchController.clear();
       _searchResults = [];
     });
 
-    // Скроллим к сообщению
     if (_scrollController.hasClients) {
-      // Примерная высота элемента
       final estimatedOffset = index * 80.0;
       _scrollController.animateTo(
         estimatedOffset.clamp(0, _scrollController.position.maxScrollExtent),
         duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+        curve: Curves.easeOutCubic,
       );
     }
   }
@@ -632,14 +643,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
           SnackBar(
             content: Text('Удалено $deletedCount сообщений'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         _loadMessages();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Нет сообщений для удаления'),
+          SnackBar(
+            content: const Text('Нет сообщений для удаления'),
             backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -649,141 +664,220 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: _isSearching ? _buildSearchAppBar() : _buildNormalAppBar(),
-      body: Column(
-        children: [
-          // Результаты поиска
-          if (_isSearching && _searchResults.isNotEmpty)
-            Container(
-              color: Colors.grey[100],
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _searchResults.length,
-                itemBuilder: (context, index) {
-                  final msg = _searchResults[index];
-                  return ListTile(
-                    dense: true,
-                    leading: Icon(
-                      Icons.message,
-                      color: Colors.grey[600],
-                      size: 20,
-                    ),
-                    title: Text(
-                      msg.text,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${msg.senderName} • ${msg.formattedTime}',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                    ),
-                    onTap: () => _scrollToMessage(msg.id),
-                  );
-                },
-              ),
-            ),
-          if (_isSearching && _isSearchLoading)
-            const LinearProgressIndicator(),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Нет сообщений',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Начните общение!',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(8),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final message = _messages[index];
-                          final isMe = message.senderPhone == widget.userPhone;
-
-                          // Показывать дату если это первое сообщение или дата изменилась
-                          bool showDate = false;
-                          if (index == 0) {
-                            showDate = true;
-                          } else {
-                            final prevMessage = _messages[index - 1];
-                            final prevDate = DateTime(
-                              prevMessage.timestamp.year,
-                              prevMessage.timestamp.month,
-                              prevMessage.timestamp.day,
-                            );
-                            final currDate = DateTime(
-                              message.timestamp.year,
-                              message.timestamp.month,
-                              message.timestamp.day,
-                            );
-                            showDate = prevDate != currDate;
-                          }
-
-                          return Column(
-                            children: [
-                              if (showDate) _buildDateSeparator(message.timestamp),
-                              ChatMessageBubble(
-                                message: message,
-                                isMe: isMe,
-                                showSenderName: widget.chat.type != EmployeeChatType.private && !isMe,
-                                userPhone: widget.userPhone,
-                                onReactionTap: (reaction) => _handleReaction(message, reaction),
-                                onForwardTap: () => _showForwardDialog(message),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF004D40).withOpacity(0.02),
+              Colors.grey[50]!,
+            ],
           ),
-          // Typing indicator
-          if (_typingPhone != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'печатает...',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey[600],
+        ),
+        child: Column(
+          children: [
+            // Результаты поиска
+            if (_isSearching && _searchResults.isNotEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _searchResults.length,
+                  itemBuilder: (context, index) {
+                    final msg = _searchResults[index];
+                    return ListTile(
+                      dense: true,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF004D40).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.message,
+                          color: Color(0xFF004D40),
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(
+                        msg.text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${msg.senderName} • ${msg.formattedTime}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      ),
+                      onTap: () => _scrollToMessage(msg.id),
+                    );
+                  },
                 ),
               ),
+            if (_isSearching && _isSearchLoading)
+              LinearProgressIndicator(
+                backgroundColor: Colors.grey[200],
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF004D40)),
+              ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF004D40)),
+                    )
+                  : _messages.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          itemCount: _messages.length,
+                          itemBuilder: (context, index) {
+                            final message = _messages[index];
+                            final isMe = message.senderPhone == widget.userPhone;
+
+                            bool showDate = false;
+                            if (index == 0) {
+                              showDate = true;
+                            } else {
+                              final prevMessage = _messages[index - 1];
+                              final prevDate = DateTime(
+                                prevMessage.timestamp.year,
+                                prevMessage.timestamp.month,
+                                prevMessage.timestamp.day,
+                              );
+                              final currDate = DateTime(
+                                message.timestamp.year,
+                                message.timestamp.month,
+                                message.timestamp.day,
+                              );
+                              showDate = prevDate != currDate;
+                            }
+
+                            return Column(
+                              children: [
+                                if (showDate) _buildDateSeparator(message.timestamp),
+                                ChatMessageBubble(
+                                  message: message,
+                                  isMe: isMe,
+                                  showSenderName:
+                                      widget.chat.type != EmployeeChatType.private && !isMe,
+                                  userPhone: widget.userPhone,
+                                  onReactionTap: (reaction) => _handleReaction(message, reaction),
+                                  onForwardTap: () => _showForwardDialog(message),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
             ),
-          ChatInputField(
-            controller: _messageController,
-            isSending: _isSending,
-            onSend: () {
-              // Останавливаем typing при отправке
-              ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
-              _sendMessage();
+            // Typing indicator
+            if (_typingPhone != null) _buildTypingIndicator(),
+            ChatInputField(
+              controller: _messageController,
+              isSending: _isSending,
+              onSend: () {
+                ChatWebSocketService.instance.sendTypingStop(widget.chat.id);
+                _sendMessage();
+              },
+              onAttach: _showImageSourceDialog,
+              onChanged: _onTextChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: const Color(0xFF004D40).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.chat_bubble_outline,
+              size: 48,
+              color: Color(0xFF004D40),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Нет сообщений',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Начните общение прямо сейчас!',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          AnimatedBuilder(
+            animation: _typingAnimationController,
+            builder: (context, child) {
+              return Row(
+                children: List.generate(3, (index) {
+                  final delay = index * 0.2;
+                  final value = ((_typingAnimationController.value + delay) % 1.0);
+                  final scale = 0.5 + (0.5 * (1 - (value - 0.5).abs() * 2));
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF004D40),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              );
             },
-            onAttach: _showImageSourceDialog,
-            onChanged: _onTextChanged,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'печатает...',
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey[600],
+            ),
           ),
         ],
       ),
@@ -792,73 +886,131 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
 
   AppBar _buildNormalAppBar() {
     return AppBar(
-      title: Row(
-        children: [
-          // Аватар для групп
-          if (widget.chat.type == EmployeeChatType.group) ...[
-            GestureDetector(
-              onTap: _openGroupInfo,
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.purple[200],
-                backgroundImage: widget.chat.imageUrl != null
-                    ? NetworkImage(widget.chat.imageUrl!)
-                    : null,
-                child: widget.chat.imageUrl == null
-                    ? const Icon(Icons.group, size: 20, color: Colors.white)
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.chat.displayName,
-                  style: const TextStyle(fontSize: 16),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (widget.chat.type == EmployeeChatType.shop)
-                  Text(
-                    widget.chat.shopAddress ?? '',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-                  ),
-                if (widget.chat.type == EmployeeChatType.group)
-                  Text(
-                    '${widget.chat.participantsCount} участников',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-                  ),
-              ],
-            ),
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF00695C), Color(0xFF004D40)],
           ),
-        ],
+        ),
       ),
-      backgroundColor: const Color(0xFF004D40),
+      title: InkWell(
+        onTap: widget.chat.type == EmployeeChatType.group ? _openGroupInfo : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              // Аватар для групп
+              if (widget.chat.type == EmployeeChatType.group) ...[
+                Hero(
+                  tag: 'group_avatar_${widget.chat.id}',
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: widget.chat.imageUrl == null
+                          ? LinearGradient(
+                              colors: [Colors.purple[300]!, Colors.purple[500]!],
+                            )
+                          : null,
+                      shape: BoxShape.circle,
+                      image: widget.chat.imageUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(widget.chat.imageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: widget.chat.imageUrl == null
+                        ? const Icon(Icons.group, size: 22, color: Colors.white)
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.chat.displayName,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.chat.type == EmployeeChatType.shop)
+                      Text(
+                        widget.chat.shopAddress ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    if (widget.chat.type == EmployeeChatType.group)
+                      Text(
+                        '${widget.chat.participantsCount} участников',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.search),
+          icon: const Icon(Icons.search_rounded),
           onPressed: () => setState(() => _isSearching = true),
           tooltip: 'Поиск',
         ),
-        // Кнопка информации о группе
         if (widget.chat.type == EmployeeChatType.group)
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: const Icon(Icons.info_outline_rounded),
             onPressed: _openGroupInfo,
             tooltip: 'О группе',
           ),
         if (widget.isAdmin)
           IconButton(
-            icon: const Icon(Icons.delete_sweep),
+            icon: const Icon(Icons.delete_sweep_rounded),
             onPressed: _showClearMessagesDialog,
-            tooltip: 'Очистить сообщения',
+            tooltip: 'Очистить',
           ),
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _loadMessages,
-          tooltip: 'Обновить',
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onSelected: (value) {
+            if (value == 'refresh') _loadMessages();
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'refresh',
+              child: Row(
+                children: [
+                  Icon(Icons.refresh, color: Color(0xFF004D40)),
+                  SizedBox(width: 12),
+                  Text('Обновить'),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -875,7 +1027,6 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
       ),
     );
 
-    // Если вышли из группы или удалили её - возвращаемся назад
     if (result == 'left' || result == 'deleted') {
       if (mounted) {
         Navigator.pop(context);
@@ -885,9 +1036,18 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
 
   AppBar _buildSearchAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFF004D40),
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF00695C), Color(0xFF004D40)],
+          ),
+        ),
+      ),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
+        icon: const Icon(Icons.arrow_back_rounded),
         onPressed: () {
           setState(() {
             _isSearching = false;
@@ -900,9 +1060,10 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
         controller: _searchController,
         autofocus: true,
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
+        cursorColor: Colors.white,
+        decoration: InputDecoration(
           hintText: 'Поиск сообщений...',
-          hintStyle: TextStyle(color: Colors.white60),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
           border: InputBorder.none,
         ),
         onChanged: _searchMessages,
@@ -910,7 +1071,7 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
       actions: [
         if (_searchController.text.isNotEmpty)
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.close_rounded),
             onPressed: () {
               _searchController.clear();
               setState(() => _searchResults = []);
@@ -935,21 +1096,58 @@ class _EmployeeChatPageState extends State<EmployeeChatPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Row(
         children: [
-          Expanded(child: Divider(color: Colors.grey[300])),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          Expanded(
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.grey[300]!,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
             child: Text(
               dateText,
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          Expanded(child: Divider(color: Colors.grey[300])),
+          Expanded(
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.grey[300]!,
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

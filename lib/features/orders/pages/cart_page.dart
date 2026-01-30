@@ -11,6 +11,23 @@ import '../../../core/utils/logger.dart';
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
+  /// Заглушка для товара без фото
+  Widget _buildNoPhotoPlaceholder() {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: const Color(0xFF004D40).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(
+        Icons.local_cafe_rounded,
+        size: 32,
+        color: Color(0xFF004D40),
+      ),
+    );
+  }
+
   /// Строит виджет изображения для товара в корзине
   Widget _buildCartItemImage(MenuItem item) {
     if (item.hasNetworkPhoto) {
@@ -27,27 +44,19 @@ class CartPage extends StatelessWidget {
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           );
         },
-        errorBuilder: (_, __, ___) => Image.asset(
-          'assets/images/no_photo.png',
-          width: 60,
-          height: 60,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(),
       );
-    } else {
+    } else if (item.photoId.isNotEmpty) {
       final imagePath = 'assets/images/${item.photoId}.jpg';
       return Image.asset(
         imagePath,
         width: 60,
         height: 60,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Image.asset(
-          'assets/images/no_photo.png',
-          width: 60,
-          height: 60,
-          fit: BoxFit.cover,
-        ),
+        errorBuilder: (_, __, ___) => _buildNoPhotoPlaceholder(),
       );
+    } else {
+      return _buildNoPhotoPlaceholder();
     }
   }
 
@@ -110,50 +119,83 @@ class CartPage extends StatelessWidget {
                           horizontal: 8,
                           vertical: 4,
                         ),
-                        child: ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: _buildCartItemImage(cartItem.menuItem),
-                          ),
-                          title: Text(
-                            cartItem.menuItem.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            '${cartItem.menuItem.price} руб. × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Кнопка уменьшения
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline),
-                                onPressed: () =>
-                                    cart.decreaseQuantity(cartItem),
-                                color: const Color(0xFF004D40),
+                              // Фото товара
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: _buildCartItemImage(cartItem.menuItem),
                               ),
-                              // Количество
-                              Text(
-                                '${cartItem.quantity}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                              const SizedBox(width: 12),
+                              // Название и цена
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      cartItem.menuItem.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${cartItem.menuItem.price} руб. × ${cartItem.quantity} = ${cartItem.totalPrice.toStringAsFixed(0)} руб.',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              // Кнопка увеличения
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline),
-                                onPressed: () =>
-                                    cart.increaseQuantity(cartItem),
-                                color: const Color(0xFF004D40),
-                              ),
-                              // Кнопка удаления
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () => cart.removeItem(cartItem),
-                                color: Colors.red,
+                              const SizedBox(width: 8),
+                              // Кнопки количества
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline),
+                                    onPressed: () => cart.decreaseQuantity(cartItem),
+                                    color: const Color(0xFF004D40),
+                                    iconSize: 24,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                  ),
+                                  SizedBox(
+                                    width: 28,
+                                    child: Text(
+                                      '${cartItem.quantity}',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline),
+                                    onPressed: () => cart.increaseQuantity(cartItem),
+                                    color: const Color(0xFF004D40),
+                                    iconSize: 24,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => cart.removeItem(cartItem),
+                                    color: Colors.red,
+                                    iconSize: 24,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -224,21 +266,25 @@ class CartPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton.icon(
+                            child: OutlinedButton.icon(
                               onPressed: () {
                                 _showCommentDialogWithOrder(context, cart);
                               },
-                              icon: const Icon(Icons.comment_outlined),
+                              icon: const Icon(
+                                Icons.message_outlined,
+                                size: 20,
+                              ),
                               label: const Text(
-                                'Комментарий к заказу',
+                                'Комментарий',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.2,
                                 ),
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[700],
-                                foregroundColor: Colors.white,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF004D40),
+                                side: const BorderSide(color: Color(0xFF004D40), width: 2),
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),

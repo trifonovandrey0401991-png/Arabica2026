@@ -97,7 +97,7 @@ class _OrdersReportPageState extends State<OrdersReportPage> with SingleTickerPr
   String _formatDateTime(String? isoDate) {
     if (isoDate == null || isoDate.isEmpty) return '';
     try {
-      final date = DateTime.parse(isoDate);
+      final date = DateTime.parse(isoDate).toLocal();
       final day = date.day.toString().padLeft(2, '0');
       final month = date.month.toString().padLeft(2, '0');
       final year = date.year;

@@ -326,7 +326,36 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     );
   }
 
+  /// Проверяет, является ли заказ неподтвержденным (пропущенным)
+  bool _isUnconfirmedOrder(Order order) {
+    // Неподтвержденный = pending + нет acceptedBy + нет rejectedBy + прошло больше 24 часов
+    if (order.status != 'pending') return false;
+    if (order.acceptedBy != null && order.acceptedBy!.isNotEmpty) return false;
+    if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) return false;
+
+    final hoursSinceCreated = DateTime.now().difference(order.createdAt).inHours;
+    return hoursSinceCreated >= 24; // Более 24 часов без ответа
+  }
+
   Widget _buildOrderAvatar(Order order, String? firstItemPhotoId, Color statusColor, IconData statusIcon) {
+    // Определяем цвет и иконку на основе статуса принятия/отказа
+    Color avatarColor = statusColor;
+    IconData avatarIcon = statusIcon;
+
+    if (order.acceptedBy != null && order.acceptedBy!.isNotEmpty) {
+      // Если заказ принят - зелёная галочка
+      avatarColor = Colors.green;
+      avatarIcon = Icons.check_circle_rounded;
+    } else if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) {
+      // Если заказ отклонён - красный крестик
+      avatarColor = Colors.red;
+      avatarIcon = Icons.cancel_rounded;
+    } else if (_isUnconfirmedOrder(order)) {
+      // Если заказ неподтверждён (пропущен) - красный крестик
+      avatarColor = Colors.red;
+      avatarIcon = Icons.cancel_rounded;
+    }
+
     return Container(
       width: 60,
       height: 60,
@@ -334,7 +363,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.3),
+            color: avatarColor.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -347,10 +376,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                 'assets/images/$firstItemPhotoId.jpg',
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return _buildStatusIcon(statusColor, statusIcon);
+                  return _buildStatusIcon(avatarColor, avatarIcon);
                 },
               )
-            : _buildStatusIcon(statusColor, statusIcon),
+            : _buildStatusIcon(avatarColor, avatarIcon),
       ),
     );
   }
@@ -380,8 +409,8 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   Widget _buildOrderTitle(Order order) {
     return Text(
       order.orderNumber != null
-          ? 'Заказ #${order.orderNumber}'
-          : 'Заказ #${order.id.substring(order.id.length - 6)}',
+          ? 'Заказ ${order.orderNumber}'
+          : 'Заказ ${order.id.substring(order.id.length - 6)}',
       style: const TextStyle(
         fontWeight: FontWeight.bold,
         fontSize: 17,
@@ -404,7 +433,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             ),
             const SizedBox(width: 4),
             Text(
-              '${dateTime.day}.${dateTime.month}.${dateTime.year} в ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}',
+              '${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year} в ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}',
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey[600],
@@ -412,65 +441,6 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        // Статус заказа
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                statusColor.withOpacity(0.15),
-                statusColor.withOpacity(0.1),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: statusColor.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _getStatusIcon(order.status),
-                color: statusColor,
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _getStatusText(order.status),
-                style: TextStyle(
-                  color: statusColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Показываем сотрудника, если заказ принят
-        if (order.acceptedBy != null && order.acceptedBy!.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                Icons.person_rounded,
-                size: 14,
-                color: Colors.grey[500],
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Принял: ${order.acceptedBy}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
-        ],
         // Показываем информацию об отказе
         if (order.rejectedBy != null && order.rejectedBy!.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -492,12 +462,16 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       color: Colors.red,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      'Отказал: ${order.rejectedBy}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red[700],
-                        fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Text(
+                        'Отказал: ${order.rejectedBy}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -510,6 +484,8 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       fontSize: 12,
                       color: Colors.red[800],
                     ),
+                    maxLines: 10,
+                    overflow: TextOverflow.fade,
                   ),
                 ],
               ],

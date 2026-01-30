@@ -283,11 +283,14 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             Text('Собрано: ${info.points}/$pointsRequired'),
             const SizedBox(height: 8),
             LinearProgressIndicator(
-              value: (info.points.clamp(0, pointsRequired)) / pointsRequired,
+              value: pointsRequired > 0
+                  ? (info.points.clamp(0, pointsRequired)) / pointsRequired
+                  : 0.0,
               borderRadius: BorderRadius.circular(8),
               color: info.readyForRedeem ? Colors.orange : Colors.teal,
             ),
             const SizedBox(height: 12),
+            if (pointsRequired > 0)
             Wrap(
               spacing: 8,
               runSpacing: 8,
