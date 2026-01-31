@@ -27,10 +27,13 @@ const STATS_FILE = path.join(DATA_DIR, 'cigarette-training-stats.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'cigarette-training-settings.json');
 const IMAGES_DIR = path.join(DATA_DIR, 'cigarette-training-images');
 
+// Путь к магазинам (из основной системы)
+const SHOPS_DIR = '/var/www/shops';
+
 // Дефолтные настройки (можно изменить через API)
 const DEFAULT_SETTINGS = {
-  requiredRecountPhotos: 10,  // Крупный план пачки (10 шаблонов)
-  requiredDisplayPhotos: 10,  // Фото выкладки
+  requiredRecountPhotos: 10,  // Крупный план пачки (10 шаблонов) - ОБЩИЙ для всех магазинов
+  requiredDisplayPhotosPerShop: 3,  // Фото выкладки НА КАЖДЫЙ МАГАЗИН
   // Источник каталога товаров:
   // "recount-questions" - текущий каталог (вопросы пересчёта)
   // "master-catalog" - единый мастер-каталог (новый)
@@ -115,6 +118,42 @@ function init() {
 }
 
 /**
+ * Загрузить все магазины из основной системы
+ */
+function loadAllShops() {
+  try {
+    if (!fs.existsSync(SHOPS_DIR)) {
+      console.warn('[Cigarette Vision] Директория магазинов не найдена:', SHOPS_DIR);
+      return [];
+    }
+
+    const shops = [];
+    const files = fs.readdirSync(SHOPS_DIR).filter(f => f.endsWith('.json'));
+
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(path.join(SHOPS_DIR, file), 'utf8');
+        const shop = JSON.parse(content);
+        if (shop.address) {  // Только магазины с адресом
+          shops.push({
+            id: shop.id,
+            name: shop.name,
+            address: shop.address,
+          });
+        }
+      } catch (e) {
+        console.error(`Ошибка чтения файла магазина ${file}:`, e.message);
+      }
+    }
+
+    return shops;
+  } catch (error) {
+    console.error('Ошибка загрузки магазинов:', error);
+    return [];
+  }
+}
+
+/**
  * Загрузить все образцы
  */
 function loadSamples() {
@@ -150,21 +189,28 @@ function saveSamples(samples) {
 function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
   const samples = loadSamples();
   const settings = loadSettings();
+  const shops = loadAllShops();  // Загружаем реальные магазины
 
   const requiredRecount = settings.requiredRecountPhotos || 10;
-  const requiredDisplay = settings.requiredDisplayPhotos || 10;
+  const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;  // Per-shop
 
   // Подсчитываем количество фото для каждого товара (раздельно по типам)
   const recountPhotosByProduct = {};
-  const displayPhotosByProduct = {};
   const completedTemplatesByProduct = {};  // Выполненные шаблоны (1-10)
+
+  // НОВОЕ: Подсчёт фото выкладки по (productId, shopAddress)
+  const displayPhotosByProductAndShop = {};
 
   samples.forEach(sample => {
     const key = sample.productId || sample.barcode;
     if (sample.type === 'display') {
-      displayPhotosByProduct[key] = (displayPhotosByProduct[key] || 0) + 1;
+      // Per-shop подсчёт для выкладки
+      if (sample.shopAddress) {
+        const perShopKey = `${key}|${sample.shopAddress}`;
+        displayPhotosByProductAndShop[perShopKey] = (displayPhotosByProductAndShop[perShopKey] || 0) + 1;
+      }
     } else {
-      // recount или без типа
+      // recount или без типа - общий для всех магазинов
       recountPhotosByProduct[key] = (recountPhotosByProduct[key] || 0) + 1;
 
       // Собираем выполненные шаблоны (только для recount)
@@ -179,17 +225,39 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
 
   // Фильтруем и обогащаем данные
   let products = recountQuestions.map(q => {
+    const productKey = q.id || q.barcode;
     const recountPhotos = recountPhotosByProduct[q.id] || recountPhotosByProduct[q.barcode] || 0;
-    const displayPhotos = displayPhotosByProduct[q.id] || displayPhotosByProduct[q.barcode] || 0;
-    const totalPhotos = recountPhotos + displayPhotos;
 
     // Получаем выполненные шаблоны (Set -> Array)
     const completedTemplatesSet = completedTemplatesByProduct[q.id] || completedTemplatesByProduct[q.barcode] || new Set();
     const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
 
-    // Обучение завершено когда все шаблоны выполнены + нужное кол-во фото выкладки
+    // Крупный план: завершено когда все 10 шаблонов выполнены
     const isRecountComplete = completedTemplates.length >= requiredRecount;
-    const isDisplayComplete = displayPhotos >= requiredDisplay;
+
+    // НОВОЕ: Per-shop статистика для выкладки
+    const perShopDisplayStats = shops.map(shop => {
+      const perShopKey = `${productKey}|${shop.address}`;
+      const count = displayPhotosByProductAndShop[perShopKey] || 0;
+      return {
+        shopAddress: shop.address,
+        shopName: shop.name,
+        shopId: shop.id,
+        displayPhotosCount: count,
+        requiredDisplayPhotos: requiredDisplayPerShop,
+        isDisplayComplete: count >= requiredDisplayPerShop,
+      };
+    });
+
+    // Общее количество фото выкладки (для датасета - сумма по всем магазинам)
+    const totalDisplayPhotos = perShopDisplayStats.reduce((sum, s) => sum + s.displayPhotosCount, 0);
+
+    // Количество магазинов где ИИ готов (выкладка завершена)
+    const shopsWithAiReady = perShopDisplayStats.filter(s => s.isDisplayComplete).length;
+
+    // Для обратной совместимости: displayPhotosCount = общее количество
+    // isDisplayComplete = true если хотя бы в одном магазине завершено (для общей статистики)
+    const isDisplayComplete = shopsWithAiReady > 0;
 
     return {
       id: q.id,
@@ -197,18 +265,26 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
       productGroup: q.productGroup || '',
       productName: q.productName || q.question || '',
       grade: q.grade || 1,
-      // Общая статистика
-      trainingPhotosCount: totalPhotos,
-      requiredPhotosCount: requiredRecount + requiredDisplay,
+      isAiActive: q.isAiActive || false,  // Статус ИИ проверки
+      // Общая статистика (обратная совместимость)
+      trainingPhotosCount: recountPhotos + totalDisplayPhotos,
+      requiredPhotosCount: requiredRecount + requiredDisplayPerShop,
       isTrainingComplete: isRecountComplete && isDisplayComplete,
-      // Раздельная статистика
+      // Крупный план (общий для всех магазинов)
       recountPhotosCount: recountPhotos,
       requiredRecountPhotos: requiredRecount,
       isRecountComplete: isRecountComplete,
-      completedTemplates: completedTemplates,  // Массив выполненных шаблонов [1, 3, 5...]
-      displayPhotosCount: displayPhotos,
-      requiredDisplayPhotos: requiredDisplay,
+      completedTemplates: completedTemplates,
+      // Выкладка - общая статистика (обратная совместимость)
+      displayPhotosCount: totalDisplayPhotos,
+      requiredDisplayPhotos: requiredDisplayPerShop,  // Теперь это per-shop
       isDisplayComplete: isDisplayComplete,
+      // НОВОЕ: Per-shop статистика выкладки
+      perShopDisplayStats: perShopDisplayStats,
+      totalDisplayPhotos: totalDisplayPhotos,
+      requiredDisplayPhotosPerShop: requiredDisplayPerShop,
+      shopsWithAiReady: shopsWithAiReady,
+      totalShops: shops.length,
     };
   });
 
@@ -641,6 +717,7 @@ module.exports = {
   getSettings,
   updateSettings,
   loadSamples,
+  loadAllShops,  // НОВОЕ: загрузка магазинов
   REQUIRED_PHOTOS_COUNT,
   // Новые функции для ML
   exportTrainingData,
