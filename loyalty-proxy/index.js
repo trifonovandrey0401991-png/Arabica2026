@@ -5657,7 +5657,7 @@ if (!fs.existsSync(CLIENTS_DIR)) {
 
 app.get('/api/clients', async (req, res) => {
   try {
-    const clients = [];
+    let clients = [];
     if (fs.existsSync(CLIENTS_DIR)) {
       const files = await fs.promises.readdir(CLIENTS_DIR);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
@@ -5673,7 +5673,30 @@ app.get('/api/clients', async (req, res) => {
       const results = await Promise.all(readPromises);
       clients.push(...results.filter(r => r !== null));
     }
-    res.json({ success: true, clients });
+
+    // SCALABILITY: Поддержка поиска по имени/телефону
+    const { search } = req.query;
+    if (search) {
+      const searchLower = search.toLowerCase();
+      clients = clients.filter(c =>
+        (c.name && c.name.toLowerCase().includes(searchLower)) ||
+        (c.phone && c.phone.includes(search))
+      );
+    }
+
+    // SCALABILITY: Сортировка по дате обновления (новые сверху)
+    clients.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0);
+      const dateB = new Date(b.updatedAt || b.createdAt || 0);
+      return dateB - dateA;
+    });
+
+    // SCALABILITY: Пагинация если запрошена
+    if (isPaginationRequested(req.query)) {
+      res.json(createPaginatedResponse(clients, req.query, 'clients'));
+    } else {
+      res.json({ success: true, clients });
+    }
   } catch (error) {
     console.error('Ошибка получения клиентов:', error);
     res.status(500).json({ success: false, error: error.message });
