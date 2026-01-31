@@ -325,7 +325,45 @@ async function extractZReportData(text, learnedPatterns = null) {
     }
   }
 
-  // ============ БЛОЧНЫЙ АЛГОРИТМ ДЛЯ OFD (АТОЛ) ============
+  // ============ ПРЯМОЙ ПОИСК ДЛЯ АТОЛ (приоритетный) ============
+  // Формат: метки идут подряд, затем значения идут подряд
+  // ЧЕКОВ ЗА СМЕНУ: / ОД ЗА СМЕНУ: / РЕСУРС КЛЮЧЕЙ: / НЕПЕРЕДАННЫХ ОД
+  // 100 / 102 / 277 AH. / 0
+  if (result.ofdNotSent === null) {
+    let ofdLabelIdx = -1;
+    let firstValueAfterLabels = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const upper = lines[i].toUpperCase();
+      // Ищем НЕПЕРЕДАННЫХ ФА/ФД/ОД (последняя метка блока)
+      if (upper.includes('НЕПЕРЕДАНН') && (upper.includes('ФД') || upper.includes('ФА') || upper.includes('ОД'))) {
+        ofdLabelIdx = i;
+        // Ищем первое значение сразу после метки НЕПЕРЕДАННЫХ
+        for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+          let valueLine = lines[j].trim();
+          // Пропускаем строки с AH. (это ресурс ключей)
+          if (valueLine.match(/\d+\s*[AА][HН]\.?/i)) {
+            continue;
+          }
+          // Ищем простое число (0-9999)
+          if (valueLine === 'O' || valueLine === 'o') valueLine = '0';
+          const numMatch = valueLine.match(/^(\d{1,4})$/);
+          if (numMatch) {
+            const num = parseInt(numMatch[1], 10);
+            if (num <= 10000) {
+              result.ofdNotSent = num;
+              result.confidence.ofdNotSent = 'atol_direct';
+              console.log('[Z-Report] НЕПЕРЕДАННЫХ найдено напрямую после метки (строка', j, '):', num);
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // ============ БЛОЧНЫЙ АЛГОРИТМ ДЛЯ OFD (АТОЛ) — fallback ============
   // Два формата чеков АТОЛ:
   // 1. Значения после "СЧЕТЧИКИ ИТОГОВ ФН/ОН" (формат 1)
   // 2. Значения сразу после "СЧЕТЧИКИ ИТОГОВ СМЕНЫ" (формат 2)
@@ -504,6 +542,9 @@ async function extractZReportData(text, learnedPatterns = null) {
   // Если не нашли выученными — используем базовые паттерны
   if (result.resourceKeys === null) {
     const resourceKeysPatterns = [
+      // АТОЛ формат: "РЕСУРС КЛЮЧЕЙ:" в блоке меток, значение "277 AH." ниже
+      // Ищем строку с числом и "AH." или "АН." (кириллица/латиница)
+      /(\d+)\s*[AА][HН]\.?/i,
       // Типичные форматы для ресурса ключей
       /РЕСУРС\s*КЛЮЧ[ЕА-Я]*[:\s]*(\d+)/i,
       /РЕСУРС\s*КЛ\.?[:\s]*(\d+)/i,
@@ -517,12 +558,34 @@ async function extractZReportData(text, learnedPatterns = null) {
     for (const pattern of resourceKeysPatterns) {
       const match = text.match(pattern);
       if (match) {
-        result.resourceKeys = parseInt(match[1], 10);
-        result.confidence.resourceKeys = 'high';
-        console.log('[Z-Report] Найден ресурс ключей:', result.resourceKeys);
-        break;
+        const value = parseInt(match[1], 10);
+        // Валидация: ресурс ключей обычно от 1 до 500
+        if (value > 0 && value <= 500) {
+          result.resourceKeys = value;
+          result.confidence.resourceKeys = 'high';
+          console.log('[Z-Report] Найден ресурс ключей:', result.resourceKeys);
+          break;
+        }
       }
     }
+  }
+
+  // ============ ВАЛИДАЦИЯ РЕЗУЛЬТАТОВ ============
+
+  // Проверка логических зависимостей
+  if (result.totalSum !== null && result.cashSum !== null) {
+    // cashSum не может быть больше totalSum
+    if (result.cashSum > result.totalSum) {
+      console.log('[Z-Report] Предупреждение: cashSum > totalSum, возможно ошибка OCR');
+      result.confidence.cashSum = 'suspicious';
+    }
+  }
+
+  // ofdNotSent не может быть слишком большим (обычно 0-1000)
+  if (result.ofdNotSent !== null && result.ofdNotSent > 10000) {
+    console.log('[Z-Report] Предупреждение: ofdNotSent слишком большой:', result.ofdNotSent);
+    result.ofdNotSent = null;
+    result.confidence.ofdNotSent = 'invalid';
   }
 
   // Помечаем не найденные поля
