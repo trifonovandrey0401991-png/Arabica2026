@@ -954,7 +954,7 @@ function setupMasterCatalogAPI(app) {
 
   /**
    * GET /api/master-catalog/for-training
-   * Получить товары для AI обучения (формат как cigarette-vision/products)
+   * Получить товары для AI обучения с per-shop статистикой
    */
   app.get('/api/master-catalog/for-training', (req, res) => {
     try {
@@ -966,21 +966,115 @@ function setupMasterCatalogAPI(app) {
         products = products.filter((p) => p.group === productGroup);
       }
 
-      // Преобразуем в формат для AI Training
-      const trainingProducts = products.map((p) => ({
-        id: p.id,
-        productName: p.name,
-        group: p.group,
-        barcode: p.barcode,
-        // AI Training ожидает эти поля (будут заполняться из training samples)
-        recountPhotosCount: 0,
-        displayPhotosCount: 0,
-        trainingPhotosCount: 0,
-        requiredPhotos: 10,
-        completionPercentage: 0,
-        shopCodes: p.shopCodes,
-        isAiActive: p.isAiActive ?? false, // Статус ИИ проверки
-      }));
+      // Загружаем данные для статистики из cigarette-vision
+      const cigaretteVision = require('../modules/cigarette-vision');
+      const samples = cigaretteVision.loadSamples();
+      const settings = cigaretteVision.getSettings();
+      const shops = cigaretteVision.loadAllShops();
+
+      const requiredRecount = settings.requiredRecountPhotos || 10;
+      const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
+
+      // Подсчёт фото по товарам
+      const recountPhotosByProduct = {};
+      const completedTemplatesByProduct = {};
+      const displayPhotosByProductAndShop = {};
+
+      samples.forEach(sample => {
+        const productId = sample.productId;
+        const barcode = sample.barcode;
+
+        if (sample.type === 'display') {
+          if (sample.shopAddress) {
+            if (productId) {
+              const keyById = `${productId}|${sample.shopAddress}`;
+              displayPhotosByProductAndShop[keyById] = (displayPhotosByProductAndShop[keyById] || 0) + 1;
+            }
+            if (barcode && barcode !== productId) {
+              const keyByBarcode = `${barcode}|${sample.shopAddress}`;
+              displayPhotosByProductAndShop[keyByBarcode] = (displayPhotosByProductAndShop[keyByBarcode] || 0) + 1;
+            }
+          }
+        } else {
+          if (productId) {
+            recountPhotosByProduct[productId] = (recountPhotosByProduct[productId] || 0) + 1;
+          }
+          if (barcode && barcode !== productId) {
+            recountPhotosByProduct[barcode] = (recountPhotosByProduct[barcode] || 0) + 1;
+          }
+
+          if (sample.templateId) {
+            const key = productId || barcode;
+            if (!completedTemplatesByProduct[key]) {
+              completedTemplatesByProduct[key] = new Set();
+            }
+            completedTemplatesByProduct[key].add(sample.templateId);
+            if (barcode && barcode !== key) {
+              if (!completedTemplatesByProduct[barcode]) {
+                completedTemplatesByProduct[barcode] = new Set();
+              }
+              completedTemplatesByProduct[barcode].add(sample.templateId);
+            }
+          }
+        }
+      });
+
+      // Преобразуем в формат для AI Training с per-shop статистикой
+      const trainingProducts = products.map((p) => {
+        const recountPhotos = recountPhotosByProduct[p.id] || recountPhotosByProduct[p.barcode] || 0;
+        const completedTemplatesSet = completedTemplatesByProduct[p.id] || completedTemplatesByProduct[p.barcode] || new Set();
+        const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
+        const isRecountComplete = completedTemplates.length >= requiredRecount;
+
+        // Per-shop статистика для выкладки
+        const perShopDisplayStats = shops.map(shop => {
+          const keyById = `${p.id}|${shop.address}`;
+          const keyByBarcode = `${p.barcode}|${shop.address}`;
+          const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
+          return {
+            shopAddress: shop.address,
+            shopName: shop.name,
+            shopId: shop.id,
+            displayPhotosCount: count,
+            requiredDisplayPhotos: requiredDisplayPerShop,
+            isDisplayComplete: count >= requiredDisplayPerShop,
+          };
+        });
+
+        const totalDisplayPhotos = perShopDisplayStats.reduce((sum, s) => sum + s.displayPhotosCount, 0);
+        const shopsWithAiReady = perShopDisplayStats.filter(s => s.isDisplayComplete).length;
+        const isDisplayComplete = shopsWithAiReady > 0;
+
+        return {
+          id: p.id,
+          productName: p.name,
+          productGroup: p.group,
+          group: p.group,
+          barcode: p.barcode,
+          grade: 1,
+          isAiActive: p.isAiActive ?? false,
+          // Общая статистика
+          trainingPhotosCount: recountPhotos + totalDisplayPhotos,
+          requiredPhotosCount: requiredRecount + requiredDisplayPerShop,
+          isTrainingComplete: isRecountComplete && isDisplayComplete,
+          // Крупный план (общий для всех магазинов)
+          recountPhotosCount: recountPhotos,
+          requiredRecountPhotos: requiredRecount,
+          isRecountComplete: isRecountComplete,
+          completedTemplates: completedTemplates,
+          // Выкладка - общая статистика
+          displayPhotosCount: totalDisplayPhotos,
+          requiredDisplayPhotos: requiredDisplayPerShop,
+          isDisplayComplete: isDisplayComplete,
+          // Per-shop статистика выкладки
+          perShopDisplayStats: perShopDisplayStats,
+          totalDisplayPhotos: totalDisplayPhotos,
+          requiredDisplayPhotosPerShop: requiredDisplayPerShop,
+          shopsWithAiReady: shopsWithAiReady,
+          totalShops: shops.length,
+          shopCodes: p.shopCodes,
+        };
+      });
 
       res.json({ success: true, products: trainingProducts });
     } catch (error) {
