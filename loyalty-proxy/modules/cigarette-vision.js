@@ -202,23 +202,47 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
   const displayPhotosByProductAndShop = {};
 
   samples.forEach(sample => {
-    const key = sample.productId || sample.barcode;
+    // Индексируем по productId И по barcode (для совместимости разных каталогов)
+    const productId = sample.productId;
+    const barcode = sample.barcode;
+
     if (sample.type === 'display') {
       // Per-shop подсчёт для выкладки
       if (sample.shopAddress) {
-        const perShopKey = `${key}|${sample.shopAddress}`;
-        displayPhotosByProductAndShop[perShopKey] = (displayPhotosByProductAndShop[perShopKey] || 0) + 1;
+        // Сохраняем под productId
+        if (productId) {
+          const keyById = `${productId}|${sample.shopAddress}`;
+          displayPhotosByProductAndShop[keyById] = (displayPhotosByProductAndShop[keyById] || 0) + 1;
+        }
+        // Также сохраняем под barcode для кросс-каталожного поиска
+        if (barcode && barcode !== productId) {
+          const keyByBarcode = `${barcode}|${sample.shopAddress}`;
+          displayPhotosByProductAndShop[keyByBarcode] = (displayPhotosByProductAndShop[keyByBarcode] || 0) + 1;
+        }
       }
     } else {
       // recount или без типа - общий для всех магазинов
-      recountPhotosByProduct[key] = (recountPhotosByProduct[key] || 0) + 1;
+      if (productId) {
+        recountPhotosByProduct[productId] = (recountPhotosByProduct[productId] || 0) + 1;
+      }
+      if (barcode && barcode !== productId) {
+        recountPhotosByProduct[barcode] = (recountPhotosByProduct[barcode] || 0) + 1;
+      }
 
       // Собираем выполненные шаблоны (только для recount)
       if (sample.templateId) {
+        const key = productId || barcode;
         if (!completedTemplatesByProduct[key]) {
           completedTemplatesByProduct[key] = new Set();
         }
         completedTemplatesByProduct[key].add(sample.templateId);
+        // Также под barcode
+        if (barcode && barcode !== key) {
+          if (!completedTemplatesByProduct[barcode]) {
+            completedTemplatesByProduct[barcode] = new Set();
+          }
+          completedTemplatesByProduct[barcode].add(sample.templateId);
+        }
       }
     }
   });
@@ -237,8 +261,10 @@ function getProductsWithTrainingInfo(recountQuestions, productGroup = null) {
 
     // НОВОЕ: Per-shop статистика для выкладки
     const perShopDisplayStats = shops.map(shop => {
-      const perShopKey = `${productKey}|${shop.address}`;
-      const count = displayPhotosByProductAndShop[perShopKey] || 0;
+      // Ищем фото по id товара И по barcode (могут отличаться в разных каталогах)
+      const keyById = `${q.id}|${shop.address}`;
+      const keyByBarcode = `${q.barcode}|${shop.address}`;
+      const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
       return {
         shopAddress: shop.address,
         shopName: shop.name,
