@@ -11,6 +11,15 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+// YOLO ML Wrapper для детекции
+let yoloWrapper = null;
+try {
+  yoloWrapper = require('../ml/yolo-wrapper');
+  console.log('[Cigarette Vision] YOLO wrapper loaded');
+} catch (e) {
+  console.warn('[Cigarette Vision] YOLO wrapper not available:', e.message);
+}
+
 // Пути к данным
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const SAMPLES_FILE = path.join(DATA_DIR, 'cigarette-training-samples.json');
@@ -445,30 +454,174 @@ function getImagePath(fileName) {
 }
 
 /**
- * Детекция и подсчёт (заглушка - будет реализовано с ML моделью)
+ * Детекция и подсчёт сигарет на изображении
+ * @param {string} imageBase64 - Изображение в формате base64
+ * @param {string} productId - ID товара для фильтрации (опционально)
+ * @param {number} confidence - Минимальная уверенность (0-1)
  */
-async function detectAndCount(imageBase64, productId) {
-  // TODO: Интеграция с ML моделью (YOLOv8)
-  // Пока возвращаем заглушку
-  return {
-    success: false,
-    error: 'Модель ещё не обучена. Добавьте больше фотографий для обучения.',
-    count: 0,
-    confidence: 0,
-    boxes: [],
-  };
+async function detectAndCount(imageBase64, productId = null, confidence = 0.5) {
+  // Проверяем доступность YOLO wrapper
+  if (!yoloWrapper) {
+    return {
+      success: false,
+      error: 'ML модуль не загружен. Проверьте установку зависимостей.',
+      count: 0,
+      confidence: 0,
+      boxes: [],
+    };
+  }
+
+  // Проверяем, обучена ли модель
+  if (!yoloWrapper.isModelReady()) {
+    // Возвращаем информативное сообщение о статусе обучения
+    const samples = loadSamples();
+    const totalSamples = samples.length;
+    const samplesWithAnnotations = samples.filter(s => s.annotationCount > 0).length;
+
+    return {
+      success: false,
+      error: `Модель ещё не обучена. Загружено ${totalSamples} образцов (${samplesWithAnnotations} с аннотациями). Требуется минимум 50 аннотированных образцов для обучения.`,
+      count: 0,
+      confidence: 0,
+      boxes: [],
+      trainingStatus: {
+        totalSamples,
+        annotatedSamples: samplesWithAnnotations,
+        requiredSamples: 50,
+        isReady: samplesWithAnnotations >= 50
+      }
+    };
+  }
+
+  try {
+    // Вызываем YOLO детекцию
+    const result = await yoloWrapper.detectAndCount(imageBase64, productId, confidence);
+
+    if (result.success) {
+      console.log(`[Cigarette Vision] Обнаружено ${result.count} объектов (confidence: ${result.confidence})`);
+    } else {
+      console.warn('[Cigarette Vision] Ошибка детекции:', result.error);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка вызова YOLO:', error);
+    return {
+      success: false,
+      error: `Ошибка ML модели: ${error.message}`,
+      count: 0,
+      confidence: 0,
+      boxes: [],
+    };
+  }
 }
 
 /**
- * Проверка выкладки (заглушка - будет реализовано с ML моделью)
+ * Проверка выкладки - обнаружение товаров на витрине
+ * @param {string} imageBase64 - Изображение в формате base64
+ * @param {string[]} expectedProducts - Список ожидаемых товаров (productId)
+ * @param {number} confidence - Минимальная уверенность (0-1)
  */
-async function checkDisplay(imageBase64, shopAddress) {
-  // TODO: Интеграция с ML моделью
+async function checkDisplay(imageBase64, expectedProducts = [], confidence = 0.3) {
+  // Проверяем доступность YOLO wrapper
+  if (!yoloWrapper) {
+    return {
+      success: false,
+      error: 'ML модуль не загружен. Проверьте установку зависимостей.',
+      missingProducts: expectedProducts,
+      detectedProducts: [],
+    };
+  }
+
+  // Проверяем, обучена ли модель
+  if (!yoloWrapper.isModelReady()) {
+    const samples = loadSamples();
+    const displaySamples = samples.filter(s => s.type === 'display').length;
+
+    return {
+      success: false,
+      error: `Модель не обучена для проверки выкладки. Загружено ${displaySamples} фото выкладки. Требуется минимум 100 для обучения.`,
+      missingProducts: expectedProducts,
+      detectedProducts: [],
+      trainingStatus: {
+        displaySamples,
+        requiredSamples: 100,
+        isReady: displaySamples >= 100
+      }
+    };
+  }
+
+  try {
+    // Вызываем YOLO проверку выкладки
+    const result = await yoloWrapper.checkDisplay(imageBase64, expectedProducts, confidence);
+
+    if (result.success) {
+      console.log(`[Cigarette Vision] Выкладка: обнаружено ${result.totalDetected} товаров, отсутствует ${result.missingProducts?.length || 0}`);
+    } else {
+      console.warn('[Cigarette Vision] Ошибка проверки выкладки:', result.error);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка вызова YOLO:', error);
+    return {
+      success: false,
+      error: `Ошибка ML модели: ${error.message}`,
+      missingProducts: expectedProducts,
+      detectedProducts: [],
+    };
+  }
+}
+
+/**
+ * Экспорт данных для обучения в YOLO формат
+ * @param {string} outputDir - Путь для сохранения датасета
+ */
+async function exportTrainingData(outputDir) {
+  if (!yoloWrapper) {
+    return {
+      success: false,
+      error: 'ML модуль не загружен'
+    };
+  }
+
+  return await yoloWrapper.exportTrainingData(outputDir);
+}
+
+/**
+ * Запустить обучение модели
+ * @param {string} dataYaml - Путь к data.yaml
+ * @param {number} epochs - Количество эпох обучения
+ */
+async function trainModel(dataYaml, epochs = 100) {
+  if (!yoloWrapper) {
+    return {
+      success: false,
+      error: 'ML модуль не загружен'
+    };
+  }
+
+  return await yoloWrapper.trainModel(dataYaml, epochs);
+}
+
+/**
+ * Получить статус ML модели
+ */
+async function getModelStatus() {
+  if (!yoloWrapper) {
+    return {
+      available: false,
+      error: 'ML модуль не загружен'
+    };
+  }
+
+  const status = await yoloWrapper.checkStatus();
+  const modelInfo = yoloWrapper.getModelInfo();
+
   return {
-    success: false,
-    error: 'Модель ещё не обучена. Добавьте больше фотографий для обучения.',
-    missingProducts: [],
-    detectedProducts: [],
+    available: true,
+    ...status,
+    model: modelInfo
   };
 }
 
@@ -489,4 +642,8 @@ module.exports = {
   updateSettings,
   loadSamples,
   REQUIRED_PHOTOS_COUNT,
+  // Новые функции для ML
+  exportTrainingData,
+  trainModel,
+  getModelStatus,
 };
