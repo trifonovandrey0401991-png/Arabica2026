@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cigarette_training_model.dart';
 import '../services/cigarette_vision_service.dart';
 import '../../employees/pages/employees_page.dart';
+import '../../shops/services/shop_service.dart';
+import '../../shops/models/shop_model.dart';
 import 'cigarette_annotation_page.dart';
 import 'photo_templates_page.dart';
 import 'training_settings_page.dart';
@@ -31,6 +33,10 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   String? _error;
   bool _isAdmin = false;
 
+  // НОВОЕ: Выбранный магазин для per-shop прогресса
+  String? _selectedShopAddress;
+  List<Shop> _shops = [];
+
   // Поиск по наименованию
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -44,23 +50,44 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
   /// Количество вкладок зависит от роли
   /// Для админа: Фото, Товары, Новые коды, Статистика, Настройки = 5
-  /// Для обычного: Фото, Товары, Статистика = 3
-  int get _tabCount => _isAdmin ? 5 : 3;
+  /// Для сотрудника: Фото, Статистика = 2
+  int get _tabCount => _isAdmin ? 5 : 2;
 
   @override
   void initState() {
     super.initState();
-    _initTabController();
-    _loadData();
+    _initializePageSequentially();
+  }
+
+  /// Инициализация страницы последовательно (сначала контроллер, потом данные)
+  Future<void> _initializePageSequentially() async {
+    await _initTabController();
+    await _loadData();
+
+    // ВСЕГДА показываем диалог выбора магазина для сотрудников при входе
+    // (сотрудник может работать в разных магазинах)
+    if (mounted && !_isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showShopSelectionDialog();
+        }
+      });
+    }
   }
 
   Future<void> _initTabController() async {
     final prefs = await SharedPreferences.getInstance();
     final role = prefs.getString('user_role') ?? '';
+    final shopAddress = prefs.getString('selectedShopAddress');
+
+    // Загружаем магазины для диалога выбора
+    final shops = await ShopService.getShops();
 
     if (mounted) {
       setState(() {
         _isAdmin = role == 'admin';
+        _selectedShopAddress = shopAddress;
+        _shops = shops;
         _tabController = TabController(length: _tabCount, vsync: this);
       });
     }
@@ -80,6 +107,11 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
     });
 
     try {
+      // Перезагружаем выбранный магазин из SharedPreferences
+      // (важно для корректного отображения per-shop прогресса)
+      final prefs = await SharedPreferences.getInstance();
+      final shopAddress = prefs.getString('selectedShopAddress');
+
       final groups = await CigaretteVisionService.getProductGroups();
       final products = await CigaretteVisionService.getProducts(
         productGroup: _selectedGroup,
@@ -88,6 +120,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
       if (mounted) {
         setState(() {
+          _selectedShopAddress = shopAddress;
           _productGroups = groups;
           _products = products;
           _stats = stats;
@@ -140,7 +173,8 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                             controller: _tabController,
                             children: [
                               _buildAddPhotoTab(),
-                              _buildProductsTab(),
+                              // Вкладка "Товары" только для админа
+                              if (_isAdmin) _buildProductsTab(),
                               if (_isAdmin) PendingCodesPage(onCodeApproved: _loadData),
                               _buildStatsTab(),
                               if (_isAdmin) _buildSettingsTab(),
@@ -237,10 +271,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
             icon: Icon(Icons.add_a_photo, size: 20),
             text: 'Фото',
           ),
-          const Tab(
-            icon: Icon(Icons.inventory_2, size: 20),
-            text: 'Товары',
-          ),
+          // Вкладка "Товары" только для админа
+          if (_isAdmin)
+            const Tab(
+              icon: Icon(Icons.inventory_2, size: 20),
+              text: 'Товары',
+            ),
           if (_isAdmin)
             const Tab(
               icon: Icon(Icons.new_releases, size: 20),
@@ -965,14 +1001,16 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
                         isComplete: product.isRecountComplete,
                       ),
                       const SizedBox(height: 6),
-                      // Раздельный прогресс: выкладка
-                      _buildProgressRow(
-                        icon: Icons.grid_view,
-                        progress: product.displayProgress / 100,
-                        label: '${product.displayPhotosCount}/${product.requiredDisplayPhotos}',
-                        gradient: displayGradient,
-                        isComplete: product.isDisplayComplete,
-                      ),
+                      // Раздельный прогресс: выкладка (per-shop)
+                      if (_isAdmin)
+                        // Админ видит сводку по всем магазинам
+                        _buildShopsSummaryRow(product, displayGradient)
+                      else if (_selectedShopAddress != null && _selectedShopAddress!.isNotEmpty)
+                        // Сотрудник видит прогресс своего магазина
+                        _buildShopProgressRow(product, displayGradient)
+                      else
+                        // Магазин не выбран
+                        _buildNoShopSelectedRow(),
                     ],
                   ),
                 ),
@@ -1054,6 +1092,569 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
           Icon(Icons.check_circle, size: 12, color: _greenGradient[0]),
         ],
       ],
+    );
+  }
+
+  /// Сводка по магазинам для админа (X/Y магазинов готовы)
+  Widget _buildShopsSummaryRow(CigaretteProduct product, List<Color> gradient) {
+    final ready = product.shopsWithAiReady;
+    final total = product.totalShops;
+    final isComplete = ready > 0;
+    final progress = total > 0 ? ready / total : 0.0;
+    final summaryGradient = _getProgressGradient(progress * 100);
+
+    return InkWell(
+      onTap: () => _showShopDetailsDialog(product),
+      child: Row(
+        children: [
+          Icon(
+            Icons.store,
+            size: 14,
+            color: isComplete ? _greenGradient[0] : summaryGradient[0],
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progress.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: isComplete ? _greenGradient : summaryGradient),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$ready/$total маг.',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: isComplete ? _greenGradient[0] : summaryGradient[0],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            Icons.chevron_right,
+            size: 14,
+            color: Colors.white.withOpacity(0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Прогресс для конкретного магазина (сотрудник)
+  Widget _buildShopProgressRow(CigaretteProduct product, List<Color> gradient) {
+    final shopStats = product.getShopStats(_selectedShopAddress ?? '');
+    if (shopStats == null) {
+      return _buildNoShopSelectedRow();
+    }
+
+    final isComplete = shopStats.isDisplayComplete;
+    final progress = shopStats.progress / 100;
+    final shopGradient = _getProgressGradient(shopStats.progress);
+
+    return Row(
+      children: [
+        Icon(
+          Icons.grid_view,
+          size: 14,
+          color: isComplete ? _greenGradient[0] : shopGradient[0],
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: progress.clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: isComplete ? _greenGradient : shopGradient),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${shopStats.displayPhotosCount}/${shopStats.requiredDisplayPhotos}',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: isComplete ? _greenGradient[0] : shopGradient[0],
+          ),
+        ),
+        if (isComplete) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.check_circle, size: 12, color: _greenGradient[0]),
+        ],
+      ],
+    );
+  }
+
+  /// Магазин не выбран
+  Widget _buildNoShopSelectedRow() {
+    return InkWell(
+      onTap: _showShopSelectionDialog,
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber,
+            size: 14,
+            color: _orangeGradient[0],
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Выберите магазин',
+              style: TextStyle(
+                fontSize: 10,
+                color: _orangeGradient[0],
+              ),
+            ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            size: 14,
+            color: _orangeGradient[0],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Диалог выбора магазина
+  void _showShopSelectionDialog() {
+    if (_shops.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось загрузить список магазинов'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1A1A2E),
+              Color(0xFF16213E),
+            ],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Индикатор
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Заголовок
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: _blueGradient),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.store,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Выберите магазин',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Для загрузки фото выкладки нужно выбрать магазин',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            // Список магазинов
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _shops.length,
+                itemBuilder: (context, index) {
+                  final shop = _shops[index];
+                  final isSelected = shop.address == _selectedShopAddress;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          // Сохраняем выбранный магазин
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('selectedShopAddress', shop.address);
+
+                          if (mounted) {
+                            setState(() {
+                              _selectedShopAddress = shop.address;
+                            });
+                            Navigator.pop(context);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text('Выбран магазин: ${shop.name}'),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: _greenGradient[0],
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+
+                            // Перезагружаем данные для обновления статистики
+                            _loadData();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? _blueGradient[0].withOpacity(0.2)
+                                : Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? _blueGradient[0]
+                                  : Colors.white.withOpacity(0.1),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: isSelected ? _blueGradient : _purpleGradient,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  isSelected ? Icons.check : Icons.store,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      shop.name,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected ? _blueGradient[0] : Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      shop.address,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isSelected)
+                                Icon(
+                                  Icons.check_circle,
+                                  color: _blueGradient[0],
+                                  size: 24,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Кнопка закрытия
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Отмена',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.6),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Диалог детализации по магазинам (для админа)
+  void _showShopDetailsDialog(CigaretteProduct product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1A1A2E),
+              Color(0xFF16213E),
+            ],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Индикатор
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Заголовок
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(
+                    'Статус по магазинам',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.productName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _getProgressGradient(
+                          product.totalShops > 0
+                            ? product.shopsWithAiReady / product.totalShops * 100
+                            : 0,
+                        ),
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${product.shopsWithAiReady}/${product.totalShops} магазинов готовы',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Список магазинов
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: product.perShopDisplayStats.length,
+                itemBuilder: (context, index) {
+                  final stats = product.perShopDisplayStats[index];
+                  final shopGradient = _getProgressGradient(stats.progress);
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: stats.isDisplayComplete
+                            ? _greenGradient[0].withOpacity(0.5)
+                            : Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: stats.isDisplayComplete ? _greenGradient : shopGradient,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            stats.isDisplayComplete ? Icons.check : Icons.store,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                stats.shopName ?? stats.shopAddress,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(2),
+                                        child: FractionallySizedBox(
+                                          alignment: Alignment.centerLeft,
+                                          widthFactor: (stats.progress / 100).clamp(0.0, 1.0),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: stats.isDisplayComplete ? _greenGradient : shopGradient,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${stats.displayPhotosCount}/${stats.requiredDisplayPhotos}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: stats.isDisplayComplete ? _greenGradient[0] : shopGradient[0],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1237,7 +1838,12 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
   /// Диалог выбора типа фото
   void _showPhotoTypeDialog(CigaretteProduct product) {
     final recountGradient = _getProgressGradient(product.recountProgress);
-    final displayGradient = _getProgressGradient(product.displayProgress);
+
+    // Per-shop статистика для выкладки
+    final shopStats = product.getShopStats(_selectedShopAddress ?? '');
+    final shopProgress = shopStats?.progress ?? 0;
+    final displayGradient = _getProgressGradient(shopProgress);
+    final hasShop = _selectedShopAddress != null && _selectedShopAddress!.isNotEmpty;
 
     showDialog(
       context: context,
@@ -1278,7 +1884,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
               const SizedBox(height: 20),
 
-              // Кнопка: Крупный план
+              // Кнопка: Крупный план (общий для всех магазинов)
               _buildPhotoTypeOption(
                 onTap: () {
                   Navigator.pop(context);
@@ -1293,19 +1899,43 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
               ),
               const SizedBox(height: 12),
 
-              // Кнопка: Выкладка
+              // Кнопка: Выкладка (per-shop)
               _buildPhotoTypeOption(
                 onTap: () {
+                  // Проверяем выбран ли магазин
+                  if (!hasShop) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text('Выберите магазин для загрузки фото выкладки'),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: _orangeGradient[0],
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.pop(context);
                   _takePhoto(product, TrainingSampleType.display);
                 },
                 icon: Icons.grid_view,
                 title: 'Выкладка',
-                subtitle: 'Фото витрины с 5-15 пачками',
-                progress: product.displayProgress / 100,
-                progressLabel: '${product.displayPhotosCount}/${product.requiredDisplayPhotos}',
-                gradient: displayGradient,
-                isComplete: product.isDisplayComplete,
+                subtitle: hasShop
+                    ? 'Фото для: ${_selectedShopAddress!.length > 25 ? '${_selectedShopAddress!.substring(0, 25)}...' : _selectedShopAddress}'
+                    : '⚠️ Выберите магазин',
+                progress: hasShop ? shopProgress / 100 : 0,
+                progressLabel: hasShop
+                    ? '${shopStats?.displayPhotosCount ?? 0}/${shopStats?.requiredDisplayPhotos ?? 3}'
+                    : '—',
+                gradient: hasShop ? displayGradient : _orangeGradient,
+                isComplete: shopStats?.isDisplayComplete ?? false,
               ),
               const SizedBox(height: 16),
 
