@@ -39,6 +39,117 @@ const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
 const ENVELOPE_REPORTS_DIR = '/var/www/envelope-reports';
 
 // =====================================================
+// OPTIMIZATION: Cache for batch operations
+// =====================================================
+// Кэш для batch операций - загружаем данные ОДИН раз при расчёте рейтинга всех сотрудников
+let _batchCache = null;
+let _batchCacheMonth = null;
+
+/**
+ * Загрузить все файлы из директории, отфильтровав по месяцу
+ * @returns {Array} Массив распарсенных объектов
+ */
+function loadDirectoryForMonth(dirPath, month, dateField) {
+  const results = [];
+
+  if (!fs.existsSync(dirPath)) {
+    return results;
+  }
+
+  try {
+    const files = fs.readdirSync(dirPath);
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      try {
+        const content = fs.readFileSync(path.join(dirPath, file), 'utf8');
+        const data = JSON.parse(content);
+
+        // Фильтруем по месяцу если указано поле даты
+        if (dateField && data[dateField]) {
+          if (data[dateField].startsWith(month)) {
+            results.push(data);
+          }
+        } else {
+          results.push(data);
+        }
+      } catch (e) {
+        // Skip invalid files
+      }
+    }
+  } catch (e) {
+    console.error(`Error loading directory ${dirPath}:`, e);
+  }
+
+  return results;
+}
+
+/**
+ * Инициализация batch кэша - загружает ВСЕ данные за месяц ОДИН раз
+ * Вызывается перед расчётом рейтинга для всех сотрудников
+ */
+function initBatchCache(month) {
+  if (_batchCacheMonth === month && _batchCache) {
+    console.log(`[Efficiency] Используем существующий кэш для ${month}`);
+    return _batchCache;
+  }
+
+  const startTime = Date.now();
+  console.log(`[Efficiency] Инициализация batch кэша для ${month}...`);
+
+  _batchCache = {
+    shiftReports: loadDirectoryForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate'),
+    recountReports: loadDirectoryForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate'),
+    handoverReports: loadDirectoryForMonth(HANDOVER_REPORTS_DIR, month, 'handoverDate'),
+    attendance: loadDirectoryForMonth(ATTENDANCE_DIR, month, 'timestamp'),
+    tests: loadDirectoryForMonth(TESTS_DIR, month, 'completedAt'),
+    reviews: loadDirectoryForMonth(REVIEWS_DIR, month, 'createdAt'),
+    productQuestions: loadDirectoryForMonth(PRODUCT_QUESTIONS_DIR, month, null), // Загружаем все, фильтруем потом
+    rko: loadDirectoryForMonth(RKO_DIR, month, 'date'),
+    tasks: loadDirectoryForMonth(TASKS_DIR, month, null),
+    recurringTasks: loadDirectoryForMonth(RECURRING_TASKS_DIR, month, null),
+    envelopes: loadDirectoryForMonth(ENVELOPE_REPORTS_DIR, month, 'createdAt'),
+    penalties: loadPenaltiesForMonth(month),
+  };
+
+  _batchCacheMonth = month;
+
+  const elapsed = Date.now() - startTime;
+  const totalRecords = Object.values(_batchCache).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+  console.log(`[Efficiency] Batch кэш инициализирован: ${totalRecords} записей за ${elapsed}ms`);
+
+  return _batchCache;
+}
+
+/**
+ * Загрузка штрафов за месяц
+ */
+function loadPenaltiesForMonth(month) {
+  const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
+
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  try {
+    const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return content.penalties || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Очистить batch кэш (вызывать после завершения batch операций)
+ */
+function clearBatchCache() {
+  _batchCache = null;
+  _batchCacheMonth = null;
+  console.log('[Efficiency] Batch кэш очищен');
+}
+
+// =====================================================
 // HELPER: Линейная интерполяция для rating-based settings
 // =====================================================
 function interpolateRatingPoints(rating, minRating, maxRating, minPoints, zeroThreshold, maxPoints) {
@@ -647,6 +758,244 @@ function calculateFullEfficiency(employeeId, employeeName, shopAddress, month) {
   }
 }
 
+// =====================================================
+// BATCH OPTIMIZED FUNCTIONS (используют кэш)
+// =====================================================
+
+/**
+ * Рассчитать баллы за пересменку используя кэш
+ */
+function calculateShiftPointsCached(employeeId, employeeName, cache) {
+  if (!cache.shiftReports) return 0;
+
+  const settings = getShiftSettings();
+  let totalPoints = 0;
+
+  for (const report of cache.shiftReports) {
+    if (report.employeeName === employeeName || report.employeePhone === employeeId) {
+      if (report.adminRating && report.adminRating > 0) {
+        totalPoints += interpolateRatingPoints(
+          report.adminRating,
+          settings.minRating, settings.maxRating,
+          settings.minPoints, settings.zeroThreshold, settings.maxPoints
+        );
+      }
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать баллы за пересчёт используя кэш
+ */
+function calculateRecountPointsCached(employeeId, employeeName, cache) {
+  if (!cache.recountReports) return 0;
+
+  const settings = getRecountSettings();
+  let totalPoints = 0;
+
+  for (const report of cache.recountReports) {
+    if (report.employeeName === employeeName || report.employeePhone === employeeId) {
+      if (report.adminRating && report.adminRating > 0) {
+        totalPoints += interpolateRatingPoints(
+          report.adminRating,
+          settings.minRating, settings.maxRating,
+          settings.minPoints, settings.zeroThreshold, settings.maxPoints
+        );
+      }
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать баллы за сдачу смены используя кэш
+ */
+function calculateHandoverPointsCached(employeeId, employeeName, cache) {
+  if (!cache.handoverReports) return 0;
+
+  const settings = getHandoverSettings();
+  let totalPoints = 0;
+
+  for (const report of cache.handoverReports) {
+    if (report.employeeName === employeeName || report.employeePhone === employeeId) {
+      if (report.rating && report.rating > 0) {
+        totalPoints += interpolateRatingPoints(
+          report.rating,
+          settings.minRating, settings.maxRating,
+          settings.minPoints, settings.zeroThreshold, settings.maxPoints
+        );
+      }
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать баллы за посещаемость используя кэш
+ */
+function calculateAttendancePointsCached(employeeId, cache) {
+  if (!cache.attendance) return 0;
+
+  const settings = getAttendanceSettings();
+  let totalPoints = 0;
+
+  for (const record of cache.attendance) {
+    if (record.employeeId === employeeId || record.phone === employeeId) {
+      totalPoints += record.isOnTime ? settings.onTimePoints : settings.latePoints;
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать штрафы используя кэш
+ */
+function calculateAttendancePenaltiesCached(employeeId, cache) {
+  if (!cache.penalties) return 0;
+
+  let totalPoints = 0;
+
+  for (const penalty of cache.penalties) {
+    if (penalty.entityId === employeeId || penalty.employeePhone === employeeId) {
+      totalPoints += penalty.points || 0;
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать баллы за тесты используя кэш
+ */
+function calculateTestPointsCached(employeeId, employeeName, cache) {
+  if (!cache.tests) return 0;
+
+  const settings = getTestSettings();
+  let totalPoints = 0;
+
+  for (const test of cache.tests) {
+    if (test.employeeName === employeeName || test.employeeId === employeeId) {
+      const score = test.score || 0;
+      totalPoints += interpolateTestPoints(
+        score, settings.totalQuestions,
+        settings.minPoints, settings.zeroThreshold, settings.maxPoints
+      );
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать баллы за отзывы используя кэш
+ */
+function calculateReviewsPointsCached(shopAddress, cache) {
+  if (!cache.reviews) return 0;
+
+  let totalPoints = 0;
+
+  for (const review of cache.reviews) {
+    if (review.shopAddress === shopAddress) {
+      const points = review.isPositive
+        ? DEFAULT_REVIEWS_POINTS.positivePoints
+        : DEFAULT_REVIEWS_POINTS.negativePoints;
+      totalPoints += points;
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать баллы за конверты используя кэш
+ */
+function calculateEnvelopePointsCached(employeeName, cache) {
+  if (!cache.envelopes) return 0;
+
+  const settings = getEnvelopeSettings();
+  let totalPoints = 0;
+
+  for (const envelope of cache.envelopes) {
+    if (envelope.employeeName === employeeName) {
+      const isConfirmed = envelope.status === 'confirmed';
+      totalPoints += isConfirmed ? settings.submittedPoints : settings.notSubmittedPoints;
+    }
+  }
+
+  return totalPoints;
+}
+
+/**
+ * Рассчитать эффективность используя кэш (для batch операций)
+ */
+function calculateFullEfficiencyCached(employeeId, employeeName, shopAddress, month, cache) {
+  try {
+    const breakdown = {
+      shift: calculateShiftPointsCached(employeeId, employeeName, cache),
+      recount: calculateRecountPointsCached(employeeId, employeeName, cache),
+      handover: calculateHandoverPointsCached(employeeId, employeeName, cache),
+      attendance: calculateAttendancePointsCached(employeeId, cache),
+      attendancePenalties: calculateAttendancePenaltiesCached(employeeId, cache),
+      test: calculateTestPointsCached(employeeId, employeeName, cache),
+      reviews: calculateReviewsPointsCached(shopAddress, cache),
+      productSearch: calculateProductSearchPoints(employeeId, month), // Оставляем без кэша пока
+      rko: calculateRkoPoints(shopAddress, month), // Оставляем без кэша пока
+      tasks: calculateTasksPoints(employeeId, month), // Оставляем без кэша пока
+      orders: calculateOrdersPoints(employeeId, month), // Оставляем без кэша пока
+      envelope: calculateEnvelopePointsCached(employeeName, cache),
+    };
+
+    const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
+
+    return { total, breakdown };
+  } catch (e) {
+    console.error('Error in calculateFullEfficiencyCached:', e);
+    return { total: 0, breakdown: {} };
+  }
+}
+
+/**
+ * BATCH: Рассчитать эффективность для ВСЕХ сотрудников за один проход
+ * Загружает данные ОДИН раз, затем O(n) расчёт для каждого сотрудника
+ *
+ * @param {Array} employees - Массив объектов сотрудников [{id, name, shopAddress}]
+ * @param {string} month - Месяц в формате YYYY-MM
+ * @returns {Map<string, object>} Map employeeId -> {total, breakdown}
+ */
+function calculateBatchEfficiency(employees, month) {
+  const startTime = Date.now();
+  console.log(`[Efficiency] Batch расчёт для ${employees.length} сотрудников за ${month}`);
+
+  // Инициализируем кэш - загружает ВСЕ данные ОДИН раз
+  const cache = initBatchCache(month);
+
+  const results = new Map();
+
+  for (const emp of employees) {
+    const efficiency = calculateFullEfficiencyCached(
+      emp.id || emp.phone,
+      emp.name,
+      emp.shopAddress,
+      month,
+      cache
+    );
+    results.set(emp.id || emp.phone, efficiency);
+  }
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[Efficiency] Batch расчёт завершён за ${elapsed}ms`);
+
+  // Очищаем кэш после batch операции
+  clearBatchCache();
+
+  return results;
+}
+
 module.exports = {
   calculateFullEfficiency,
   calculateShiftPoints,
@@ -661,4 +1010,9 @@ module.exports = {
   calculateTasksPoints,
   calculateOrdersPoints,
   calculateEnvelopePoints,
+  // Batch optimized functions
+  initBatchCache,
+  clearBatchCache,
+  calculateBatchEfficiency,
+  calculateFullEfficiencyCached,
 };

@@ -12,6 +12,81 @@ const POINTS_SETTINGS_FILE = '/var/www/points-settings/envelope_points_settings.
 // Интервал проверки: 5 минут
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
+// ============================================
+// OPTIMIZATION: Batch loading for scalability
+// ============================================
+
+/**
+ * Загрузить ВСЕ pending отчёты за дату в Map для O(1) поиска
+ * @param {string} date - Дата в формате YYYY-MM-DD
+ * @returns {Map<string, object>} Map ключ: "shopAddress|shiftType|date"
+ */
+function loadAllPendingReportsForDate(date) {
+  const pendingMap = new Map();
+
+  if (!fs.existsSync(ENVELOPE_PENDING_DIR)) {
+    return pendingMap;
+  }
+
+  const files = fs.readdirSync(ENVELOPE_PENDING_DIR);
+
+  for (const file of files) {
+    if (!file.startsWith('pending_env_') || !file.endsWith('.json')) continue;
+
+    try {
+      const filePath = path.join(ENVELOPE_PENDING_DIR, file);
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      if (data.date === date) {
+        const key = `${data.shopAddress}|${data.shiftType}|${data.date}`;
+        data._filePath = filePath;
+        pendingMap.set(key, data);
+      }
+    } catch (error) {
+      console.error(`[Envelope] Ошибка чтения ${file}:`, error.message);
+    }
+  }
+
+  console.log(`[Envelope] Загружено ${pendingMap.size} pending отчётов за ${date}`);
+  return pendingMap;
+}
+
+/**
+ * Загрузить ВСЕ сданные отчёты за дату в Set для O(1) проверки
+ * @param {string} date - Дата в формате YYYY-MM-DD
+ * @returns {Set<string>} Set ключей: "shopAddress|shiftType|date"
+ */
+function loadAllSubmittedReportsForDate(date) {
+  const submittedSet = new Set();
+
+  if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+    return submittedSet;
+  }
+
+  const files = fs.readdirSync(ENVELOPE_REPORTS_DIR);
+
+  for (const file of files) {
+    if (!file.endsWith('.json')) continue;
+
+    try {
+      const filePath = path.join(ENVELOPE_REPORTS_DIR, file);
+      const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+      const reportDate = report.createdAt ? report.createdAt.split('T')[0] : null;
+
+      if (reportDate === date) {
+        const key = `${report.shopAddress}|${report.shiftType}|${reportDate}`;
+        submittedSet.add(key);
+      }
+    } catch (error) {
+      console.error(`[Envelope] Ошибка чтения ${file}:`, error.message);
+    }
+  }
+
+  console.log(`[Envelope] Загружено ${submittedSet.size} сданных отчётов за ${date}`);
+  return submittedSet;
+}
+
 /**
  * Получение московского времени (UTC+3)
  */
@@ -166,8 +241,10 @@ function checkIfEnvelopeSubmitted(shopAddress, shiftType, date) {
 
 /**
  * Создание pending отчетов для всех магазинов
+ * OPTIMIZED: Загружает все данные ОДИН раз, затем O(1) проверки
  */
 async function generatePendingReports(shiftType) {
+  const startTime = Date.now();
   console.log(`[Envelope Automation] Создание pending отчетов для ${shiftType}`);
 
   // 1. Загрузить все магазины
@@ -186,22 +263,27 @@ async function generatePendingReports(shiftType) {
   const moscow = getMoscowTime();
   const today = moscow.toISOString().split('T')[0]; // YYYY-MM-DD
 
+  // OPTIMIZATION: Загрузить ВСЕ pending и submitted отчёты ОДИН раз
+  const pendingMap = loadAllPendingReportsForDate(today);
+  const submittedSet = loadAllSubmittedReportsForDate(today);
+
   let created = 0;
+  let skippedPending = 0;
+  let skippedSubmitted = 0;
 
   for (const shop of shops) {
     const shopAddress = shop.address;
+    const lookupKey = `${shopAddress}|${shiftType}|${today}`;
 
-    // Проверить: уже существует pending отчет?
-    const existingPending = findPendingReport(shopAddress, shiftType, today);
-    if (existingPending) {
-      console.log(`[Envelope] Pending уже существует: ${shopAddress}`);
+    // O(1) проверка: уже существует pending отчет?
+    if (pendingMap.has(lookupKey)) {
+      skippedPending++;
       continue;
     }
 
-    // Проверить: уже сдан отчет?
-    const submitted = checkIfEnvelopeSubmitted(shopAddress, shiftType, today);
-    if (submitted) {
-      console.log(`[Envelope] Конверт уже сдан: ${shopAddress}`);
+    // O(1) проверка: уже сдан отчет?
+    if (submittedSet.has(lookupKey)) {
+      skippedSubmitted++;
       continue;
     }
 
@@ -223,34 +305,49 @@ async function generatePendingReports(shiftType) {
     created++;
   }
 
-  console.log(`[Envelope] Создано pending отчетов: ${created}`);
+  const elapsed = Date.now() - startTime;
+  console.log(`[Envelope] Создано pending: ${created}, пропущено (pending): ${skippedPending}, пропущено (сдано): ${skippedSubmitted}, время: ${elapsed}ms`);
   return created;
 }
 
 /**
  * Проверка дедлайнов pending отчетов
+ * OPTIMIZED: Загружает submitted отчёты ОДИН раз
  */
 async function checkPendingDeadlines() {
-  const reports = loadTodayPendingReports();
+  const startTime = Date.now();
   const moscow = getMoscowTime();
+  const today = moscow.toISOString().split('T')[0];
   const settings = getEnvelopeSettings();
 
+  // OPTIMIZATION: Загрузить ВСЕ pending отчёты за сегодня через batch функцию
+  const pendingMap = loadAllPendingReportsForDate(today);
+  const reports = Array.from(pendingMap.values());
+
+  if (reports.length === 0) {
+    return [];
+  }
+
+  // OPTIMIZATION: Загрузить ВСЕ submitted отчёты ОДИН раз
+  const submittedSet = loadAllSubmittedReportsForDate(today);
+
   const failedReports = [];
+  let removedCount = 0;
 
   for (const report of reports) {
     if (report.status !== 'pending') continue;
 
-    // 1. Проверить: может быть конверт уже сдан?
-    const submitted = checkIfEnvelopeSubmitted(
-      report.shopAddress,
-      report.shiftType,
-      report.date
-    );
+    const lookupKey = `${report.shopAddress}|${report.shiftType}|${report.date}`;
 
-    if (submitted) {
+    // O(1) проверка: может быть конверт уже сдан?
+    if (submittedSet.has(lookupKey)) {
       // Удалить pending файл
-      fs.unlinkSync(report._filePath);
-      console.log(`[Envelope] Pending удален (сдан): ${report.shopAddress}`);
+      try {
+        fs.unlinkSync(report._filePath);
+        removedCount++;
+      } catch (e) {
+        console.error(`[Envelope] Ошибка удаления pending: ${e.message}`);
+      }
       continue;
     }
 
@@ -280,6 +377,9 @@ async function checkPendingDeadlines() {
   if (failedReports.length > 0) {
     await sendAdminFailedNotification(failedReports.length);
   }
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[Envelope] Проверка дедлайнов: ${failedReports.length} failed, ${removedCount} удалено (сданы), время: ${elapsed}ms`);
 
   return failedReports;
 }

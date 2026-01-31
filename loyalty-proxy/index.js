@@ -10,6 +10,29 @@ const { exec, spawn } = require('child_process');
 const util = require('util');
 const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
+const { preloadAdminCache, invalidateCache } = require('./utils/admin_cache');
+
+// ============================================
+// SECURITY: Global Error Handlers
+// ============================================
+// Предотвращение падения сервера от неотловленных Promise rejection
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ UNHANDLED REJECTION:', reason);
+  console.error('Promise:', promise);
+  // Не завершаем процесс, просто логируем
+});
+
+// Предотвращение падения сервера от неотловленных исключений
+process.on('uncaughtException', (error) => {
+  console.error('🚨 UNCAUGHT EXCEPTION:', error);
+  // Для критических ошибок лучше перезапустить через PM2
+  // process.exit(1);
+});
+
+// Логируем предупреждения
+process.on('warning', (warning) => {
+  console.warn('⚠️ NODE WARNING:', warning.name, warning.message);
+});
 
 // Безопасная функция для запуска Python скриптов (защита от Command Injection)
 function spawnPython(args) {
@@ -70,6 +93,59 @@ const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 const { setupMediaAPI } = require("./api/media_api");
 
+// ============================================
+// SECURITY: API Key Authentication
+// ============================================
+// Генерация ключа: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+const API_KEY = process.env.API_KEY || null;
+const API_KEY_ENABLED = process.env.API_KEY_ENABLED === 'true';
+
+// Публичные endpoints которые не требуют аутентификации
+const PUBLIC_ENDPOINTS = [
+  '/health',
+  '/',           // Proxy для Google Apps Script (регистрация, лояльность)
+  '/upload-photo', // Загрузка фото (временно публичный)
+];
+
+const apiKeyMiddleware = (req, res, next) => {
+  // Если аутентификация отключена - пропускаем
+  if (!API_KEY_ENABLED || !API_KEY) {
+    return next();
+  }
+
+  // Проверяем публичные endpoints
+  if (PUBLIC_ENDPOINTS.some(ep => req.path === ep || req.path.startsWith(ep))) {
+    return next();
+  }
+
+  // Проверяем API ключ
+  const providedKey = req.headers['x-api-key'];
+  if (!providedKey) {
+    console.warn(`⚠️ API request without key: ${req.method} ${req.path}`);
+    return res.status(401).json({
+      success: false,
+      error: 'API key required. Add X-API-Key header.'
+    });
+  }
+
+  if (providedKey !== API_KEY) {
+    console.warn(`⚠️ Invalid API key: ${req.method} ${req.path}`);
+    return res.status(403).json({
+      success: false,
+      error: 'Invalid API key'
+    });
+  }
+
+  next();
+};
+
+// Применяем middleware (только если включено)
+if (API_KEY_ENABLED && API_KEY) {
+  console.log('✅ API Key authentication ENABLED');
+} else {
+  console.log('⚠️ API Key authentication DISABLED (set API_KEY and API_KEY_ENABLED=true to enable)');
+}
+
 // Rate Limiting - защита от DDoS и brute-force атак
 let rateLimit;
 try {
@@ -119,18 +195,20 @@ const corsOptions = {
       callback(null, true);
     } else {
       console.warn(`⚠️ CORS blocked origin: ${origin}`);
-      callback(null, true); // Пока разрешаем, но логируем (для отладки)
-      // callback(new Error('Not allowed by CORS')); // Раскомментировать для строгого режима
+      callback(new Error('Not allowed by CORS'), false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
 };
 app.use(cors(corsOptions));
 
 // Trust proxy для корректной работы за nginx/reverse proxy
 app.set('trust proxy', 1);
+
+// Применяем API Key middleware
+app.use(apiKeyMiddleware);
 
 // Применяем Rate Limiting если пакет установлен
 if (rateLimit) {
@@ -171,6 +249,55 @@ if (rateLimit) {
 // Статические файлы для редактора координат
 app.use('/static', express.static('/var/www/html'));
 
+// ============================================
+// SECURITY: File Type Validation для всех uploads
+// ============================================
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const allowedMediaTypes = [...allowedImageTypes, 'video/mp4', 'video/quicktime'];
+
+const imageFileFilter = (req, file, cb) => {
+  if (allowedImageTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Invalid file type: ${file.mimetype}. Only JPEG, PNG, GIF, WebP allowed.`), false);
+  }
+};
+
+const mediaFileFilter = (req, file, cb) => {
+  if (allowedMediaTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Invalid file type: ${file.mimetype}. Only images and videos allowed.`), false);
+  }
+};
+
+// ============================================
+// SECURITY: Path Traversal Protection
+// ============================================
+/**
+ * Sanitize ID to prevent path traversal attacks
+ * Removes any characters that could be used for directory traversal
+ * @param {string} id - The ID to sanitize
+ * @returns {string} - Sanitized ID safe for file paths
+ */
+function sanitizeId(id) {
+  if (!id || typeof id !== 'string') return '';
+  // Remove path traversal characters and keep only safe chars
+  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+}
+
+/**
+ * Validate that resolved path stays within base directory
+ * @param {string} baseDir - Base directory path
+ * @param {string} filePath - Full file path to validate
+ * @returns {boolean} - True if path is safe
+ */
+function isPathSafe(baseDir, filePath) {
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedPath = path.resolve(filePath);
+  return resolvedPath.startsWith(resolvedBase);
+}
+
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -182,15 +309,20 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Используем оригинальное имя файла
-    const safeName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    cb(null, safeName);
+    // SECURITY: Защита от path traversal
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    // Удаляем любые символы пути и оставляем только безопасные символы
+    const safeName = path.basename(originalName).replace(/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/g, '_');
+    // Добавляем timestamp для уникальности
+    const uniqueName = `${Date.now()}_${safeName}`;
+    cb(null, uniqueName);
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: imageFileFilter
 });
 
 // Настройка multer для загрузки эталонных фото сдачи смены
@@ -204,15 +336,18 @@ const shiftHandoverPhotoStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Используем оригинальное имя файла
-    const safeName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    cb(null, safeName);
+    // SECURITY: Защита от path traversal
+    const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const safeName = path.basename(originalName).replace(/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/g, '_');
+    const uniqueName = `${Date.now()}_${safeName}`;
+    cb(null, uniqueName);
   }
 });
 
 const uploadShiftHandoverPhoto = multer({
   storage: shiftHandoverPhotoStorage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: imageFileFilter
 });
 
 // Настройка multer для загрузки фото вопросов о товарах
@@ -226,16 +361,18 @@ const productQuestionPhotoStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // Генерируем уникальное имя файла
+    // SECURITY: Защита от path traversal
     const timestamp = Date.now();
-    const safeName = `product_question_${timestamp}_${file.originalname}`;
+    const originalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/g, '_');
+    const safeName = `product_question_${timestamp}_${originalName}`;
     cb(null, safeName);
   }
 });
 
 const uploadProductQuestionPhoto = multer({
   storage: productQuestionPhotoStorage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: imageFileFilter
 });
 
 // Настройка multer для загрузки медиа в чате
@@ -249,7 +386,9 @@ const chatMediaStorage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now();
-    const ext = file.originalname.split('.').pop() || 'jpg';
+    // SECURITY: Безопасное извлечение расширения
+    const safeBasename = path.basename(file.originalname);
+    const ext = (safeBasename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '');
     const safeName = `chat_${timestamp}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
     cb(null, safeName);
   }
@@ -257,7 +396,8 @@ const chatMediaStorage = multer.diskStorage({
 
 const uploadChatMedia = multer({
   storage: chatMediaStorage,
-  limits: { fileSize: 20 * 1024 * 1024 } // 20MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: mediaFileFilter
 });
 
 // URL Google Apps Script для регистрации, лояльности и ролей
@@ -1260,16 +1400,18 @@ const employeePhotoStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const phone = req.body.phone || 'unknown';
-    const photoType = req.body.photoType || 'photo';
+    // SECURITY: Sanitize phone and photoType to prevent path traversal
+    const phone = (req.body.phone || 'unknown').replace(/[^a-zA-Z0-9_\-\+]/g, '_');
+    const photoType = (req.body.photoType || 'photo').replace(/[^a-zA-Z0-9_\-]/g, '_');
     const safeName = `${phone}_${photoType}.jpg`;
     cb(null, safeName);
   }
 });
 
-const uploadEmployeePhoto = multer({ 
+const uploadEmployeePhoto = multer({
   storage: employeePhotoStorage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: imageFileFilter
 });
 
 // Эндпоинт для загрузки фото сотрудника
@@ -1612,7 +1754,12 @@ app.post('/api/employees', async (req, res) => {
     
     fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
     console.log('Сотрудник создан:', employeeFile);
-    
+
+    // SCALABILITY: Инвалидируем кэш isAdmin при создании сотрудника
+    if (employee.phone) {
+      invalidateCache(employee.phone);
+    }
+
     res.json({ success: true, employee });
   } catch (error) {
     console.error('Ошибка создания сотрудника:', error);
@@ -1668,7 +1815,10 @@ app.put('/api/employees/:id', async (req, res) => {
     
     fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
     console.log('Сотрудник обновлен:', employeeFile);
-    
+
+    // SCALABILITY: Инвалидируем кэш isAdmin при изменении сотрудника
+    invalidateCache(employee.phone);
+
     res.json({ success: true, employee });
   } catch (error) {
     console.error('Ошибка обновления сотрудника:', error);
@@ -1681,20 +1831,33 @@ app.delete('/api/employees/:id', (req, res) => {
   try {
     const id = req.params.id;
     console.log('DELETE /api/employees:', id);
-    
+
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
-    
+
     if (!fs.existsSync(employeeFile)) {
       return res.status(404).json({
         success: false,
         error: 'Сотрудник не найден'
       });
     }
-    
+
+    // SCALABILITY: Читаем телефон перед удалением для инвалидации кэша
+    let employeePhone = null;
+    try {
+      const content = fs.readFileSync(employeeFile, 'utf8');
+      const employee = JSON.parse(content);
+      employeePhone = employee.phone;
+    } catch (e) { /* ignore */ }
+
     fs.unlinkSync(employeeFile);
     console.log('Сотрудник удален:', employeeFile);
-    
+
+    // SCALABILITY: Инвалидируем кэш isAdmin при удалении сотрудника
+    if (employeePhone) {
+      invalidateCache(employeePhone);
+    }
+
     res.json({ success: true, message: 'Сотрудник удален' });
   } catch (error) {
     console.error('Ошибка удаления сотрудника:', error);
@@ -6248,7 +6411,11 @@ app.post('/api/training-articles', async (req, res) => {
 
 app.put('/api/training-articles/:id', async (req, res) => {
   try {
-    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${safeId}.json`);
+    if (!isPathSafe(TRAINING_ARTICLES_DIR, articleFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid article ID' });
+    }
     if (!fs.existsSync(articleFile)) {
       return res.status(404).json({ success: false, error: 'Статья не найдена' });
     }
@@ -6273,7 +6440,11 @@ app.put('/api/training-articles/:id', async (req, res) => {
 
 app.delete('/api/training-articles/:id', async (req, res) => {
   try {
-    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const articleFile = path.join(TRAINING_ARTICLES_DIR, `${safeId}.json`);
+    if (!isPathSafe(TRAINING_ARTICLES_DIR, articleFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid article ID' });
+    }
     if (!fs.existsSync(articleFile)) {
       return res.status(404).json({ success: false, error: 'Статья не найдена' });
     }
@@ -6299,7 +6470,10 @@ const trainingArticleMediaStorage = multer.diskStorage({
     cb(null, TRAINING_ARTICLES_MEDIA_DIR);
   },
   filename: function (req, file, cb) {
-    const uniqueName = `training_img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${path.extname(file.originalname)}`;
+    // SECURITY: Безопасное извлечение расширения
+    const safeBasename = path.basename(file.originalname);
+    const ext = path.extname(safeBasename).replace(/[^a-zA-Z0-9\.]/g, '') || '.jpg';
+    const uniqueName = `training_img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${ext}`;
     cb(null, uniqueName);
   }
 });
@@ -6410,7 +6584,11 @@ app.post('/api/test-questions', async (req, res) => {
 
 app.put('/api/test-questions/:id', async (req, res) => {
   try {
-    const questionFile = path.join(TEST_QUESTIONS_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const questionFile = path.join(TEST_QUESTIONS_DIR, `${safeId}.json`);
+    if (!isPathSafe(TEST_QUESTIONS_DIR, questionFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid question ID' });
+    }
     if (!fs.existsSync(questionFile)) {
       return res.status(404).json({ success: false, error: 'Вопрос не найден' });
     }
@@ -6431,7 +6609,11 @@ app.put('/api/test-questions/:id', async (req, res) => {
 
 app.delete('/api/test-questions/:id', async (req, res) => {
   try {
-    const questionFile = path.join(TEST_QUESTIONS_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const questionFile = path.join(TEST_QUESTIONS_DIR, `${safeId}.json`);
+    if (!isPathSafe(TEST_QUESTIONS_DIR, questionFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid question ID' });
+    }
     if (!fs.existsSync(questionFile)) {
       return res.status(404).json({ success: false, error: 'Вопрос не найден' });
     }
@@ -6683,7 +6865,11 @@ app.post('/api/reviews', async (req, res) => {
 
 app.get('/api/reviews/:id', async (req, res) => {
   try {
-    const reviewFile = path.join(REVIEWS_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+    if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID' });
+    }
     if (!fs.existsSync(reviewFile)) {
       return res.status(404).json({ success: false, error: 'Отзыв не найден' });
     }
@@ -6697,7 +6883,11 @@ app.get('/api/reviews/:id', async (req, res) => {
 
 app.post('/api/reviews/:id/messages', async (req, res) => {
   try {
-    const reviewFile = path.join(REVIEWS_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+    if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID' });
+    }
     if (!fs.existsSync(reviewFile)) {
       return res.status(404).json({ success: false, error: 'Отзыв не найден' });
     }
@@ -6754,7 +6944,11 @@ app.post('/api/reviews/:id/messages', async (req, res) => {
 // POST /api/reviews/:id/mark-read - Отметить диалог как прочитанный
 app.post('/api/reviews/:id/mark-read', async (req, res) => {
   try {
-    const reviewFile = path.join(REVIEWS_DIR, `${req.params.id}.json`);
+    const safeId = sanitizeId(req.params.id);
+    const reviewFile = path.join(REVIEWS_DIR, `${safeId}.json`);
+    if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID' });
+    }
     if (!fs.existsSync(reviewFile)) {
       return res.status(404).json({ success: false, error: 'Отзыв не найден' });
     }
@@ -6841,8 +7035,11 @@ app.get('/api/recipes', async (req, res) => {
 // GET /api/recipes/:id - получить рецепт по ID
 app.get('/api/recipes/:id', async (req, res) => {
   try {
-    const recipeFile = path.join(RECIPES_DIR, `${req.params.id}.json`);
-    
+    const safeId = sanitizeId(req.params.id);
+    const recipeFile = path.join(RECIPES_DIR, `${safeId}.json`);
+    if (!isPathSafe(RECIPES_DIR, recipeFile)) {
+      return res.status(400).json({ success: false, error: 'Invalid recipe ID' });
+    }
     if (!fs.existsSync(recipeFile)) {
       return res.status(404).json({ success: false, error: 'Рецепт не найден' });
     }
@@ -6858,9 +7055,11 @@ app.get('/api/recipes/:id', async (req, res) => {
 // GET /api/recipes/photo/:recipeId - получить фото рецепта
 app.get('/api/recipes/photo/:recipeId', async (req, res) => {
   try {
-    const { recipeId } = req.params;
-    const photoPath = path.join(RECIPE_PHOTOS_DIR, `${recipeId}.jpg`);
-
+    const safeRecipeId = sanitizeId(req.params.recipeId);
+    const photoPath = path.join(RECIPE_PHOTOS_DIR, `${safeRecipeId}.jpg`);
+    if (!isPathSafe(RECIPE_PHOTOS_DIR, photoPath)) {
+      return res.status(400).json({ success: false, error: 'Invalid recipe ID' });
+    }
     if (fs.existsSync(photoPath)) {
       res.sendFile(photoPath);
     } else {
@@ -7916,6 +8115,10 @@ const server = http.createServer(app);
 // Инициализируем WebSocket для чата
 setupChatWebSocket(server);
 
+// SCALABILITY: Предзагрузка кэша админов при старте сервера
+// Это предотвращает сканирование всех файлов сотрудников при каждом запросе
+preloadAdminCache();
+
 server.listen(3000, () => console.log("Proxy listening on port 3000 (HTTP + WebSocket)"));
 setupRecountPointsAPI(app);
 setupReferralsAPI(app);
@@ -7960,3 +8163,45 @@ startEnvelopeAutomationScheduler();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);
+
+// ============================================
+// HEALTH CHECK ENDPOINT
+// ============================================
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: '2.0.0'
+  });
+});
+
+// ============================================
+// GRACEFUL SHUTDOWN
+// ============================================
+const gracefulShutdown = (signal) => {
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+
+  // Остановить приём новых соединений
+  server.close((err) => {
+    if (err) {
+      console.error('❌ Error during server close:', err);
+      process.exit(1);
+    }
+
+    console.log('✅ HTTP server closed');
+    console.log('✅ All connections terminated');
+    console.log('👋 Graceful shutdown complete');
+    process.exit(0);
+  });
+
+  // Принудительное завершение через 10 секунд если не успели
+  setTimeout(() => {
+    console.error('⚠️ Forced shutdown after 10s timeout');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

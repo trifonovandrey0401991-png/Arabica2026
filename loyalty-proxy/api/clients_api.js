@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { sendPushNotification, sendPushToPhone } = require('../report_notifications_api');
+const { isAdminPhone } = require('../utils/admin_cache');
 
 const CLIENTS_DIR = '/var/www/clients';
 const CLIENT_DIALOGS_DIR = '/var/www/client-dialogs';
@@ -11,6 +12,19 @@ const CLIENT_MESSAGES_MANAGEMENT_DIR = '/var/www/client-messages-management';
 [CLIENTS_DIR, CLIENT_DIALOGS_DIR, CLIENT_MESSAGES_DIR, CLIENT_MESSAGES_NETWORK_DIR, CLIENT_MESSAGES_MANAGEMENT_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
+
+// SECURITY: Проверка что запрос идёт от реального владельца телефона
+function verifyClientPhone(req, urlPhone) {
+  // Клиент должен передать свой телефон в header X-Client-Phone или в query/body
+  const headerPhone = req.headers['x-client-phone'];
+  const queryPhone = req.query.clientPhone;
+  const bodyPhone = req.body?.clientPhone || req.body?.senderPhone;
+
+  const clientPhone = (headerPhone || queryPhone || bodyPhone || '').replace(/[\s+]/g, '');
+  const normalizedUrlPhone = urlPhone.replace(/[\s+]/g, '');
+
+  return clientPhone === normalizedUrlPhone;
+}
 
 function setupClientsAPI(app) {
   // ===== CLIENTS =====
@@ -138,6 +152,17 @@ function setupClientsAPI(app) {
   app.get('/api/client-dialogs/:phone/network', async (req, res) => {
     try {
       const phone = req.params.phone.replace(/[\s+]/g, '');
+
+      // SECURITY: Проверка авторизации - клиент может читать только свои диалоги
+      // Админ может читать любые диалоги
+      const requesterPhone = (req.query.clientPhone || req.headers['x-client-phone'] || '').replace(/[\s+]/g, '');
+      const isAdmin = isAdminPhone(requesterPhone);
+
+      if (!isAdmin && requesterPhone !== phone) {
+        console.warn(`SECURITY: Попытка доступа к чужому диалогу network: ${requesterPhone} -> ${phone}`);
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
       let messages = [];
@@ -158,7 +183,15 @@ function setupClientsAPI(app) {
   app.post('/api/client-dialogs/:phone/network/reply', async (req, res) => {
     try {
       const phone = req.params.phone.replace(/[\s+]/g, '');
-      const { text, imageUrl, clientName } = req.body;
+      const { text, imageUrl, clientName, senderPhone } = req.body;
+
+      // SECURITY: Проверка что клиент отправляет сообщение от своего имени
+      const normalizedSenderPhone = (senderPhone || '').replace(/[\s+]/g, '');
+      if (normalizedSenderPhone && normalizedSenderPhone !== phone) {
+        console.warn(`SECURITY: Попытка отправки сообщения от чужого имени: ${normalizedSenderPhone} -> ${phone}`);
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
       let dialog = { phone, messages: [] };
@@ -230,6 +263,17 @@ function setupClientsAPI(app) {
   app.get('/api/client-dialogs/:phone/management', async (req, res) => {
     try {
       const phone = req.params.phone.replace(/[\s+]/g, '');
+
+      // SECURITY: Проверка авторизации - клиент может читать только свои диалоги
+      // Админ может читать любые диалоги
+      const requesterPhone = (req.query.clientPhone || req.headers['x-client-phone'] || '').replace(/[\s+]/g, '');
+      const isAdmin = isAdminPhone(requesterPhone);
+
+      if (!isAdmin && requesterPhone !== phone) {
+        console.warn(`SECURITY: Попытка доступа к чужому диалогу management: ${requesterPhone} -> ${phone}`);
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       let messages = [];
@@ -250,7 +294,15 @@ function setupClientsAPI(app) {
   app.post('/api/client-dialogs/:phone/management/reply', async (req, res) => {
     try {
       const phone = req.params.phone.replace(/[\s+]/g, '');
-      const { text, imageUrl, clientName } = req.body;
+      const { text, imageUrl, clientName, senderPhone } = req.body;
+
+      // SECURITY: Проверка что клиент отправляет сообщение от своего имени
+      const normalizedSenderPhone = (senderPhone || '').replace(/[\s+]/g, '');
+      if (normalizedSenderPhone && normalizedSenderPhone !== phone) {
+        console.warn(`SECURITY: Попытка отправки management сообщения от чужого имени: ${normalizedSenderPhone} -> ${phone}`);
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       let dialog = { phone, messages: [] };
@@ -331,7 +383,15 @@ function setupClientsAPI(app) {
   app.post('/api/client-dialogs/:phone/management/send', async (req, res) => {
     try {
       const phone = req.params.phone.replace(/[\s+]/g, '');
-      const { text, imageUrl } = req.body;
+      const { text, imageUrl, senderPhone } = req.body;
+
+      // SECURITY: Только админы могут отправлять сообщения от имени руководства
+      const normalizedSenderPhone = (senderPhone || '').replace(/[\s+]/g, '');
+      if (!isAdminPhone(normalizedSenderPhone)) {
+        console.warn(`SECURITY: Неадмин пытается отправить management сообщение: ${normalizedSenderPhone}`);
+        return res.status(403).json({ success: false, error: 'Access denied - admin only' });
+      }
+
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       let dialog = { phone, messages: [] };
@@ -354,7 +414,7 @@ function setupClientsAPI(app) {
       dialog.messages.push(message);
 
       fs.writeFileSync(filePath, JSON.stringify(dialog, null, 2), 'utf8');
-      console.log(`Сообщение от руководства клиенту ${phone} сохранено`);
+      console.log(`Сообщение от руководства клиенту ${phone} сохранено (от админа: ${normalizedSenderPhone})`);
 
       // Отправить push-уведомление клиенту
       await sendPushToPhone(

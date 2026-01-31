@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { isAdminPhone } = require('../utils/admin_cache');
 
 const SHIFT_TRANSFERS_FILE = '/var/www/shift-transfers.json';
 const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
@@ -589,8 +590,18 @@ function setupShiftTransfersAPI(app) {
   app.put('/api/shift-transfers/:requestId/read', async (req, res) => {
     try {
       const { requestId } = req.params;
-      const { isAdmin } = req.body;
-      console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'isAdmin:', isAdmin);
+      const { phone, isAdmin } = req.body;
+
+      // SECURITY FIX: Проверяем isAdmin по базе данных если передан phone
+      // Если phone не передан - используем isAdmin из body (для обратной совместимости)
+      let isAdminUser = false;
+      if (phone) {
+        isAdminUser = isAdminPhone(phone);
+        console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'phone:', phone, 'isAdmin:', isAdminUser, '(verified from DB)');
+      } else {
+        isAdminUser = isAdmin === true || isAdmin === 'true';
+        console.log('PUT /api/shift-transfers/:requestId/read:', requestId, 'isAdmin:', isAdminUser, '(from body - DEPRECATED)');
+      }
 
       const requests = loadShiftTransfers();
       const index = requests.findIndex(r => r.id === requestId);
@@ -599,7 +610,7 @@ function setupShiftTransfersAPI(app) {
         return res.status(404).json({ success: false, error: 'Request not found' });
       }
 
-      if (isAdmin) {
+      if (isAdminUser) {
         requests[index].isReadByAdmin = true;
       } else {
         requests[index].isReadByRecipient = true;

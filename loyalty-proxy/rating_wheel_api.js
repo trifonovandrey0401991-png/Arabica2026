@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
-const { calculateFullEfficiency } = require('./efficiency_calc');
+const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('./efficiency_calc');
 
 const RATINGS_DIR = '/var/www/employee-ratings';
 const FORTUNE_WHEEL_DIR = '/var/www/fortune-wheel';
@@ -159,20 +159,40 @@ function getActiveEmployees() {
 }
 
 // Рассчитать рейтинг для всех сотрудников за месяц
+// OPTIMIZED: Загружает все данные ОДИН раз, затем O(n) расчёт
 function calculateRatings(month) {
+  const startTime = Date.now();
+  console.log(`[Rating] Начало расчёта рейтинга за ${month}`);
+
   const employees = getActiveEmployees();
   const ratings = [];
 
-  for (const emp of employees) {
-    // Подсчёт смен для нормализации
-    const shiftsCount = getShiftsCount(emp.id, month);
+  // OPTIMIZATION: Предзагружаем ВСЕ данные за месяц ОДИН раз
+  const cache = initBatchCache(month);
 
-    // ПОЛНАЯ эффективность (все 10 категорий)
-    const efficiency = getFullEfficiency(emp.id, emp.name, month);
+  // OPTIMIZATION: Загружаем attendance и referral данные ОДИН раз
+  const attendanceData = loadAllAttendanceForMonth(month);
+  const referralData = loadAllReferralsForMonth(month);
+  const referralSettings = loadReferralSettings();
+
+  console.log(`[Rating] Предзагрузка завершена: ${attendanceData.length} attendance, ${referralData.length} referrals`);
+
+  for (const emp of employees) {
+    // O(1) подсчёт смен из предзагруженных данных
+    const shiftsCount = countShiftsFromCache(emp.id, attendanceData);
+
+    // ПОЛНАЯ эффективность используя кэш (O(n) вместо O(n×m))
+    const efficiency = calculateFullEfficiencyCached(emp.id, emp.name, '', month, cache);
     const totalPoints = efficiency.total;
 
-    // Рефералы с милестоунами
-    const referralPoints = getReferralPoints(emp.id, month);
+    // O(1) подсчёт рефералов из предзагруженных данных
+    const referralCount = countReferralsFromCache(emp.id, referralData);
+    const referralPoints = calculateReferralPointsWithMilestone(
+      referralCount,
+      referralSettings.basePoints,
+      referralSettings.milestoneThreshold,
+      referralSettings.milestonePoints
+    );
 
     // Нормализованный рейтинг = (баллы / смены) + рефералы
     const normalizedRating = shiftsCount > 0
@@ -190,6 +210,9 @@ function calculateRatings(month) {
     });
   }
 
+  // Очищаем batch кэш
+  clearBatchCache();
+
   // Сортировка по нормализованному рейтингу (по убыванию)
   ratings.sort((a, b) => b.normalizedRating - a.normalizedRating);
 
@@ -199,7 +222,124 @@ function calculateRatings(month) {
     r.totalEmployees = ratings.length;
   });
 
+  const elapsed = Date.now() - startTime;
+  console.log(`[Rating] Расчёт завершён за ${elapsed}ms для ${employees.length} сотрудников`);
+
   return ratings;
+}
+
+// OPTIMIZATION: Загрузить ВСЕ attendance записи за месяц ОДИН раз
+function loadAllAttendanceForMonth(month) {
+  const records = [];
+
+  if (!fs.existsSync(ATTENDANCE_DIR)) return records;
+
+  try {
+    const files = fs.readdirSync(ATTENDANCE_DIR);
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      try {
+        const content = fs.readFileSync(path.join(ATTENDANCE_DIR, file), 'utf8');
+        const record = JSON.parse(content);
+
+        const recordDate = record.timestamp || record.createdAt;
+        if (recordDate && recordDate.startsWith(month)) {
+          records.push(record);
+        }
+      } catch (e) { /* skip */ }
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки attendance:', e);
+  }
+
+  return records;
+}
+
+// OPTIMIZATION: Загрузить ВСЕ referral записи за месяц ОДИН раз
+function loadAllReferralsForMonth(month) {
+  const referralsDir = '/var/www/referral-clients';
+  const records = [];
+
+  if (!fs.existsSync(referralsDir)) return records;
+
+  try {
+    const files = fs.readdirSync(referralsDir);
+
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+
+      try {
+        const content = fs.readFileSync(path.join(referralsDir, file), 'utf8');
+        const client = JSON.parse(content);
+
+        if (client.referredAt && client.referredAt.startsWith(month)) {
+          records.push(client);
+        }
+      } catch (e) { /* skip */ }
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки referrals:', e);
+  }
+
+  return records;
+}
+
+// Загрузить настройки рефералов
+function loadReferralSettings() {
+  const settingsPath = '/var/www/points-settings/referrals.json';
+
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+
+      // ОБРАТНАЯ СОВМЕСТИМОСТЬ
+      if (settings.pointsPerReferral !== undefined && settings.basePoints === undefined) {
+        return {
+          basePoints: settings.pointsPerReferral,
+          milestoneThreshold: 0,
+          milestonePoints: settings.pointsPerReferral
+        };
+      }
+
+      return {
+        basePoints: settings.basePoints !== undefined ? settings.basePoints : 1,
+        milestoneThreshold: settings.milestoneThreshold !== undefined ? settings.milestoneThreshold : 0,
+        milestonePoints: settings.milestonePoints !== undefined ? settings.milestonePoints : 1
+      };
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки настроек рефералов:', e);
+  }
+
+  return { basePoints: 1, milestoneThreshold: 0, milestonePoints: 1 };
+}
+
+// O(n) подсчёт смен из кэша вместо O(m) сканирования директории
+function countShiftsFromCache(employeeId, attendanceData) {
+  let count = 0;
+
+  for (const record of attendanceData) {
+    if (record.employeeId === employeeId || record.phone === employeeId) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
+// O(n) подсчёт рефералов из кэша
+function countReferralsFromCache(employeeId, referralData) {
+  let count = 0;
+
+  for (const client of referralData) {
+    if (client.referredByEmployeeId === employeeId) {
+      count++;
+    }
+  }
+
+  return count;
 }
 
 // Дефолтные секторы колеса

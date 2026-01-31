@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/work_schedule_model.dart';
 import '../models/shift_transfer_model.dart';
@@ -1854,7 +1855,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
     }
 
     Logger.info('✅ Все данные загружены, показываем диалог автозаполнения');
-    print('🔵 ПЕРЕД showDialog');
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -1869,17 +1869,12 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       ),
     );
 
-    print('🔵 ПОСЛЕ showDialog, result: $result');
-    print('🔵 result != null: ${result != null}');
     Logger.info('📥 Диалог закрыт, результат: ${result != null ? "получен" : "null"}');
 
     if (result != null) {
-      print('🔵 Внутри if, вызываем _performAutoFill');
       Logger.debug('   startDay: ${result['startDay']}, endDay: ${result['endDay']}, replace: ${result['replaceExisting']}');
       await _performAutoFill(result);
-      print('🔵 _performAutoFill завершен');
     } else {
-      print('🔵 result == null, пропускаем');
       Logger.warning('⚠️ Результат диалога = null, автозаполнение не выполнено');
     }
   }
@@ -1984,17 +1979,13 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
 
   /// Выполняет автозаполнение графика
   Future<void> _performAutoFill(Map<String, dynamic> options) async {
-    print('🟢 _performAutoFill НАЧАЛО');
     final startDay = options['startDay'] as int;
     final endDay = options['endDay'] as int;
     final replaceExisting = options['replaceExisting'] as bool;
 
-    print('🔄 Начало автозаполнения: с $startDay по $endDay, заменить=$replaceExisting');
-    print('   Сотрудников: ${_employees.length}, Магазинов: ${_shops.length}');
     Logger.info('🔄 Начало автозаполнения: с $startDay по $endDay, заменить=$replaceExisting');
     Logger.debug('   Сотрудников: ${_employees.length}, Магазинов: ${_shops.length}');
 
-    print('🔵 Показываем диалог загрузки...');
     // Показываем индикатор загрузки
     showDialog(
       context: context,
@@ -2015,20 +2006,16 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         ),
       ),
     );
-    print('🔵 Диалог загрузки показан');
 
     try {
-      print('🔵 В блоке try, вычисляем даты...');
       // Вычисляем даты начала и конца периода
       final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, startDay);
       final endDate = DateTime(_selectedMonth.year, _selectedMonth.month, endDay);
-      print('🔵 Даты: $startDate - $endDate');
 
       // ОПТИМИЗАЦИЯ: Не удаляем смены здесь, AutoFillScheduleService сам фильтрует существующие
       // при replaceExisting=true (строки 35-40 в auto_fill_schedule_service.dart)
 
       // Выполняем автозаполнение
-      print('🟢 Вызываем AutoFillScheduleService.autoFill...');
       final newEntries = await AutoFillScheduleService.autoFill(
         startDate: startDate,
         endDate: endDate,
@@ -2039,7 +2026,6 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         replaceExisting: replaceExisting,
       );
 
-      print('🟢 AutoFillScheduleService.autoFill вернул ${newEntries.length} записей');
       Logger.info('🔄 Автозаполнение создало ${newEntries.length} записей');
 
       // Сохраняем новые смены батчами по 50 записей
@@ -2083,28 +2069,22 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
       }
 
       // Обновляем график - принудительно перезагружаем данные
-      print('🟢 Обновляем график после автозаполнения...');
       setState(() {
         _isLoading = true;
       });
 
       await _loadData();
-      print('🟢 _loadData завершен, график содержит ${_schedule?.entries.length ?? 0} записей');
 
       // Дополнительная проверка - загружаем график еще раз для уверенности
       try {
-        print('🟢 Повторная загрузка графика...');
         final refreshedSchedule = await WorkScheduleService.getSchedule(_selectedMonth);
-        print('🟢 Повторная загрузка вернула ${refreshedSchedule.entries.length} записей');
         if (mounted) {
           setState(() {
             _schedule = refreshedSchedule;
             _isLoading = false;
           });
-          print('🟢 setState вызван, таблица должна обновиться');
         }
       } catch (e) {
-        print('❌ Ошибка при повторной загрузке: $e');
         Logger.error('Ошибка при обновлении графика', e);
         if (mounted) {
           setState(() {
@@ -2209,7 +2189,10 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
         borderRadius: BorderRadius.circular(12),
         onTap: () async {
           if (isUnread) {
-            await ShiftTransferService.markAsRead(request.id, isAdmin: true);
+            // SECURITY: Получаем phone для верификации на сервере
+            final prefs = await SharedPreferences.getInstance();
+            final phone = prefs.getString('user_phone') ?? prefs.getString('userPhone');
+            await ShiftTransferService.markAsRead(request.id, phone: phone, isAdmin: true);
             _loadAdminNotifications();
           }
         },

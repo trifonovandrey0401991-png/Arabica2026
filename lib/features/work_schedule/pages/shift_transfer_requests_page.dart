@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shift_transfer_model.dart';
 import '../models/work_schedule_model.dart';
 import '../services/shift_transfer_service.dart';
@@ -111,7 +112,10 @@ class _ShiftTransferRequestsPageState extends State<ShiftTransferRequestsPage> {
         borderRadius: BorderRadius.circular(12),
         onTap: () async {
           if (isUnread) {
-            await ShiftTransferService.markAsRead(request.id, isAdmin: true);
+            // SECURITY: Получаем phone для верификации на сервере
+            final prefs = await SharedPreferences.getInstance();
+            final phone = prefs.getString('user_phone') ?? prefs.getString('userPhone');
+            await ShiftTransferService.markAsRead(request.id, phone: phone, isAdmin: true);
             _loadNotifications();
           }
         },

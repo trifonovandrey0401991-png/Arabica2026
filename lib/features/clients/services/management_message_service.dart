@@ -19,8 +19,9 @@ class ManagementMessageService {
         return ManagementDialogData(messages: [], unreadCount: 0);
       }
 
+      // SECURITY: Передаём clientPhone для авторизационной проверки на сервере
       final result = await BaseHttpService.getRaw(
-        endpoint: '$_baseEndpoint/$normalizedPhone/management',
+        endpoint: '$_baseEndpoint/$normalizedPhone/management?clientPhone=$normalizedPhone',
       );
 
       if (result != null && result['success'] == true) {
@@ -51,6 +52,7 @@ class ManagementMessageService {
       endpoint: '$_baseEndpoint/$normalizedPhone/management/reply',
       body: {
         'text': text,
+        'senderPhone': normalizedPhone, // SECURITY: Передаём телефон для проверки
         if (imageUrl != null) 'imageUrl': imageUrl,
         if (clientName != null) 'clientName': clientName,
       },
@@ -60,19 +62,23 @@ class ManagementMessageService {
   }
 
   /// Отправить сообщение от руководства клиенту
+  /// [senderPhone] - телефон админа для проверки прав на сервере
   static Future<ManagementMessage?> sendManagerMessage({
     required String clientPhone,
     required String text,
+    required String senderPhone, // SECURITY: Обязательный параметр для проверки isAdmin
     String? imageUrl,
   }) async {
-    Logger.debug('Sending manager message to: $clientPhone');
+    Logger.debug('Sending manager message to: $clientPhone from admin: $senderPhone');
 
     final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+    final normalizedSenderPhone = senderPhone.replaceAll(RegExp(r'[\s\+]'), '');
 
     return await BaseHttpService.post<ManagementMessage>(
       endpoint: '$_baseEndpoint/$normalizedPhone/management/send',
       body: {
         'text': text,
+        'senderPhone': normalizedSenderPhone, // SECURITY: Передаём телефон админа
         if (imageUrl != null) 'imageUrl': imageUrl,
       },
       fromJson: (json) => ManagementMessage.fromJson(json),

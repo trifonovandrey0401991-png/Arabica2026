@@ -12,8 +12,9 @@ class NetworkMessageService {
       Logger.debug('Loading network messages for: $clientPhone');
 
       final normalizedPhone = clientPhone.replaceAll(RegExp(r'[\s\+]'), '');
+      // SECURITY: Передаём clientPhone для авторизационной проверки на сервере
       final result = await BaseHttpService.getRaw(
-        endpoint: '$_baseEndpoint/$normalizedPhone/network',
+        endpoint: '$_baseEndpoint/$normalizedPhone/network?clientPhone=$normalizedPhone',
       );
 
       if (result != null && result['success'] == true) {
@@ -44,6 +45,7 @@ class NetworkMessageService {
       endpoint: '$_baseEndpoint/$normalizedPhone/network/reply',
       body: {
         'text': text,
+        'senderPhone': normalizedPhone, // SECURITY: Передаём телефон для проверки
         if (imageUrl != null) 'imageUrl': imageUrl,
         if (clientName != null) 'clientName': clientName,
       },

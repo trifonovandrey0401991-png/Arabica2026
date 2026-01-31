@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/client_model.dart';
 import '../models/management_message_model.dart';
 import '../services/management_message_service.dart';
 import '../../../core/services/media_upload_service.dart';
+import '../../../core/utils/logger.dart';
 import '../../../shared/widgets/media_message_widget.dart';
 
 /// Страница диалога "Связь с Руководством" для админа
@@ -23,6 +25,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   bool _isUploading = false;
   String? _pendingMediaUrl;
   bool _pendingIsVideo = false;
+  String? _adminPhone; // SECURITY: Телефон админа для проверки на сервере
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
@@ -30,14 +33,22 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   @override
   void initState() {
     super.initState();
+    _loadAdminPhone();
     _loadMessages();
 
     // Only start auto-refresh if phone is not empty
     if (widget.client.phone.isNotEmpty) {
       _startAutoRefresh();
     } else {
-      print('⚠️ Auto-refresh disabled: empty phone number');
+      Logger.debug('Auto-refresh disabled: empty phone number');
     }
+  }
+
+  Future<void> _loadAdminPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _adminPhone = prefs.getString('user_phone') ?? prefs.getString('userPhone');
+    });
   }
 
   @override
@@ -59,7 +70,7 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
   Future<void> _loadMessages() async {
     // Guard against empty phone
     if (widget.client.phone.isEmpty) {
-      print('⚠️ Cannot load messages: empty phone number');
+      Logger.debug('Cannot load messages: empty phone number');
       setState(() => _isLoading = false);
       return;
     }
@@ -73,29 +84,19 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
       }
 
       if (mounted) {
-        print('🔍 DEBUG AdminManagementDialog: Got ${data.messages.length} messages');
-        for (var i = 0; i < data.messages.length && i < 3; i++) {
-          print('🔍 Message $i: ${data.messages[i].text}, sender: ${data.messages[i].senderType}');
-        }
-
         setState(() {
           _messages = data.messages;
           _isLoading = false;
         });
 
-        print('🔍 DEBUG AdminManagementDialog: After setState, _messages.length = ${_messages.length}');
-
         // Прокручиваем к последнему сообщению
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients && _messages.isNotEmpty) {
-            print('🔍 DEBUG AdminManagementDialog: Scrolling to bottom');
             _scrollController.animateTo(
               _scrollController.position.maxScrollExtent,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
             );
-          } else {
-            print('🔍 DEBUG AdminManagementDialog: NOT scrolling - hasClients: ${_scrollController.hasClients}, isEmpty: ${_messages.isEmpty}');
           }
         });
       }
@@ -204,9 +205,21 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
 
     setState(() => _isSending = true);
 
+    // SECURITY: Проверяем что adminPhone загружен
+    if (_adminPhone == null || _adminPhone!.isEmpty) {
+      setState(() => _isSending = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка: не удалось определить телефон админа'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
     final message = await ManagementMessageService.sendManagerMessage(
       clientPhone: widget.client.phone,
       text: text.isNotEmpty ? text : (_pendingIsVideo ? 'Видео' : 'Фото'),
+      senderPhone: _adminPhone!, // SECURITY: Передаём телефон админа для проверки
       imageUrl: _pendingMediaUrl,
     );
 
@@ -377,9 +390,6 @@ class _AdminManagementDialogPageState extends State<AdminManagementDialogPage> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
-                          if (index == 0) {
-                            print('🔍 DEBUG AdminManagementDialog: Building first message, total count: ${_messages.length}');
-                          }
                           return _buildMessage(_messages[index]);
                         },
                       ),

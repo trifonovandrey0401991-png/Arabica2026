@@ -1,6 +1,7 @@
 const fs = require('fs');
 const fsPromises = fs.promises;
 const path = require('path');
+const { isAdminPhoneAsync } = require('../utils/admin_cache');
 
 // WebSocket уведомления (опционально, если модуль загружен)
 let wsNotify = null;
@@ -122,17 +123,8 @@ async function getEmployeeByPhone(phone) {
   return employees.find(e => e.phone === phone);
 }
 
-// Helper: Check if phone belongs to admin (async)
-async function isAdminPhone(phone) {
-  if (!phone) return false;
-  const normalizedPhone = phone.replace(/[\s+]/g, '');
-  const employees = await getAllEmployees();
-  const employee = employees.find(e => {
-    const empPhone = (e.phone || '').replace(/[\s+]/g, '');
-    return empPhone === normalizedPhone;
-  });
-  return employee?.isAdmin === true;
-}
+// Helper: Check if phone belongs to admin - using cached version from admin_cache
+// isAdminPhoneAsync is imported from ../utils/admin_cache
 
 // Helper: Create private chat ID (sorted phones)
 function createPrivateChatId(phone1, phone2) {
@@ -314,9 +306,11 @@ function setupEmployeeChatAPI(app) {
   // ===== GET ALL CHATS FOR USER =====
   app.get('/api/employee-chats', async (req, res) => {
     try {
-      const { phone, isAdmin } = req.query;
-      const isAdminUser = isAdmin === 'true' || isAdmin === '1';
-      console.log('GET /api/employee-chats for phone:', phone, 'isAdmin:', isAdminUser);
+      const { phone } = req.query;
+      // SECURITY FIX: Проверяем isAdmin по базе данных сотрудников, а не по query параметру
+      // Это предотвращает подделку прав доступа клиентом
+      const isAdminUser = await isAdminPhoneAsync(phone);
+      console.log('GET /api/employee-chats for phone:', phone, 'isAdmin:', isAdminUser, '(verified from DB)');
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'phone is required' });
@@ -740,7 +734,7 @@ function setupEmployeeChatAPI(app) {
       console.log('DELETE /api/employee-chats/shop/:shopAddress/members/:phone:', shopAddress, phone, 'requester:', requesterPhone);
 
       // Проверка авторизации: только админ может удалять участников
-      if (!requesterPhone || !(await isAdminPhone(requesterPhone))) {
+      if (!requesterPhone || !(await isAdminPhoneAsync(requesterPhone))) {
         console.log('❌ Отказ: удаление участника чата без прав админа');
         return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
       }
@@ -777,7 +771,7 @@ function setupEmployeeChatAPI(app) {
       console.log('POST /api/employee-chats/:chatId/clear:', chatId, 'mode:', mode, 'requester:', requesterPhone);
 
       // Проверка авторизации: только админ может очищать чат
-      if (!requesterPhone || !(await isAdminPhone(requesterPhone))) {
+      if (!requesterPhone || !(await isAdminPhoneAsync(requesterPhone))) {
         console.log('❌ Отказ: очистка чата без прав админа');
         return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
       }
@@ -830,7 +824,7 @@ function setupEmployeeChatAPI(app) {
       console.log('DELETE /api/employee-chats/:chatId/messages/:messageId:', chatId, messageId, 'requester:', requesterPhone);
 
       // Проверка авторизации: только админ может удалять сообщения
-      if (!requesterPhone || !(await isAdminPhone(requesterPhone))) {
+      if (!requesterPhone || !(await isAdminPhoneAsync(requesterPhone))) {
         console.log('❌ Отказ: удаление сообщения без прав админа');
         return res.status(403).json({ success: false, error: 'Доступ только для администраторов' });
       }
@@ -1088,7 +1082,7 @@ function setupEmployeeChatAPI(app) {
       }
 
       // Проверка что создатель - админ
-      if (!(await isAdminPhone(creatorPhone))) {
+      if (!(await isAdminPhoneAsync(creatorPhone))) {
         console.log('❌ Отказ: создание группы без прав админа');
         return res.status(403).json({ success: false, error: 'Только администраторы могут создавать группы' });
       }
