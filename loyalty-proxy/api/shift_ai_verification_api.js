@@ -393,30 +393,85 @@ function setupShiftAiVerificationAPI(app) {
         });
       }
 
-      // TODO: Интеграция с YOLO детекцией
-      // Пока возвращаем заглушку - все товары как "не найденные"
-      // В реальной реализации здесь будет вызов cigaretteVision.detectAndCount
+      // Интеграция с YOLO детекцией
+      const cigaretteVision = require('../modules/cigarette-vision');
 
-      const missingProducts = readyProducts.map(product => {
+      // Список ожидаемых товаров (productId)
+      const expectedProductIds = readyProducts.map(p => p.id || p.barcode);
+
+      // Запускаем детекцию на всех фото и объединяем результаты
+      const allDetectedIds = new Set();
+      const detectionsByProduct = {};
+
+      for (const imageBase64 of imagesBase64) {
+        try {
+          const result = await cigaretteVision.checkDisplay(
+            imageBase64,
+            expectedProductIds,
+            0.3 // confidence threshold
+          );
+
+          if (result.success && result.detectedProducts) {
+            result.detectedProducts.forEach(detected => {
+              allDetectedIds.add(detected.productId);
+              if (!detectionsByProduct[detected.productId]) {
+                detectionsByProduct[detected.productId] = {
+                  productId: detected.productId,
+                  count: 0,
+                  maxConfidence: 0,
+                };
+              }
+              detectionsByProduct[detected.productId].count += detected.count || 1;
+              detectionsByProduct[detected.productId].maxConfidence = Math.max(
+                detectionsByProduct[detected.productId].maxConfidence,
+                detected.avgConfidence || 0
+              );
+            });
+          }
+        } catch (e) {
+          console.error('[ShiftAI] Ошибка детекции на фото:', e.message);
+        }
+      }
+
+      // Формируем списки найденных и отсутствующих товаров
+      const detectedProducts = [];
+      const missingProducts = [];
+
+      readyProducts.forEach(product => {
+        const productId = product.id || product.barcode;
         const stockQuantity = loadProductStock(shopAddress, product.barcode);
-        return {
-          productId: product.id || product.barcode,
-          barcode: product.barcode,
-          productName: product.name,
-          stockQuantity: stockQuantity,
-          status: 'notConfirmed',
-        };
+
+        if (allDetectedIds.has(productId)) {
+          // Товар найден на фото
+          const detection = detectionsByProduct[productId];
+          detectedProducts.push({
+            productId: productId,
+            barcode: product.barcode,
+            productName: product.name,
+            confidence: detection.maxConfidence,
+            count: detection.count,
+          });
+        } else {
+          // Товар НЕ найден на фото
+          missingProducts.push({
+            productId: productId,
+            barcode: product.barcode,
+            productName: product.name,
+            stockQuantity: stockQuantity,
+            status: 'notConfirmed',
+          });
+        }
       });
 
       res.json({
         success: true,
         modelTrained: true,
         missingProducts: missingProducts,
-        detectedProducts: [],
+        detectedProducts: detectedProducts,
         skippedProducts: skippedProducts,
         message: skippedProducts.length > 0
           ? `Проверено: ${readyProducts.length}, пропущено (не обучено для магазина): ${skippedProducts.length}`
-          : 'YOLO детекция в разработке',
+          : `Найдено: ${detectedProducts.length}, не найдено: ${missingProducts.length}`,
         shopAddress: shopAddress,
       });
     } catch (error) {

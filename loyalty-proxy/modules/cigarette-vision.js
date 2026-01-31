@@ -713,6 +713,7 @@ async function getModelStatus() {
   if (!yoloWrapper) {
     return {
       available: false,
+      isTrained: false,
       error: 'ML модуль не загружен'
     };
   }
@@ -720,8 +721,12 @@ async function getModelStatus() {
   const status = await yoloWrapper.checkStatus();
   const modelInfo = yoloWrapper.getModelInfo();
 
+  // isTrained = true если модель существует (проверяем оба источника)
+  const isTrained = status.model_exists || modelInfo.exists || false;
+
   return {
     available: true,
+    isTrained: isTrained,
     ...status,
     model: modelInfo
   };
