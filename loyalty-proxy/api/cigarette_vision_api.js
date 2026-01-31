@@ -248,6 +248,50 @@ function setupCigaretteVisionAPI(app) {
     }
   });
 
+  // ============ СТАТУС МОДЕЛИ ============
+
+  // Получить статус модели YOLO
+  app.get('/api/cigarette-vision/model-status', async (req, res) => {
+    try {
+      const status = await cigaretteVision.getModelStatus();
+      res.json({ success: true, ...status });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения статуса модели:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ ОБУЧЕНИЕ МОДЕЛИ ============
+
+  // Экспорт данных для обучения
+  app.post('/api/cigarette-vision/export-training', async (req, res) => {
+    try {
+      const { outputDir } = req.body;
+      const result = await cigaretteVision.exportTrainingData(outputDir);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка экспорта данных:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Запуск обучения модели
+  app.post('/api/cigarette-vision/train', async (req, res) => {
+    try {
+      const { dataYaml, epochs } = req.body;
+
+      if (!dataYaml) {
+        return res.status(400).json({ success: false, error: 'Путь к data.yaml обязателен' });
+      }
+
+      const result = await cigaretteVision.trainModel(dataYaml, epochs || 100);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка обучения модели:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ НАСТРОЙКИ ============
 
   // Получить настройки
