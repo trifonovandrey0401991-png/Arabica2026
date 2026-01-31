@@ -11,6 +11,7 @@ const util = require('util');
 const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
 const { preloadAdminCache, invalidateCache } = require('./utils/admin_cache');
+const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
 
 // ============================================
 // SECURITY: Global Error Handlers
@@ -1623,15 +1624,15 @@ const EMPLOYEES_DIR = '/var/www/employees';
 app.get('/api/employees', (req, res) => {
   try {
     console.log('GET /api/employees');
-    
-    const employees = [];
-    
+
+    let employees = [];
+
     if (!fs.existsSync(EMPLOYEES_DIR)) {
       fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
     }
-    
+
     const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
-    
+
     for (const file of files) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
@@ -1642,15 +1643,32 @@ app.get('/api/employees', (req, res) => {
         console.error(`Ошибка чтения файла ${file}:`, e);
       }
     }
-    
+
+    // SCALABILITY: Поддержка поиска по имени/телефону
+    const { search } = req.query;
+    if (search) {
+      const searchLower = search.toLowerCase();
+      employees = employees.filter(e =>
+        (e.name && e.name.toLowerCase().includes(searchLower)) ||
+        (e.phone && e.phone.includes(search)) ||
+        (e.position && e.position.toLowerCase().includes(searchLower))
+      );
+    }
+
     // Сортируем по дате создания (новые первыми)
     employees.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0);
       const dateB = new Date(b.createdAt || 0);
       return dateB - dateA;
     });
-    
-    res.json({ success: true, employees });
+
+    // SCALABILITY: Пагинация если запрошена
+    if (isPaginationRequested(req.query)) {
+      res.json(createPaginatedResponse(employees, req.query, 'employees'));
+    } else {
+      // Backwards compatibility - возвращаем все без пагинации
+      res.json({ success: true, employees });
+    }
   } catch (error) {
     console.error('Ошибка получения сотрудников:', error);
     res.status(500).json({ success: false, error: error.message });

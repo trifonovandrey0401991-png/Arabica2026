@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { sendPushNotification, sendPushToPhone } = require('../report_notifications_api');
 const { isAdminPhone } = require('../utils/admin_cache');
+const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
 
 const CLIENTS_DIR = '/var/www/clients';
 const CLIENT_DIALOGS_DIR = '/var/www/client-dialogs';
@@ -32,7 +33,7 @@ function setupClientsAPI(app) {
   app.get('/api/clients', async (req, res) => {
     try {
       console.log('GET /api/clients');
-      const clients = [];
+      let clients = [];
 
       if (fs.existsSync(CLIENTS_DIR)) {
         const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
@@ -47,7 +48,30 @@ function setupClientsAPI(app) {
         }
       }
 
-      res.json({ success: true, clients });
+      // SCALABILITY: Поддержка поиска по имени/телефону
+      const { search } = req.query;
+      if (search) {
+        const searchLower = search.toLowerCase();
+        clients = clients.filter(c =>
+          (c.name && c.name.toLowerCase().includes(searchLower)) ||
+          (c.phone && c.phone.includes(search))
+        );
+      }
+
+      // SCALABILITY: Сортировка по дате обновления (новые сверху)
+      clients.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+        return dateB - dateA;
+      });
+
+      // SCALABILITY: Пагинация если запрошена
+      if (isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(clients, req.query, 'clients'));
+      } else {
+        // Backwards compatibility - возвращаем все без пагинации
+        res.json({ success: true, clients });
+      }
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
