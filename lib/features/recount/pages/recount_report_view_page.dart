@@ -6,6 +6,7 @@ import '../../../core/utils/logger.dart';
 import '../models/recount_report_model.dart';
 import '../services/recount_service.dart';
 import '../services/recount_points_service.dart';
+import '../../ai_training/services/cigarette_vision_service.dart';
 
 /// Страница просмотра отчета пересчета с возможностью оценки
 class RecountReportViewPage extends StatefulWidget {
@@ -31,6 +32,13 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
   String? _adminName;
   Map<int, String> _photoVerificationStatus = {}; // photoIndex -> status
   Set<int> _verifyingPhotos = {}; // фото в процессе верификации
+  Map<int, String> _aiErrorDecisions = {}; // questionIndex -> decision
+  Set<int> _processingAiDecisions = {}; // в процессе отправки решения
+
+  // Pending counting samples для обучения ИИ
+  Map<String, List<dynamic>> _pendingSamplesByProduct = {}; // productId -> samples
+  Map<String, String> _approvedSamples = {}; // sampleId -> 'approved' или 'rejected'
+  Set<String> _processingSamples = {}; // в процессе approve/reject
 
   @override
   void initState() {
@@ -39,6 +47,233 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
     _selectedRating = _currentReport.adminRating;
     _loadAdminName();
     _loadPhotoVerifications();
+    _loadAiErrorDecisions();
+    _loadPendingCountingSamples();
+  }
+
+  /// Загрузить решения по ошибкам ИИ из ответов
+  void _loadAiErrorDecisions() {
+    for (int i = 0; i < _currentReport.answers.length; i++) {
+      final answer = _currentReport.answers[i];
+      if (answer.aiErrorAdminDecision != null) {
+        _aiErrorDecisions[i] = answer.aiErrorAdminDecision!;
+      }
+    }
+  }
+
+  /// Загрузить pending counting samples для товаров из отчёта
+  Future<void> _loadPendingCountingSamples() async {
+    try {
+      final allPending = await CigaretteVisionService.getAllPendingCountingSamples();
+      final Map<String, List<dynamic>> byProduct = {};
+
+      for (final sample in allPending) {
+        final productId = sample.productId ?? sample.barcode ?? '';
+        if (productId.isNotEmpty) {
+          byProduct.putIfAbsent(productId, () => []);
+          byProduct[productId]!.add(sample);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _pendingSamplesByProduct = byProduct;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки pending samples', e);
+    }
+  }
+
+  /// Одобрить pending фото для обучения ИИ
+  Future<void> _approvePendingSample(String sampleId) async {
+    setState(() {
+      _processingSamples.add(sampleId);
+    });
+
+    try {
+      final success = await CigaretteVisionService.approvePendingCountingSample(sampleId);
+      if (success) {
+        setState(() {
+          _approvedSamples[sampleId] = 'approved';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Фото добавлено в обучение ИИ'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ошибка одобрения фото'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка одобрения pending sample', e);
+    } finally {
+      setState(() {
+        _processingSamples.remove(sampleId);
+      });
+    }
+  }
+
+  /// Отклонить pending фото
+  Future<void> _rejectPendingSample(String sampleId) async {
+    setState(() {
+      _processingSamples.add(sampleId);
+    });
+
+    try {
+      final success = await CigaretteVisionService.rejectPendingCountingSample(sampleId);
+      if (success) {
+        setState(() {
+          _approvedSamples[sampleId] = 'rejected';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Фото отклонено'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка отклонения pending sample', e);
+    } finally {
+      setState(() {
+        _processingSamples.remove(sampleId);
+      });
+    }
+  }
+
+  /// Построить кнопки для pending фото обучения ИИ
+  Widget _buildPendingTrainingButtons(String productId) {
+    final pendingSamples = _pendingSamplesByProduct[productId] ?? [];
+    if (pendingSamples.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: pendingSamples.map<Widget>((sample) {
+        final sampleId = sample.id ?? '';
+        final status = _approvedSamples[sampleId];
+        final isProcessing = _processingSamples.contains(sampleId);
+
+        // Если уже обработан
+        if (status != null) {
+          return Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: status == 'approved'
+                  ? Colors.green.withOpacity(0.15)
+                  : Colors.orange.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: status == 'approved' ? Colors.green : Colors.orange,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  status == 'approved' ? Icons.school : Icons.cancel,
+                  color: status == 'approved' ? Colors.green : Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  status == 'approved'
+                      ? 'Добавлено в обучение ИИ'
+                      : 'Фото отклонено',
+                  style: TextStyle(
+                    color: status == 'approved' ? Colors.green[700] : Colors.orange[700],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Кнопки одобрить/отклонить
+        return Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.withOpacity(0.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.smart_toy, color: Colors.blue, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Фото для обучения ИИ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: isProcessing ? null : () => _approvePendingSample(sampleId),
+                      icon: isProcessing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.check, size: 16),
+                      label: const Text('В обучение', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: isProcessing ? null : () => _rejectPendingSample(sampleId),
+                      icon: isProcessing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.close, size: 16),
+                      label: const Text('Отклонить', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
   /// Загрузить статусы верификации фото из отчёта
@@ -217,6 +452,229 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
         ),
       ],
     );
+  }
+
+  /// Построить кнопки решения админа по ошибке ИИ
+  Widget _buildAiErrorDecisionButtons(int questionIndex, answer) {
+    final decision = _aiErrorDecisions[questionIndex] ?? answer.aiErrorAdminDecision;
+    final isProcessing = _processingAiDecisions.contains(questionIndex);
+
+    // Если решение уже принято - показываем статус
+    if (decision != null) {
+      final isApproved = decision == 'approved_for_training';
+      return Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isApproved
+              ? Colors.green.withOpacity(0.15)
+              : Colors.orange.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isApproved ? Colors.green : Colors.orange,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isApproved ? Icons.school : Icons.photo_camera_back,
+              color: isApproved ? Colors.green : Colors.orange,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isApproved ? 'Добавлено к обучению' : 'Плохое фото (отклонено)',
+                    style: TextStyle(
+                      color: isApproved ? Colors.green[700] : Colors.orange[700],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (answer.aiErrorDecisionBy != null)
+                    Text(
+                      'Решение: ${answer.aiErrorDecisionBy}',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Если read-only или просрочено - не показываем кнопки
+    if (widget.isReadOnly || _currentReport.isExpired) {
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          'Требуется решение админа',
+          style: TextStyle(color: Colors.grey, fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    // Показываем кнопки "Добавить к обучению" и "Плохое фото"
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Решение по ошибке ИИ:',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: isProcessing
+                    ? null
+                    : () => _handleAiErrorDecision(questionIndex, 'approved_for_training'),
+                icon: isProcessing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.school, size: 16),
+                label: const Text('К обучению', style: TextStyle(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: isProcessing
+                    ? null
+                    : () => _handleAiErrorDecision(questionIndex, 'rejected_bad_photo'),
+                icon: isProcessing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.photo_camera_back, size: 16),
+                label: const Text('Плохое фото', style: TextStyle(fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Обработать решение админа по ошибке ИИ
+  Future<void> _handleAiErrorDecision(int questionIndex, String decision) async {
+    if (_adminName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось определить администратора'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final answer = _currentReport.answers[questionIndex];
+
+    setState(() {
+      _processingAiDecisions.add(questionIndex);
+    });
+
+    try {
+      final result = await CigaretteVisionService.reportAdminAiDecision(
+        productId: answer.productId ?? answer.question,
+        decision: decision,
+        adminName: _adminName!,
+        productName: answer.question,
+        expectedCount: answer.actualBalance ?? answer.quantity,
+        aiCount: answer.aiQuantity,
+        shopAddress: _currentReport.shopAddress,
+      );
+
+      if (result.success) {
+        setState(() {
+          _aiErrorDecisions[questionIndex] = decision;
+        });
+
+        final isApproved = decision == 'approved_for_training';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isApproved
+                    ? 'Фото добавлено к обучению ИИ'
+                    : 'Фото отклонено (плохое качество)',
+              ),
+              backgroundColor: isApproved ? Colors.green : Colors.orange,
+            ),
+          );
+        }
+
+        // Проверяем авто-отключение ИИ
+        if (result.isDisabled && isApproved) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '⚠️ ИИ отключен для "${answer.question}" после ${result.consecutiveErrors} ошибок',
+                ),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+        }
+
+        if (widget.onReportUpdated != null) {
+          widget.onReportUpdated!();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка: ${result.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка отправки решения по ИИ', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _processingAiDecisions.remove(questionIndex);
+      });
+    }
   }
 
   Future<void> _rateReport() async {
@@ -853,6 +1311,36 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                                           ],
                                         ),
                                       ),
+                                      // Метка если сотрудник сообщил об ошибке ИИ
+                                      if (answer.employeeReportedAiError == true) ...[
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.purple.withOpacity(0.3)),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.report_problem, color: Colors.purple, size: 14),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                'Сотрудник сообщил об ошибке ИИ',
+                                                style: TextStyle(
+                                                  color: Colors.purple,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                      // Кнопки решения админа по ошибке ИИ
+                                      const SizedBox(height: 8),
+                                      _buildAiErrorDecisionButtons(index, answer),
                                     ],
                                   ],
                                 ),
@@ -907,6 +1395,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               // Кнопки верификации фото
                               const SizedBox(height: 8),
                               _buildPhotoVerificationButtons(index),
+                              // Кнопки для обучения ИИ (pending samples)
+                              if (answer.productId != null && !widget.isReadOnly)
+                                _buildPendingTrainingButtons(answer.productId!),
                             ],
                           ],
                         ),
