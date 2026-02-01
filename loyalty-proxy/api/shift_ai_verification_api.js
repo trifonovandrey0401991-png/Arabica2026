@@ -463,6 +463,23 @@ function setupShiftAiVerificationAPI(app) {
         }
       });
 
+      // ============ POSITIVE SAMPLES ============
+      // Сохраняем успешные распознавания для дообучения (10% с ротацией)
+      if (detectedProducts.length > 0 && imagesBase64.length > 0) {
+        // Выбираем случайное фото из отправленных
+        const randomImageIndex = Math.floor(Math.random() * imagesBase64.length);
+        const imageToSave = imagesBase64[randomImageIndex];
+
+        // Асинхронно сохраняем (не блокируем ответ)
+        cigaretteVision.savePositiveSample({
+          imageBase64: imageToSave,
+          detectedProducts: detectedProducts,
+          shopAddress: shopAddress,
+        }).catch(err => {
+          console.warn('[ShiftAI] Ошибка сохранения positive sample:', err.message);
+        });
+      }
+
       res.json({
         success: true,
         modelTrained: true,

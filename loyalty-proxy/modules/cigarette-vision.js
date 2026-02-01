@@ -38,6 +38,11 @@ const DEFAULT_SETTINGS = {
   // "recount-questions" - текущий каталог (вопросы пересчёта)
   // "master-catalog" - единый мастер-каталог (новый)
   catalogSource: 'recount-questions',
+  // Настройки positive samples (успешные распознавания)
+  positiveSamplesEnabled: true,        // Включить сохранение успешных распознаваний
+  positiveSampleRate: 0.1,             // Процент сохраняемых (10%)
+  maxPositiveSamplesPerProduct: 50,    // Лимит на товар
+  positiveSamplesMaxAgeDays: 180,      // Автоудаление через 6 месяцев
 };
 
 // Кэш настроек
@@ -555,6 +560,230 @@ function getImagePath(fileName) {
   return path.join(IMAGES_DIR, fileName);
 }
 
+// ============ POSITIVE SAMPLES (успешные распознавания) ============
+
+/**
+ * Сохранить positive sample (успешное распознавание) с лимитом и ротацией
+ * @param {Object} params - Параметры
+ * @param {string} params.imageBase64 - Изображение в base64
+ * @param {Array} params.detectedProducts - Список распознанных товаров
+ * @param {string} params.shopAddress - Адрес магазина
+ * @returns {Object} - Результат сохранения
+ */
+async function savePositiveSample({
+  imageBase64,
+  detectedProducts,
+  shopAddress,
+}) {
+  try {
+    const settings = loadSettings();
+
+    // Проверяем включена ли функция
+    if (!settings.positiveSamplesEnabled) {
+      return { success: false, skipped: true, reason: 'Positive samples отключены' };
+    }
+
+    // Проверяем вероятность сохранения (10% по умолчанию)
+    const sampleRate = settings.positiveSampleRate || 0.1;
+    if (Math.random() > sampleRate) {
+      return { success: false, skipped: true, reason: 'Не попал в выборку' };
+    }
+
+    if (!detectedProducts || detectedProducts.length === 0) {
+      return { success: false, skipped: true, reason: 'Нет распознанных товаров' };
+    }
+
+    init();
+
+    const maxPerProduct = settings.maxPositiveSamplesPerProduct || 50;
+    const samples = loadSamples();
+    const savedCount = { total: 0, rotated: 0 };
+
+    // Сохраняем для каждого распознанного товара
+    for (const detected of detectedProducts) {
+      const productId = detected.productId || detected.barcode;
+
+      // Считаем существующие positive samples для этого товара
+      const existingPositive = samples.filter(
+        s => (s.productId === productId || s.barcode === productId) && s.type === 'positive'
+      );
+
+      // Если лимит превышен - удаляем самые старые
+      if (existingPositive.length >= maxPerProduct) {
+        // Сортируем по дате (старые первыми)
+        existingPositive.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        // Удаляем самый старый
+        const toDelete = existingPositive[0];
+        const deleteResult = deleteSampleInternal(samples, toDelete.id);
+        if (deleteResult.deleted) {
+          savedCount.rotated++;
+          console.log(`[Positive Samples] Ротация: удалён старый sample ${toDelete.id} для ${productId}`);
+        }
+      }
+
+      // Сохраняем новый positive sample
+      const id = uuidv4();
+      const timestamp = new Date().toISOString();
+
+      // Сохраняем изображение
+      const imageBuffer = Buffer.from(imageBase64, 'base64');
+      const imageFileName = `positive_${id}.jpg`;
+      const imagePath = path.join(IMAGES_DIR, imageFileName);
+      fs.writeFileSync(imagePath, imageBuffer);
+
+      // Создаём запись
+      const sample = {
+        id,
+        productId,
+        barcode: detected.barcode || productId,
+        productName: detected.productName || '',
+        type: 'positive',  // Маркер positive sample
+        shopAddress: shopAddress || '',
+        confidence: detected.confidence || detected.maxConfidence || 0,
+        count: detected.count || 1,
+        imageFileName,
+        imageUrl: `/api/cigarette-vision/images/${imageFileName}`,
+        boundingBoxes: [],  // У positive samples нет ручных аннотаций
+        annotationCount: 0,
+        createdAt: timestamp,
+      };
+
+      samples.push(sample);
+      savedCount.total++;
+    }
+
+    saveSamples(samples);
+
+    console.log(`[Positive Samples] Сохранено ${savedCount.total} samples, ротировано ${savedCount.rotated}`);
+
+    return { success: true, savedCount };
+  } catch (error) {
+    console.error('[Positive Samples] Ошибка сохранения:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Внутренняя функция удаления sample из массива
+ */
+function deleteSampleInternal(samples, sampleId) {
+  const sampleIndex = samples.findIndex(s => s.id === sampleId);
+
+  if (sampleIndex === -1) {
+    return { deleted: false };
+  }
+
+  const sample = samples[sampleIndex];
+
+  // Удаляем файл изображения
+  if (sample.imageFileName) {
+    const imagePath = path.join(IMAGES_DIR, sample.imageFileName);
+    if (fs.existsSync(imagePath)) {
+      try {
+        fs.unlinkSync(imagePath);
+      } catch (e) {
+        console.warn(`[Positive Samples] Не удалось удалить файл ${imagePath}:`, e.message);
+      }
+    }
+
+    // Удаляем YOLO label если есть
+    const labelPath = path.join(LABELS_DIR, sample.id + '.txt');
+    if (fs.existsSync(labelPath)) {
+      try {
+        fs.unlinkSync(labelPath);
+      } catch (e) {
+        // Игнорируем ошибки удаления label
+      }
+    }
+  }
+
+  // Удаляем из массива
+  samples.splice(sampleIndex, 1);
+
+  return { deleted: true };
+}
+
+/**
+ * Очистка старых positive samples (старше N дней)
+ */
+function cleanupOldPositiveSamples() {
+  try {
+    const settings = loadSettings();
+    const maxAgeDays = settings.positiveSamplesMaxAgeDays || 180;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+
+    const samples = loadSamples();
+    const initialCount = samples.length;
+    let deletedCount = 0;
+
+    // Фильтруем только positive samples старше cutoff
+    const toDelete = samples.filter(s => {
+      if (s.type !== 'positive') return false;
+      const createdAt = new Date(s.createdAt);
+      return createdAt < cutoffDate;
+    });
+
+    // Удаляем старые
+    for (const sample of toDelete) {
+      const result = deleteSampleInternal(samples, sample.id);
+      if (result.deleted) {
+        deletedCount++;
+      }
+    }
+
+    if (deletedCount > 0) {
+      saveSamples(samples);
+      console.log(`[Positive Samples] Очистка: удалено ${deletedCount} старых samples (старше ${maxAgeDays} дней)`);
+    }
+
+    return { success: true, deletedCount, remaining: samples.length };
+  } catch (error) {
+    console.error('[Positive Samples] Ошибка очистки:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Получить статистику positive samples
+ */
+function getPositiveSamplesStats() {
+  try {
+    const samples = loadSamples();
+    const positiveSamples = samples.filter(s => s.type === 'positive');
+
+    // Группируем по товарам
+    const byProduct = {};
+    positiveSamples.forEach(s => {
+      const key = s.productId || s.barcode;
+      if (!byProduct[key]) {
+        byProduct[key] = { count: 0, productName: s.productName };
+      }
+      byProduct[key].count++;
+    });
+
+    // Группируем по магазинам
+    const byShop = {};
+    positiveSamples.forEach(s => {
+      const key = s.shopAddress || 'unknown';
+      byShop[key] = (byShop[key] || 0) + 1;
+    });
+
+    return {
+      totalPositiveSamples: positiveSamples.length,
+      productsWithPositive: Object.keys(byProduct).length,
+      byProduct,
+      byShop,
+    };
+  } catch (error) {
+    console.error('[Positive Samples] Ошибка получения статистики:', error);
+    return { totalPositiveSamples: 0, error: error.message };
+  }
+}
+
+// ============ END POSITIVE SAMPLES ============
+
 /**
  * Детекция и подсчёт сигарет на изображении
  * @param {string} imageBase64 - Изображение в формате base64
@@ -754,4 +983,8 @@ module.exports = {
   exportTrainingData,
   trainModel,
   getModelStatus,
+  // Positive samples (успешные распознавания)
+  savePositiveSample,
+  cleanupOldPositiveSamples,
+  getPositiveSamplesStats,
 };

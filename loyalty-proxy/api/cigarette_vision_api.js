@@ -308,7 +308,16 @@ function setupCigaretteVisionAPI(app) {
   // Обновить настройки
   app.put('/api/cigarette-vision/settings', (req, res) => {
     try {
-      const { requiredRecountPhotos, requiredDisplayPhotos, catalogSource } = req.body;
+      const {
+        requiredRecountPhotos,
+        requiredDisplayPhotos,
+        catalogSource,
+        // Настройки positive samples
+        positiveSamplesEnabled,
+        positiveSampleRate,
+        maxPositiveSamplesPerProduct,
+        positiveSamplesMaxAgeDays,
+      } = req.body;
 
       const newSettings = {};
       if (requiredRecountPhotos !== undefined) {
@@ -325,6 +334,20 @@ function setupCigaretteVisionAPI(app) {
         }
       }
 
+      // Настройки positive samples
+      if (positiveSamplesEnabled !== undefined) {
+        newSettings.positiveSamplesEnabled = Boolean(positiveSamplesEnabled);
+      }
+      if (positiveSampleRate !== undefined) {
+        newSettings.positiveSampleRate = Math.max(0.01, Math.min(1, parseFloat(positiveSampleRate) || 0.1));
+      }
+      if (maxPositiveSamplesPerProduct !== undefined) {
+        newSettings.maxPositiveSamplesPerProduct = Math.max(10, Math.min(200, parseInt(maxPositiveSamplesPerProduct) || 50));
+      }
+      if (positiveSamplesMaxAgeDays !== undefined) {
+        newSettings.positiveSamplesMaxAgeDays = Math.max(30, Math.min(365, parseInt(positiveSamplesMaxAgeDays) || 180));
+      }
+
       const updated = cigaretteVision.updateSettings(newSettings);
       if (updated) {
         res.json({ success: true, settings: updated });
@@ -333,6 +356,30 @@ function setupCigaretteVisionAPI(app) {
       }
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка обновления настроек:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ POSITIVE SAMPLES API ============
+
+  // Получить статистику positive samples
+  app.get('/api/cigarette-vision/positive-samples/stats', (req, res) => {
+    try {
+      const stats = cigaretteVision.getPositiveSamplesStats();
+      res.json({ success: true, ...stats });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения статистики positive samples:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Ручной запуск очистки старых positive samples (для админа)
+  app.post('/api/cigarette-vision/positive-samples/cleanup', (req, res) => {
+    try {
+      const result = cigaretteVision.cleanupOldPositiveSamples();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка очистки positive samples:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -378,7 +425,26 @@ function setupCigaretteVisionAPI(app) {
     }
   });
 
-  console.log('[Cigarette Vision API] Готово');
+  // ============ АВТООЧИСТКА СТАРЫХ POSITIVE SAMPLES ============
+
+  // Запускаем очистку раз в сутки (24 часа)
+  const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+  // Первая очистка через 5 минут после старта
+  setTimeout(() => {
+    console.log('[Cigarette Vision API] Запуск первичной очистки positive samples...');
+    const result = cigaretteVision.cleanupOldPositiveSamples();
+    console.log(`[Cigarette Vision API] Очистка завершена: удалено ${result.deletedCount || 0} старых samples`);
+  }, 5 * 60 * 1000);
+
+  // Регулярная очистка каждые 24 часа
+  setInterval(() => {
+    console.log('[Cigarette Vision API] Запуск ежедневной очистки positive samples...');
+    const result = cigaretteVision.cleanupOldPositiveSamples();
+    console.log(`[Cigarette Vision API] Очистка завершена: удалено ${result.deletedCount || 0} старых samples`);
+  }, CLEANUP_INTERVAL_MS);
+
+  console.log('[Cigarette Vision API] Готово (+ scheduler очистки positive samples каждые 24ч)');
 }
 
 module.exports = {
