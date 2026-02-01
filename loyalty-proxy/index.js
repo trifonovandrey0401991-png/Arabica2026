@@ -86,6 +86,7 @@ const { startAttendanceAutomationScheduler, getPendingReports: getPendingAttenda
 const { startScheduler: startEnvelopeAutomationScheduler } = require("./api/envelope_automation_scheduler");
 const { setupZReportAPI } = require("./api/z_report_api");
 const { setupCigaretteVisionAPI } = require("./api/cigarette_vision_api");
+const { setupShiftAiVerificationAPI } = require("./api/shift_ai_verification_api");
 const { setupDataCleanupAPI } = require("./api/data_cleanup_api");
 const { setupShopProductsAPI } = require("./api/shop_products_api");
 const { setupMasterCatalogAPI } = require("./api/master_catalog_api");
@@ -253,7 +254,8 @@ app.use('/static', express.static('/var/www/html'));
 // ============================================
 // SECURITY: File Type Validation для всех uploads
 // ============================================
-const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+// Добавлен application/octet-stream для поддержки загрузки из Flutter (камера иногда не передаёт MIME type)
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/octet-stream'];
 const allowedMediaTypes = [...allowedImageTypes, 'video/mp4', 'video/quicktime'];
 
 const imageFileFilter = (req, file, cb) => {
@@ -729,6 +731,50 @@ app.get('/api/recount-reports/expired', async (req, res) => {
     res.json({ success: true, reports: [] });
   } catch (error) {
     console.error('Ошибка получения просроченных отчетов:', error);
+    res.json({ success: true, reports: [] });
+  }
+});
+
+// Эндпоинт для получения ожидающих (pending) пересчётов
+app.get('/api/pending-recount-reports', async (req, res) => {
+  try {
+    console.log('GET /api/pending-recount-reports');
+
+    const reportsDir = '/var/www/recount-reports';
+    const reports = [];
+
+    if (fs.existsSync(reportsDir)) {
+      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+
+      for (const file of files) {
+        try {
+          const filePath = path.join(reportsDir, file);
+          const content = fs.readFileSync(filePath, 'utf8');
+          const report = JSON.parse(content);
+
+          // Фильтруем только pending отчёты
+          if (report.status === 'pending') {
+            reports.push(report);
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+
+      // Сортируем по дате создания (новые первыми)
+      reports.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+
+      console.log(`Найдено pending пересчётов: ${reports.length}`);
+      return res.json({ success: true, reports });
+    }
+
+    res.json({ success: true, reports: [] });
+  } catch (error) {
+    console.error('Ошибка получения pending пересчётов:', error);
     res.json({ success: true, reports: [] });
   }
 });
@@ -4746,6 +4792,7 @@ app.post('/api/shift-questions', async (req, res) => {
       answerFormatC: req.body.answerFormatC || null,
       shops: req.body.shops || null,
       referencePhotos: req.body.referencePhotos || {},
+      isAiCheck: req.body.isAiCheck || false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -4793,6 +4840,7 @@ app.put('/api/shift-questions/:questionId', async (req, res) => {
       ...(req.body.answerFormatC !== undefined && { answerFormatC: req.body.answerFormatC }),
       ...(req.body.shops !== undefined && { shops: req.body.shops }),
       ...(req.body.referencePhotos !== undefined && { referencePhotos: req.body.referencePhotos }),
+      ...(req.body.isAiCheck !== undefined && { isAiCheck: req.body.isAiCheck }),
       updatedAt: new Date().toISOString()
     };
 
@@ -6138,6 +6186,8 @@ app.post('/api/shift-reports', async (req, res) => {
         submittedAt: now.toISOString(),
         reviewDeadline: reviewDeadline.toISOString(),
         timestamp: req.body.timestamp || now.toISOString(),
+        ...(req.body.shortages !== undefined && { shortages: req.body.shortages }),
+        ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
       };
       updatedReport = reports[pendingIndex];
       saveTodayReports(reports);
@@ -6157,6 +6207,8 @@ app.post('/api/shift-reports', async (req, res) => {
         shiftType: shiftType,
         submittedAt: now.toISOString(),
         reviewDeadline: new Date(now.getTime() + settings.adminReviewTimeout * 60 * 60 * 1000).toISOString(),
+        ...(req.body.shortages !== undefined && { shortages: req.body.shortages }),
+        ...(req.body.aiVerificationPassed !== undefined && { aiVerificationPassed: req.body.aiVerificationPassed }),
       };
       reports.push(report);
       saveTodayReports(reports);
@@ -8174,6 +8226,7 @@ setupPointsSettingsAPI(app);
 setupProductQuestionsAPI(app, uploadProductQuestionPhoto);
 setupZReportAPI(app);
 setupCigaretteVisionAPI(app);
+setupShiftAiVerificationAPI(app);
 setupDataCleanupAPI(app);
 setupShopProductsAPI(app);
 setupMasterCatalogAPI(app);
