@@ -52,6 +52,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   DateTime? _startedAt;
   DateTime? _completedAt;
   bool _answerSaved = false; // Флаг, что ответ сохранен и заблокирован для изменения
+  int _photoAttempts = 0; // Счётчик попыток фото для текущего вопроса (для кнопки "ИИ ошибся")
 
   @override
   void initState() {
@@ -198,22 +199,44 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       );
 
       if (photo != null) {
+        String savedPhotoPath;
+
         if (kIsWeb) {
           final bytes = await photo.readAsBytes();
           final base64String = base64Encode(bytes);
-          final dataUrl = 'data:image/jpeg;base64,$base64String';
-          setState(() {
-            _photoPath = dataUrl;
-          });
+          savedPhotoPath = 'data:image/jpeg;base64,$base64String';
         } else {
           final appDir = await getApplicationDocumentsDirectory();
           final fileName = 'recount_photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final savedFile = File(path.join(appDir.path, fileName));
           final bytes = await photo.readAsBytes();
           await savedFile.writeAsBytes(bytes);
-          setState(() {
-            _photoPath = savedFile.path;
-          });
+          savedPhotoPath = savedFile.path;
+        }
+
+        setState(() {
+          _photoPath = savedPhotoPath;
+        });
+
+        // Сразу обновляем ответ с фото для ИИ проверки
+        if (_selectedQuestions != null && _currentQuestionIndex < _answers.length) {
+          final answer = _answers[_currentQuestionIndex];
+          _answers[_currentQuestionIndex] = answer.copyWith(photoPath: savedPhotoPath);
+
+          // Проверяем товар с помощью ИИ сразу после фото
+          final question = _selectedQuestions![_currentQuestionIndex];
+          if (question.isAiActive) {
+            final needRetake = await _verifyWithAI(_currentQuestionIndex);
+            if (needRetake && mounted) {
+              // Пользователь выбрал "Повторное фото" - очищаем и открываем камеру снова
+              setState(() {
+                _photoPath = null;
+              });
+              _answers[_currentQuestionIndex] = answer.copyWith(photoPath: null);
+              // Рекурсивно вызываем для повторного фото
+              await _takePhoto();
+            }
+          }
         }
       }
     } catch (e) {
@@ -277,8 +300,9 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
   }
 
   /// Проверка ответа с помощью ИИ
-  Future<void> _verifyWithAI(int questionIndex) async {
-    if (_selectedQuestions == null || questionIndex >= _selectedQuestions!.length) return;
+  /// Возвращает true если нужно сделать повторное фото
+  Future<bool> _verifyWithAI(int questionIndex) async {
+    if (_selectedQuestions == null || questionIndex >= _selectedQuestions!.length) return false;
 
     final question = _selectedQuestions![questionIndex];
     final answer = _answers[questionIndex];
@@ -286,7 +310,29 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
     // Проверяем что товар активен для ИИ и есть фото
     if (!question.isAiActive || answer.photoPath == null) {
       Logger.debug('ИИ проверка пропущена: isAiActive=${question.isAiActive}, hasPhoto=${answer.photoPath != null}');
-      return;
+      return false;
+    }
+
+    // Проверяем не отключен ли ИИ для этого товара (после многих ошибок)
+    final isAiDisabled = await CigaretteVisionService.isProductAiDisabled(question.barcode);
+    if (isAiDisabled) {
+      Logger.warning('ИИ отключен для товара ${question.barcode} (слишком много ошибок)');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Flexible(child: Text('ИИ отключен для "${question.productName}" (требуется переобучение)')),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return false;
     }
 
     setState(() {
@@ -305,23 +351,27 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         imageBytes = await File(answer.photoPath!).readAsBytes();
       }
 
-      // Отправляем на ИИ
+      // Отправляем на ИИ (с сохранением в counting датасет для дообучения)
+      // isAiActive=true сохраняет фото для обучения независимо от результата детекции
       Logger.info('🤖 Отправка фото на ИИ проверку для товара: ${question.productName}');
-      final result = await CigaretteVisionService.detectAndCount(
+      final result = await CigaretteVisionService.detectAndCountWithTraining(
         imageBytes: imageBytes,
         productId: question.barcode,
+        productName: question.productName,
+        shopAddress: widget.shopAddress,
+        isAiActive: question.isAiActive,
       );
 
-      if (!mounted) return;
+      if (!mounted) return false;
 
       if (result.success) {
-        // Получаем количество которое указал сотрудник
-        final humanCount = answer.actualBalance ?? answer.quantity ?? 0;
+        // Сравниваем с остатком из DBF (или введённым вручную)
+        final expectedCount = question.stock; // Остаток по программе (DBF)
         final aiCount = result.count;
         final mismatchThreshold = 2; // Порог расхождения
-        final mismatch = (humanCount - aiCount).abs() > mismatchThreshold;
+        final mismatch = (expectedCount - aiCount).abs() > mismatchThreshold;
 
-        Logger.info('🤖 ИИ насчитал: $aiCount, сотрудник: $humanCount, расхождение: $mismatch');
+        Logger.info('🤖 ИИ насчитал: $aiCount, по программе (DBF): $expectedCount, расхождение: $mismatch');
 
         // Обновляем ответ с данными ИИ
         _answers[questionIndex] = answer.copyWith(
@@ -332,9 +382,20 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
           aiAnnotatedImageUrl: result.annotatedImageUrl,
         );
 
-        // Показываем предупреждение при расхождении
+        // Показываем результат
         if (mismatch) {
-          _showAIMismatchDialog(humanCount, aiCount);
+          // Увеличиваем счётчик попыток фото
+          _photoAttempts++;
+
+          // Показываем диалог с выбором: повторное фото, далее или "ИИ ошибся" (после 3 попыток)
+          final dialogResult = await _showAIMismatchDialog(
+            expectedCount: expectedCount,
+            aiCount: aiCount,
+            question: question,
+            imageBytes: imageBytes,
+            showReportButton: _photoAttempts >= 3, // Кнопка появляется после 3 попыток
+          );
+          return dialogResult == 'retake';
         } else {
           // Если расхождения нет - показываем короткое сообщение
           ScaffoldMessenger.of(context).showSnackBar(
@@ -343,7 +404,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
                 children: [
                   const Icon(Icons.smart_toy, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Text('✓ ИИ подтвердил: $aiCount шт'),
+                  Text('✓ ИИ подтвердил: $aiCount шт (совпадает с программой)'),
                 ],
               ),
               backgroundColor: Colors.green,
@@ -367,54 +428,224 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         });
       }
     }
+    return false;
   }
 
   /// Показать диалог о расхождении с ИИ
-  void _showAIMismatchDialog(int humanCount, int aiCount) {
-    showDialog(
+  /// Возвращает: 'retake' - повторное фото, 'continue' - продолжить, 'error_reported' - ИИ ошибся
+  /// [showReportButton] - показывать кнопку "ИИ ошибся" (появляется после 3 попыток)
+  Future<String> _showAIMismatchDialog({
+    required int expectedCount,
+    required int aiCount,
+    required RecountQuestion question,
+    required Uint8List imageBytes,
+    bool showReportButton = false,
+  }) async {
+    final result = await showDialog<String>(
       context: context,
+      barrierDismissible: false, // Нельзя закрыть тапом вне диалога
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.warning_amber, color: Colors.orange, size: 28),
             const SizedBox(width: 8),
-            const Flexible(child: Text('Расхождение с ИИ')),
+            const Flexible(child: Text('Расхождение')),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ваш подсчёт: $humanCount шт',
-              style: const TextStyle(fontSize: 16),
+            // Что показывает программа (DBF)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF004D40).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.inventory_2, size: 20, color: Color(0xFF004D40)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'По программе: $expectedCount шт',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.smart_toy, size: 20, color: Colors.blue),
-                const SizedBox(width: 8),
-                Text(
-                  'ИИ насчитал: $aiCount шт',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
+            const SizedBox(height: 12),
+            // Что насчитал ИИ
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.smart_toy, size: 20, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ИИ насчитал: $aiCount шт',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
+            // Подсказка в зависимости от количества попыток
             Text(
-              'Проверьте ещё раз количество товара.',
-              style: TextStyle(color: Colors.grey[600]),
+              showReportButton
+                  ? 'Попытка $_photoAttempts. Если ИИ постоянно ошибается - нажмите "ИИ ошибся".'
+                  : 'Попытка $_photoAttempts из 3. Попробуйте сделать более чёткое фото.',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Понятно'),
+          // Кнопка "ИИ ошибся" - появляется только после 3 попыток
+          if (showReportButton)
+            TextButton.icon(
+              onPressed: () async {
+                // Закрываем диалог и отправляем отчёт об ошибке
+                Navigator.pop(ctx, 'error_reported');
+              },
+              icon: const Icon(Icons.report_problem, size: 18, color: Colors.red),
+              label: const Text('ИИ ошибся', style: TextStyle(color: Colors.red)),
+            )
+          else
+            const SizedBox.shrink(), // Пустой виджет если кнопка не показывается
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Кнопка "Далее" - продолжить без повторного фото
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 'continue'),
+                child: const Text('Далее'),
+              ),
+              const SizedBox(width: 8),
+              // Кнопка "Повторное фото"
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'retake'),
+                icon: const Icon(Icons.camera_alt, size: 18),
+                label: const Text('Повторить'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+
+    // Обработка "ИИ ошибся"
+    if (result == 'error_reported') {
+      await _reportAiError(
+        question: question,
+        expectedCount: expectedCount,
+        aiCount: aiCount,
+        imageBytes: imageBytes,
+      );
+      return 'continue'; // После отчёта продолжаем
+    }
+
+    return result ?? 'continue';
+  }
+
+  /// Отправить отчёт об ошибке ИИ
+  Future<void> _reportAiError({
+    required RecountQuestion question,
+    required int expectedCount,
+    required int aiCount,
+    required Uint8List imageBytes,
+  }) async {
+    // Показываем индикатор загрузки
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Отправка отчёта...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final report = await CigaretteVisionService.reportAiError(
+        productId: question.barcode,
+        productName: question.productName,
+        expectedCount: expectedCount,
+        aiCount: aiCount,
+        imageBytes: imageBytes,
+        shopAddress: widget.shopAddress,
+        employeeName: widget.employeeName,
+      );
+
+      // Закрываем индикатор
+      if (mounted) Navigator.pop(context);
+
+      if (!mounted) return;
+
+      if (report.success) {
+        // Показываем результат
+        String message;
+        Color backgroundColor;
+
+        if (report.isDisabled) {
+          message = 'ИИ отключен для "${question.productName}" (${report.consecutiveErrors}/${report.threshold} ошибок)';
+          backgroundColor = Colors.red;
+        } else {
+          message = 'Отчёт отправлен (${report.consecutiveErrors}/${report.threshold})';
+          backgroundColor = Colors.green;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  report.isDisabled ? Icons.warning : Icons.check_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Flexible(child: Text(message)),
+              ],
+            ),
+            backgroundColor: backgroundColor,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка отправки: ${report.error}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Закрываем индикатор
+      if (mounted) Navigator.pop(context);
+
+      Logger.error('Ошибка отправки отчёта об ошибке ИИ', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   bool _canProceed() {
@@ -505,12 +736,8 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
       _answers[_currentQuestionIndex] = answer.copyWith(photoPath: _photoPath);
     }
 
-    // Вызываем ИИ проверку если товар активен и есть фото
-    final currentQuestion = _selectedQuestions![_currentQuestionIndex];
-    final currentAnswer = _answers[_currentQuestionIndex];
-    if (currentQuestion.isAiActive && currentAnswer.photoPath != null && currentAnswer.aiVerified == null) {
-      await _verifyWithAI(_currentQuestionIndex);
-    }
+    // Примечание: ИИ проверка теперь вызывается сразу после съёмки фото в _takePhoto()
+    // Дополнительный вызов здесь не нужен
 
     if (_currentQuestionIndex < _selectedQuestions!.length - 1) {
       setState(() {
@@ -520,6 +747,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
         _lessByController.clear();
         _photoPath = null;
         _answerSaved = false; // Сбрасываем флаг для нового вопроса
+        _photoAttempts = 0; // Сбрасываем счётчик попыток для нового вопроса
 
         // Загружаем сохраненный ответ, если есть
         if (_currentQuestionIndex < _answers.length) {

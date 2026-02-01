@@ -30,10 +30,42 @@ const IMAGES_DIR = path.join(DATA_DIR, 'cigarette-training-images');
 // Путь к магазинам (из основной системы)
 const SHOPS_DIR = '/var/www/shops';
 
+// ============ РАЗДЕЛЬНЫЕ ДАТАСЕТЫ ДЛЯ ДВУХ МОДЕЛЕЙ ============
+// Типы обучения
+const TRAINING_TYPES = {
+  DISPLAY: 'display',   // Пересменка: обнаружение на выкладке (далеко, много товаров)
+  COUNTING: 'counting', // Пересчёт: подсчёт пачек (близко, один товар)
+};
+
+// Директории для раздельных датасетов
+const DISPLAY_TRAINING_DIR = path.join(DATA_DIR, 'display-training');
+const COUNTING_TRAINING_DIR = path.join(DATA_DIR, 'counting-training');
+
+// Структура поддиректорий для каждого типа
+const getTrainingPaths = (trainingType) => {
+  const baseDir = trainingType === TRAINING_TYPES.COUNTING
+    ? COUNTING_TRAINING_DIR
+    : DISPLAY_TRAINING_DIR;
+
+  return {
+    baseDir,
+    imagesDir: path.join(baseDir, 'images'),
+    labelsDir: path.join(baseDir, 'labels'),
+    samplesFile: path.join(baseDir, 'samples.json'),
+    classMappingFile: path.join(baseDir, 'class-mapping.json'),
+  };
+};
+
+// Пути к моделям
+const DISPLAY_MODEL = path.join(__dirname, '..', 'ml', 'models', 'display_detector.pt');
+const COUNTING_MODEL = path.join(__dirname, '..', 'ml', 'models', 'counting_detector.pt');
+
 // Дефолтные настройки (можно изменить через API)
 const DEFAULT_SETTINGS = {
   requiredRecountPhotos: 10,  // Крупный план пачки (10 шаблонов) - ОБЩИЙ для всех магазинов
   requiredDisplayPhotosPerShop: 3,  // Фото выкладки НА КАЖДЫЙ МАГАЗИН
+  requiredCountingPhotos: 10,  // Фото с пересчёта - ОБЩИЙ для всех магазинов
+  maxCountingPhotosPerProduct: 50,  // Лимит фото пересчёта на товар
   // Источник каталога товаров:
   // "recount-questions" - текущий каталог (вопросы пересчёта)
   // "master-catalog" - единый мастер-каталог (новый)
@@ -568,12 +600,14 @@ function getImagePath(fileName) {
  * @param {string} params.imageBase64 - Изображение в base64
  * @param {Array} params.detectedProducts - Список распознанных товаров
  * @param {string} params.shopAddress - Адрес магазина
+ * @param {Array} params.boxes - Bounding boxes из детекции (для YOLO обучения)
  * @returns {Object} - Результат сохранения
  */
 async function savePositiveSample({
   imageBase64,
   detectedProducts,
   shopAddress,
+  boxes = [],  // НОВОЕ: raw boxes из YOLO детекции
 }) {
   try {
     const settings = loadSettings();
@@ -632,6 +666,37 @@ async function savePositiveSample({
       const imagePath = path.join(IMAGES_DIR, imageFileName);
       fs.writeFileSync(imagePath, imageBuffer);
 
+      // НОВОЕ: Собираем bounding boxes для этого товара из raw boxes
+      const productBoxes = boxes.filter(box => box.productId === productId);
+
+      // НОВОЕ: Сохраняем YOLO label файл если есть boxes
+      let yoloAnnotationCount = 0;
+      if (productBoxes.length > 0) {
+        // Создаём директорию для labels если не существует
+        if (!fs.existsSync(LABELS_DIR)) {
+          fs.mkdirSync(LABELS_DIR, { recursive: true });
+        }
+
+        const labelFileName = `positive_${id}.txt`;
+        const labelPath = path.join(LABELS_DIR, labelFileName);
+
+        // Конвертируем x1,y1,x2,y2 в YOLO формат: class x_center y_center width height
+        const classId = getClassIdForProduct(productId);
+        const yoloLines = productBoxes.map(box => {
+          // box.box содержит { x1, y1, x2, y2 } normalized 0-1
+          const b = box.box;
+          const xCenter = (b.x1 + b.x2) / 2;
+          const yCenter = (b.y1 + b.y2) / 2;
+          const width = b.x2 - b.x1;
+          const height = b.y2 - b.y1;
+          return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+        }).join('\n');
+
+        fs.writeFileSync(labelPath, yoloLines);
+        yoloAnnotationCount = productBoxes.length;
+        console.log(`[Positive Samples] YOLO label сохранён: ${labelFileName} (${yoloAnnotationCount} boxes)`);
+      }
+
       // Создаём запись
       const sample = {
         id,
@@ -644,8 +709,8 @@ async function savePositiveSample({
         count: detected.count || 1,
         imageFileName,
         imageUrl: `/api/cigarette-vision/images/${imageFileName}`,
-        boundingBoxes: [],  // У positive samples нет ручных аннотаций
-        annotationCount: 0,
+        boundingBoxes: productBoxes.map(b => b.box),  // Сохраняем boxes для справки
+        annotationCount: yoloAnnotationCount,  // Теперь есть аннотации!
         createdAt: timestamp,
       };
 
@@ -687,8 +752,10 @@ function deleteSampleInternal(samples, sampleId) {
       }
     }
 
-    // Удаляем YOLO label если есть
-    const labelPath = path.join(LABELS_DIR, sample.id + '.txt');
+    // Удаляем YOLO label если есть (для positive samples имя файла positive_${id}.txt)
+    // Выводим имя label из имени изображения (меняем .jpg на .txt)
+    const labelFileName = sample.imageFileName ? sample.imageFileName.replace(/\.jpg$/, '.txt') : (sample.id + '.txt');
+    const labelPath = path.join(LABELS_DIR, labelFileName);
     if (fs.existsSync(labelPath)) {
       try {
         fs.unlinkSync(labelPath);
@@ -961,6 +1028,942 @@ async function getModelStatus() {
   };
 }
 
+// ============ РАЗДЕЛЬНЫЕ ДАТАСЕТЫ: ФУНКЦИИ ============
+
+/**
+ * Инициализация директорий для раздельного обучения
+ */
+function initTypedTraining(trainingType) {
+  const paths = getTrainingPaths(trainingType);
+
+  if (!fs.existsSync(paths.baseDir)) {
+    fs.mkdirSync(paths.baseDir, { recursive: true });
+  }
+  if (!fs.existsSync(paths.imagesDir)) {
+    fs.mkdirSync(paths.imagesDir, { recursive: true });
+  }
+  if (!fs.existsSync(paths.labelsDir)) {
+    fs.mkdirSync(paths.labelsDir, { recursive: true });
+  }
+  if (!fs.existsSync(paths.samplesFile)) {
+    fs.writeFileSync(paths.samplesFile, JSON.stringify({ samples: [] }, null, 2));
+  }
+
+  return paths;
+}
+
+/**
+ * Загрузить образцы для конкретного типа обучения
+ */
+function loadTypedSamples(trainingType) {
+  try {
+    const paths = initTypedTraining(trainingType);
+    const data = fs.readFileSync(paths.samplesFile, 'utf8');
+    return JSON.parse(data).samples || [];
+  } catch (error) {
+    console.error(`[Typed Training] Ошибка загрузки образцов ${trainingType}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Сохранить образцы для конкретного типа обучения
+ */
+function saveTypedSamples(trainingType, samples) {
+  try {
+    const paths = initTypedTraining(trainingType);
+    fs.writeFileSync(paths.samplesFile, JSON.stringify({ samples }, null, 2));
+    return true;
+  } catch (error) {
+    console.error(`[Typed Training] Ошибка сохранения образцов ${trainingType}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Получить classId для товара в конкретном датасете
+ */
+function getTypedClassId(trainingType, productId) {
+  const paths = initTypedTraining(trainingType);
+
+  let classMapping = {};
+  if (fs.existsSync(paths.classMappingFile)) {
+    try {
+      classMapping = JSON.parse(fs.readFileSync(paths.classMappingFile, 'utf8'));
+    } catch (e) {
+      classMapping = {};
+    }
+  }
+
+  if (classMapping[productId] !== undefined) {
+    return classMapping[productId];
+  }
+
+  // Создаём новый classId
+  const maxId = Object.values(classMapping).reduce((max, id) => Math.max(max, id), -1);
+  const newId = maxId + 1;
+  classMapping[productId] = newId;
+
+  fs.writeFileSync(paths.classMappingFile, JSON.stringify(classMapping, null, 2));
+  console.log(`[Typed Training] ${trainingType}: новый classId для ${productId}: ${newId}`);
+
+  return newId;
+}
+
+/**
+ * Сохранить positive sample в раздельный датасет
+ * @param {string} trainingType - 'display' или 'counting'
+ * @param {Object} params - Параметры образца
+ */
+async function saveTypedPositiveSample(trainingType, {
+  imageBase64,
+  detectedProducts,
+  shopAddress,
+  boxes = [],
+}) {
+  try {
+    const settings = loadSettings();
+
+    // Проверяем включена ли функция
+    if (!settings.positiveSamplesEnabled) {
+      return { success: false, skipped: true, reason: 'Positive samples отключены' };
+    }
+
+    // Проверяем вероятность сохранения (10% по умолчанию)
+    const sampleRate = settings.positiveSampleRate || 0.1;
+    if (Math.random() > sampleRate) {
+      return { success: false, skipped: true, reason: 'Не попал в выборку' };
+    }
+
+    if (!detectedProducts || detectedProducts.length === 0) {
+      return { success: false, skipped: true, reason: 'Нет распознанных товаров' };
+    }
+
+    const paths = initTypedTraining(trainingType);
+    const maxPerProduct = settings.maxPositiveSamplesPerProduct || 50;
+    const samples = loadTypedSamples(trainingType);
+    const savedCount = { total: 0, rotated: 0, withLabels: 0 };
+
+    // Сохраняем для каждого распознанного товара
+    for (const detected of detectedProducts) {
+      const productId = detected.productId || detected.barcode;
+
+      // Считаем существующие positive samples для этого товара
+      const existingPositive = samples.filter(
+        s => (s.productId === productId || s.barcode === productId)
+      );
+
+      // Если лимит превышен - удаляем самые старые (FIFO)
+      if (existingPositive.length >= maxPerProduct) {
+        existingPositive.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        const toDelete = existingPositive[0];
+
+        // Удаляем файлы
+        const imgPath = path.join(paths.imagesDir, toDelete.imageFileName);
+        const lblPath = path.join(paths.labelsDir, toDelete.imageFileName.replace(/\.jpg$/, '.txt'));
+        try {
+          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+          if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+        } catch (e) { /* ignore */ }
+
+        // Удаляем из массива
+        const idx = samples.findIndex(s => s.id === toDelete.id);
+        if (idx !== -1) {
+          samples.splice(idx, 1);
+          savedCount.rotated++;
+        }
+      }
+
+      // Сохраняем новый positive sample
+      const id = uuidv4();
+      const timestamp = new Date().toISOString();
+      const imageFileName = `${trainingType}_${id}.jpg`;
+
+      // Сохраняем изображение
+      const imageBuffer = Buffer.from(imageBase64, 'base64');
+      fs.writeFileSync(path.join(paths.imagesDir, imageFileName), imageBuffer);
+
+      // Собираем bounding boxes для этого товара
+      const productBoxes = boxes.filter(box => box.productId === productId);
+
+      // Сохраняем YOLO label если есть boxes
+      let annotationCount = 0;
+      if (productBoxes.length > 0) {
+        const labelFileName = imageFileName.replace(/\.jpg$/, '.txt');
+        const classId = getTypedClassId(trainingType, productId);
+
+        const yoloLines = productBoxes.map(box => {
+          const b = box.box;
+          const xCenter = (b.x1 + b.x2) / 2;
+          const yCenter = (b.y1 + b.y2) / 2;
+          const width = b.x2 - b.x1;
+          const height = b.y2 - b.y1;
+          return `${classId} ${xCenter.toFixed(6)} ${yCenter.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+        }).join('\n');
+
+        fs.writeFileSync(path.join(paths.labelsDir, labelFileName), yoloLines);
+        annotationCount = productBoxes.length;
+        savedCount.withLabels++;
+      }
+
+      // Создаём запись
+      const sample = {
+        id,
+        productId,
+        barcode: detected.barcode || productId,
+        productName: detected.productName || '',
+        trainingType,
+        shopAddress: shopAddress || '',
+        confidence: detected.confidence || detected.maxConfidence || 0,
+        count: detected.count || 1,
+        imageFileName,
+        boundingBoxes: productBoxes.map(b => b.box),
+        annotationCount,
+        createdAt: timestamp,
+      };
+
+      samples.push(sample);
+      savedCount.total++;
+    }
+
+    saveTypedSamples(trainingType, samples);
+    console.log(`[Typed Training] ${trainingType}: сохранено ${savedCount.total}, с labels: ${savedCount.withLabels}, ротировано: ${savedCount.rotated}`);
+
+    return { success: true, savedCount, trainingType };
+  } catch (error) {
+    console.error(`[Typed Training] Ошибка сохранения ${trainingType}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Сохранить фото с пересчёта для обучения (counting датасет)
+ * ВАЖНО: Сохраняет ВСЕ фото (без вероятностного семплирования) для товаров с isAiActive=true
+ * @param {Object} params - Параметры
+ * @param {string} params.imageBase64 - Изображение в base64
+ * @param {string} params.productId - ID товара (barcode)
+ * @param {string} params.productName - Название товара
+ * @param {string} params.shopAddress - Адрес магазина
+ * @param {number} params.employeeAnswer - Ответ сотрудника (количество)
+ */
+async function saveCountingTrainingSample({
+  imageBase64,
+  productId,
+  productName,
+  shopAddress,
+  employeeAnswer,
+}) {
+  try {
+    if (!imageBase64 || !productId) {
+      return { success: false, error: 'imageBase64 и productId обязательны' };
+    }
+
+    const settings = loadSettings();
+    const trainingType = TRAINING_TYPES.COUNTING;
+    const paths = initTypedTraining(trainingType);
+    const maxPerProduct = settings.maxCountingPhotosPerProduct || 50;
+    const samples = loadTypedSamples(trainingType);
+
+    // Считаем существующие фото для этого товара
+    const existingForProduct = samples.filter(
+      s => (s.productId === productId || s.barcode === productId)
+    );
+
+    // Если лимит превышен - удаляем самый старый (FIFO ротация)
+    if (existingForProduct.length >= maxPerProduct) {
+      existingForProduct.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      const toDelete = existingForProduct[0];
+
+      // Удаляем файлы
+      const imgPath = path.join(paths.imagesDir, toDelete.imageFileName);
+      const lblPath = path.join(paths.labelsDir, toDelete.imageFileName.replace(/\.jpg$/, '.txt'));
+      try {
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+      } catch (e) { /* ignore */ }
+
+      // Удаляем из массива
+      const idx = samples.findIndex(s => s.id === toDelete.id);
+      if (idx !== -1) {
+        samples.splice(idx, 1);
+        console.log(`[Counting Training] Ротация: удалён старый sample для ${productId}`);
+      }
+    }
+
+    // Сохраняем новое фото
+    const id = uuidv4();
+    const timestamp = new Date().toISOString();
+    const imageFileName = `counting_${productId}_${id}.jpg`;
+
+    // Сохраняем изображение
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    fs.writeFileSync(path.join(paths.imagesDir, imageFileName), imageBuffer);
+
+    // Создаём запись (без boundingBoxes - их добавит админ при аннотации)
+    const sample = {
+      id,
+      productId,
+      barcode: productId,
+      productName: productName || '',
+      trainingType,
+      type: 'counting',  // Для Flutter фильтра
+      shopAddress: shopAddress || '',
+      employeeAnswer: employeeAnswer || null,
+      imageFileName,
+      imageUrl: `/api/cigarette-vision/counting-images/${imageFileName}`,
+      boundingBoxes: [],
+      annotationCount: 0,
+      createdAt: timestamp,
+    };
+
+    samples.push(sample);
+    saveTypedSamples(trainingType, samples);
+
+    console.log(`[Counting Training] Сохранено фото для ${productName || productId}, всего: ${existingForProduct.length + 1}`);
+
+    return { success: true, sample };
+  } catch (error) {
+    console.error('[Counting Training] Ошибка сохранения:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Получить количество фото пересчёта для товара
+ * @param {string} productId - ID товара (barcode)
+ * @returns {number} - Количество фото
+ */
+function getCountingPhotosCount(productId) {
+  try {
+    const samples = loadTypedSamples(TRAINING_TYPES.COUNTING);
+    return samples.filter(
+      s => (s.productId === productId || s.barcode === productId)
+    ).length;
+  } catch (error) {
+    console.error('[Counting Training] Ошибка подсчёта фото:', error);
+    return 0;
+  }
+}
+
+/**
+ * Получить все фото пересчёта для товара
+ * @param {string} productId - ID товара (barcode)
+ * @returns {Array} - Массив образцов
+ */
+function getCountingSamplesForProduct(productId) {
+  try {
+    const samples = loadTypedSamples(TRAINING_TYPES.COUNTING);
+    return samples.filter(
+      s => (s.productId === productId || s.barcode === productId)
+    );
+  } catch (error) {
+    console.error('[Counting Training] Ошибка получения образцов:', error);
+    return [];
+  }
+}
+
+/**
+ * Удалить фото пересчёта
+ * @param {string} sampleId - ID образца
+ * @returns {Object} - Результат
+ */
+function deleteCountingSample(sampleId) {
+  try {
+    const trainingType = TRAINING_TYPES.COUNTING;
+    const paths = getTrainingPaths(trainingType);
+    const samples = loadTypedSamples(trainingType);
+
+    const idx = samples.findIndex(s => s.id === sampleId);
+    if (idx === -1) {
+      return { success: false, error: 'Образец не найден' };
+    }
+
+    const sample = samples[idx];
+
+    // Удаляем файлы
+    const imgPath = path.join(paths.imagesDir, sample.imageFileName);
+    const lblPath = path.join(paths.labelsDir, sample.imageFileName.replace(/\.jpg$/, '.txt'));
+    try {
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+    } catch (e) { /* ignore */ }
+
+    // Удаляем из массива
+    samples.splice(idx, 1);
+    saveTypedSamples(trainingType, samples);
+
+    console.log(`[Counting Training] Удалён образец ${sampleId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[Counting Training] Ошибка удаления:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Получить статистику раздельного датасета
+ */
+function getTypedTrainingStats(trainingType) {
+  try {
+    const samples = loadTypedSamples(trainingType);
+    const paths = getTrainingPaths(trainingType);
+
+    // Подсчёт по товарам
+    const byProduct = {};
+    let withAnnotations = 0;
+
+    samples.forEach(s => {
+      const key = s.productId || s.barcode;
+      if (!byProduct[key]) {
+        byProduct[key] = { count: 0, withLabels: 0, productName: s.productName };
+      }
+      byProduct[key].count++;
+      if (s.annotationCount > 0) {
+        byProduct[key].withLabels++;
+        withAnnotations++;
+      }
+    });
+
+    // Проверяем существование модели
+    const modelPath = trainingType === TRAINING_TYPES.COUNTING ? COUNTING_MODEL : DISPLAY_MODEL;
+    const modelExists = fs.existsSync(modelPath);
+
+    return {
+      trainingType,
+      totalSamples: samples.length,
+      samplesWithAnnotations: withAnnotations,
+      uniqueProducts: Object.keys(byProduct).length,
+      byProduct,
+      modelExists,
+      modelPath,
+      paths: {
+        images: paths.imagesDir,
+        labels: paths.labelsDir,
+      },
+    };
+  } catch (error) {
+    console.error(`[Typed Training] Ошибка получения статистики ${trainingType}:`, error);
+    return { trainingType, totalSamples: 0, error: error.message };
+  }
+}
+
+/**
+ * Очистка старых образцов в раздельном датасете
+ */
+function cleanupTypedSamples(trainingType, maxAgeDays = 180) {
+  try {
+    const paths = getTrainingPaths(trainingType);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+
+    const samples = loadTypedSamples(trainingType);
+    let deletedCount = 0;
+
+    const toKeep = samples.filter(s => {
+      const createdAt = new Date(s.createdAt);
+      if (createdAt < cutoffDate) {
+        // Удаляем файлы
+        const imgPath = path.join(paths.imagesDir, s.imageFileName);
+        const lblPath = path.join(paths.labelsDir, s.imageFileName.replace(/\.jpg$/, '.txt'));
+        try {
+          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+          if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+        } catch (e) { /* ignore */ }
+        deletedCount++;
+        return false;
+      }
+      return true;
+    });
+
+    if (deletedCount > 0) {
+      saveTypedSamples(trainingType, toKeep);
+      console.log(`[Typed Training] ${trainingType}: очищено ${deletedCount} старых образцов`);
+    }
+
+    return { success: true, deletedCount, remaining: toKeep.length };
+  } catch (error) {
+    console.error(`[Typed Training] Ошибка очистки ${trainingType}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
+
+// Файл для хранения статистики ошибок по товарам
+const AI_ERRORS_FILE = path.join(DATA_DIR, 'ai-errors-stats.json');
+// Директория для "проблемных" фото (для анализа и переобучения)
+const PROBLEM_SAMPLES_DIR = path.join(DATA_DIR, 'problem-samples');
+
+// Настройки автоотключения
+const AI_ERROR_THRESHOLD = 5;  // После 5 ошибок подряд - отключаем ИИ
+const ERROR_RESET_DAYS = 7;    // Сбрасываем счётчик через 7 дней без ошибок
+
+/**
+ * Загрузить статистику ошибок ИИ
+ */
+function loadAiErrorsStats() {
+  try {
+    if (fs.existsSync(AI_ERRORS_FILE)) {
+      return JSON.parse(fs.readFileSync(AI_ERRORS_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('[AI Errors] Ошибка загрузки статистики:', e.message);
+  }
+  return { products: {} };
+}
+
+/**
+ * Сохранить статистику ошибок ИИ
+ */
+function saveAiErrorsStats(stats) {
+  try {
+    fs.writeFileSync(AI_ERRORS_FILE, JSON.stringify(stats, null, 2));
+  } catch (e) {
+    console.error('[AI Errors] Ошибка сохранения статистики:', e.message);
+  }
+}
+
+/**
+ * Сообщить об ошибке ИИ от сотрудника (информационная метка)
+ * НЕ увеличивает счётчик ошибок - это делает только админ через reportAdminAiDecision()
+ * @param {Object} params
+ * @param {string} params.productId - ID товара
+ * @param {string} params.productName - Название товара
+ * @param {number} params.expectedCount - Ожидаемое количество (по программе)
+ * @param {number} params.aiCount - Количество от ИИ
+ * @param {string} params.imageBase64 - Фото для анализа
+ * @param {string} params.shopAddress - Адрес магазина
+ * @param {string} params.employeeName - Имя сотрудника
+ */
+async function reportAiError({
+  productId,
+  productName,
+  expectedCount,
+  aiCount,
+  imageBase64,
+  shopAddress,
+  employeeName,
+}) {
+  try {
+    const stats = loadAiErrorsStats();
+    const now = new Date();
+
+    // Инициализируем запись для товара если нет
+    if (!stats.products[productId]) {
+      stats.products[productId] = {
+        productName: productName || '',
+        consecutiveErrors: 0,
+        totalErrors: 0,
+        pendingReports: 0,  // Ожидают проверки админом
+        lastErrorAt: null,
+        isDisabled: false,
+        disabledAt: null,
+        errorHistory: [],
+      };
+    }
+
+    const product = stats.products[productId];
+    product.productName = productName || product.productName;
+    // НЕ увеличиваем consecutiveErrors и totalErrors - это сделает админ
+    product.pendingReports = (product.pendingReports || 0) + 1;
+    product.lastReportAt = now.toISOString();
+
+    // Сохраняем в историю (последние 20 ошибок) - для информации админу
+    product.errorHistory.unshift({
+      timestamp: now.toISOString(),
+      expectedCount,
+      aiCount,
+      shopAddress: shopAddress || '',
+      employeeName: employeeName || '',
+      status: 'pending',  // Ожидает решения админа
+    });
+    if (product.errorHistory.length > 20) {
+      product.errorHistory = product.errorHistory.slice(0, 20);
+    }
+
+    saveAiErrorsStats(stats);
+
+    // Сохраняем проблемное фото для просмотра админом
+    let savedFileName = null;
+    if (imageBase64) {
+      const saveResult = await saveProblemSample({
+        productId,
+        productName,
+        expectedCount,
+        aiCount,
+        imageBase64,
+        shopAddress,
+        status: 'pending',  // Ожидает решения админа
+      });
+      savedFileName = saveResult.fileName;
+    }
+
+    console.log(`[AI Errors] Сотрудник сообщил об ошибке ИИ: ${productId} (${productName}) - ожидает решения админа`);
+
+    return {
+      success: true,
+      productId,
+      pendingReports: product.pendingReports,
+      consecutiveErrors: product.consecutiveErrors,
+      totalErrors: product.totalErrors,
+      isDisabled: product.isDisabled,
+      threshold: AI_ERROR_THRESHOLD,
+      savedFileName,
+      message: 'Жалоба сохранена, ожидает решения администратора',
+    };
+  } catch (error) {
+    console.error('[AI Errors] Ошибка сохранения:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Решение админа по ошибке ИИ
+ * ТОЛЬКО эта функция увеличивает счётчик для автоотключения
+ * @param {Object} params
+ * @param {string} params.productId - ID товара
+ * @param {string} params.productName - Название товара
+ * @param {string} params.decision - "approved_for_training" | "rejected_bad_photo"
+ * @param {string} params.adminName - Имя админа
+ * @param {string} params.imageBase64 - Фото (если approved, сохраняем в training)
+ * @param {number} params.expectedCount - Ожидаемое количество
+ * @param {number} params.aiCount - Количество от ИИ
+ * @param {string} params.shopAddress - Адрес магазина
+ */
+async function reportAdminAiDecision({
+  productId,
+  productName,
+  decision,
+  adminName,
+  imageBase64,
+  expectedCount,
+  aiCount,
+  shopAddress,
+}) {
+  try {
+    const stats = loadAiErrorsStats();
+    const now = new Date();
+
+    // Инициализируем запись для товара если нет
+    if (!stats.products[productId]) {
+      stats.products[productId] = {
+        productName: productName || '',
+        consecutiveErrors: 0,
+        totalErrors: 0,
+        pendingReports: 0,
+        lastErrorAt: null,
+        isDisabled: false,
+        disabledAt: null,
+        errorHistory: [],
+        adminDecisions: [],
+      };
+    }
+
+    const product = stats.products[productId];
+    product.productName = productName || product.productName;
+
+    // Уменьшаем счётчик pending
+    if (product.pendingReports > 0) {
+      product.pendingReports--;
+    }
+
+    // Сохраняем решение админа
+    if (!product.adminDecisions) {
+      product.adminDecisions = [];
+    }
+    product.adminDecisions.unshift({
+      timestamp: now.toISOString(),
+      decision,
+      adminName,
+      expectedCount,
+      aiCount,
+      shopAddress,
+    });
+    if (product.adminDecisions.length > 50) {
+      product.adminDecisions = product.adminDecisions.slice(0, 50);
+    }
+
+    if (decision === 'approved_for_training') {
+      // Админ подтвердил: ИИ ошибся
+      product.consecutiveErrors++;
+      product.totalErrors++;
+      product.lastErrorAt = now.toISOString();
+
+      // Проверяем порог автоотключения
+      if (product.consecutiveErrors >= AI_ERROR_THRESHOLD && !product.isDisabled) {
+        product.isDisabled = true;
+        product.disabledAt = now.toISOString();
+        console.log(`[AI Errors] ⚠️ ИИ ОТКЛЮЧЕН для товара ${productId} (${productName}) после ${product.consecutiveErrors} подтверждённых ошибок`);
+      }
+
+      // Сохраняем фото в counting-training датасет
+      if (imageBase64) {
+        try {
+          await saveTypedPositiveSample(TRAINING_TYPES.COUNTING, {
+            imageBase64,
+            detectedProducts: [{
+              productId,
+              barcode: productId,
+              productName: productName || '',
+              count: expectedCount || 0,  // Правильное количество
+            }],
+            shopAddress: shopAddress || '',
+            boxes: [],  // Без boxes - админ добавит аннотацию позже
+          });
+          console.log(`[AI Errors] Фото добавлено в counting-training: ${productId}`);
+        } catch (e) {
+          console.warn(`[AI Errors] Не удалось сохранить в training:`, e.message);
+        }
+      }
+
+      console.log(`[AI Errors] Админ ${adminName} подтвердил ошибку ИИ: ${productId} (consecutiveErrors: ${product.consecutiveErrors})`);
+    } else if (decision === 'rejected_bad_photo') {
+      // Админ отклонил: фото плохое, ИИ не виноват
+      // НЕ увеличиваем счётчик
+      console.log(`[AI Errors] Админ ${adminName} отклонил жалобу на ИИ: ${productId} (плохое фото)`);
+    }
+
+    saveAiErrorsStats(stats);
+
+    return {
+      success: true,
+      productId,
+      decision,
+      adminName,
+      consecutiveErrors: product.consecutiveErrors,
+      totalErrors: product.totalErrors,
+      isDisabled: product.isDisabled,
+      threshold: AI_ERROR_THRESHOLD,
+    };
+  } catch (error) {
+    console.error('[AI Errors] Ошибка сохранения решения админа:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Сохранить проблемное фото для анализа/переобучения
+ * @param {string} status - "pending" (ожидает) | "approved" | "rejected"
+ */
+async function saveProblemSample({
+  productId,
+  productName,
+  expectedCount,
+  aiCount,
+  imageBase64,
+  shopAddress,
+  status = 'pending',
+}) {
+  try {
+    // Создаём директорию
+    const productDir = path.join(PROBLEM_SAMPLES_DIR, productId);
+    if (!fs.existsSync(productDir)) {
+      fs.mkdirSync(productDir, { recursive: true });
+    }
+
+    // Ограничиваем количество проблемных фото (макс 30 на товар)
+    const existingFiles = fs.readdirSync(productDir).filter(f => f.endsWith('.jpg'));
+    if (existingFiles.length >= 30) {
+      // Удаляем самый старый
+      existingFiles.sort();
+      const oldest = existingFiles[0];
+      fs.unlinkSync(path.join(productDir, oldest));
+      // Удаляем метаданные
+      const metaFile = oldest.replace('.jpg', '.json');
+      if (fs.existsSync(path.join(productDir, metaFile))) {
+        fs.unlinkSync(path.join(productDir, metaFile));
+      }
+    }
+
+    // Сохраняем фото
+    const id = uuidv4().slice(0, 8);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `problem_${timestamp}_${id}.jpg`;
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
+    fs.writeFileSync(path.join(productDir, fileName), imageBuffer);
+
+    // Сохраняем метаданные
+    const metaFileName = fileName.replace('.jpg', '.json');
+    fs.writeFileSync(path.join(productDir, metaFileName), JSON.stringify({
+      productId,
+      productName,
+      expectedCount,
+      aiCount,
+      shopAddress,
+      status,  // pending | approved | rejected
+      createdAt: new Date().toISOString(),
+    }, null, 2));
+
+    console.log(`[AI Errors] Проблемное фото сохранено: ${productId}/${fileName} (status: ${status})`);
+    return { success: true, fileName };
+  } catch (error) {
+    console.error('[AI Errors] Ошибка сохранения проблемного фото:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Проверить отключен ли ИИ для товара
+ */
+function isProductAiDisabled(productId) {
+  const stats = loadAiErrorsStats();
+  const product = stats.products[productId];
+
+  if (!product) return false;
+
+  // Проверяем автоматический сброс (если давно не было ошибок)
+  if (product.isDisabled && product.lastErrorAt) {
+    const daysSinceLastError = (Date.now() - new Date(product.lastErrorAt).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceLastError >= ERROR_RESET_DAYS) {
+      // Автоматически включаем ИИ обратно
+      product.isDisabled = false;
+      product.consecutiveErrors = 0;
+      product.disabledAt = null;
+      saveAiErrorsStats(stats);
+      console.log(`[AI Errors] ИИ автоматически включен для ${productId} (прошло ${daysSinceLastError.toFixed(1)} дней без ошибок)`);
+      return false;
+    }
+  }
+
+  return product.isDisabled;
+}
+
+/**
+ * Получить полный статус ИИ для товара
+ */
+function getProductAiStatus(productId) {
+  const stats = loadAiErrorsStats();
+  const product = stats.products[productId];
+
+  if (!product) {
+    return {
+      productId,
+      exists: false,
+      isDisabled: false,
+      consecutiveErrors: 0,
+      totalErrors: 0,
+      threshold: AI_ERROR_THRESHOLD,
+      resetDays: ERROR_RESET_DAYS,
+    };
+  }
+
+  // Проверяем автосброс
+  const isDisabled = isProductAiDisabled(productId);
+
+  return {
+    productId,
+    exists: true,
+    productName: product.productName,
+    isDisabled,
+    consecutiveErrors: product.consecutiveErrors,
+    totalErrors: product.totalErrors,
+    lastErrorAt: product.lastErrorAt,
+    disabledAt: product.disabledAt,
+    errorHistory: product.errorHistory || [],
+    threshold: AI_ERROR_THRESHOLD,
+    resetDays: ERROR_RESET_DAYS,
+  };
+}
+
+/**
+ * Сбросить счётчик ошибок и включить ИИ (ручной сброс админом)
+ */
+function resetProductAiErrors(productId) {
+  const stats = loadAiErrorsStats();
+
+  if (!stats.products[productId]) {
+    return { success: false, error: 'Товар не найден в статистике ошибок' };
+  }
+
+  stats.products[productId].consecutiveErrors = 0;
+  stats.products[productId].isDisabled = false;
+  stats.products[productId].disabledAt = null;
+  // Не очищаем историю и totalErrors - для аналитики
+
+  saveAiErrorsStats(stats);
+  console.log(`[AI Errors] Счётчик ошибок сброшен для ${productId}, ИИ включен`);
+
+  return {
+    success: true,
+    productId,
+    message: 'ИИ включен, счётчик ошибок сброшен',
+  };
+}
+
+/**
+ * Сообщить об успешном распознавании (сбрасывает счётчик consecutiveErrors)
+ */
+function reportAiSuccess(productId) {
+  const stats = loadAiErrorsStats();
+
+  if (stats.products[productId]) {
+    stats.products[productId].consecutiveErrors = 0;
+    saveAiErrorsStats(stats);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Получить список всех проблемных товаров
+ */
+function getProblematicProducts() {
+  const stats = loadAiErrorsStats();
+  const result = [];
+
+  for (const [productId, product] of Object.entries(stats.products)) {
+    if (product.totalErrors > 0) {
+      result.push({
+        productId,
+        productName: product.productName,
+        isDisabled: product.isDisabled,
+        consecutiveErrors: product.consecutiveErrors,
+        totalErrors: product.totalErrors,
+        lastErrorAt: product.lastErrorAt,
+      });
+    }
+  }
+
+  // Сортируем по количеству ошибок
+  result.sort((a, b) => b.totalErrors - a.totalErrors);
+
+  return result;
+}
+
+/**
+ * Получить проблемные фото для товара (для ручной аннотации)
+ */
+function getProblemSamples(productId) {
+  try {
+    const productDir = path.join(PROBLEM_SAMPLES_DIR, productId);
+    if (!fs.existsSync(productDir)) {
+      return { success: true, samples: [] };
+    }
+
+    const files = fs.readdirSync(productDir).filter(f => f.endsWith('.jpg'));
+    const samples = files.map(fileName => {
+      const metaFile = fileName.replace('.jpg', '.json');
+      const metaPath = path.join(productDir, metaFile);
+      let meta = {};
+      if (fs.existsSync(metaPath)) {
+        try {
+          meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        } catch (e) { /* ignore */ }
+      }
+
+      return {
+        fileName,
+        imageUrl: `/api/cigarette-vision/problem-samples/${productId}/${fileName}`,
+        ...meta,
+      };
+    });
+
+    return { success: true, samples };
+  } catch (error) {
+    return { success: false, error: error.message, samples: [] };
+  }
+}
+
 module.exports = {
   init,
   getProductsWithTrainingInfo,
@@ -987,4 +1990,29 @@ module.exports = {
   savePositiveSample,
   cleanupOldPositiveSamples,
   getPositiveSamplesStats,
+  // Раздельные датасеты для display/counting
+  TRAINING_TYPES,
+  saveTypedPositiveSample,
+  getTypedTrainingStats,
+  cleanupTypedSamples,
+  loadTypedSamples,
+  getTrainingPaths,
+  DISPLAY_MODEL,
+  COUNTING_MODEL,
+  // Counting training (фото с пересчёта)
+  saveCountingTrainingSample,
+  getCountingPhotosCount,
+  getCountingSamplesForProduct,
+  deleteCountingSample,
+  // Система обратной связи и автоотключения ИИ
+  reportAiError,
+  reportAdminAiDecision,  // НОВОЕ: решение админа по ошибке ИИ
+  reportAiSuccess,
+  isProductAiDisabled,
+  getProductAiStatus,
+  resetProductAiErrors,
+  getProblematicProducts,
+  getProblemSamples,
+  PROBLEM_SAMPLES_DIR,
+  AI_ERROR_THRESHOLD,
 };

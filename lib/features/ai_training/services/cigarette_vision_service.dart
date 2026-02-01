@@ -9,17 +9,32 @@ import '../models/cigarette_training_model.dart';
 /// Сервис для работы с ИИ распознавания сигарет
 class CigaretteVisionService {
   /// Получить список товаров с информацией об обучении
-  static Future<List<CigaretteProduct>> getProducts({String? productGroup}) async {
+  /// [shopAddress] - если передан, сервер вернёт perShopDisplayStats только для этого магазина
+  /// Это критически важно для производительности при большом количестве магазинов
+  static Future<List<CigaretteProduct>> getProducts({
+    String? productGroup,
+    String? shopAddress,
+  }) async {
     try {
       var url = '${ApiConstants.serverUrl}${ApiConstants.cigaretteProductsEndpoint}';
+      final queryParams = <String>[];
+
       if (productGroup != null && productGroup.isNotEmpty) {
-        url += '?productGroup=${Uri.encodeComponent(productGroup)}';
+        queryParams.add('productGroup=${Uri.encodeComponent(productGroup)}');
+      }
+      if (shopAddress != null && shopAddress.isNotEmpty) {
+        queryParams.add('shopAddress=${Uri.encodeComponent(shopAddress)}');
       }
 
+      if (queryParams.isNotEmpty) {
+        url += '?${queryParams.join('&')}';
+      }
+
+      // Увеличиваем таймаут для больших данных
       final response = await http.get(
         Uri.parse(url),
         headers: ApiConstants.jsonHeaders,
-      ).timeout(ApiConstants.defaultTimeout);
+      ).timeout(ApiConstants.longTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -210,7 +225,7 @@ class CigaretteVisionService {
     }
   }
 
-  /// Детекция и подсчёт пачек на фото
+  /// Детекция и подсчёт пачек на фото (без сохранения для обучения)
   static Future<DetectionResult> detectAndCount({
     required Uint8List imageBytes,
     required String productId,
@@ -237,6 +252,47 @@ class CigaretteVisionService {
       }
     } catch (e) {
       Logger.error('Ошибка детекции', e);
+      return DetectionResult.error('Ошибка связи с сервером: $e');
+    }
+  }
+
+  /// Детекция и подсчёт пачек с сохранением в COUNTING датасет
+  /// Используется для пересчёта - успешные распознавания сохраняются для дообучения
+  /// [isAiActive] - если true, фото будет сохранено для обучения независимо от результата детекции
+  static Future<DetectionResult> detectAndCountWithTraining({
+    required Uint8List imageBytes,
+    required String productId,
+    String? productName,
+    String? shopAddress,
+    bool isAiActive = false,
+    int? employeeAnswer,
+  }) async {
+    try {
+      // Сжимаем изображение
+      final compressedImage = await compressImage(imageBytes);
+      final base64Image = base64Encode(compressedImage);
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/count-with-training'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'imageBase64': base64Image,
+          'productId': productId,
+          'productName': productName,
+          'shopAddress': shopAddress,
+          'isAiActive': isAiActive,
+          'employeeAnswer': employeeAnswer,
+        }),
+      ).timeout(ApiConstants.longTimeout);
+
+      if (response.statusCode == 200) {
+        return DetectionResult.fromJson(jsonDecode(response.body));
+      } else {
+        final errorBody = jsonDecode(response.body);
+        return DetectionResult.error(errorBody['error'] ?? 'Ошибка детекции');
+      }
+    } catch (e) {
+      Logger.error('Ошибка детекции с обучением', e);
       return DetectionResult.error('Ошибка связи с сервером: $e');
     }
   }
@@ -332,7 +388,7 @@ class CigaretteVisionService {
   /// Обновить настройки обучения
   static Future<TrainingSettings?> updateSettings({
     int? requiredRecountPhotos,
-    int? requiredDisplayPhotos,
+    int? requiredDisplayPhotosPerShop,
     String? catalogSource,
   }) async {
     try {
@@ -340,8 +396,8 @@ class CigaretteVisionService {
       if (requiredRecountPhotos != null) {
         body['requiredRecountPhotos'] = requiredRecountPhotos;
       }
-      if (requiredDisplayPhotos != null) {
-        body['requiredDisplayPhotos'] = requiredDisplayPhotos;
+      if (requiredDisplayPhotosPerShop != null) {
+        body['requiredDisplayPhotosPerShop'] = requiredDisplayPhotosPerShop;
       }
       if (catalogSource != null) {
         body['catalogSource'] = catalogSource;
@@ -396,12 +452,330 @@ class CigaretteVisionService {
       return SamplesResponse.empty();
     }
   }
+
+  // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
+
+  /// Сообщить об ошибке ИИ (кнопка "ИИ ошибся")
+  /// Сохраняет фото для анализа и увеличивает счётчик ошибок
+  /// После 5 ошибок подряд ИИ автоматически отключается для товара
+  static Future<AiErrorReport> reportAiError({
+    required String productId,
+    required String productName,
+    required int expectedCount,
+    required int aiCount,
+    Uint8List? imageBytes,
+    String? shopAddress,
+    String? employeeName,
+  }) async {
+    try {
+      String? base64Image;
+      if (imageBytes != null) {
+        final compressed = await compressImage(imageBytes);
+        base64Image = base64Encode(compressed);
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/report-error'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'productId': productId,
+          'productName': productName,
+          'expectedCount': expectedCount,
+          'aiCount': aiCount,
+          'imageBase64': base64Image,
+          'shopAddress': shopAddress,
+          'employeeName': employeeName,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        return AiErrorReport.fromJson(jsonDecode(response.body));
+      }
+      return AiErrorReport.error('Ошибка отправки');
+    } catch (e) {
+      Logger.error('Ошибка отправки report-error', e);
+      return AiErrorReport.error('Ошибка связи: $e');
+    }
+  }
+
+  /// Проверить отключен ли ИИ для товара
+  static Future<bool> isProductAiDisabled(String productId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/is-ai-disabled/$productId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['isDisabled'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка проверки статуса ИИ', e);
+      return false;
+    }
+  }
+
+  /// Получить полный статус ИИ для товара
+  static Future<ProductAiStatus?> getProductAiStatus(String productId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/product-ai-status/$productId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        return ProductAiStatus.fromJson(jsonDecode(response.body));
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка получения статуса ИИ', e);
+      return null;
+    }
+  }
+
+  /// Сбросить счётчик ошибок и включить ИИ (только админ)
+  static Future<bool> resetProductAiErrors(String productId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/reset-product-ai/$productId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      return response.statusCode == 200;
+    } catch (e) {
+      Logger.error('Ошибка сброса ошибок ИИ', e);
+      return false;
+    }
+  }
+
+  /// Получить список проблемных товаров (для админки)
+  static Future<List<ProblematicProduct>> getProblematicProducts() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/problematic-products'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final products = data['products'] as List? ?? [];
+        return products.map((p) => ProblematicProduct.fromJson(p)).toList();
+      }
+      return [];
+    } catch (e) {
+      Logger.error('Ошибка получения проблемных товаров', e);
+      return [];
+    }
+  }
+
+  /// Решение админа по ошибке ИИ
+  /// decision: "approved_for_training" (ИИ ошибся) | "rejected_bad_photo" (плохое фото)
+  static Future<AdminAiDecisionResult> reportAdminAiDecision({
+    required String productId,
+    required String decision,
+    required String adminName,
+    String? productName,
+    Uint8List? imageBytes,
+    int? expectedCount,
+    int? aiCount,
+    String? shopAddress,
+  }) async {
+    try {
+      String? base64Image;
+      if (imageBytes != null) {
+        final compressed = await compressImage(imageBytes);
+        base64Image = base64Encode(compressed);
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/admin-ai-decision'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode({
+          'productId': productId,
+          'productName': productName,
+          'decision': decision,
+          'adminName': adminName,
+          'imageBase64': base64Image,
+          'expectedCount': expectedCount,
+          'aiCount': aiCount,
+          'shopAddress': shopAddress,
+        }),
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        return AdminAiDecisionResult.fromJson(jsonDecode(response.body));
+      }
+      return AdminAiDecisionResult.error('Ошибка отправки решения');
+    } catch (e) {
+      Logger.error('Ошибка отправки решения админа', e);
+      return AdminAiDecisionResult.error('Ошибка связи: $e');
+    }
+  }
+}
+
+/// Результат решения админа по ошибке ИИ
+class AdminAiDecisionResult {
+  final bool success;
+  final String? error;
+  final String? productId;
+  final String? decision;
+  final String? adminName;
+  final int consecutiveErrors;
+  final int totalErrors;
+  final bool isDisabled;
+  final int threshold;
+
+  AdminAiDecisionResult({
+    required this.success,
+    this.error,
+    this.productId,
+    this.decision,
+    this.adminName,
+    this.consecutiveErrors = 0,
+    this.totalErrors = 0,
+    this.isDisabled = false,
+    this.threshold = 5,
+  });
+
+  factory AdminAiDecisionResult.fromJson(Map<String, dynamic> json) {
+    return AdminAiDecisionResult(
+      success: json['success'] == true,
+      error: json['error'],
+      productId: json['productId'],
+      decision: json['decision'],
+      adminName: json['adminName'],
+      consecutiveErrors: json['consecutiveErrors'] ?? 0,
+      totalErrors: json['totalErrors'] ?? 0,
+      isDisabled: json['isDisabled'] == true,
+      threshold: json['threshold'] ?? 5,
+    );
+  }
+
+  factory AdminAiDecisionResult.error(String message) => AdminAiDecisionResult(
+    success: false,
+    error: message,
+  );
+}
+
+/// Результат отправки ошибки ИИ
+class AiErrorReport {
+  final bool success;
+  final String? error;
+  final String? productId;
+  final int consecutiveErrors;
+  final int totalErrors;
+  final bool isDisabled;
+  final int threshold;
+
+  AiErrorReport({
+    required this.success,
+    this.error,
+    this.productId,
+    this.consecutiveErrors = 0,
+    this.totalErrors = 0,
+    this.isDisabled = false,
+    this.threshold = 5,
+  });
+
+  factory AiErrorReport.fromJson(Map<String, dynamic> json) {
+    return AiErrorReport(
+      success: json['success'] == true,
+      error: json['error'],
+      productId: json['productId'],
+      consecutiveErrors: json['consecutiveErrors'] ?? 0,
+      totalErrors: json['totalErrors'] ?? 0,
+      isDisabled: json['isDisabled'] == true,
+      threshold: json['threshold'] ?? 5,
+    );
+  }
+
+  factory AiErrorReport.error(String message) => AiErrorReport(
+    success: false,
+    error: message,
+  );
+}
+
+/// Статус ИИ для товара
+class ProductAiStatus {
+  final String productId;
+  final String? productName;
+  final bool exists;
+  final bool isDisabled;
+  final int consecutiveErrors;
+  final int totalErrors;
+  final DateTime? lastErrorAt;
+  final DateTime? disabledAt;
+  final int threshold;
+  final int resetDays;
+
+  ProductAiStatus({
+    required this.productId,
+    this.productName,
+    this.exists = false,
+    this.isDisabled = false,
+    this.consecutiveErrors = 0,
+    this.totalErrors = 0,
+    this.lastErrorAt,
+    this.disabledAt,
+    this.threshold = 5,
+    this.resetDays = 7,
+  });
+
+  factory ProductAiStatus.fromJson(Map<String, dynamic> json) {
+    return ProductAiStatus(
+      productId: json['productId'] ?? '',
+      productName: json['productName'],
+      exists: json['exists'] == true,
+      isDisabled: json['isDisabled'] == true,
+      consecutiveErrors: json['consecutiveErrors'] ?? 0,
+      totalErrors: json['totalErrors'] ?? 0,
+      lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt']) : null,
+      disabledAt: json['disabledAt'] != null ? DateTime.tryParse(json['disabledAt']) : null,
+      threshold: json['threshold'] ?? 5,
+      resetDays: json['resetDays'] ?? 7,
+    );
+  }
+}
+
+/// Проблемный товар (для админки)
+class ProblematicProduct {
+  final String productId;
+  final String? productName;
+  final bool isDisabled;
+  final int consecutiveErrors;
+  final int totalErrors;
+  final DateTime? lastErrorAt;
+
+  ProblematicProduct({
+    required this.productId,
+    this.productName,
+    this.isDisabled = false,
+    this.consecutiveErrors = 0,
+    this.totalErrors = 0,
+    this.lastErrorAt,
+  });
+
+  factory ProblematicProduct.fromJson(Map<String, dynamic> json) {
+    return ProblematicProduct(
+      productId: json['productId'] ?? '',
+      productName: json['productName'],
+      isDisabled: json['isDisabled'] == true,
+      consecutiveErrors: json['consecutiveErrors'] ?? 0,
+      totalErrors: json['totalErrors'] ?? 0,
+      lastErrorAt: json['lastErrorAt'] != null ? DateTime.tryParse(json['lastErrorAt']) : null,
+    );
+  }
 }
 
 /// Настройки обучения
 class TrainingSettings {
   final int requiredRecountPhotos;
-  final int requiredDisplayPhotos;
+  /// Количество фото выкладки НА МАГАЗИН (каждый магазин должен добавить свои фото)
+  final int requiredDisplayPhotosPerShop;
+  /// Количество фото пересчёта (общее для всех магазинов)
+  final int requiredCountingPhotos;
   /// Источник каталога товаров:
   /// - "recount-questions" - текущий каталог (вопросы пересчёта)
   /// - "master-catalog" - единый мастер-каталог (новый)
@@ -409,14 +783,16 @@ class TrainingSettings {
 
   TrainingSettings({
     required this.requiredRecountPhotos,
-    required this.requiredDisplayPhotos,
+    required this.requiredDisplayPhotosPerShop,
+    this.requiredCountingPhotos = 10,
     this.catalogSource = 'recount-questions',
   });
 
   factory TrainingSettings.fromJson(Map<String, dynamic> json) {
     return TrainingSettings(
       requiredRecountPhotos: json['requiredRecountPhotos'] ?? 10,
-      requiredDisplayPhotos: json['requiredDisplayPhotos'] ?? 10,
+      requiredDisplayPhotosPerShop: json['requiredDisplayPhotosPerShop'] ?? json['requiredDisplayPhotos'] ?? 3,
+      requiredCountingPhotos: json['requiredCountingPhotos'] ?? 10,
       catalogSource: json['catalogSource'] ?? 'recount-questions',
     );
   }

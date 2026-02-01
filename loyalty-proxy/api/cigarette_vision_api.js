@@ -472,9 +472,10 @@ function setupCigaretteVisionAPI(app) {
 
   // Детекция и подсчёт с сохранением в counting датасет
   // Используется для пересчёта товаров
+  // ВАЖНО: Сохраняет ВСЕ фото для товаров с isAiActive=true (для обучения)
   app.post('/api/cigarette-vision/count-with-training', async (req, res) => {
     try {
-      const { imageBase64, productId, productName, shopAddress } = req.body;
+      const { imageBase64, productId, productName, shopAddress, isAiActive, employeeAnswer } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение обязательно' });
@@ -487,20 +488,19 @@ function setupCigaretteVisionAPI(app) {
       // Выполняем детекцию
       const result = await cigaretteVision.detectAndCount(imageBase64, productId);
 
-      // Если детекция успешна - сохраняем в counting датасет
-      if (result.success && result.count > 0 && result.boxes && result.boxes.length > 0) {
-        // Асинхронно сохраняем (не блокируем ответ)
-        cigaretteVision.saveTypedPositiveSample(cigaretteVision.TRAINING_TYPES.COUNTING, {
+      // НОВАЯ ЛОГИКА: Сохраняем фото для товаров с isAiActive=true (для обучения)
+      // Не зависит от результата детекции - сохраняем ВСЕ фото
+      if (isAiActive === true) {
+        cigaretteVision.saveCountingTrainingSample({
           imageBase64,
-          detectedProducts: [{
-            productId,
-            barcode: productId,
-            productName: productName || '',
-            count: result.count,
-            confidence: result.confidence,
-          }],
+          productId,
+          productName: productName || '',
           shopAddress: shopAddress || '',
-          boxes: result.boxes,
+          employeeAnswer: employeeAnswer || null,
+        }).then(saveResult => {
+          if (saveResult.success) {
+            console.log(`[Cigarette Vision API] Counting sample сохранён для ${productName || productId}`);
+          }
         }).catch(err => {
           console.warn('[Cigarette Vision API] Ошибка сохранения counting sample:', err.message);
         });
@@ -509,6 +509,49 @@ function setupCigaretteVisionAPI(app) {
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка подсчёта с обучением:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ COUNTING SAMPLES API ============
+
+  // Получить фото пересчёта для товара
+  app.get('/api/cigarette-vision/counting-samples/:productId', (req, res) => {
+    try {
+      const { productId } = req.params;
+      const samples = cigaretteVision.getCountingSamplesForProduct(productId);
+      res.json({ success: true, samples, count: samples.length });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения counting samples:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Удалить фото пересчёта
+  app.delete('/api/cigarette-vision/counting-samples/:sampleId', (req, res) => {
+    try {
+      const { sampleId } = req.params;
+      const result = cigaretteVision.deleteCountingSample(sampleId);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка удаления counting sample:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Отдача изображений counting
+  app.get('/api/cigarette-vision/counting-images/:fileName', (req, res) => {
+    try {
+      const paths = cigaretteVision.getTrainingPaths(cigaretteVision.TRAINING_TYPES.COUNTING);
+      const imagePath = path.join(paths.imagesDir, req.params.fileName);
+
+      if (fs.existsSync(imagePath)) {
+        res.sendFile(imagePath);
+      } else {
+        res.status(404).json({ success: false, error: 'Изображение не найдено' });
+      }
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения counting image:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

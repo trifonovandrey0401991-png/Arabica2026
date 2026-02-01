@@ -9,6 +9,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// Модуль машинного зрения для подсчёта counting photos
+const cigaretteVision = require('../modules/cigarette-vision');
+
 // Директория для мастер-каталога
 const MASTER_CATALOG_DIR = '/var/www/master-catalog';
 const PRODUCTS_FILE = path.join(MASTER_CATALOG_DIR, 'products.json');
@@ -958,7 +961,11 @@ function setupMasterCatalogAPI(app) {
    */
   app.get('/api/master-catalog/for-training', (req, res) => {
     try {
-      const { productGroup } = req.query;
+      const { productGroup, shopAddress } = req.query;
+      // shopAddress - если передан, возвращаем perShopDisplayStats только для этого магазина
+      // Это критически важно для производительности при 100+ магазинах
+      const filterShopAddress = shopAddress ? decodeURIComponent(shopAddress) : null;
+
       let products = loadProducts();
 
       // Фильтр по группе
@@ -967,18 +974,34 @@ function setupMasterCatalogAPI(app) {
       }
 
       // Загружаем данные для статистики из cigarette-vision
-      const cigaretteVision = require('../modules/cigarette-vision');
       const samples = cigaretteVision.loadSamples();
       const settings = cigaretteVision.getSettings();
       const shops = cigaretteVision.loadAllShops();
 
       const requiredRecount = settings.requiredRecountPhotos || 10;
       const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
+      const requiredCounting = settings.requiredCountingPhotos || 10;
+
+      // Загружаем counting samples (фото с пересчёта)
+      const countingSamples = cigaretteVision.loadTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
 
       // Подсчёт фото по товарам
       const recountPhotosByProduct = {};
       const completedTemplatesByProduct = {};
       const displayPhotosByProductAndShop = {};
+      const countingPhotosByProduct = {};
+
+      // Подсчёт counting photos
+      countingSamples.forEach(sample => {
+        const productId = sample.productId;
+        const barcode = sample.barcode;
+        if (productId) {
+          countingPhotosByProduct[productId] = (countingPhotosByProduct[productId] || 0) + 1;
+        }
+        if (barcode && barcode !== productId) {
+          countingPhotosByProduct[barcode] = (countingPhotosByProduct[barcode] || 0) + 1;
+        }
+      });
 
       samples.forEach(sample => {
         const productId = sample.productId;
@@ -1022,12 +1045,20 @@ function setupMasterCatalogAPI(app) {
       // Преобразуем в формат для AI Training с per-shop статистикой
       const trainingProducts = products.map((p) => {
         const recountPhotos = recountPhotosByProduct[p.id] || recountPhotosByProduct[p.barcode] || 0;
+        const countingPhotos = countingPhotosByProduct[p.id] || countingPhotosByProduct[p.barcode] || 0;
         const completedTemplatesSet = completedTemplatesByProduct[p.id] || completedTemplatesByProduct[p.barcode] || new Set();
         const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
         const isRecountComplete = completedTemplates.length >= requiredRecount;
+        const isCountingComplete = countingPhotos >= requiredCounting;
 
         // Per-shop статистика для выкладки
-        const perShopDisplayStats = shops.map(shop => {
+        // ОПТИМИЗАЦИЯ: Если передан filterShopAddress, возвращаем только статистику для этого магазина
+        // Это уменьшает размер ответа с 7MB до ~100KB при 100 магазинах
+        const shopsToProcess = filterShopAddress
+          ? shops.filter(s => s.address === filterShopAddress)
+          : shops;
+
+        const perShopDisplayStats = shopsToProcess.map(shop => {
           const keyById = `${p.id}|${shop.address}`;
           const keyByBarcode = `${p.barcode}|${shop.address}`;
           const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
@@ -1041,8 +1072,19 @@ function setupMasterCatalogAPI(app) {
           };
         });
 
-        const totalDisplayPhotos = perShopDisplayStats.reduce((sum, s) => sum + s.displayPhotosCount, 0);
-        const shopsWithAiReady = perShopDisplayStats.filter(s => s.isDisplayComplete).length;
+        // Для totalDisplayPhotos и shopsWithAiReady нужны данные по ВСЕМ магазинам
+        // даже если фильтруем perShopDisplayStats
+        let totalDisplayPhotos = 0;
+        let shopsWithAiReady = 0;
+        shops.forEach(shop => {
+          const keyById = `${p.id}|${shop.address}`;
+          const keyByBarcode = `${p.barcode}|${shop.address}`;
+          const count = displayPhotosByProductAndShop[keyById] || displayPhotosByProductAndShop[keyByBarcode] || 0;
+          totalDisplayPhotos += count;
+          if (count >= requiredDisplayPerShop) {
+            shopsWithAiReady++;
+          }
+        });
         const isDisplayComplete = shopsWithAiReady > 0;
 
         return {
@@ -1066,6 +1108,10 @@ function setupMasterCatalogAPI(app) {
           displayPhotosCount: totalDisplayPhotos,
           requiredDisplayPhotos: requiredDisplayPerShop,
           isDisplayComplete: isDisplayComplete,
+          // Пересчёт (counting) - фото с пересчёта для обучения
+          countingPhotosCount: countingPhotos,
+          requiredCountingPhotos: requiredCounting,
+          isCountingComplete: isCountingComplete,
           // Per-shop статистика выкладки
           perShopDisplayStats: perShopDisplayStats,
           totalDisplayPhotos: totalDisplayPhotos,

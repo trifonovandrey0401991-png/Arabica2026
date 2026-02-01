@@ -1,5 +1,51 @@
 // Модели данных для обучения ИИ подсчёту сигарет
 
+/// Статистика фото выкладки для конкретного магазина
+class ShopDisplayStats {
+  final String shopAddress;
+  final String? shopName;
+  final String? shopId;
+  final int displayPhotosCount;
+  final int requiredDisplayPhotos;
+  final bool isDisplayComplete;
+
+  ShopDisplayStats({
+    required this.shopAddress,
+    this.shopName,
+    this.shopId,
+    required this.displayPhotosCount,
+    required this.requiredDisplayPhotos,
+    required this.isDisplayComplete,
+  });
+
+  factory ShopDisplayStats.fromJson(Map<String, dynamic> json) {
+    final count = json['displayPhotosCount'] ?? 0;
+    final required = json['requiredDisplayPhotos'] ?? 3;
+    return ShopDisplayStats(
+      shopAddress: json['shopAddress'] ?? '',
+      shopName: json['shopName'],
+      shopId: json['shopId'],
+      displayPhotosCount: count,
+      requiredDisplayPhotos: required,
+      isDisplayComplete: json['isDisplayComplete'] ?? (count >= required),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'shopAddress': shopAddress,
+    'shopName': shopName,
+    'shopId': shopId,
+    'displayPhotosCount': displayPhotosCount,
+    'requiredDisplayPhotos': requiredDisplayPhotos,
+    'isDisplayComplete': isDisplayComplete,
+  };
+
+  /// Процент прогресса (0-100)
+  double get progress => requiredDisplayPhotos > 0
+      ? (displayPhotosCount / requiredDisplayPhotos * 100).clamp(0, 100)
+      : 0;
+}
+
 /// Товар для обучения (из вопросов пересчёта)
 class CigaretteProduct {
   final String id;
@@ -22,10 +68,22 @@ class CigaretteProduct {
   final bool isRecountComplete;
   final List<int> completedTemplates; // Выполненные шаблоны (1-10)
 
-  // Раздельная статистика: выкладка (display)
+  // Раздельная статистика: выкладка (display) - общая для обратной совместимости
   final int displayPhotosCount;
   final int requiredDisplayPhotos;
   final bool isDisplayComplete;
+
+  // Раздельная статистика: пересчёт (counting) - фото с пересчёта
+  final int countingPhotosCount;
+  final int requiredCountingPhotos;
+  final bool isCountingComplete;
+
+  // НОВОЕ: Per-shop статистика выкладки
+  final List<ShopDisplayStats> perShopDisplayStats;
+  final int totalDisplayPhotos;
+  final int requiredDisplayPhotosPerShop;
+  final int shopsWithAiReady;
+  final int totalShops;
 
   CigaretteProduct({
     required this.id,
@@ -44,15 +102,32 @@ class CigaretteProduct {
     this.displayPhotosCount = 0,
     this.requiredDisplayPhotos = 10,
     this.isDisplayComplete = false,
+    // Counting статистика
+    this.countingPhotosCount = 0,
+    this.requiredCountingPhotos = 10,
+    this.isCountingComplete = false,
+    // Per-shop статистика
+    this.perShopDisplayStats = const [],
+    this.totalDisplayPhotos = 0,
+    this.requiredDisplayPhotosPerShop = 3,
+    this.shopsWithAiReady = 0,
+    this.totalShops = 0,
   });
 
   factory CigaretteProduct.fromJson(Map<String, dynamic> json) {
     final recountPhotos = json['recountPhotosCount'] ?? 0;
     final displayPhotos = json['displayPhotosCount'] ?? 0;
+    final countingPhotos = json['countingPhotosCount'] ?? 0;
     final requiredRecount = json['requiredRecountPhotos'] ?? 10;
-    final requiredDisplay = json['requiredDisplayPhotos'] ?? 10;
+    final requiredDisplay = json['requiredDisplayPhotos'] ?? 3;  // Теперь per-shop
+    final requiredCounting = json['requiredCountingPhotos'] ?? 10;
     final completedTemplatesList = (json['completedTemplates'] as List?)
         ?.map((e) => e is int ? e : int.tryParse(e.toString()) ?? 0)
+        .toList() ?? [];
+
+    // Парсинг per-shop статистики
+    final perShopStatsList = (json['perShopDisplayStats'] as List?)
+        ?.map((s) => ShopDisplayStats.fromJson(s as Map<String, dynamic>))
         .toList() ?? [];
 
     return CigaretteProduct(
@@ -73,6 +148,16 @@ class CigaretteProduct {
       displayPhotosCount: displayPhotos,
       requiredDisplayPhotos: requiredDisplay,
       isDisplayComplete: json['isDisplayComplete'] ?? (displayPhotos >= requiredDisplay),
+      // Counting статистика
+      countingPhotosCount: countingPhotos,
+      requiredCountingPhotos: requiredCounting,
+      isCountingComplete: json['isCountingComplete'] ?? (countingPhotos >= requiredCounting),
+      // Per-shop статистика
+      perShopDisplayStats: perShopStatsList,
+      totalDisplayPhotos: json['totalDisplayPhotos'] ?? displayPhotos,
+      requiredDisplayPhotosPerShop: json['requiredDisplayPhotosPerShop'] ?? 3,
+      shopsWithAiReady: json['shopsWithAiReady'] ?? 0,
+      totalShops: json['totalShops'] ?? 0,
     );
   }
 
@@ -93,7 +178,49 @@ class CigaretteProduct {
     'displayPhotosCount': displayPhotosCount,
     'requiredDisplayPhotos': requiredDisplayPhotos,
     'isDisplayComplete': isDisplayComplete,
+    // Counting статистика
+    'countingPhotosCount': countingPhotosCount,
+    'requiredCountingPhotos': requiredCountingPhotos,
+    'isCountingComplete': isCountingComplete,
+    // Per-shop статистика
+    'perShopDisplayStats': perShopDisplayStats.map((s) => s.toJson()).toList(),
+    'totalDisplayPhotos': totalDisplayPhotos,
+    'requiredDisplayPhotosPerShop': requiredDisplayPhotosPerShop,
+    'shopsWithAiReady': shopsWithAiReady,
+    'totalShops': totalShops,
   };
+
+  /// Получить статистику для конкретного магазина
+  ShopDisplayStats? getShopStats(String shopAddress) {
+    if (shopAddress.isEmpty) return null;
+
+    // Нормализуем адрес для сравнения (trim и lowercase)
+    final normalizedSearch = shopAddress.trim().toLowerCase();
+
+    try {
+      // Сначала пробуем точное совпадение
+      return perShopDisplayStats.firstWhere(
+        (s) => s.shopAddress == shopAddress,
+      );
+    } catch (e) {
+      // Если точное не найдено - пробуем нормализованное сравнение
+      try {
+        return perShopDisplayStats.firstWhere(
+          (s) => s.shopAddress.trim().toLowerCase() == normalizedSearch,
+        );
+      } catch (e2) {
+        return null;
+      }
+    }
+  }
+
+  /// Может ли ИИ работать в этом магазине
+  /// (крупный план завершён + выкладка для этого магазина завершена)
+  bool isAiEnabledForShop(String shopAddress) {
+    if (!isRecountComplete) return false;
+    final stats = getShopStats(shopAddress);
+    return stats?.isDisplayComplete ?? false;
+  }
 
   /// Процент завершённости обучения (0-100)
   double get trainingProgress =>
@@ -111,6 +238,12 @@ class CigaretteProduct {
   double get displayProgress =>
     requiredDisplayPhotos > 0
       ? (displayPhotosCount / requiredDisplayPhotos * 100).clamp(0, 100)
+      : 0;
+
+  /// Процент фото пересчёта (counting)
+  double get countingProgress =>
+    requiredCountingPhotos > 0
+      ? (countingPhotosCount / requiredCountingPhotos * 100).clamp(0, 100)
       : 0;
 }
 
@@ -238,8 +371,9 @@ class TrainingSample {
 
 /// Тип образца для обучения
 enum TrainingSampleType {
-  recount('recount'),    // Фото для подсчёта количества
-  display('display');    // Фото выкладки витрины
+  recount('recount'),    // Фото крупного плана (шаблоны)
+  display('display'),    // Фото выкладки витрины
+  counting('counting');  // Фото с пересчёта товаров
 
   final String value;
   const TrainingSampleType(this.value);
@@ -248,6 +382,8 @@ enum TrainingSampleType {
     switch (value) {
       case 'display':
         return TrainingSampleType.display;
+      case 'counting':
+        return TrainingSampleType.counting;
       case 'recount':
       default:
         return TrainingSampleType.recount;

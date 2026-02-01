@@ -25,7 +25,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
   bool _isSaving = false;
 
   int _requiredRecountPhotos = 10;
-  int _requiredDisplayPhotos = 10;
+  int _requiredDisplayPhotosPerShop = 3;
   String _catalogSource = 'recount-questions';
 
   @override
@@ -44,7 +44,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
         _settings = settings;
         if (settings != null) {
           _requiredRecountPhotos = settings.requiredRecountPhotos;
-          _requiredDisplayPhotos = settings.requiredDisplayPhotos;
+          _requiredDisplayPhotosPerShop = settings.requiredDisplayPhotosPerShop;
           _catalogSource = settings.catalogSource;
         }
         _isLoading = false;
@@ -57,7 +57,7 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
 
     final updated = await CigaretteVisionService.updateSettings(
       requiredRecountPhotos: _requiredRecountPhotos,
-      requiredDisplayPhotos: _requiredDisplayPhotos,
+      requiredDisplayPhotosPerShop: _requiredDisplayPhotosPerShop,
       catalogSource: _catalogSource,
     );
 
@@ -338,17 +338,17 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
             ),
             const Divider(),
 
-            // Выкладка
+            // Выкладка (на магазин)
             _buildSettingRow(
               icon: Icons.grid_view,
               iconColor: Colors.orange,
-              title: 'Выкладка',
-              subtitle: 'Фото витрины с 5-15 пачками',
-              value: _requiredDisplayPhotos,
-              min: 5,
-              max: 30,
+              title: 'Выкладка (на магазин)',
+              subtitle: 'Каждый магазин должен добавить свои фото',
+              value: _requiredDisplayPhotosPerShop,
+              min: 1,
+              max: 10,
               onChanged: (value) {
-                setState(() => _requiredDisplayPhotos = value);
+                setState(() => _requiredDisplayPhotosPerShop = value);
               },
             ),
             const SizedBox(height: 16),
@@ -558,9 +558,16 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                           '${product.displayPhotosCount}',
                           style: TextStyle(fontSize: 12, color: Colors.orange[700]),
                         ),
+                        const SizedBox(width: 12),
+                        Icon(Icons.calculate, size: 14, color: Colors.green[700]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.countingPhotosCount}',
+                          style: TextStyle(fontSize: 12, color: Colors.green[700]),
+                        ),
                         const Spacer(),
                         Text(
-                          'Всего: ${product.trainingPhotosCount}',
+                          'Всего: ${product.trainingPhotosCount + product.countingPhotosCount}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -732,36 +739,36 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
     final recountCount = _samples.where((s) => s.type == TrainingSampleType.recount).length;
     final displayCount = _samples.where((s) => s.type == TrainingSampleType.display).length;
+    final countingCount = _samples.where((s) => s.type == TrainingSampleType.counting).length;
 
     return Column(
       children: [
         // Фильтр по типу
         Container(
           padding: const EdgeInsets.all(16),
-          child: Row(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: _buildTypeFilterChip(
-                  null,
-                  'Все (${_samples.length})',
-                  Icons.photo_library,
-                ),
+              _buildTypeFilterChip(
+                null,
+                'Все (${_samples.length})',
+                Icons.photo_library,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTypeFilterChip(
-                  'recount',
-                  'Крупный ($recountCount)',
-                  Icons.crop_free,
-                ),
+              _buildTypeFilterChip(
+                'recount',
+                'Крупный ($recountCount)',
+                Icons.crop_free,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildTypeFilterChip(
-                  'display',
-                  'Выкладка ($displayCount)',
-                  Icons.grid_view,
-                ),
+              _buildTypeFilterChip(
+                'display',
+                'Выкладка ($displayCount)',
+                Icons.grid_view,
+              ),
+              _buildTypeFilterChip(
+                'counting',
+                'Пересчёт ($countingCount)',
+                Icons.calculate,
               ),
             ],
           ),
@@ -819,7 +826,29 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
 
   Widget _buildSampleCard(TrainingSample sample) {
     final imageUrl = '${ApiConstants.serverUrl}${sample.imageUrl}';
-    final isRecount = sample.type == TrainingSampleType.recount;
+
+    // Определяем цвет, иконку и текст по типу
+    final Color badgeColor;
+    final IconData badgeIcon;
+    final String badgeText;
+
+    switch (sample.type) {
+      case TrainingSampleType.recount:
+        badgeColor = Colors.blue;
+        badgeIcon = Icons.crop_free;
+        badgeText = 'Крупный';
+        break;
+      case TrainingSampleType.display:
+        badgeColor = Colors.orange;
+        badgeIcon = Icons.grid_view;
+        badgeText = 'Выкладка';
+        break;
+      case TrainingSampleType.counting:
+        badgeColor = Colors.green;
+        badgeIcon = Icons.calculate;
+        badgeText = 'Пересчёт';
+        break;
+    }
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -852,20 +881,20 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: isRecount ? Colors.blue : Colors.orange,
+                color: badgeColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isRecount ? Icons.crop_free : Icons.grid_view,
+                    badgeIcon,
                     size: 14,
                     color: Colors.white,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    isRecount ? 'Крупный' : 'Выкладка',
+                    badgeText,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
