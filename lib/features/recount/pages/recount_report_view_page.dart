@@ -68,10 +68,17 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
       final Map<String, List<dynamic>> byProduct = {};
 
       for (final sample in allPending) {
+        // Индексируем по productId/barcode
         final productId = sample.productId ?? sample.barcode ?? '';
         if (productId.isNotEmpty) {
           byProduct.putIfAbsent(productId, () => []);
           byProduct[productId]!.add(sample);
+        }
+        // Также индексируем по productName для совместимости со старыми отчётами
+        final productName = sample.productName ?? '';
+        if (productName.isNotEmpty) {
+          byProduct.putIfAbsent(productName, () => []);
+          byProduct[productName]!.add(sample);
         }
       }
 
@@ -1396,8 +1403,9 @@ class _RecountReportViewPageState extends State<RecountReportViewPage> {
                               const SizedBox(height: 8),
                               _buildPhotoVerificationButtons(index),
                               // Кнопки для обучения ИИ (pending samples)
-                              if (answer.productId != null && !widget.isReadOnly)
-                                _buildPendingTrainingButtons(answer.productId!),
+                              // Ищем по productId или по question (название товара)
+                              if (!widget.isReadOnly)
+                                _buildPendingTrainingButtons(answer.productId ?? answer.question),
                             ],
                           ],
                         ),

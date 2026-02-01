@@ -161,6 +161,7 @@ class _RecountQuestionsPageState extends State<RecountQuestionsPage> {
             grade: selectedQuestions[index].grade,
             answer: '',
             photoRequired: photoIndices.contains(index),
+            productId: selectedQuestions[index].barcode, // ID товара для обучения ИИ
           ),
         );
       });
