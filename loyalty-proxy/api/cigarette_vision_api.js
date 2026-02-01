@@ -231,49 +231,6 @@ function setupCigaretteVisionAPI(app) {
     }
   });
 
-  // Детекция с сохранением в датасет для дообучения (используется в пересчёте)
-  app.post('/api/cigarette-vision/count-with-training', async (req, res) => {
-    try {
-      const { imageBase64, productId, productName, shopAddress } = req.body;
-
-      if (!imageBase64) {
-        return res.status(400).json({ success: false, error: 'Изображение обязательно' });
-      }
-
-      if (!productId) {
-        return res.status(400).json({ success: false, error: 'ID товара обязателен' });
-      }
-
-      console.log(`[Cigarette Vision API] count-with-training: productId=${productId}, productName=${productName}, shopAddress=${shopAddress}`);
-
-      // Выполняем детекцию
-      const result = await cigaretteVision.detectAndCount(imageBase64, productId);
-
-      // Если детекция успешна, сохраняем образец для обучения
-      if (result.success && result.count > 0) {
-        try {
-          await cigaretteVision.savePositiveSample({
-            imageBase64,
-            productId,
-            productName: productName || productId,
-            count: result.count,
-            shopAddress,
-            source: 'recount',
-          });
-          console.log(`[Cigarette Vision API] Образец сохранён для обучения: ${productName}, count=${result.count}`);
-        } catch (saveError) {
-          console.error('[Cigarette Vision API] Ошибка сохранения образца:', saveError.message);
-          // Не прерываем - детекция уже выполнена
-        }
-      }
-
-      res.json(result);
-    } catch (error) {
-      console.error('[Cigarette Vision API] Ошибка детекции с обучением:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
   // Проверка выкладки
   app.post('/api/cigarette-vision/display-check', async (req, res) => {
     try {
