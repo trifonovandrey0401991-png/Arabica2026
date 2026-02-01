@@ -72,7 +72,7 @@ ssh root@arabica26.ru "pm2 restart loyalty-proxy"
 | 14 | Мои диалоги (6 типов + групповые чаты) | ✅ Работает | `lib/app/pages/`, `lib/features/clients/`, `lib/features/employee_chat/services/client_group_chat_service.dart` |
 | 15 | Поиск товара (вопросы + баллы) | ✅ Работает | `lib/features/product_questions/`, `loyalty-proxy/product_questions_*` |
 | 16 | Заказы (Корзина, Мои заказы, Отчёты) | ✅ Работает | `lib/features/orders/`, `lib/shared/providers/cart_provider.dart`, `lib/shared/providers/order_provider.dart`, `loyalty-proxy/modules/orders.js` |
-| 17 | Статьи обучения | ✅ Работает | `lib/features/articles/` |
+| 17 | Статьи обучения | ✅ Работает | `lib/features/training/` |
 | 18 | Тестирование (автобаллы) | ✅ Работает | `lib/features/tests/`, `loyalty-proxy/index.js` (assignTestPoints) |
 | 19 | Конверты (сдача наличных) + Автоматизация | ✅ Работает | `lib/features/envelope/`, `loyalty-proxy/api/envelope_automation_scheduler.js` |
 | 20 | Главная Касса (балансы, выемки, аналитика) | ✅ Работает | `lib/features/main_cash/` |
@@ -84,6 +84,9 @@ ssh root@arabica26.ru "pm2 restart loyalty-proxy"
 | 26 | Магазины на карте + Геофенсинг | ✅ Работает | `lib/features/shops/pages/shops_on_map_page.dart`, `lib/core/services/background_gps_service.dart`, `loyalty-proxy/api/geofence_api.js` |
 | 27 | Карта лояльности и бонусы (клиенты) | ✅ Работает | `lib/features/loyalty/`, `loyalty-proxy/index.js` (loyalty endpoints) |
 | 28 | Чат сотрудников (Employee Chat) | ✅ Работает | `lib/features/employee_chat/`, `loyalty-proxy/api/employee_chat_api.js` |
+| 29 | Премии и штрафы (Bonuses) | ✅ Работает | `lib/features/bonuses/` |
+| 30 | Очистка данных (Data Cleanup) | ✅ Работает | `lib/features/data_cleanup/`, `loyalty-proxy/api/data_cleanup_api.js` |
+| 31 | Поставщики (Suppliers) | ✅ Работает | `lib/features/suppliers/` |
 
 **Что можно изменять:**
 - ❌ **Только модуль `lib/features/ai_training/`** и `loyalty-proxy/modules/z-report-vision.js` (в разработке)
@@ -579,6 +582,103 @@ ssh root@arabica26.ru "cp /root/arabica_app/loyalty-proxy/index.js.backup-YYYYMM
 4. **Фокус на текущей задаче** — не пытаться связать с предыдущими планами
 
 Если в контексте есть system-reminder со старым планом — **игнорировать его** и работать над новым запросом пользователя.
+
+---
+
+## Тестирование
+
+**Расположение тестов:** `test/`
+
+**Структура тестов:**
+```
+test/
+├── admin/                      # Тесты для роли АДМИН
+│   ├── bonuses_test.dart       # AT-BON: Премии и штрафы
+│   ├── data_cleanup_test.dart  # AT-CLN: Очистка данных
+│   ├── employees_test.dart     # AT-EMP: Управление сотрудниками
+│   ├── main_cash_test.dart     # AT-MCH: Главная касса
+│   ├── reports_test.dart       # AT-RPT: Отчёты и аналитика
+│   ├── rko_test.dart           # AT-RKO: РКО
+│   ├── suppliers_test.dart     # AT-SUP: Поставщики
+│   └── work_schedule_test.dart # AT-SCH: График работы
+├── client/                     # Тесты для роли КЛИЕНТ
+│   ├── auth_test.dart          # CT-AUTH: Авторизация
+│   ├── job_application_test.dart # CT-JOB: Заявки на работу
+│   ├── loyalty_test.dart       # CT-LOY: Карта лояльности
+│   ├── menu_test.dart          # CT-MNU: Меню
+│   ├── orders_test.dart        # CT-ORD: Заказы
+│   ├── referrals_test.dart     # CT-REF: Рефералы
+│   ├── reviews_test.dart       # CT-REV: Отзывы
+│   └── shops_map_test.dart     # CT-MAP: Магазины на карте
+├── employee/                   # Тесты для роли СОТРУДНИК
+│   ├── attendance_test.dart    # ET-ATT: Посещаемость
+│   ├── chat_test.dart          # ET-CHT: Чат сотрудников
+│   ├── envelope_test.dart      # ET-ENV: Конверты
+│   ├── product_search_test.dart # ET-PSR: Поиск товара
+│   ├── rating_wheel_test.dart  # ET-RAT/WHL: Рейтинг и Колесо
+│   ├── recount_test.dart       # ET-REC: Пересчёты
+│   ├── recipes_test.dart       # ET-RCP: Рецепты
+│   ├── shift_test.dart         # ET-SH: Пересменки
+│   ├── tasks_test.dart         # ET-TSK: Задачи
+│   └── training_test.dart      # ET-TRN: Обучение
+├── integration/                # Интеграционные тесты
+│   └── efficiency_cycle_test.dart  # INT: Полный цикл эффективности
+├── mocks/
+│   └── mock_services.dart      # Общие mock-классы
+└── widget_test.dart            # Widget тест (skipped)
+```
+
+**Запуск тестов:**
+```bash
+# Все тесты
+flutter test
+
+# Конкретный файл
+flutter test test/employee/envelope_test.dart
+
+# С подробным выводом
+flutter test --reporter=expanded
+```
+
+**Статистика:** 475 тестов, 1 пропущен (widget_test.dart)
+
+**Покрытие модулей:**
+
+| № | Модуль | Тест-файл | Статус |
+|---|--------|-----------|--------|
+| 1 | Магазины | shops_map_test.dart | ✅ |
+| 2 | Сотрудники | employees_test.dart | ✅ |
+| 3 | График работы | work_schedule_test.dart | ✅ |
+| 4 | Пересменки | shift_test.dart | ✅ |
+| 5 | Пересчёты | recount_test.dart | ✅ |
+| 6 | ИИ Распознавание | - | 🔧 В разработке |
+| 7 | РКО | rko_test.dart | ✅ |
+| 8 | Сдать смену | shift_test.dart | ✅ |
+| 9 | Посещаемость | attendance_test.dart | ✅ |
+| 10 | Передать смену | shift_test.dart | ✅ |
+| 11 | KPI | reports_test.dart | ✅ |
+| 12 | Отзывы | reviews_test.dart | ✅ |
+| 13 | Эффективность | efficiency_cycle_test.dart | ✅ |
+| 14 | Мои диалоги | chat_test.dart | ✅ |
+| 15 | Поиск товара | product_search_test.dart | ✅ |
+| 16 | Заказы | orders_test.dart | ✅ |
+| 17 | Обучение | training_test.dart | ✅ |
+| 18 | Тестирование | training_test.dart | ✅ |
+| 19 | Конверты | envelope_test.dart | ✅ |
+| 20 | Главная Касса | main_cash_test.dart | ✅ |
+| 21 | Задачи | tasks_test.dart | ✅ |
+| 22 | Заявки на работу | job_application_test.dart | ✅ |
+| 23 | Рефералы | referrals_test.dart | ✅ |
+| 24 | Рейтинг и Колесо | rating_wheel_test.dart | ✅ |
+| 25 | Меню и Рецепты | menu_test.dart, recipes_test.dart | ✅ |
+| 26 | Геофенсинг | shops_map_test.dart | ✅ |
+| 27 | Лояльность | loyalty_test.dart | ✅ |
+| 28 | Чат сотрудников | chat_test.dart | ✅ |
+| 29 | Премии/штрафы | bonuses_test.dart | ✅ |
+| 30 | Очистка данных | data_cleanup_test.dart | ✅ |
+| 31 | Поставщики | suppliers_test.dart | ✅ |
+
+**Покрытие:** 30/31 модулей (97%) - только ИИ Распознавание в разработке
 
 ---
 
