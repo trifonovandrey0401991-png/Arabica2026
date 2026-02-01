@@ -40,6 +40,7 @@ const TRAINING_TYPES = {
 // Директории для раздельных датасетов
 const DISPLAY_TRAINING_DIR = path.join(DATA_DIR, 'display-training');
 const COUNTING_TRAINING_DIR = path.join(DATA_DIR, 'counting-training');
+const COUNTING_PENDING_DIR = path.join(DATA_DIR, 'counting-pending'); // Ожидающие подтверждения админа
 
 // Структура поддиректорий для каждого типа
 const getTrainingPaths = (trainingType) => {
@@ -55,6 +56,41 @@ const getTrainingPaths = (trainingType) => {
     classMappingFile: path.join(baseDir, 'class-mapping.json'),
   };
 };
+
+// Пути для pending counting (ожидающие подтверждения)
+const getCountingPendingPaths = () => {
+  return {
+    baseDir: COUNTING_PENDING_DIR,
+    imagesDir: path.join(COUNTING_PENDING_DIR, 'images'),
+    samplesFile: path.join(COUNTING_PENDING_DIR, 'samples.json'),
+  };
+};
+
+// Инициализация pending директории
+function initCountingPending() {
+  const paths = getCountingPendingPaths();
+  if (!fs.existsSync(paths.baseDir)) fs.mkdirSync(paths.baseDir, { recursive: true });
+  if (!fs.existsSync(paths.imagesDir)) fs.mkdirSync(paths.imagesDir, { recursive: true });
+  if (!fs.existsSync(paths.samplesFile)) fs.writeFileSync(paths.samplesFile, '[]');
+  return paths;
+}
+
+// Загрузить pending samples
+function loadPendingCountingSamples() {
+  const paths = getCountingPendingPaths();
+  if (!fs.existsSync(paths.samplesFile)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(paths.samplesFile, 'utf8'));
+  } catch (e) {
+    return [];
+  }
+}
+
+// Сохранить pending samples
+function savePendingCountingSamples(samples) {
+  const paths = initCountingPending();
+  fs.writeFileSync(paths.samplesFile, JSON.stringify(samples, null, 2));
+}
 
 // Пути к моделям
 const DISPLAY_MODEL = path.join(__dirname, '..', 'ml', 'models', 'display_detector.pt');
@@ -1237,8 +1273,8 @@ async function saveTypedPositiveSample(trainingType, {
 }
 
 /**
- * Сохранить фото с пересчёта для обучения (counting датасет)
- * ВАЖНО: Сохраняет ВСЕ фото (без вероятностного семплирования) для товаров с isAiActive=true
+ * Сохранить фото с пересчёта в PENDING (ожидание подтверждения админа)
+ * Фото НЕ попадает в обучение пока админ не подтвердит
  * @param {Object} params - Параметры
  * @param {string} params.imageBase64 - Изображение в base64
  * @param {string} params.productId - ID товара (barcode)
@@ -1258,74 +1294,219 @@ async function saveCountingTrainingSample({
       return { success: false, error: 'imageBase64 и productId обязательны' };
     }
 
-    const settings = loadSettings();
-    const trainingType = TRAINING_TYPES.COUNTING;
-    const paths = initTypedTraining(trainingType);
-    const maxPerProduct = settings.maxCountingPhotosPerProduct || 50;
-    const samples = loadTypedSamples(trainingType);
+    const paths = initCountingPending();
+    const samples = loadPendingCountingSamples();
 
-    // Считаем существующие фото для этого товара
+    // Лимит pending фото на товар (чтобы не засорять)
+    const maxPendingPerProduct = 20;
     const existingForProduct = samples.filter(
       s => (s.productId === productId || s.barcode === productId)
     );
 
-    // Если лимит превышен - удаляем самый старый (FIFO ротация)
-    if (existingForProduct.length >= maxPerProduct) {
+    // Если лимит превышен - удаляем самый старый (FIFO)
+    if (existingForProduct.length >= maxPendingPerProduct) {
       existingForProduct.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       const toDelete = existingForProduct[0];
 
-      // Удаляем файлы
       const imgPath = path.join(paths.imagesDir, toDelete.imageFileName);
-      const lblPath = path.join(paths.labelsDir, toDelete.imageFileName.replace(/\.jpg$/, '.txt'));
       try {
         if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-        if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
       } catch (e) { /* ignore */ }
 
-      // Удаляем из массива
       const idx = samples.findIndex(s => s.id === toDelete.id);
       if (idx !== -1) {
         samples.splice(idx, 1);
-        console.log(`[Counting Training] Ротация: удалён старый sample для ${productId}`);
+        console.log(`[Counting Pending] Ротация: удалён старый pending для ${productId}`);
       }
     }
 
-    // Сохраняем новое фото
+    // Сохраняем новое фото в pending
     const id = uuidv4();
     const timestamp = new Date().toISOString();
-    const imageFileName = `counting_${productId}_${id}.jpg`;
+    const imageFileName = `pending_${productId}_${id}.jpg`;
 
-    // Сохраняем изображение
     const imageBuffer = Buffer.from(imageBase64, 'base64');
     fs.writeFileSync(path.join(paths.imagesDir, imageFileName), imageBuffer);
 
-    // Создаём запись (без boundingBoxes - их добавит админ при аннотации)
     const sample = {
       id,
       productId,
       barcode: productId,
       productName: productName || '',
-      trainingType,
-      type: 'counting',  // Для Flutter фильтра
+      type: 'counting-pending',
+      status: 'pending',  // pending | approved | rejected
       shopAddress: shopAddress || '',
       employeeAnswer: employeeAnswer || null,
       imageFileName,
-      imageUrl: `/api/cigarette-vision/counting-images/${imageFileName}`,
-      boundingBoxes: [],
-      annotationCount: 0,
+      imageUrl: `/api/cigarette-vision/counting-pending-images/${imageFileName}`,
       createdAt: timestamp,
     };
 
     samples.push(sample);
-    saveTypedSamples(trainingType, samples);
+    savePendingCountingSamples(samples);
 
-    console.log(`[Counting Training] Сохранено фото для ${productName || productId}, всего: ${existingForProduct.length + 1}`);
+    console.log(`[Counting Pending] Фото добавлено в очередь для ${productName || productId}, pending: ${existingForProduct.length + 1}`);
 
-    return { success: true, sample };
+    return { success: true, sample, status: 'pending' };
   } catch (error) {
-    console.error('[Counting Training] Ошибка сохранения:', error);
+    console.error('[Counting Pending] Ошибка сохранения:', error);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Подтвердить pending фото (переместить в counting-training)
+ * @param {string} sampleId - ID pending образца
+ * @returns {Object} - Результат
+ */
+function approveCountingPendingSample(sampleId) {
+  try {
+    const pendingPaths = initCountingPending();
+    const pendingSamples = loadPendingCountingSamples();
+
+    const idx = pendingSamples.findIndex(s => s.id === sampleId);
+    if (idx === -1) {
+      return { success: false, error: 'Pending образец не найден' };
+    }
+
+    const pendingSample = pendingSamples[idx];
+    const trainingType = TRAINING_TYPES.COUNTING;
+    const trainingPaths = initTypedTraining(trainingType);
+    const trainingSamples = loadTypedSamples(trainingType);
+
+    // Проверяем лимит в training
+    const settings = loadSettings();
+    const maxPerProduct = settings.maxCountingPhotosPerProduct || 50;
+    const existingForProduct = trainingSamples.filter(
+      s => (s.productId === pendingSample.productId || s.barcode === pendingSample.productId)
+    );
+
+    // FIFO ротация если лимит
+    if (existingForProduct.length >= maxPerProduct) {
+      existingForProduct.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      const toDelete = existingForProduct[0];
+
+      const imgPath = path.join(trainingPaths.imagesDir, toDelete.imageFileName);
+      const lblPath = path.join(trainingPaths.labelsDir, toDelete.imageFileName.replace(/\.jpg$/, '.txt'));
+      try {
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        if (fs.existsSync(lblPath)) fs.unlinkSync(lblPath);
+      } catch (e) { /* ignore */ }
+
+      const delIdx = trainingSamples.findIndex(s => s.id === toDelete.id);
+      if (delIdx !== -1) trainingSamples.splice(delIdx, 1);
+    }
+
+    // Перемещаем изображение из pending в training
+    const newImageFileName = `counting_${pendingSample.productId}_${pendingSample.id}.jpg`;
+    const srcPath = path.join(pendingPaths.imagesDir, pendingSample.imageFileName);
+    const dstPath = path.join(trainingPaths.imagesDir, newImageFileName);
+
+    if (fs.existsSync(srcPath)) {
+      fs.copyFileSync(srcPath, dstPath);
+      fs.unlinkSync(srcPath);
+    }
+
+    // Создаём запись в training
+    const trainingSample = {
+      id: pendingSample.id,
+      productId: pendingSample.productId,
+      barcode: pendingSample.productId,
+      productName: pendingSample.productName || '',
+      trainingType,
+      type: 'counting',
+      shopAddress: pendingSample.shopAddress || '',
+      employeeAnswer: pendingSample.employeeAnswer || null,
+      imageFileName: newImageFileName,
+      imageUrl: `/api/cigarette-vision/counting-images/${newImageFileName}`,
+      boundingBoxes: [],
+      annotationCount: 0,
+      createdAt: pendingSample.createdAt,
+      approvedAt: new Date().toISOString(),
+    };
+
+    trainingSamples.push(trainingSample);
+    saveTypedSamples(trainingType, trainingSamples);
+
+    // Удаляем из pending
+    pendingSamples.splice(idx, 1);
+    savePendingCountingSamples(pendingSamples);
+
+    console.log(`[Counting Pending] Подтверждено фото для ${pendingSample.productName || pendingSample.productId}`);
+
+    return { success: true, sample: trainingSample };
+  } catch (error) {
+    console.error('[Counting Pending] Ошибка подтверждения:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Отклонить pending фото (удалить)
+ * @param {string} sampleId - ID pending образца
+ * @returns {Object} - Результат
+ */
+function rejectCountingPendingSample(sampleId) {
+  try {
+    const paths = initCountingPending();
+    const samples = loadPendingCountingSamples();
+
+    const idx = samples.findIndex(s => s.id === sampleId);
+    if (idx === -1) {
+      return { success: false, error: 'Pending образец не найден' };
+    }
+
+    const sample = samples[idx];
+
+    // Удаляем изображение
+    const imgPath = path.join(paths.imagesDir, sample.imageFileName);
+    try {
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+    } catch (e) { /* ignore */ }
+
+    // Удаляем из списка
+    samples.splice(idx, 1);
+    savePendingCountingSamples(samples);
+
+    console.log(`[Counting Pending] Отклонено фото для ${sample.productName || sample.productId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Counting Pending] Ошибка отклонения:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Получить все pending фото пересчёта
+ * @returns {Array} - Массив pending образцов
+ */
+function getAllPendingCountingSamples() {
+  return loadPendingCountingSamples();
+}
+
+/**
+ * Получить pending фото для конкретного товара
+ * @param {string} productId - ID товара (barcode)
+ * @returns {Array} - Массив pending образцов
+ */
+function getPendingCountingSamplesForProduct(productId) {
+  const samples = loadPendingCountingSamples();
+  return samples.filter(
+    s => (s.productId === productId || s.barcode === productId)
+  );
+}
+
+/**
+ * Получить количество pending фото для товара
+ * @param {string} productId - ID товара (barcode)
+ * @returns {number} - Количество pending фото
+ */
+function getPendingCountingPhotosCount(productId) {
+  const samples = loadPendingCountingSamples();
+  return samples.filter(
+    s => (s.productId === productId || s.barcode === productId)
+  ).length;
 }
 
 /**
@@ -2004,6 +2185,14 @@ module.exports = {
   getCountingPhotosCount,
   getCountingSamplesForProduct,
   deleteCountingSample,
+  // Counting pending (ожидающие подтверждения админа)
+  getCountingPendingPaths,
+  loadPendingCountingSamples,
+  getAllPendingCountingSamples,
+  getPendingCountingSamplesForProduct,
+  getPendingCountingPhotosCount,
+  approveCountingPendingSample,
+  rejectCountingPendingSample,
   // Система обратной связи и автоотключения ИИ
   reportAiError,
   reportAdminAiDecision,  // НОВОЕ: решение админа по ошибке ИИ

@@ -225,6 +225,88 @@ class CigaretteVisionService {
     }
   }
 
+  // ============ PENDING COUNTING SAMPLES (ожидающие подтверждения) ============
+
+  /// Получить все pending фото пересчёта (для админа)
+  static Future<List<TrainingSample>> getAllPendingCountingSamples() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-pending'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['samples'] as List? ?? [];
+        return list.map((json) => TrainingSample.fromJson(json)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      Logger.error('Ошибка получения pending samples', e);
+      return [];
+    }
+  }
+
+  /// Получить pending фото пересчёта для товара
+  static Future<List<TrainingSample>> getPendingCountingSamplesForProduct(String productId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-pending/product/$productId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['samples'] as List? ?? [];
+        return list.map((json) => TrainingSample.fromJson(json)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      Logger.error('Ошибка получения pending для товара', e);
+      return [];
+    }
+  }
+
+  /// Подтвердить pending фото (переместить в обучение)
+  static Future<bool> approvePendingCountingSample(String sampleId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-pending/$sampleId/approve'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка подтверждения pending sample', e);
+      return false;
+    }
+  }
+
+  /// Отклонить pending фото (удалить)
+  static Future<bool> rejectPendingCountingSample(String sampleId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-pending/$sampleId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка отклонения pending sample', e);
+      return false;
+    }
+  }
+
   /// Детекция и подсчёт пачек на фото (без сохранения для обучения)
   static Future<DetectionResult> detectAndCount({
     required Uint8List imageBytes,

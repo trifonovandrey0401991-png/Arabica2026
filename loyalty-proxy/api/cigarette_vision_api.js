@@ -556,6 +556,72 @@ function setupCigaretteVisionAPI(app) {
     }
   });
 
+  // ============ COUNTING PENDING API (ожидающие подтверждения) ============
+
+  // Получить все pending фото (для админа)
+  app.get('/api/cigarette-vision/counting-pending', (req, res) => {
+    try {
+      const samples = cigaretteVision.getAllPendingCountingSamples();
+      res.json({ success: true, samples, count: samples.length });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения pending samples:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить pending фото для товара
+  app.get('/api/cigarette-vision/counting-pending/product/:productId', (req, res) => {
+    try {
+      const { productId } = req.params;
+      const samples = cigaretteVision.getPendingCountingSamplesForProduct(productId);
+      res.json({ success: true, samples, count: samples.length });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения pending для товара:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Подтвердить pending фото (переместить в training)
+  app.post('/api/cigarette-vision/counting-pending/:sampleId/approve', (req, res) => {
+    try {
+      const { sampleId } = req.params;
+      const result = cigaretteVision.approveCountingPendingSample(sampleId);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка подтверждения pending:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Отклонить pending фото (удалить)
+  app.delete('/api/cigarette-vision/counting-pending/:sampleId', (req, res) => {
+    try {
+      const { sampleId } = req.params;
+      const result = cigaretteVision.rejectCountingPendingSample(sampleId);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка отклонения pending:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Отдача изображений pending
+  app.get('/api/cigarette-vision/counting-pending-images/:fileName', (req, res) => {
+    try {
+      const paths = cigaretteVision.getCountingPendingPaths();
+      const imagePath = path.join(paths.imagesDir, req.params.fileName);
+
+      if (fs.existsSync(imagePath)) {
+        res.sendFile(imagePath);
+      } else {
+        res.status(404).json({ success: false, error: 'Изображение не найдено' });
+      }
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения pending image:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ СТАТИСТИКА РАЗДЕЛЬНЫХ ДАТАСЕТОВ ============
 
   // Получить статистику датасета display (пересменка)

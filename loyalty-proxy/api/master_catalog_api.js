@@ -982,16 +982,19 @@ function setupMasterCatalogAPI(app) {
       const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
       const requiredCounting = settings.requiredCountingPhotos || 10;
 
-      // Загружаем counting samples (фото с пересчёта)
+      // Загружаем counting samples (фото с пересчёта - подтверждённые)
       const countingSamples = cigaretteVision.loadTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
+      // Загружаем pending counting samples (ожидающие подтверждения админа)
+      const pendingCountingSamples = cigaretteVision.getAllPendingCountingSamples();
 
       // Подсчёт фото по товарам
       const recountPhotosByProduct = {};
       const completedTemplatesByProduct = {};
       const displayPhotosByProductAndShop = {};
       const countingPhotosByProduct = {};
+      const pendingCountingPhotosByProduct = {};
 
-      // Подсчёт counting photos
+      // Подсчёт counting photos (подтверждённые)
       countingSamples.forEach(sample => {
         const productId = sample.productId;
         const barcode = sample.barcode;
@@ -1000,6 +1003,18 @@ function setupMasterCatalogAPI(app) {
         }
         if (barcode && barcode !== productId) {
           countingPhotosByProduct[barcode] = (countingPhotosByProduct[barcode] || 0) + 1;
+        }
+      });
+
+      // Подсчёт pending counting photos (ожидающие подтверждения)
+      pendingCountingSamples.forEach(sample => {
+        const productId = sample.productId;
+        const barcode = sample.barcode;
+        if (productId) {
+          pendingCountingPhotosByProduct[productId] = (pendingCountingPhotosByProduct[productId] || 0) + 1;
+        }
+        if (barcode && barcode !== productId) {
+          pendingCountingPhotosByProduct[barcode] = (pendingCountingPhotosByProduct[barcode] || 0) + 1;
         }
       });
 
@@ -1046,6 +1061,7 @@ function setupMasterCatalogAPI(app) {
       const trainingProducts = products.map((p) => {
         const recountPhotos = recountPhotosByProduct[p.id] || recountPhotosByProduct[p.barcode] || 0;
         const countingPhotos = countingPhotosByProduct[p.id] || countingPhotosByProduct[p.barcode] || 0;
+        const pendingCountingPhotos = pendingCountingPhotosByProduct[p.id] || pendingCountingPhotosByProduct[p.barcode] || 0;
         const completedTemplatesSet = completedTemplatesByProduct[p.id] || completedTemplatesByProduct[p.barcode] || new Set();
         const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
         const isRecountComplete = completedTemplates.length >= requiredRecount;
@@ -1110,6 +1126,7 @@ function setupMasterCatalogAPI(app) {
           isDisplayComplete: isDisplayComplete,
           // Пересчёт (counting) - фото с пересчёта для обучения
           countingPhotosCount: countingPhotos,
+          pendingCountingPhotosCount: pendingCountingPhotos,  // Ожидающие подтверждения админа
           requiredCountingPhotos: requiredCounting,
           isCountingComplete: isCountingComplete,
           // Per-shop статистика выкладки

@@ -74,7 +74,8 @@ class CigaretteProduct {
   final bool isDisplayComplete;
 
   // Раздельная статистика: пересчёт (counting) - фото с пересчёта
-  final int countingPhotosCount;
+  final int countingPhotosCount;           // Подтверждённые фото
+  final int pendingCountingPhotosCount;    // Ожидающие подтверждения админа
   final int requiredCountingPhotos;
   final bool isCountingComplete;
 
@@ -104,6 +105,7 @@ class CigaretteProduct {
     this.isDisplayComplete = false,
     // Counting статистика
     this.countingPhotosCount = 0,
+    this.pendingCountingPhotosCount = 0,
     this.requiredCountingPhotos = 10,
     this.isCountingComplete = false,
     // Per-shop статистика
@@ -118,6 +120,7 @@ class CigaretteProduct {
     final recountPhotos = json['recountPhotosCount'] ?? 0;
     final displayPhotos = json['displayPhotosCount'] ?? 0;
     final countingPhotos = json['countingPhotosCount'] ?? 0;
+    final pendingCountingPhotos = json['pendingCountingPhotosCount'] ?? 0;
     final requiredRecount = json['requiredRecountPhotos'] ?? 10;
     final requiredDisplay = json['requiredDisplayPhotos'] ?? 3;  // Теперь per-shop
     final requiredCounting = json['requiredCountingPhotos'] ?? 10;
@@ -150,6 +153,7 @@ class CigaretteProduct {
       isDisplayComplete: json['isDisplayComplete'] ?? (displayPhotos >= requiredDisplay),
       // Counting статистика
       countingPhotosCount: countingPhotos,
+      pendingCountingPhotosCount: pendingCountingPhotos,
       requiredCountingPhotos: requiredCounting,
       isCountingComplete: json['isCountingComplete'] ?? (countingPhotos >= requiredCounting),
       // Per-shop статистика
@@ -180,6 +184,7 @@ class CigaretteProduct {
     'isDisplayComplete': isDisplayComplete,
     // Counting статистика
     'countingPhotosCount': countingPhotosCount,
+    'pendingCountingPhotosCount': pendingCountingPhotosCount,
     'requiredCountingPhotos': requiredCountingPhotos,
     'isCountingComplete': isCountingComplete,
     // Per-shop статистика
@@ -371,9 +376,10 @@ class TrainingSample {
 
 /// Тип образца для обучения
 enum TrainingSampleType {
-  recount('recount'),    // Фото крупного плана (шаблоны)
-  display('display'),    // Фото выкладки витрины
-  counting('counting');  // Фото с пересчёта товаров
+  recount('recount'),              // Фото крупного плана (шаблоны)
+  display('display'),              // Фото выкладки витрины
+  counting('counting'),            // Фото с пересчёта (подтверждённые)
+  countingPending('counting-pending');  // Фото с пересчёта (ожидающие подтверждения)
 
   final String value;
   const TrainingSampleType(this.value);
@@ -384,6 +390,8 @@ enum TrainingSampleType {
         return TrainingSampleType.display;
       case 'counting':
         return TrainingSampleType.counting;
+      case 'counting-pending':
+        return TrainingSampleType.countingPending;
       case 'recount':
       default:
         return TrainingSampleType.recount;

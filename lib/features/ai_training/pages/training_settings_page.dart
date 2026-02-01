@@ -565,6 +565,28 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                           '${product.countingPhotosCount}',
                           style: TextStyle(fontSize: 12, color: Colors.green[700]),
                         ),
+                        // Показываем pending фото если есть
+                        if (product.pendingCountingPhotosCount > 0) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.amber[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.hourglass_empty, size: 10, color: Colors.amber[800]),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${product.pendingCountingPhotosCount}',
+                                  style: TextStyle(fontSize: 10, color: Colors.amber[800], fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const Spacer(),
                         Text(
                           'Всего: ${product.trainingPhotosCount + product.countingPhotosCount}',
@@ -627,13 +649,19 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
   Future<void> _loadSamples() async {
     setState(() => _isLoading = true);
 
+    // Загружаем обычные образцы
     final samples = await CigaretteVisionService.getSamplesForProduct(
+      widget.product.id,
+    );
+
+    // Загружаем pending образцы
+    final pendingSamples = await CigaretteVisionService.getPendingCountingSamplesForProduct(
       widget.product.id,
     );
 
     if (mounted) {
       setState(() {
-        _samples = samples;
+        _samples = [...samples, ...pendingSamples];
         _isLoading = false;
       });
     }
@@ -694,6 +722,106 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
     }
   }
 
+  /// Подтвердить pending фото (переместить в обучение)
+  Future<void> _approvePendingSample(TrainingSample sample) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Подтвердить фото?'),
+        content: const Text(
+          'Фото будет добавлено в обучающую выборку.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Подтвердить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final success = await CigaretteVisionService.approvePendingCountingSample(sample.id);
+
+    if (mounted) {
+      if (success) {
+        setState(() {
+          _samples.removeWhere((s) => s.id == sample.id);
+          _hasChanges = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Фото добавлено в обучение'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка подтверждения'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Отклонить pending фото (удалить)
+  Future<void> _rejectPendingSample(TrainingSample sample) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Отклонить фото?'),
+        content: const Text(
+          'Фото будет удалено и не попадёт в обучение.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Отклонить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final success = await CigaretteVisionService.rejectPendingCountingSample(sample.id);
+
+    if (mounted) {
+      if (success) {
+        setState(() {
+          _samples.removeWhere((s) => s.id == sample.id);
+          _hasChanges = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Фото отклонено'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка отклонения'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -740,6 +868,7 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
     final recountCount = _samples.where((s) => s.type == TrainingSampleType.recount).length;
     final displayCount = _samples.where((s) => s.type == TrainingSampleType.display).length;
     final countingCount = _samples.where((s) => s.type == TrainingSampleType.counting).length;
+    final pendingCount = _samples.where((s) => s.type == TrainingSampleType.countingPending).length;
 
     return Column(
       children: [
@@ -770,6 +899,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
                 'Пересчёт ($countingCount)',
                 Icons.calculate,
               ),
+              // Ожидающие подтверждения (если есть)
+              if (pendingCount > 0)
+                _buildTypeFilterChip(
+                  'counting-pending',
+                  'Ожидание ($pendingCount)',
+                  Icons.hourglass_empty,
+                  badgeColor: Colors.amber,
+                ),
             ],
           ),
         ),
@@ -797,20 +934,21 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
     );
   }
 
-  Widget _buildTypeFilterChip(String? type, String label, IconData icon) {
+  Widget _buildTypeFilterChip(String? type, String label, IconData icon, {Color? badgeColor}) {
     final isSelected = _selectedType == type;
+    final chipColor = badgeColor ?? const Color(0xFF004D40);
 
     return FilterChip(
       selected: isSelected,
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16),
+          Icon(icon, size: 16, color: badgeColor),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 11),
+              style: TextStyle(fontSize: 11, color: badgeColor),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -819,8 +957,8 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
       onSelected: (selected) {
         setState(() => _selectedType = selected ? type : null);
       },
-      selectedColor: const Color(0xFF004D40).withOpacity(0.2),
-      checkmarkColor: const Color(0xFF004D40),
+      selectedColor: chipColor.withOpacity(0.2),
+      checkmarkColor: chipColor,
     );
   }
 
@@ -848,7 +986,14 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
         badgeIcon = Icons.calculate;
         badgeText = 'Пересчёт';
         break;
+      case TrainingSampleType.countingPending:
+        badgeColor = Colors.amber;
+        badgeIcon = Icons.hourglass_empty;
+        badgeText = 'Ожидание';
+        break;
     }
+
+    final isPending = sample.type == TrainingSampleType.countingPending;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -952,22 +1097,55 @@ class _ProductSamplesPageState extends State<_ProductSamplesPage> {
               ),
             ),
 
-          // Кнопка удаления
+          // Кнопки действий (approve/reject для pending, delete для остальных)
           Positioned(
             bottom: 8,
             right: 8,
-            child: Material(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(20),
-              child: InkWell(
-                onTap: () => _deleteSample(sample),
-                borderRadius: BorderRadius.circular(20),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.delete, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
+            child: isPending
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Одобрить
+                      Material(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: () => _approvePendingSample(sample),
+                          borderRadius: BorderRadius.circular(20),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(Icons.check, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Отклонить
+                      Material(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: () => _rejectPendingSample(sample),
+                          borderRadius: BorderRadius.circular(20),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(Icons.close, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Material(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () => _deleteSample(sample),
+                      borderRadius: BorderRadius.circular(20),
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(Icons.delete, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
           ),
 
           // Дата внизу слева
