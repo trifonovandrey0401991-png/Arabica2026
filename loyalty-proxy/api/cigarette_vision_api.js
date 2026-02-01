@@ -231,6 +231,49 @@ function setupCigaretteVisionAPI(app) {
     }
   });
 
+  // Детекция с сохранением в датасет для дообучения (используется в пересчёте)
+  app.post('/api/cigarette-vision/count-with-training', async (req, res) => {
+    try {
+      const { imageBase64, productId, productName, shopAddress } = req.body;
+
+      if (!imageBase64) {
+        return res.status(400).json({ success: false, error: 'Изображение обязательно' });
+      }
+
+      if (!productId) {
+        return res.status(400).json({ success: false, error: 'ID товара обязателен' });
+      }
+
+      console.log(`[Cigarette Vision API] count-with-training: productId=${productId}, productName=${productName}, shopAddress=${shopAddress}`);
+
+      // Выполняем детекцию
+      const result = await cigaretteVision.detectAndCount(imageBase64, productId);
+
+      // Если детекция успешна, сохраняем образец для обучения
+      if (result.success && result.count > 0) {
+        try {
+          await cigaretteVision.savePositiveSample({
+            imageBase64,
+            productId,
+            productName: productName || productId,
+            count: result.count,
+            shopAddress,
+            source: 'recount',
+          });
+          console.log(`[Cigarette Vision API] Образец сохранён для обучения: ${productName}, count=${result.count}`);
+        } catch (saveError) {
+          console.error('[Cigarette Vision API] Ошибка сохранения образца:', saveError.message);
+          // Не прерываем - детекция уже выполнена
+        }
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка детекции с обучением:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Проверка выкладки
   app.post('/api/cigarette-vision/display-check', async (req, res) => {
     try {
@@ -425,6 +468,118 @@ function setupCigaretteVisionAPI(app) {
     }
   });
 
+  // ============ ПОДСЧЁТ С ОБУЧЕНИЕМ (COUNTING) ============
+
+  // Детекция и подсчёт с сохранением в counting датасет
+  // Используется для пересчёта товаров
+  app.post('/api/cigarette-vision/count-with-training', async (req, res) => {
+    try {
+      const { imageBase64, productId, productName, shopAddress } = req.body;
+
+      if (!imageBase64) {
+        return res.status(400).json({ success: false, error: 'Изображение обязательно' });
+      }
+
+      if (!productId) {
+        return res.status(400).json({ success: false, error: 'ID товара обязателен' });
+      }
+
+      // Выполняем детекцию
+      const result = await cigaretteVision.detectAndCount(imageBase64, productId);
+
+      // Если детекция успешна - сохраняем в counting датасет
+      if (result.success && result.count > 0 && result.boxes && result.boxes.length > 0) {
+        // Асинхронно сохраняем (не блокируем ответ)
+        cigaretteVision.saveTypedPositiveSample(cigaretteVision.TRAINING_TYPES.COUNTING, {
+          imageBase64,
+          detectedProducts: [{
+            productId,
+            barcode: productId,
+            productName: productName || '',
+            count: result.count,
+            confidence: result.confidence,
+          }],
+          shopAddress: shopAddress || '',
+          boxes: result.boxes,
+        }).catch(err => {
+          console.warn('[Cigarette Vision API] Ошибка сохранения counting sample:', err.message);
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка подсчёта с обучением:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ СТАТИСТИКА РАЗДЕЛЬНЫХ ДАТАСЕТОВ ============
+
+  // Получить статистику датасета display (пересменка)
+  app.get('/api/cigarette-vision/typed-stats/display', (req, res) => {
+    try {
+      const stats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
+      res.json({ success: true, ...stats });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения статистики display:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить статистику датасета counting (пересчёт)
+  app.get('/api/cigarette-vision/typed-stats/counting', (req, res) => {
+    try {
+      const stats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
+      res.json({ success: true, ...stats });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения статистики counting:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить объединённую статистику обоих датасетов
+  app.get('/api/cigarette-vision/typed-stats', (req, res) => {
+    try {
+      const displayStats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.DISPLAY);
+      const countingStats = cigaretteVision.getTypedTrainingStats(cigaretteVision.TRAINING_TYPES.COUNTING);
+
+      res.json({
+        success: true,
+        display: displayStats,
+        counting: countingStats,
+        summary: {
+          totalDisplaySamples: displayStats.totalSamples,
+          totalCountingSamples: countingStats.totalSamples,
+          displayWithAnnotations: displayStats.samplesWithAnnotations,
+          countingWithAnnotations: countingStats.samplesWithAnnotations,
+          displayModelExists: displayStats.modelExists,
+          countingModelExists: countingStats.modelExists,
+        },
+      });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка получения объединённой статистики:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Очистка раздельных датасетов
+  app.post('/api/cigarette-vision/typed-cleanup/:type', (req, res) => {
+    try {
+      const { type } = req.params;
+      const { maxAgeDays } = req.body;
+
+      if (type !== 'display' && type !== 'counting') {
+        return res.status(400).json({ success: false, error: 'Тип должен быть display или counting' });
+      }
+
+      const result = cigaretteVision.cleanupTypedSamples(type, maxAgeDays || 180);
+      res.json({ success: true, type, ...result });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка очистки typed samples:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // ============ АВТООЧИСТКА СТАРЫХ POSITIVE SAMPLES ============
 
   // Запускаем очистку раз в сутки (24 часа)
@@ -433,16 +588,185 @@ function setupCigaretteVisionAPI(app) {
   // Первая очистка через 5 минут после старта
   setTimeout(() => {
     console.log('[Cigarette Vision API] Запуск первичной очистки positive samples...');
+    // Старый общий датасет
     const result = cigaretteVision.cleanupOldPositiveSamples();
-    console.log(`[Cigarette Vision API] Очистка завершена: удалено ${result.deletedCount || 0} старых samples`);
+    console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
+
+    // Раздельные датасеты
+    const displayResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.DISPLAY);
+    const countingResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
+    console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
   }, 5 * 60 * 1000);
 
   // Регулярная очистка каждые 24 часа
   setInterval(() => {
-    console.log('[Cigarette Vision API] Запуск ежедневной очистки positive samples...');
+    console.log('[Cigarette Vision API] Запуск ежедневной очистки...');
+    // Старый общий датасет
     const result = cigaretteVision.cleanupOldPositiveSamples();
-    console.log(`[Cigarette Vision API] Очистка завершена: удалено ${result.deletedCount || 0} старых samples`);
+    console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
+
+    // Раздельные датасеты
+    const displayResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.DISPLAY);
+    const countingResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
+    console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
   }, CLEANUP_INTERVAL_MS);
+
+  // ============ СИСТЕМА ОБРАТНОЙ СВЯЗИ И АВТООТКЛЮЧЕНИЯ ИИ ============
+
+  // Сообщить об ошибке ИИ
+  app.post('/api/cigarette-vision/report-error', async (req, res) => {
+    try {
+      const {
+        productId,
+        productName,
+        expectedCount,
+        aiCount,
+        imageBase64,
+        shopAddress,
+        employeeName,
+      } = req.body;
+
+      if (!productId) {
+        return res.status(400).json({ success: false, error: 'productId обязателен' });
+      }
+
+      const result = await cigaretteVision.reportAiError({
+        productId,
+        productName,
+        expectedCount,
+        aiCount,
+        imageBase64,
+        shopAddress,
+        employeeName,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка report-error:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить статус ИИ для товара
+  app.get('/api/cigarette-vision/product-ai-status/:productId', (req, res) => {
+    try {
+      const { productId } = req.params;
+      const status = cigaretteVision.getProductAiStatus(productId);
+      res.json({ success: true, ...status });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка product-ai-status:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Проверить отключен ли ИИ для товара (быстрая проверка)
+  app.get('/api/cigarette-vision/is-ai-disabled/:productId', (req, res) => {
+    try {
+      const { productId } = req.params;
+      const isDisabled = cigaretteVision.isProductAiDisabled(productId);
+      res.json({ success: true, productId, isDisabled });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Сбросить счётчик ошибок и включить ИИ (админ)
+  app.post('/api/cigarette-vision/reset-product-ai/:productId', (req, res) => {
+    try {
+      const { productId } = req.params;
+      const result = cigaretteVision.resetProductAiErrors(productId);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка reset-product-ai:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Решение админа по ошибке ИИ (подтвердить или отклонить)
+  app.post('/api/cigarette-vision/admin-ai-decision', async (req, res) => {
+    try {
+      const {
+        productId,
+        productName,
+        decision,  // "approved_for_training" | "rejected_bad_photo"
+        adminName,
+        imageBase64,
+        expectedCount,
+        aiCount,
+        shopAddress,
+      } = req.body;
+
+      if (!productId) {
+        return res.status(400).json({ success: false, error: 'productId обязателен' });
+      }
+
+      if (!decision || !['approved_for_training', 'rejected_bad_photo'].includes(decision)) {
+        return res.status(400).json({
+          success: false,
+          error: 'decision должен быть "approved_for_training" или "rejected_bad_photo"'
+        });
+      }
+
+      if (!adminName) {
+        return res.status(400).json({ success: false, error: 'adminName обязателен' });
+      }
+
+      const result = await cigaretteVision.reportAdminAiDecision({
+        productId,
+        productName,
+        decision,
+        adminName,
+        imageBase64,
+        expectedCount,
+        aiCount,
+        shopAddress,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка admin-ai-decision:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить список всех проблемных товаров
+  app.get('/api/cigarette-vision/problematic-products', (req, res) => {
+    try {
+      const products = cigaretteVision.getProblematicProducts();
+      res.json({ success: true, products, count: products.length });
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка problematic-products:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Получить проблемные фото для товара
+  app.get('/api/cigarette-vision/problem-samples/:productId', (req, res) => {
+    try {
+      const { productId } = req.params;
+      const result = cigaretteVision.getProblemSamples(productId);
+      res.json(result);
+    } catch (error) {
+      console.error('[Cigarette Vision API] Ошибка problem-samples:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Отдача проблемных фото (для просмотра)
+  app.get('/api/cigarette-vision/problem-samples/:productId/:fileName', (req, res) => {
+    try {
+      const { productId, fileName } = req.params;
+      const filePath = path.join(cigaretteVision.PROBLEM_SAMPLES_DIR, productId, fileName);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, error: 'Файл не найден' });
+      }
+
+      res.sendFile(filePath);
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 
   console.log('[Cigarette Vision API] Готово (+ scheduler очистки positive samples каждые 24ч)');
 }
