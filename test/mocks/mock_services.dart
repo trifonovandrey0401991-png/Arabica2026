@@ -28,6 +28,13 @@ class MockEmployeeData {
     'phone': '79005555555',
     'isAdmin': false,
   };
+
+  static const Map<String, dynamic> secondEmployee = {
+    'id': 'emp_002',
+    'name': 'Второй Сотрудник',
+    'phone': '79002222222',
+    'isAdmin': false,
+  };
 }
 
 /// Mock данные клиента

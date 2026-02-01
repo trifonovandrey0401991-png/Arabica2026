@@ -10,7 +10,7 @@ void main() {
 
     setUp(() async {
       mockEnvelopeService = MockEnvelopeService();
-      mockScheduler = MockEnvelopeScheduler();
+      mockScheduler = MockEnvelopeScheduler(mockEnvelopeService);
     });
 
     tearDown(() async {
@@ -650,11 +650,9 @@ class MockEnvelopeService {
 }
 
 class MockEnvelopeScheduler {
-  late MockEnvelopeService _service;
+  final MockEnvelopeService _service;
 
-  MockEnvelopeScheduler() {
-    _service = MockEnvelopeService();
-  }
+  MockEnvelopeScheduler(this._service);
 
   Future<void> createPendingReports(
     List<Map<String, dynamic>> shops,

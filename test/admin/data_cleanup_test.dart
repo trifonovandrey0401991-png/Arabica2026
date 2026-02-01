@@ -190,7 +190,7 @@ void main() {
 
         // Assert
         expect(result['success'], false);
-        expect(result['error'], contains('minimum'));
+        expect(result['error'].toString().toLowerCase(), contains('minimum'));
       });
 
       test('AT-CLN-014: Защита критических данных', () async {

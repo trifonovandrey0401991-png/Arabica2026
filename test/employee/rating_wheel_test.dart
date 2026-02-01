@@ -9,8 +9,8 @@ void main() {
     late MockFortuneWheelService mockWheelService;
 
     setUp(() async {
-      mockRatingService = MockRatingService();
       mockWheelService = MockFortuneWheelService();
+      mockRatingService = MockRatingService(mockWheelService);
     });
 
     tearDown(() async {
@@ -178,7 +178,9 @@ void main() {
     group('Top-3 Awards Tests', () {
       test('ET-RAT-010: Топ-1 получает 2 прокрутки', () async {
         // Arrange
-        final month = '2024-01';
+        // Use current month to avoid expiration
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         await mockRatingService.calculateAndAwardSpins(month);
@@ -193,7 +195,8 @@ void main() {
 
       test('ET-RAT-011: Топ-2 получает 1 прокрутку', () async {
         // Arrange
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         await mockRatingService.calculateAndAwardSpins(month);
@@ -208,7 +211,8 @@ void main() {
 
       test('ET-RAT-012: Топ-3 получает 1 прокрутку', () async {
         // Arrange
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         await mockRatingService.calculateAndAwardSpins(month);
@@ -223,7 +227,8 @@ void main() {
 
       test('ET-RAT-013: Вне топ-3 не получает прокрутки', () async {
         // Arrange
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         await mockRatingService.calculateAndAwardSpins(month);
@@ -238,7 +243,8 @@ void main() {
 
       test('ET-RAT-014: Срок истечения прокруток - конец следующего месяца', () async {
         // Arrange
-        final earnedMonth = '2024-01';
+        final now = DateTime.now();
+        final earnedMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
         final employeeId = MockEmployeeData.topEmployee['id'];
 
         // Act
@@ -247,8 +253,8 @@ void main() {
 
         // Assert
         final expiresAt = DateTime.parse(spins['expiresAt']);
-        expect(expiresAt.month, 2); // February end
-        expect(expiresAt.year, 2024);
+        expect(expiresAt.month, now.month + 1 > 12 ? 1 : now.month + 1); // Next month end
+        expect(expiresAt.year, now.month + 1 > 12 ? now.year + 1 : now.year);
       });
     });
 
@@ -268,17 +274,19 @@ void main() {
         final settings = await mockWheelService.getSettings();
 
         // Assert
-        final totalProbability = settings['sectors'].fold<double>(
-          0.0,
-          (sum, sector) => sum + (sector['probability'] as double),
-        );
+        final sectors = settings['sectors'] as List<Map<String, dynamic>>;
+        double totalProbability = 0.0;
+        for (final sector in sectors) {
+          totalProbability += sector['probability'] as double;
+        }
         expect(totalProbability, closeTo(100.0, 0.01));
       });
 
       test('ET-WHL-003: Прокрутка колеса уменьшает доступные прокрутки', () async {
         // Arrange
         final employeeId = MockEmployeeData.topEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
         await mockRatingService.calculateAndAwardSpins(month);
 
         // Act
@@ -293,7 +301,8 @@ void main() {
       test('ET-WHL-004: Невозможность прокрутки при 0 прокрутках', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         final result = await mockWheelService.spin(employeeId, month);
@@ -306,7 +315,8 @@ void main() {
       test('ET-WHL-005: Результат прокрутки сохраняется в историю', () async {
         // Arrange
         final employeeId = MockEmployeeData.topEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
         await mockRatingService.calculateAndAwardSpins(month);
 
         // Act
@@ -356,7 +366,8 @@ void main() {
       test('ET-WHL-008: Админ отмечает приз как выданный', () async {
         // Arrange
         final employeeId = MockEmployeeData.topEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
         await mockRatingService.calculateAndAwardSpins(month);
         final spinResult = await mockWheelService.spin(employeeId, month);
 
@@ -372,7 +383,8 @@ void main() {
 
       test('ET-WHL-009: История прокруток за месяц', () async {
         // Arrange
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
         await mockRatingService.calculateAndAwardSpins(month);
         await mockWheelService.spin(MockEmployeeData.topEmployee['id'], month);
 
@@ -412,7 +424,8 @@ void main() {
       test('ET-RAT-015: Отображение позиции сотрудника', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         final myRating = await mockRatingService.getEmployeeRating(
@@ -428,7 +441,8 @@ void main() {
       test('ET-RAT-016: Отображение breakdown по категориям', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         final myRating = await mockRatingService.getEmployeeRating(
@@ -444,7 +458,8 @@ void main() {
       test('ET-RAT-017: Сравнение с топ-3', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final now = DateTime.now();
+        final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
         // Act
         final comparison = await mockRatingService.getTopComparison(
@@ -466,6 +481,9 @@ void main() {
 class MockRatingService {
   final Map<String, List<Map<String, dynamic>>> _cache = {};
   int cacheHits = 0;
+  final MockFortuneWheelService _wheelService;
+
+  MockRatingService(this._wheelService);
 
   double calculateNormalizedRating({
     required double totalPoints,
@@ -519,7 +537,7 @@ class MockRatingService {
       return _cache[month]!;
     }
 
-    final ratings = [
+    final ratings = <Map<String, dynamic>>[
       {'employeeId': 'emp_top', 'name': 'Топ Сотрудник', 'normalizedRating': 14.525, 'position': 1},
       {'employeeId': 'emp_second', 'name': 'Второй Сотрудник', 'normalizedRating': 13.0, 'position': 2},
       {'employeeId': 'emp_third', 'name': 'Третий Сотрудник', 'normalizedRating': 8.78, 'position': 3},
@@ -543,23 +561,52 @@ class MockRatingService {
 
   Future<void> calculateAndAwardSpins(String month) async {
     final ratings = await getAllRatings(month);
-    // Top 3 get spins - handled by MockFortuneWheelService
+    // Award spins to top 3
+    for (var i = 0; i < ratings.length && i < 3; i++) {
+      final employeeId = ratings[i]['employeeId'] as String;
+      final spins = i == 0 ? 2 : 1; // Top 1 gets 2, others get 1
+      _wheelService.awardSpins(employeeId, month, spins);
+    }
   }
 
   Future<Map<String, dynamic>> getEmployeeRating(String employeeId, String month) async {
     final ratings = await getAllRatings(month);
-    return ratings.firstWhere(
-      (r) => r['employeeId'] == employeeId,
-      orElse: () => {'position': ratings.length + 1, 'breakdown': {}},
-    );
+    Map<String, dynamic>? found;
+    for (final r in ratings) {
+      if (r['employeeId'] == employeeId) {
+        found = r;
+        break;
+      }
+    }
+    final rating = found ?? <String, dynamic>{'position': ratings.length + 1};
+    // Add breakdown if not present
+    if (rating['breakdown'] == null) {
+      rating['breakdown'] = {
+        'shifts': 15.0,
+        'recount': 10.0,
+        'envelope': 8.0,
+        'attendance': 12.0,
+        'reviews': 5.0,
+        'rko': 3.0,
+        'orders': 7.0,
+        'productSearch': 4.0,
+        'tests': 3.5,
+        'tasks': 3.0,
+      };
+    }
+    return rating;
   }
 
   Future<Map<String, dynamic>> getTopComparison(String employeeId, String month) async {
     final ratings = await getAllRatings(month);
-    final myRating = ratings.firstWhere(
-      (r) => r['employeeId'] == employeeId,
-      orElse: () => {'position': ratings.length + 1},
-    );
+    Map<String, dynamic>? myRating;
+    for (final r in ratings) {
+      if (r['employeeId'] == employeeId) {
+        myRating = r;
+        break;
+      }
+    }
+    myRating ??= <String, dynamic>{'position': ratings.length + 1};
 
     return {
       'top3': ratings.take(3).toList(),
@@ -576,13 +623,17 @@ class MockRatingService {
 class MockFortuneWheelService {
   final Map<String, Map<String, int>> _spins = {};
   final List<Map<String, dynamic>> _history = [];
+  int _randomSeed = DateTime.now().millisecondsSinceEpoch;
 
   Future<Map<String, dynamic>> getSettings() async {
-    final sectors = List.generate(15, (i) => {
-      'label': 'Приз ${i + 1}',
-      'probability': 100.0 / 15,
-      'color': '#${(i * 17 % 256).toRadixString(16).padLeft(2, '0')}FF00',
-    });
+    final sectors = <Map<String, dynamic>>[];
+    for (var i = 0; i < 15; i++) {
+      sectors.add({
+        'label': 'Приз ${i + 1}',
+        'probability': 100.0 / 15,
+        'color': '#${(i * 17 % 256).toRadixString(16).padLeft(2, '0')}FF00',
+      });
+    }
     return {'sectors': sectors};
   }
 
@@ -632,7 +683,9 @@ class MockFortuneWheelService {
   }
 
   Map<String, dynamic> selectSectorByProbability(List<dynamic> sectors) {
-    final random = DateTime.now().microsecond % 100;
+    // Use a simple LCG random generator for testing
+    _randomSeed = ((_randomSeed * 1103515245 + 12345) & 0x7fffffff);
+    final random = (_randomSeed % 100).toDouble();
     double cumulative = 0;
 
     for (final sector in sectors) {

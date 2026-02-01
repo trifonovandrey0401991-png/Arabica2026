@@ -198,7 +198,7 @@ class MockRecipesService {
     return _recipes;
   }
 
-  void addRecipe(Map<String, dynamic> recipe) {
+  Future<void> addRecipe(Map<String, dynamic> recipe) async {
     recipe['id'] ??= 'recipe_${DateTime.now().millisecondsSinceEpoch}';
     _recipes.add(recipe);
   }

@@ -400,7 +400,7 @@ void main() {
       test('ET-TST-012: Интеграция с эффективностью', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final month = DateTime.now().toIso8601String().substring(0, 7);
 
         await mockTestService.addTest({
           'id': 'test_001',
@@ -481,7 +481,7 @@ class MockTrainingService {
     return _articles.where((a) => a['category'] == category).toList();
   }
 
-  void addArticle(Map<String, dynamic> article) {
+  Future<void> addArticle(Map<String, dynamic> article) async {
     article['id'] ??= 'art_${DateTime.now().millisecondsSinceEpoch}';
     _articles.add(article);
   }
@@ -534,7 +534,7 @@ class MockTestService {
     return _tests;
   }
 
-  void addTest(Map<String, dynamic> test) {
+  Future<void> addTest(Map<String, dynamic> test) async {
     test['points'] ??= 1;
     _tests.add(test);
   }

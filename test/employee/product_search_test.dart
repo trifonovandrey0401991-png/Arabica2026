@@ -245,7 +245,7 @@ void main() {
 
       test('ET-PSR-011: Настраиваемое количество баллов', () async {
         // Arrange
-        await mockSearchService.setPointsPerAnswer(3);
+        mockSearchService.setPointsPerAnswer(3);
         final question = await mockSearchService.createQuestion({
           'clientPhone': MockClientData.validClient['phone'],
           'productName': 'Товар',
@@ -267,7 +267,7 @@ void main() {
       test('ET-PSR-012: Подсчёт баллов за месяц', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final month = DateTime.now().toIso8601String().substring(0, 7);
 
         for (var i = 0; i < 5; i++) {
           final q = await mockSearchService.createQuestion({
@@ -296,7 +296,7 @@ void main() {
       test('ET-PSR-013: Интеграция с эффективностью', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final month = DateTime.now().toIso8601String().substring(0, 7);
 
         final q = await mockSearchService.createQuestion({
           'clientPhone': MockClientData.validClient['phone'],
@@ -420,10 +420,12 @@ class MockProductSearchService {
   final List<Map<String, dynamic>> _questions = [];
   final Map<String, double> _employeePoints = {};
   int _pointsPerAnswer = 1;
+  int _questionCounter = 0;
 
   Future<Map<String, dynamic>> createQuestion(Map<String, dynamic> data) async {
+    _questionCounter++;
     final question = {
-      'id': 'q_${DateTime.now().millisecondsSinceEpoch}',
+      'id': 'q_${DateTime.now().millisecondsSinceEpoch}_$_questionCounter',
       'clientPhone': data['clientPhone'],
       'productName': data['productName'],
       'text': data['text'],
@@ -534,5 +536,6 @@ class MockProductSearchService {
     _questions.clear();
     _employeePoints.clear();
     _pointsPerAnswer = 1;
+    _questionCounter = 0;
   }
 }

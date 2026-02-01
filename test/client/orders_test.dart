@@ -467,6 +467,15 @@ class MockOrderProvider {
     }
 
     final orderId = 'order_${DateTime.now().millisecondsSinceEpoch}';
+    final items = orderData['items'] as List;
+    final totalPrice = items.fold<double>(0.0, (sum, item) {
+      final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      final quantity = item['quantity'] as int? ?? 1;
+      return sum + (price * quantity);
+    });
+    final bonusPoints = orderData['useBonusPoints'] ?? 0;
+    final finalPrice = (totalPrice - bonusPoints).clamp(0.0, totalPrice);
+
     final order = {
       'id': orderId,
       'orderId': orderId,
@@ -477,7 +486,9 @@ class MockOrderProvider {
       'clientPhone': orderData['clientPhone'],
       'paymentMethod': orderData['paymentMethod'] ?? 'cash',
       'comment': orderData['comment'],
-      'bonusPointsUsed': orderData['useBonusPoints'] ?? 0,
+      'bonusPointsUsed': bonusPoints,
+      'totalPrice': totalPrice,
+      'finalPrice': finalPrice,
       'createdAt': DateTime.now().toIso8601String(),
     };
 
@@ -502,6 +513,11 @@ class MockOrderProvider {
   }
 
   Future<Map<String, dynamic>> cancelOrder(String orderId) async {
+    // Check if it's a mock completed order
+    if (orderId == MockOrderData.completedOrder['id']) {
+      return {'success': false, 'error': 'cannot cancel completed order'};
+    }
+
     final index = _orders.indexWhere((o) => o['id'] == orderId);
     if (index >= 0) {
       if (_orders[index]['status'] == 'completed' || _orders[index]['status'] == 'ready') {

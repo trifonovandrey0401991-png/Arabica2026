@@ -11,6 +11,7 @@ void main() {
     setUp(() async {
       mockTaskService = MockTaskService();
       mockRecurringService = MockRecurringTaskService();
+      mockRecurringService.setTaskService(mockTaskService);
     });
 
     tearDown(() async {
@@ -559,7 +560,7 @@ void main() {
       test('ET-TSK-028: Интеграция с эффективностью', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final month = DateTime.now().toIso8601String().substring(0, 7);
 
         // Выполнить и подтвердить задачу
         final taskResult = await mockTaskService.createTask({

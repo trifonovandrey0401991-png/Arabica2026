@@ -349,6 +349,7 @@ void main() {
       test('CT-REV-018: Баллы за положительный отзыв (4-5 звёзд)', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
+        final month = DateTime.now().toIso8601String().substring(0, 7);
         final result = await mockReviewsService.createReview({
           'clientPhone': MockClientData.validClient['phone'],
           'shopId': MockShopData.validShop['id'],
@@ -360,7 +361,7 @@ void main() {
         // Act
         final points = await mockReviewsService.getEmployeeReviewPoints(
           employeeId,
-          '2024-01',
+          month,
         );
 
         // Assert
@@ -385,7 +386,7 @@ void main() {
       test('CT-REV-020: Интеграция с эффективностью', () async {
         // Arrange
         final employeeId = MockEmployeeData.validEmployee['id'];
-        final month = '2024-01';
+        final month = DateTime.now().toIso8601String().substring(0, 7);
 
         // Create and approve reviews
         for (var i = 0; i < 3; i++) {
@@ -465,6 +466,7 @@ void main() {
 class MockReviewsService {
   final List<Map<String, dynamic>> _reviews = [];
   final Map<String, double> _employeePoints = {};
+  int _reviewCounter = 0;
 
   Future<Map<String, dynamic>> createReview(Map<String, dynamic> data) async {
     final rating = data['rating'] as int;
@@ -473,8 +475,9 @@ class MockReviewsService {
       return {'success': false, 'error': 'rating must be 1-5'};
     }
 
+    _reviewCounter++;
     final review = {
-      'id': 'rev_${DateTime.now().millisecondsSinceEpoch}',
+      'id': 'rev_${DateTime.now().millisecondsSinceEpoch}_$_reviewCounter',
       'clientPhone': data['clientPhone'],
       'shopId': data['shopId'],
       'employeeId': data['employeeId'],

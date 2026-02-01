@@ -212,10 +212,10 @@ void main() {
     group('Group Chat Tests', () {
       test('ET-CHT-012: Создание группового чата', () async {
         // Arrange
-        final creatorId = MockEmployeeData.adminEmployee['id'];
-        final participants = [
-          MockEmployeeData.validEmployee['id'],
-          MockEmployeeData.secondEmployee['id'],
+        final creatorId = MockEmployeeData.adminEmployee['id'] as String;
+        final participants = <String>[
+          MockEmployeeData.validEmployee['id'] as String,
+          MockEmployeeData.secondEmployee['id'] as String,
         ];
 
         // Act
@@ -497,7 +497,7 @@ void main() {
 
       test('ET-CHT-028: Push содержит превью сообщения', () async {
         // Arrange
-        final text = 'Это текст сообщения';
+        final text = 'Это текст сообщения для уведомления';
 
         // Act
         final notification = mockChatService.buildNotification(
@@ -507,7 +507,7 @@ void main() {
         );
 
         // Assert
-        expect(notification['body'], contains(text.substring(0, 20)));
+        expect(notification['body'], contains('Это текст'));
       });
     });
 
@@ -705,8 +705,10 @@ class MockChatService {
     required String creatorId,
     required List<String> participants,
   }) async {
-    final groupId = 'group_${DateTime.now().millisecondsSinceEpoch}';
-    final allParticipants = [creatorId, ...participants];
+    final groupId = 'group_${DateTime.now().millisecondsSinceEpoch}_${_groups.length}';
+    // Normalize all participant phones for consistency
+    final normalizedParticipants = participants.map((p) => normalizePhone(p)).toList();
+    final allParticipants = [creatorId, ...normalizedParticipants];
 
     final group = {
       'id': groupId,

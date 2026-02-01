@@ -413,7 +413,7 @@ class MockLoyaltyService {
     }
 
     _points[phone] = 0;
-    _freeDrinksGiven[phone] = (_freeDrinksGiven[phone] ?? 0) + settings['drinksToGive'];
+    _freeDrinksGiven[phone] = (_freeDrinksGiven[phone] ?? 0) + (settings['drinksToGive'] as int);
 
     return {
       'success': true,
