@@ -485,12 +485,17 @@ function setupCigaretteVisionAPI(app) {
         return res.status(400).json({ success: false, error: 'ID товара обязателен' });
       }
 
+      console.log(`[Cigarette Vision API] count-with-training: productId=${productId}, productName=${productName}, shopAddress=${shopAddress}, isAiActive=${isAiActive} (type: ${typeof isAiActive})`);
+
       // Выполняем детекцию
       const result = await cigaretteVision.detectAndCount(imageBase64, productId);
 
       // НОВАЯ ЛОГИКА: Сохраняем фото для товаров с isAiActive=true (для обучения)
       // Не зависит от результата детекции - сохраняем ВСЕ фото
-      if (isAiActive === true) {
+      // Проверяем как boolean так и string 'true'
+      const shouldSave = isAiActive === true || isAiActive === 'true';
+      console.log(`[Cigarette Vision API] shouldSave=${shouldSave}`);
+      if (shouldSave) {
         cigaretteVision.saveCountingTrainingSample({
           imageBase64,
           productId,
