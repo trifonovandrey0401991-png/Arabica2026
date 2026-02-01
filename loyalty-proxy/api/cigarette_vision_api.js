@@ -635,9 +635,9 @@ function setupCigaretteVisionAPI(app) {
     const result = cigaretteVision.cleanupOldPositiveSamples();
     console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
 
-    // Раздельные датасеты
-    const displayResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.DISPLAY);
-    const countingResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
+    // Раздельные датасеты (используем строки напрямую для надёжности)
+    const displayResult = cigaretteVision.cleanupTypedSamples('display');
+    const countingResult = cigaretteVision.cleanupTypedSamples('counting');
     console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
   }, 5 * 60 * 1000);
 
@@ -648,9 +648,9 @@ function setupCigaretteVisionAPI(app) {
     const result = cigaretteVision.cleanupOldPositiveSamples();
     console.log(`[Cigarette Vision API] Общий датасет: удалено ${result.deletedCount || 0} старых samples`);
 
-    // Раздельные датасеты
-    const displayResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.DISPLAY);
-    const countingResult = cigaretteVision.cleanupTypedSamples(cigaretteVision.TRAINING_TYPES.COUNTING);
+    // Раздельные датасеты (используем строки напрямую для надёжности)
+    const displayResult = cigaretteVision.cleanupTypedSamples('display');
+    const countingResult = cigaretteVision.cleanupTypedSamples('counting');
     console.log(`[Cigarette Vision API] Display: удалено ${displayResult.deletedCount || 0}, Counting: удалено ${countingResult.deletedCount || 0}`);
   }, CLEANUP_INTERVAL_MS);
 
