@@ -59,6 +59,13 @@ class _ReportsPageState extends State<ReportsPage> {
   int _envelopeUnconfirmedCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
+  // ═══════════════════════════════════════════════════════════════
+  // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - как в главном меню
+  // ═══════════════════════════════════════════════════════════════
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   @override
   void initState() {
     super.initState();
@@ -80,12 +87,7 @@ class _ReportsPageState extends State<ReportsPage> {
     try {
       final reviews = await ReviewService.getAllReviews();
       final unreadCount = reviews.where((r) => r.hasUnreadFromClient).length;
-
-      if (mounted) {
-        setState(() {
-          _unreadReviewsCount = unreadCount;
-        });
-      }
+      if (mounted) setState(() => _unreadReviewsCount = unreadCount);
     } catch (e) {
       Logger.error('Ошибка загрузки количества непрочитанных отзывов', e);
     }
@@ -97,13 +99,8 @@ class _ReportsPageState extends State<ReportsPage> {
         endpoint: '/api/management-dialogs',
         timeout: ApiConstants.longTimeout,
       );
-
-      if (result != null && result['success'] == true) {
-        if (mounted) {
-          setState(() {
-            _managementUnreadCount = result['totalUnread'] ?? 0;
-          });
-        }
+      if (result != null && result['success'] == true && mounted) {
+        setState(() => _managementUnreadCount = result['totalUnread'] ?? 0);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества непрочитанных сообщений руководству', e);
@@ -116,16 +113,10 @@ class _ReportsPageState extends State<ReportsPage> {
         endpoint: '/api/withdrawals',
         timeout: ApiConstants.longTimeout,
       );
-
       if (result != null && result['success'] == true) {
         final withdrawals = result['withdrawals'] as List<dynamic>? ?? [];
         final unconfirmedCount = withdrawals.where((w) => w['confirmed'] != true).length;
-
-        if (mounted) {
-          setState(() {
-            _unconfirmedWithdrawalsCount = unconfirmedCount;
-          });
-        }
+        if (mounted) setState(() => _unconfirmedWithdrawalsCount = unconfirmedCount);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки количества неподтвержденных выемок', e);
@@ -134,13 +125,8 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _loadProductQuestionsUnreadCount() async {
     try {
-      // Для отчётов - считаем непросмотренные админом отвеченные диалоги
       final count = await ProductQuestionService.getTotalUnviewedByAdminCount();
-      if (mounted) {
-        setState(() {
-          _productQuestionsUnreadCount = count;
-        });
-      }
+      if (mounted) setState(() => _productQuestionsUnreadCount = count);
     } catch (e) {
       Logger.error('Ошибка загрузки количества непрочитанных вопросов о товарах', e);
     }
@@ -149,11 +135,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _loadUnviewedExpiredTasksCount() async {
     try {
       final count = await TaskService.getUnviewedExpiredCount();
-      if (mounted) {
-        setState(() {
-          _unviewedExpiredTasksCount = count;
-        });
-      }
+      if (mounted) setState(() => _unviewedExpiredTasksCount = count);
     } catch (e) {
       Logger.error('Ошибка загрузки количества непросмотренных просроченных задач', e);
     }
@@ -162,11 +144,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _loadReferralsUnviewedCount() async {
     try {
       final count = await ReferralService.getUnviewedCount();
-      if (mounted) {
-        setState(() {
-          _referralsUnviewedCount = count;
-        });
-      }
+      if (mounted) setState(() => _referralsUnviewedCount = count);
     } catch (e) {
       Logger.error('Ошибка загрузки количества непросмотренных приглашений', e);
     }
@@ -175,11 +153,7 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _loadOrdersUnviewedCount() async {
     try {
       final counts = await OrderService.getUnviewedCounts();
-      if (mounted) {
-        setState(() {
-          _ordersUnviewedCount = counts['total'] ?? 0;
-        });
-      }
+      if (mounted) setState(() => _ordersUnviewedCount = counts['total'] ?? 0);
     } catch (e) {
       Logger.error('Ошибка загрузки количества непросмотренных заказов', e);
     }
@@ -189,11 +163,7 @@ class _ReportsPageState extends State<ReportsPage> {
     try {
       final requests = await ShiftTransferService.getAdminRequests();
       final unreadCount = requests.where((r) => !r.isReadByAdmin).length;
-      if (mounted) {
-        setState(() {
-          _shiftTransferRequestsUnreadCount = unreadCount;
-        });
-      }
+      if (mounted) setState(() => _shiftTransferRequestsUnreadCount = unreadCount);
     } catch (e) {
       Logger.error('Ошибка загрузки количества заявок на смены', e);
     }
@@ -203,11 +173,7 @@ class _ReportsPageState extends State<ReportsPage> {
     try {
       final reports = await EnvelopeReportService.getReports();
       final unconfirmedCount = reports.where((r) => r.status != 'confirmed').length;
-      if (mounted) {
-        setState(() {
-          _envelopeUnconfirmedCount = unconfirmedCount;
-        });
-      }
+      if (mounted) setState(() => _envelopeUnconfirmedCount = unconfirmedCount);
     } catch (e) {
       Logger.error('Ошибка загрузки количества неподтверждённых конвертов', e);
     }
@@ -215,47 +181,32 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Future<void> _loadReportCounts() async {
     final counts = await ReportNotificationService.getUnviewedCounts();
-    if (mounted) {
-      setState(() {
-        _reportCounts = counts;
-      });
-    }
+    if (mounted) setState(() => _reportCounts = counts);
   }
 
   Future<void> _loadJobApplicationsCount() async {
     final count = await JobApplicationService.getUnviewedCount();
-    if (mounted) {
-      setState(() {
-        _jobApplicationsUnviewedCount = count;
-      });
-    }
+    if (mounted) setState(() => _jobApplicationsUnviewedCount = count);
   }
 
   Future<void> _loadUserRole() async {
     try {
       final roleData = await UserRoleService.loadUserRole();
-      setState(() {
-        _userRole = roleData?.role;
-      });
+      setState(() => _userRole = roleData?.role);
 
-      // Проверяем верификацию для сотрудников
       if (_userRole == UserRole.employee) {
         final prefs = await SharedPreferences.getInstance();
         final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
         if (phone != null && phone.isNotEmpty) {
           final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
           final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
-          setState(() {
-            _isVerified = registration?.isVerified ?? false;
-          });
+          setState(() => _isVerified = registration?.isVerified ?? false);
         }
       }
     } catch (e) {
       Logger.error('Ошибка загрузки роли', e);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -263,11 +214,13 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Отчеты'),
-          backgroundColor: const Color(0xFF004D40),
+        backgroundColor: _night,
+        body: Container(
+          decoration: _buildGradient(),
+          child: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -276,2262 +229,418 @@ class _ReportsPageState extends State<ReportsPage> {
 
     if (!canViewReports) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Отчеты'),
-          backgroundColor: const Color(0xFF004D40),
-        ),
-        body: const Center(
-          child: Text(
-            'Доступ к отчетам ограничен',
-            style: TextStyle(fontSize: 18, color: Colors.grey),
+        backgroundColor: _night,
+        body: Container(
+          decoration: _buildGradient(),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                const Expanded(
+                  child: Center(
+                    child: Text(
+                      'Доступ к отчетам ограничен',
+                      style: TextStyle(fontSize: 18, color: Colors.white54),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Отчеты'),
-        backgroundColor: const Color(0xFF004D40),
+      backgroundColor: _night,
+      body: Container(
+        decoration: _buildGradient(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  children: _buildReportItems(isAdmin),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    );
+  }
+
+  BoxDecoration _buildGradient() {
+    return const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [_emerald, _emeraldDark, _night],
+        stops: [0.0, 0.3, 1.0],
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      child: Row(
         children: [
-          // Отчет по РКО - для админов и верифицированных сотрудников
-          if (isAdmin || _isVerified)
-            _buildRKOSection(
-              context,
-              title: 'Отчет по РКО',
-              badgeCount: _reportCounts.rko,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RKOReportsPage()),
-                );
-                _loadReportCounts();
-              },
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
             ),
-          if (isAdmin || _isVerified) const SizedBox(height: 8),
-
-          // Отчет по пересменкам - только админ
-          if (isAdmin)
-            _buildShiftHandoverSection(
-              context,
-              title: 'Отчет по пересменкам',
-              badgeCount: _reportCounts.shiftHandover,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ShiftReportsListPage()),
-                );
-                _loadReportCounts();
-              },
+          ),
+          const Expanded(
+            child: Text(
+              'Отчёты',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+              ),
             ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет по сдаче смены - только админ
-          if (isAdmin)
-            _buildShiftCompleteSection(
-              context,
-              title: 'Отчет (Сдача Смены)',
-              badgeCount: _reportCounts.shiftReport,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ShiftHandoverReportsListPage()),
-                );
-                _loadReportCounts();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет по конвертам - только админ
-          if (isAdmin)
-            _buildEnvelopeReportSection(
-              context,
-              title: 'Отчет по конвертам',
-              badgeCount: _envelopeUnconfirmedCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const EnvelopeReportsListPage()),
-                );
-                _loadEnvelopeCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет по пересчету - только админ
-          if (isAdmin)
-            _buildRecountReportSection(
-              context,
-              title: 'Отчет по пересчету',
-              badgeCount: _reportCounts.recount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RecountReportsListPage()),
-                );
-                _loadReportCounts();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчеты по приходам - только админ
-          if (isAdmin)
-            _buildAttendanceReportsSection(
-              context,
-              title: 'Отчеты по приходам',
-              badgeCount: _reportCounts.attendance,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AttendanceReportsPage()),
-                );
-                _loadReportCounts();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Заявки на смены - только админ
-          if (isAdmin)
-            _buildShiftTransferRequestsSection(
-              context,
-              title: 'Заявки на смены',
-              badgeCount: _shiftTransferRequestsUnreadCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ShiftTransferRequestsPage()),
-                );
-                _loadShiftTransferRequestsCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // KPI - только админ
-          if (isAdmin)
-            _buildKPISection(
-              context,
-              title: 'KPI',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const KPITypeSelectionPage()),
-                );
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отзывы покупателей - только админ
-          if (isAdmin)
-            _buildReviewsReportSection(
-              context,
-              title: 'Отзывы покупателей',
-              badgeCount: _unreadReviewsCount + _managementUnreadCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ReviewsListPage()),
-                );
-                // Перезагрузить счетчики после возврата
-                _loadUnreadReviewsCount();
-                _loadManagementUnreadCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет (Поиск товаров) - только админ
-          if (isAdmin)
-            _buildProductSearchSection(
-              context,
-              title: 'Отчет (Поиск товаров)',
-              badgeCount: _productQuestionsUnreadCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProductQuestionsReportPage()),
-                );
-                // Перезагрузить счетчик после возврата
-                _loadProductQuestionsUnreadCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет (Тестирование) - только админ
-          if (isAdmin)
-            _buildTestingSection(
-              context,
-              title: 'Отчет (Тестирование)',
-              badgeCount: _reportCounts.test,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const TestReportPage()),
-                );
-                _loadReportCounts();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет (Главная Касса) - только админ
-          if (isAdmin)
-            _buildMainCashSection(
-              context,
-              title: 'Отчет (Главная Касса)',
-              badgeCount: _unconfirmedWithdrawalsCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MainCashPage()),
-                );
-                // Обновить счетчик после возврата
-                _loadUnconfirmedWithdrawalsCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Эффективность сотрудников - только админ
-          if (isAdmin)
-            _buildEfficiencySection(
-              context,
-              title: 'Эффективность сотрудников',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const EmployeesEfficiencyPage()),
-                );
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет по задачам - только админ
-          if (isAdmin)
-            _buildTaskSectionWithBadge(
-              context,
-              title: 'Отчет по задачам',
-              badgeCount: _unviewedExpiredTasksCount,
-              onTap: () async {
-                // Помечаем просроченные задачи как просмотренные
-                await TaskService.markExpiredAsViewed();
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const TaskReportsPage()),
-                );
-                // Обновляем счётчик после возврата
-                _loadUnviewedExpiredTasksCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет (Устроиться на Работу) - только админ
-          if (isAdmin)
-            _buildJobApplicationReportSection(
-              context,
-              title: 'Отчет (Устроиться на Работу)',
-              badgeCount: _jobApplicationsUnviewedCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const JobApplicationsListPage()),
-                );
-                // Обновляем счётчик после возврата
-                _loadJobApplicationsCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет (Приглашения) - только админ
-          if (isAdmin)
-            _buildReferralsReportSection(
-              context,
-              title: 'Отчет (Приглашения)',
-              badgeCount: _referralsUnviewedCount,
-              onTap: () async {
-                // Помечаем как просмотренные при открытии
-                await ReferralService.markAsViewed();
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ReferralsReportPage()),
-                );
-                // Обновляем счётчик после возврата
-                _loadReferralsUnviewedCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет (Колесо) - только админ
-          if (isAdmin)
-            _buildFortuneWheelSection(
-              context,
-              title: 'Отчет (Колесо)',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const WheelReportsPage()),
-                );
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчёты (Заказы клиентов) - только админ
-          if (isAdmin)
-            _buildOrdersReportSection(
-              context,
-              title: 'Отчёты (Заказы клиентов)',
-              badgeCount: _ordersUnviewedCount,
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const OrdersReportPage()),
-                );
-                // Обновляем счётчик после возврата
-                _loadOrdersUnviewedCount();
-              },
-            ),
-          if (isAdmin) const SizedBox(height: 8),
-
-          // Отчет Обучения ИИ - только админ
-          if (isAdmin)
-            _buildAITrainingButton(context),
+          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
   }
 
-  Widget _buildSection(
-    BuildContext context, {
-    required String title,
+  List<Widget> _buildReportItems(bool isAdmin) {
+    final items = <Widget>[];
+
+    // Отчет по РКО
+    if (isAdmin || _isVerified) {
+      items.add(_buildRow(
+        icon: Icons.receipt_long_outlined,
+        title: 'Отчёт по РКО',
+        badge: _reportCounts.rko,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOReportsPage()));
+          _loadReportCounts();
+        },
+      ));
+    }
+
+    // Отчет по пересменкам
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.swap_horiz_rounded,
+        title: 'Отчёт по пересменкам',
+        badge: _reportCounts.shiftHandover,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ShiftReportsListPage()));
+          _loadReportCounts();
+        },
+      ));
+    }
+
+    // Отчет (Сдача Смены)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.check_circle_outline_rounded,
+        title: 'Отчёт (Сдача смены)',
+        badge: _reportCounts.shiftReport,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ShiftHandoverReportsListPage()));
+          _loadReportCounts();
+        },
+      ));
+    }
+
+    // Отчет по конвертам
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.mail_outline_rounded,
+        title: 'Отчёт по конвертам',
+        badge: _envelopeUnconfirmedCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const EnvelopeReportsListPage()));
+          _loadEnvelopeCount();
+        },
+      ));
+    }
+
+    // Отчет по пересчету
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.calculate_outlined,
+        title: 'Отчёт по пересчёту',
+        badge: _reportCounts.recount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountReportsListPage()));
+          _loadReportCounts();
+        },
+      ));
+    }
+
+    // Отчеты по приходам
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.access_time_rounded,
+        title: 'Отчёты по приходам',
+        badge: _reportCounts.attendance,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceReportsPage()));
+          _loadReportCounts();
+        },
+      ));
+    }
+
+    // Заявки на смены
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.swap_horizontal_circle_outlined,
+        title: 'Заявки на смены',
+        badge: _shiftTransferRequestsUnreadCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ShiftTransferRequestsPage()));
+          _loadShiftTransferRequestsCount();
+        },
+      ));
+    }
+
+    // KPI
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.insights_outlined,
+        title: 'KPI',
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const KPITypeSelectionPage()));
+        },
+      ));
+    }
+
+    // Отзывы покупателей
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.star_outline_rounded,
+        title: 'Отзывы покупателей',
+        badge: _unreadReviewsCount + _managementUnreadCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewsListPage()));
+          _loadUnreadReviewsCount();
+          _loadManagementUnreadCount();
+        },
+      ));
+    }
+
+    // Отчет (Поиск товаров)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.search_rounded,
+        title: 'Отчёт (Поиск товаров)',
+        badge: _productQuestionsUnreadCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductQuestionsReportPage()));
+          _loadProductQuestionsUnreadCount();
+        },
+      ));
+    }
+
+    // Отчет (Тестирование)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.quiz_outlined,
+        title: 'Отчёт (Тестирование)',
+        badge: _reportCounts.test,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const TestReportPage()));
+          _loadReportCounts();
+        },
+      ));
+    }
+
+    // Отчет (Главная Касса)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.point_of_sale_outlined,
+        title: 'Отчёт (Главная касса)',
+        badge: _unconfirmedWithdrawalsCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const MainCashPage()));
+          _loadUnconfirmedWithdrawalsCount();
+        },
+      ));
+    }
+
+    // Эффективность сотрудников
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.trending_up_rounded,
+        title: 'Эффективность сотрудников',
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeesEfficiencyPage()));
+        },
+      ));
+    }
+
+    // Отчет по задачам
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.task_alt_outlined,
+        title: 'Отчёт по задачам',
+        badge: _unviewedExpiredTasksCount,
+        onTap: () async {
+          await TaskService.markExpiredAsViewed();
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskReportsPage()));
+          _loadUnviewedExpiredTasksCount();
+        },
+      ));
+    }
+
+    // Отчет (Устроиться на Работу)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.work_outline_rounded,
+        title: 'Отчёт (Устроиться на работу)',
+        badge: _jobApplicationsUnviewedCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const JobApplicationsListPage()));
+          _loadJobApplicationsCount();
+        },
+      ));
+    }
+
+    // Отчет (Приглашения)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.person_add_alt_outlined,
+        title: 'Отчёт (Приглашения)',
+        badge: _referralsUnviewedCount,
+        onTap: () async {
+          await ReferralService.markAsViewed();
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralsReportPage()));
+          _loadReferralsUnviewedCount();
+        },
+      ));
+    }
+
+    // Отчет (Колесо)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.casino_outlined,
+        title: 'Отчёт (Колесо удачи)',
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const WheelReportsPage()));
+        },
+      ));
+    }
+
+    // Отчёты (Заказы клиентов)
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.shopping_bag_outlined,
+        title: 'Отчёт (Заказы клиентов)',
+        badge: _ordersUnviewedCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersReportPage()));
+          _loadOrdersUnviewedCount();
+        },
+      ));
+    }
+
+    // Обучение ИИ
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.psychology_outlined,
+        title: 'Обучение ИИ',
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AITrainingPage()));
+        },
+      ));
+    }
+
+    return items;
+  }
+
+  /// Минималистичная строка отчёта
+  Widget _buildRow({
     required IconData icon,
+    required String title,
+    int? badge,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF004D40)),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildSectionWithBadge(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required int badgeCount,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 2,
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF004D40)),
-        title: Text(title),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (badgeCount > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  badgeCount.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            if (badgeCount > 0) const SizedBox(width: 8),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  /// Кнопка задач с кастомной иконкой чеклиста и бейджем
-  Widget _buildTaskSectionWithBadge(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка чеклиста с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/tasks_checklist_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Новых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отчет (Тестирование)" с кастомной иконкой и бейджем
-  Widget _buildTestingSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка тестирования с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/testing_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Непросмотренных: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Главная Касса" с кастомной иконкой кассового аппарата и бейджем
-  Widget _buildMainCashSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка кассы с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/cash_register_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Неподтверждённых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отчеты по приходам" с кастомной иконкой и бейджем
-  Widget _buildAttendanceReportsSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка рабочего времени с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/arrival_report_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Новых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEfficiencySection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка эффективности
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/efficiency_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAITrainingButton(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF004D40), Color(0xFF00796B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: ListTile(
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/ai_training_icon.png',
-              width: 40,
-              height: 40,
-              fit: BoxFit.contain,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.white.withOpacity(0.05),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
             ),
-          ),
-          title: const Text(
-            'Обучение ИИ',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+            child: Row(
+              children: [
+                // Иконка
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withOpacity(0.1),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white.withOpacity(0.85),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Название
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+
+                // Бейдж или стрелка
+                if (badge != null && badge > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      badge > 99 ? '99+' : '$badge',
+                      style: TextStyle(
+                        color: _emerald,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white.withOpacity(0.4),
+                    size: 24,
+                  ),
+                ],
+              ],
             ),
-          ),
-          trailing: const Icon(Icons.chevron_right, color: Colors.white),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AITrainingPage(),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка отчета сдачи смены с кастомной иконкой и бейджем
-  Widget _buildShiftCompleteSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/shift_complete_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка отчета по конвертам с кастомной иконкой и бейджем
-  Widget _buildEnvelopeReportSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF004D40),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.mail_outlined,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка отчета по РКО с кастомной иконкой и бейджем
-  Widget _buildRKOSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/rko_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка отчета поиска товаров с кастомной иконкой и бейджем
-  Widget _buildProductSearchSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/search_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка отчета по пересменкам с кастомной иконкой и бейджем
-  Widget _buildShiftHandoverSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/shift_handover_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка отчета по колесу удачи с кастомной иконкой
-  Widget _buildFortuneWheelSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/fortune_wheel_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отчёты (Заказы клиентов)" с кастомной иконкой корзины и бейджем
-  Widget _buildOrdersReportSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка корзины с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/cart_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Новых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отчет по пересчету" с кастомной иконкой и бейджем
-  Widget _buildRecountReportSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка пересчета с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/recount_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Новых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отчет (Устроиться на Работу)" с кастомной иконкой и бейджем
-  Widget _buildJobApplicationReportSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка "устроиться на работу" с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/job_application_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Новых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отчет (Приглашения)" с кастомной иконкой клиентов и бейджем
-  Widget _buildReferralsReportSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка клиентов с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/clients_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Новых: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Отзывы покупателей" с кастомной иконкой и бейджем
-  Widget _buildReviewsReportSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Кастомная иконка отзывов с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/reviews_icon.png',
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Непрочитанных: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Color(0xFFE53935)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Заявки на смены" с иконкой и бейджем
-  Widget _buildShiftTransferRequestsSection(
-    BuildContext context, {
-    required String title,
-    required int badgeCount,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Иконка заявок с бейджем
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.orange[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.swap_horiz,
-                      size: 28,
-                      color: Colors.orange[800],
-                    ),
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 20,
-                          minHeight: 20,
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF004D40),
-                      ),
-                    ),
-                    if (badgeCount > 0)
-                      Text(
-                        'Ожидают одобрения: $badgeCount',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Бейдж или стрелка
-              if (badgeCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.orange, Color(0xFFF57C00)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.orange.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "KPI" с кастомной иконкой
-  Widget _buildKPISection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/kpi_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
           ),
         ),
       ),

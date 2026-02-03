@@ -1398,6 +1398,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
   String? _selectedAnswerType; // 'photo', 'yesno', 'number', 'text'
   bool _isSaving = false;
   bool _isForAllShops = false; // Задавать всем магазинам
+  bool _isAiCheck = false; // Проверять ли ИИ фото этого вопроса
   List<Shop> _allShops = [];
   Set<String> _selectedShopAddresses = {}; // Выбранные адреса магазинов
   Map<String, String> _referencePhotoUrls = {}; // URL эталонных фото для каждого магазина
@@ -1431,6 +1432,9 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
       if (widget.question!.referencePhotos != null) {
         _referencePhotoUrls = Map<String, String>.from(widget.question!.referencePhotos!);
       }
+
+      // Загружаем флаг ИИ проверки
+      _isAiCheck = widget.question!.isAiCheck;
     } else {
       _selectedAnswerType = 'text'; // По умолчанию текст
     }
@@ -1629,6 +1633,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           answerFormatC: answerFormatC,
           shops: shops,
           referencePhotos: _referencePhotoUrls.isNotEmpty ? _referencePhotoUrls : null,
+          isAiCheck: _selectedAnswerType == 'photo' ? _isAiCheck : false,
         );
         
         // Загружаем новые эталонные фото, если есть
@@ -1652,6 +1657,7 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
           answerFormatC: answerFormatC,
           shops: shops,
           referencePhotos: null, // Фото загрузим отдельно
+          isAiCheck: _selectedAnswerType == 'photo' ? _isAiCheck : false,
         );
         
         // Загружаем эталонные фото для нового вопроса
@@ -2018,6 +2024,56 @@ class _ShiftQuestionFormDialogState extends State<ShiftQuestionFormDialog> {
                               ),
                             ),
                         ],
+                        // Проверка ИИ (только для вопросов с фото)
+                        if (_selectedAnswerType == 'photo') ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: _isAiCheck
+                                  ? const Color(0xFFF59E0B).withOpacity(0.1)
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _isAiCheck
+                                    ? const Color(0xFFF59E0B)
+                                    : Colors.grey[300]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: CheckboxListTile(
+                              value: _isAiCheck,
+                              onChanged: (value) {
+                                setState(() => _isAiCheck = value ?? false);
+                              },
+                              title: const Text(
+                                'Проверка ИИ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'ИИ будет проверять товары на фото этого вопроса при пересменке',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              activeColor: const Color(0xFFF59E0B),
+                              checkColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              secondary: Icon(
+                                Icons.psychology,
+                                color: _isAiCheck
+                                    ? const Color(0xFFF59E0B)
+                                    : Colors.grey[400],
+                              ),
+                            ),
+                          ),
+                        ],
+
                         // Эталонные фото (только для вопросов с фото)
                         if (_selectedAnswerType == 'photo') ...[
                           const SizedBox(height: 28),

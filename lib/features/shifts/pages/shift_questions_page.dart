@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -7,10 +8,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../models/shift_question_model.dart';
 import '../models/shift_report_model.dart';
+import '../models/shift_shortage_model.dart';
 import '../services/shift_report_service.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../ai_training/pages/shift_ai_verification_page.dart';
+import '../../ai_training/services/shift_ai_verification_service.dart';
 
 /// Страница с вопросами пересменки
 class ShiftQuestionsPage extends StatefulWidget {
@@ -39,6 +43,11 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
   String? _photoPath;
   String? _selectedYesNo; // 'Да' или 'Нет'
   bool _isSubmitting = false;
+
+  // AI верификация товаров
+  bool? _aiVerificationPassed;
+  bool _aiVerificationSkipped = false;
+  List<ShiftShortage> _aiShortages = [];
 
   /// Нормализовать адрес магазина для сравнения
   String _normalizeShopAddress(String address) {
@@ -385,6 +394,96 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
     }
   }
 
+  /// Проверить есть ли активные AI товары для магазина
+  Future<bool> _hasActiveAiProducts() async {
+    try {
+      final products = await ShiftAiVerificationService.getActiveAiProducts(widget.shopAddress);
+      Logger.debug('Активных AI товаров для ${widget.shopAddress}: ${products.length}');
+      return products.isNotEmpty;
+    } catch (e) {
+      Logger.error('Ошибка проверки активных AI товаров', e);
+      return false;
+    }
+  }
+
+  /// Собрать фото из ответов для AI верификации
+  Future<List<Uint8List>> _collectPhotosForAiVerification() async {
+    final List<Uint8List> photos = [];
+
+    for (var answer in _answers) {
+      if (answer.photoPath != null) {
+        try {
+          if (answer.photoPath!.startsWith('data:image')) {
+            // base64 формат (веб)
+            final base64Data = answer.photoPath!.split(',').last;
+            final bytes = base64Decode(base64Data);
+            photos.add(Uint8List.fromList(bytes));
+          } else {
+            // файловый путь (мобильные)
+            final file = File(answer.photoPath!);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              photos.add(bytes);
+            }
+          }
+        } catch (e) {
+          Logger.error('Ошибка чтения фото для AI: ${answer.photoPath}', e);
+        }
+      }
+    }
+
+    Logger.debug('Собрано ${photos.length} фото для AI верификации');
+    return photos;
+  }
+
+  /// Запустить AI верификацию товаров
+  Future<bool> _runAiVerification() async {
+    // Проверяем есть ли активные AI товары
+    final hasAiProducts = await _hasActiveAiProducts();
+    if (!hasAiProducts) {
+      Logger.debug('Нет активных AI товаров - пропускаем AI верификацию');
+      return true; // Нет AI товаров - пропускаем
+    }
+
+    // Собираем фото
+    final photos = await _collectPhotosForAiVerification();
+    if (photos.isEmpty) {
+      Logger.debug('Нет фото для AI верификации');
+      return true; // Нет фото - пропускаем
+    }
+
+    // Открываем страницу AI верификации
+    if (!mounted) return true;
+
+    final result = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShiftAiVerificationPage(
+          photos: photos,
+          shopAddress: widget.shopAddress,
+          employeeName: widget.employeeName,
+        ),
+      ),
+    );
+
+    if (result == null) {
+      // Пользователь пропустил AI верификацию
+      _aiVerificationSkipped = true;
+      Logger.debug('AI верификация пропущена пользователем');
+      return true;
+    }
+
+    // Сохраняем результаты
+    _aiVerificationPassed = result['aiVerificationPassed'] as bool?;
+    final shortages = result['shortages'] as List<ShiftShortage>?;
+    if (shortages != null) {
+      _aiShortages = shortages;
+    }
+
+    Logger.info('AI верификация завершена: passed=$_aiVerificationPassed, недостач=${_aiShortages.length}');
+    return true;
+  }
+
   Future<void> _submitReport() async {
     if (_questions == null) return;
 
@@ -454,6 +553,9 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         Logger.debug('   Ответ ${i + 1}: photoPath=${ans.photoPath}, photoDriveId=${ans.photoDriveId}, referencePhotoUrl=${ans.referencePhotoUrl}');
       }
 
+      // Запускаем AI верификацию товаров
+      await _runAiVerification();
+
       final report = ShiftReport(
         id: reportId,
         employeeName: widget.employeeName,
@@ -462,6 +564,8 @@ class _ShiftQuestionsPageState extends State<ShiftQuestionsPage> {
         answers: syncedAnswers,
         isSynced: true,
         shiftType: widget.shiftType, // Передаём тип смены для валидации на сервере
+        shortages: _aiShortages.isNotEmpty ? _aiShortages : null,
+        aiVerificationPassed: _aiVerificationPassed,
       );
 
       // Сохраняем на сервере с обработкой TIME_EXPIRED

@@ -614,7 +614,7 @@ class FirebaseService {
       // Админ тоже переходит на страницу задач (или можно сделать отдельную страницу отчётов)
       Navigator.of(_globalContext!).push(
         MaterialPageRoute(
-          builder: (context) => const MyTasksPage(), // TODO: можно добавить TaskReportsPage для админов
+          builder: (context) => const MyTasksPage(), // Note: можно добавить TaskReportsPage для админов
         ),
       );
       return;
@@ -624,7 +624,7 @@ class FirebaseService {
     if (type != null && type.startsWith('shift_transfer')) {
       final action = data['action'] as String?;
 
-      // Для админа - переход на страницу графика работы (TODO: добавить initialTab для открытия вкладки "Заявки")
+      // Для админа - переход на страницу графика работы (Note: можно добавить initialTab для открытия вкладки "Заявки")
       if (action == 'admin_review') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(
@@ -634,7 +634,7 @@ class FirebaseService {
         return;
       }
 
-      // Для сотрудника - переход к мой график (TODO: добавить initialTab для открытия вкладки "Заявки")
+      // Для сотрудника - переход к мой график (Note: можно добавить initialTab для открытия вкладки "Заявки")
       if (action == 'view_request') {
         Navigator.of(_globalContext!).push(
           MaterialPageRoute(

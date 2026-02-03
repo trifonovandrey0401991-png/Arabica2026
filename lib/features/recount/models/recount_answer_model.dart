@@ -19,6 +19,13 @@ class RecountAnswer {
   final double? aiConfidence; // Уверенность ИИ (0-1)
   final bool? aiMismatch; // Есть расхождение между сотрудником и ИИ
   final String? aiAnnotatedImageUrl; // URL фото с разметкой ИИ
+  final String? productId; // ID товара (для отслеживания ошибок ИИ)
+
+  // Поля для решения админа по ошибке ИИ
+  final bool? employeeReportedAiError; // Сотрудник нажал "ИИ ошибся"
+  final String? aiErrorAdminDecision; // "approved_for_training" | "rejected_bad_photo" | null
+  final String? aiErrorDecisionBy; // Имя админа, принявшего решение
+  final DateTime? aiErrorDecisionAt; // Время решения
 
   RecountAnswer({
     required this.question,
@@ -38,6 +45,11 @@ class RecountAnswer {
     this.aiConfidence,
     this.aiMismatch,
     this.aiAnnotatedImageUrl,
+    this.productId,
+    this.employeeReportedAiError,
+    this.aiErrorAdminDecision,
+    this.aiErrorDecisionBy,
+    this.aiErrorDecisionAt,
   });
 
   /// Проверка: ответ "сходится"
@@ -130,6 +142,11 @@ class RecountAnswer {
     'aiConfidence': aiConfidence,
     'aiMismatch': aiMismatch,
     'aiAnnotatedImageUrl': aiAnnotatedImageUrl,
+    'productId': productId,
+    'employeeReportedAiError': employeeReportedAiError,
+    'aiErrorAdminDecision': aiErrorAdminDecision,
+    'aiErrorDecisionBy': aiErrorDecisionBy,
+    'aiErrorDecisionAt': aiErrorDecisionAt?.toIso8601String(),
   };
 
   factory RecountAnswer.fromJson(Map<String, dynamic> json) => RecountAnswer(
@@ -152,6 +169,13 @@ class RecountAnswer {
         : null,
     aiMismatch: json['aiMismatch'],
     aiAnnotatedImageUrl: json['aiAnnotatedImageUrl'],
+    productId: json['productId'],
+    employeeReportedAiError: json['employeeReportedAiError'],
+    aiErrorAdminDecision: json['aiErrorAdminDecision'],
+    aiErrorDecisionBy: json['aiErrorDecisionBy'],
+    aiErrorDecisionAt: json['aiErrorDecisionAt'] != null
+        ? DateTime.tryParse(json['aiErrorDecisionAt'])
+        : null,
   );
 
   /// Копия с изменениями
@@ -173,6 +197,11 @@ class RecountAnswer {
     double? aiConfidence,
     bool? aiMismatch,
     String? aiAnnotatedImageUrl,
+    String? productId,
+    bool? employeeReportedAiError,
+    String? aiErrorAdminDecision,
+    String? aiErrorDecisionBy,
+    DateTime? aiErrorDecisionAt,
   }) {
     return RecountAnswer(
       question: question ?? this.question,
@@ -192,6 +221,11 @@ class RecountAnswer {
       aiConfidence: aiConfidence ?? this.aiConfidence,
       aiMismatch: aiMismatch ?? this.aiMismatch,
       aiAnnotatedImageUrl: aiAnnotatedImageUrl ?? this.aiAnnotatedImageUrl,
+      productId: productId ?? this.productId,
+      employeeReportedAiError: employeeReportedAiError ?? this.employeeReportedAiError,
+      aiErrorAdminDecision: aiErrorAdminDecision ?? this.aiErrorAdminDecision,
+      aiErrorDecisionBy: aiErrorDecisionBy ?? this.aiErrorDecisionBy,
+      aiErrorDecisionAt: aiErrorDecisionAt ?? this.aiErrorDecisionAt,
     );
   }
 }

@@ -206,6 +206,25 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// GZIP/Deflate сжатие для уменьшения размера ответов
+// Критично для /api/master-catalog/for-training (10MB → ~1MB)
+let compression;
+try {
+  compression = require('compression');
+  app.use(compression({
+    filter: (req, res) => {
+      // Сжимаем JSON ответы
+      if (req.headers['x-no-compression']) return false;
+      return compression.filter(req, res);
+    },
+    level: 6, // Баланс скорости и сжатия (1-9)
+    threshold: 1024, // Сжимать ответы > 1KB
+  }));
+  console.log('✅ GZIP compression активировано');
+} catch (e) {
+  console.warn('⚠️ compression не установлен. Сжатие отключено. npm install compression');
+}
+
 // Trust proxy для корректной работы за nginx/reverse proxy
 app.set('trust proxy', 1);
 

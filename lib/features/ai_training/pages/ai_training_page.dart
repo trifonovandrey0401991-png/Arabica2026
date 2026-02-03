@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'z_report_training_page.dart';
 import 'cigarette_training_page.dart';
+import 'shift_training_page.dart';
 import 'training_settings_page.dart';
 
 /// Главная страница обучения ИИ - Премиум версия
@@ -101,6 +102,24 @@ class _AITrainingPageState extends State<AITrainingPage>
                             context,
                             MaterialPageRoute(
                               builder: (context) => const CigaretteTrainingPage(),
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      _buildTrainingCard(
+                        title: 'Пересменка',
+                        description: 'ИИ проверка наличия товаров на полках при пересменке',
+                        icon: Icons.swap_horiz_rounded,
+                        gradient: const [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+                        stats: 'Товары',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ShiftTrainingPage(),
                             ),
                           );
                         },

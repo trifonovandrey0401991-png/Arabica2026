@@ -356,10 +356,39 @@ class _ScheduleBulkOperationsDialogState extends State<ScheduleBulkOperationsDia
   }
 
   Future<void> _deleteTemplate(ScheduleTemplate template) async {
-    // TODO: Реализовать удаление шаблона
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Удаление шаблонов в разработке')),
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить шаблон?'),
+        content: Text('Шаблон "${template.name}" будет удалён.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
     );
+
+    if (confirm == true) {
+      final success = await WorkScheduleService.deleteTemplate(template.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success ? 'Шаблон удалён' : 'Ошибка удаления шаблона'),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+        if (success) {
+          setState(() {}); // Перезагрузит FutureBuilder
+        }
+      }
+    }
   }
 }
 

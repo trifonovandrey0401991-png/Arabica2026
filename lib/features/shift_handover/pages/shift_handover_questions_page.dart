@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -12,6 +13,9 @@ import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../envelope/pages/envelope_form_page.dart';
+import '../../ai_training/pages/shift_ai_verification_page.dart';
+import '../../ai_training/services/shift_ai_verification_service.dart';
+import '../../shifts/models/shift_shortage_model.dart';
 
 /// Страница с вопросами сдачи смены
 class ShiftHandoverQuestionsPage extends StatefulWidget {
@@ -40,6 +44,11 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
   String? _photoPath;
   String? _selectedYesNo; // 'Да' или 'Нет'
   bool _isSubmitting = false;
+
+  // AI Verification - результаты проверки ИИ
+  bool? _aiVerificationPassed;
+  bool _aiVerificationSkipped = false;
+  List<ShiftShortage> _aiShortages = [];
 
   // Основные цвета
   static const _primaryColor = Color(0xFF004D40);
@@ -401,6 +410,76 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     }
   }
 
+  /// Собрать фото из ответов и конвертировать в Uint8List
+  Future<List<Uint8List>> _collectPhotosForAiVerification() async {
+    final photos = <Uint8List>[];
+
+    for (final answer in _answers) {
+      if (answer.photoPath != null) {
+        try {
+          if (kIsWeb) {
+            // Для веб: декодируем base64 из data URL
+            if (answer.photoPath!.startsWith('data:')) {
+              final base64Data = answer.photoPath!.split(',').last;
+              photos.add(base64Decode(base64Data));
+            }
+          } else {
+            // Для мобильных: читаем файл
+            final file = File(answer.photoPath!);
+            if (await file.exists()) {
+              photos.add(await file.readAsBytes());
+            }
+          }
+        } catch (e) {
+          Logger.error('Ошибка чтения фото для AI верификации', e);
+        }
+      }
+    }
+
+    return photos;
+  }
+
+  /// Проверить есть ли активные AI товары для магазина
+  Future<bool> _hasActiveAiProducts() async {
+    try {
+      final activeProducts = await ShiftAiVerificationService.getActiveAiProducts(widget.shopAddress);
+      return activeProducts.isNotEmpty;
+    } catch (e) {
+      Logger.error('Ошибка проверки активных AI товаров', e);
+      return false;
+    }
+  }
+
+  /// Запустить AI верификацию
+  Future<void> _runAiVerification(List<Uint8List> photos) async {
+    if (!mounted) return;
+
+    final result = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShiftAiVerificationPage(
+          photos: photos,
+          shopAddress: widget.shopAddress,
+          employeeName: widget.employeeName,
+        ),
+      ),
+    );
+
+    if (result == null) {
+      // Пользователь пропустил проверку
+      _aiVerificationSkipped = true;
+      _aiVerificationPassed = null;
+      Logger.info('AI верификация пропущена пользователем');
+    } else {
+      _aiVerificationPassed = result['aiVerificationPassed'] as bool?;
+      final shortages = result['shortages'] as List<ShiftShortage>?;
+      if (shortages != null) {
+        _aiShortages = shortages;
+      }
+      Logger.info('AI верификация завершена: passed=$_aiVerificationPassed, shortages=${_aiShortages.length}');
+    }
+  }
+
   Future<void> _submitReport() async {
     if (_questions == null) return;
 
@@ -412,6 +491,26 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
       if (_answers.length != _questions!.length) {
         throw Exception('Не все вопросы отвечены');
       }
+
+      // ========== AI VERIFICATION START ==========
+      // Проверяем есть ли фото в ответах и активные AI товары
+      final photos = await _collectPhotosForAiVerification();
+      if (photos.isNotEmpty) {
+        final hasActiveAi = await _hasActiveAiProducts();
+        if (hasActiveAi) {
+          Logger.info('Найдено ${photos.length} фото и активные AI товары - запускаем верификацию');
+          await _runAiVerification(photos);
+        } else {
+          Logger.info('Нет активных AI товаров для магазина - пропускаем верификацию');
+          _aiVerificationSkipped = true;
+        }
+      } else {
+        Logger.info('Нет фото для AI верификации');
+        _aiVerificationSkipped = true;
+      }
+
+      if (!mounted) return;
+      // ========== AI VERIFICATION END ==========
 
       final now = DateTime.now();
       final reportId = ShiftHandoverReport.generateId(
@@ -470,6 +569,9 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         Logger.debug('   Ответ ${i + 1}: photoPath=${ans.photoPath}, photoDriveId=${ans.photoDriveId}, referencePhotoUrl=${ans.referencePhotoUrl}');
       }
 
+      // Конвертируем AI shortages в Map для сохранения
+      final aiShortagesJson = _aiShortages.map((s) => s.toJson()).toList();
+
       final report = ShiftHandoverReport(
         id: reportId,
         employeeName: widget.employeeName,
@@ -477,6 +579,10 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
         createdAt: now,
         answers: syncedAnswers,
         isSynced: true,
+        // AI Verification результаты
+        aiVerificationPassed: _aiVerificationPassed,
+        aiVerificationSkipped: _aiVerificationSkipped,
+        aiShortages: aiShortagesJson.isNotEmpty ? aiShortagesJson : null,
       );
 
       // Сохраняем на сервере
@@ -497,10 +603,18 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
       );
 
       if (mounted) {
+        // Показываем результат с информацией об AI верификации
+        String successMessage = 'Отчет успешно сохранен';
+        if (_aiVerificationPassed == true) {
+          successMessage = 'Отчет сохранен. ИИ проверка пройдена!';
+        } else if (_aiVerificationPassed == false && _aiShortages.isNotEmpty) {
+          successMessage = 'Отчет сохранен. Выявлено недостач: ${_aiShortages.length}';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Отчет успешно сохранен'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(successMessage),
+            backgroundColor: _aiVerificationPassed == false ? Colors.orange : Colors.green,
           ),
         );
 

@@ -402,6 +402,10 @@ function setupShiftAiVerificationAPI(app) {
       // Запускаем детекцию на всех фото и объединяем результаты
       const allDetectedIds = new Set();
       const detectionsByProduct = {};
+      // НОВОЕ: Собираем все raw boxes для positive samples
+      const allBoxes = [];
+      let bestImageForPositive = null;
+      let bestImageBoxes = [];
 
       for (const imageBase64 of imagesBase64) {
         try {
@@ -427,6 +431,16 @@ function setupShiftAiVerificationAPI(app) {
                 detected.avgConfidence || 0
               );
             });
+
+            // НОВОЕ: Собираем boxes для positive samples
+            if (result.boxes && result.boxes.length > 0) {
+              allBoxes.push(...result.boxes);
+              // Выбираем фото с наибольшим количеством детекций
+              if (result.boxes.length > bestImageBoxes.length) {
+                bestImageBoxes = result.boxes;
+                bestImageForPositive = imageBase64;
+              }
+            }
           }
         } catch (e) {
           console.error('[ShiftAI] Ошибка детекции на фото:', e.message);
@@ -463,20 +477,31 @@ function setupShiftAiVerificationAPI(app) {
         }
       });
 
-      // ============ POSITIVE SAMPLES ============
-      // Сохраняем успешные распознавания для дообучения (10% с ротацией)
-      if (detectedProducts.length > 0 && imagesBase64.length > 0) {
-        // Выбираем случайное фото из отправленных
+      // ============ POSITIVE SAMPLES (DISPLAY) ============
+      // Пересменка → сохраняем ТОЛЬКО в display-training датасет
+      // Эти фото выкладки не нужны для пересчёта и наоборот
+      if (detectedProducts.length > 0 && bestImageForPositive && bestImageBoxes.length > 0) {
+        // Сохраняем в DISPLAY датасет (фото выкладки для обнаружения товаров)
+        cigaretteVision.saveTypedPositiveSample(cigaretteVision.TRAINING_TYPES.DISPLAY, {
+          imageBase64: bestImageForPositive,
+          detectedProducts: detectedProducts,
+          shopAddress: shopAddress,
+          boxes: bestImageBoxes,
+        }).catch(err => {
+          console.warn('[ShiftAI] Ошибка сохранения display sample:', err.message);
+        });
+      } else if (detectedProducts.length > 0 && imagesBase64.length > 0) {
+        // Fallback: если boxes нет, всё равно сохраняем (без аннотаций)
         const randomImageIndex = Math.floor(Math.random() * imagesBase64.length);
         const imageToSave = imagesBase64[randomImageIndex];
 
-        // Асинхронно сохраняем (не блокируем ответ)
-        cigaretteVision.savePositiveSample({
+        cigaretteVision.saveTypedPositiveSample(cigaretteVision.TRAINING_TYPES.DISPLAY, {
           imageBase64: imageToSave,
           detectedProducts: detectedProducts,
           shopAddress: shopAddress,
+          boxes: [],
         }).catch(err => {
-          console.warn('[ShiftAI] Ошибка сохранения positive sample:', err.message);
+          console.warn('[ShiftAI] Ошибка сохранения display sample:', err.message);
         });
       }
 
@@ -564,6 +589,111 @@ function setupShiftAiVerificationAPI(app) {
       res.json({ success: true, annotation: annotation });
     } catch (error) {
       console.error('[ShiftAI] Ошибка сохранения аннотации:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============ ПЕРЕПРОВЕРКА BBOX ============
+
+  // Перепроверить товар в выделенной области BBox с помощью YOLO
+  // Используется когда сотрудник выделяет товар на фото после неудачного распознавания
+  app.post('/api/shift-ai/verify-bbox', async (req, res) => {
+    try {
+      const {
+        imageBase64,
+        boundingBox, // { x, y, width, height } normalized 0-1
+        productId,
+        barcode,
+        productName,
+        shopAddress,
+        employeeName,
+      } = req.body;
+
+      if (!imageBase64) {
+        return res.status(400).json({ success: false, error: 'Изображение обязательно' });
+      }
+
+      if (!productId && !barcode) {
+        return res.status(400).json({ success: false, error: 'ID товара или штрих-код обязателен' });
+      }
+
+      if (!boundingBox || boundingBox.x === undefined || boundingBox.y === undefined) {
+        return res.status(400).json({ success: false, error: 'Bounding box обязателен' });
+      }
+
+      const cigaretteVision = require('../modules/cigarette-vision');
+
+      // Запускаем YOLO детекцию на полном изображении с указанием BBox области интереса
+      // YOLO будет искать товар productId/barcode в указанной области
+      const result = await cigaretteVision.checkDisplay(
+        imageBase64,
+        [productId || barcode],  // Ищем только один товар
+        0.25  // Пониженный порог уверенности для BBox области
+      );
+
+      let detected = false;
+      let confidence = null;
+
+      if (result.success && result.detectedProducts && result.detectedProducts.length > 0) {
+        // Проверяем нашёлся ли наш товар
+        const found = result.detectedProducts.find(
+          d => d.productId === productId || d.productId === barcode
+        );
+        if (found) {
+          detected = true;
+          confidence = found.avgConfidence || found.confidence || 0.5;
+        }
+      }
+
+      // Записываем статистику распознавания
+      cigaretteVision.recordRecognitionAttempt(
+        productId || barcode,
+        'bbox_verification',
+        detected,
+        {
+          shopAddress: shopAddress || '',
+          employeeName: employeeName || '',
+          boundingBox: boundingBox,
+          source: 'employee_bbox',
+        }
+      );
+
+      // Если ИИ нашёл товар - сохраняем для обучения
+      if (detected) {
+        try {
+          await cigaretteVision.saveTypedPositiveSample(
+            cigaretteVision.TRAINING_TYPES.DISPLAY,
+            {
+              imageBase64: imageBase64,
+              detectedProducts: [{
+                productId: productId || barcode,
+                barcode: barcode || productId,
+                productName: productName || '',
+              }],
+              shopAddress: shopAddress || '',
+              boxes: [boundingBox],
+              source: 'employee_bbox_verification',
+            }
+          );
+          console.log(`[ShiftAI] BBox verification успешно, фото сохранено для обучения: ${productName || barcode}`);
+        } catch (saveErr) {
+          console.warn('[ShiftAI] Ошибка сохранения positive sample после BBox:', saveErr.message);
+        }
+      }
+
+      console.log(`[ShiftAI] BBox verification: ${productName || barcode} - ${detected ? 'НАЙДЕН' : 'НЕ НАЙДЕН'} (confidence: ${confidence})`);
+
+      res.json({
+        success: true,
+        detected: detected,
+        confidence: confidence,
+        productId: productId || barcode,
+        message: detected
+          ? `Товар распознан с уверенностью ${Math.round((confidence || 0) * 100)}%`
+          : 'Товар не найден на фото. Попробуйте другое фото или другую область.',
+      });
+    } catch (error) {
+      console.error('[ShiftAI] Ошибка verify-bbox:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

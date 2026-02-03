@@ -2145,6 +2145,177 @@ function getProblemSamples(productId) {
   }
 }
 
+// ============ СТАТИСТИКА ТОЧНОСТИ РАСПОЗНАВАНИЯ ИИ ============
+
+const RECOGNITION_STATS_DIR = '/var/www/ai-recognition-stats';
+const RECOGNITION_STATS_FILE = path.join(RECOGNITION_STATS_DIR, 'stats.json');
+
+let recognitionStatsCache = null;
+
+/**
+ * Загрузить статистику распознаваний
+ */
+function loadRecognitionStats() {
+  try {
+    if (recognitionStatsCache !== null) {
+      return recognitionStatsCache;
+    }
+
+    if (!fs.existsSync(RECOGNITION_STATS_FILE)) {
+      return {};
+    }
+
+    const data = fs.readFileSync(RECOGNITION_STATS_FILE, 'utf8');
+    recognitionStatsCache = JSON.parse(data);
+    return recognitionStatsCache;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка загрузки статистики распознаваний:', error);
+    return {};
+  }
+}
+
+/**
+ * Сохранить статистику распознаваний
+ */
+function saveRecognitionStats(stats) {
+  try {
+    if (!fs.existsSync(RECOGNITION_STATS_DIR)) {
+      fs.mkdirSync(RECOGNITION_STATS_DIR, { recursive: true });
+    }
+
+    fs.writeFileSync(RECOGNITION_STATS_FILE, JSON.stringify(stats, null, 2));
+    recognitionStatsCache = stats;
+    return true;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка сохранения статистики распознаваний:', error);
+    return false;
+  }
+}
+
+/**
+ * Записать попытку распознавания
+ * @param {string} productId - ID товара
+ * @param {string} type - 'display' или 'counting'
+ * @param {boolean} success - успешно ли распознано
+ * @param {Object} metadata - дополнительные данные (shopAddress, detectedCount, expectedCount)
+ */
+function recordRecognitionAttempt(productId, type, success, metadata = {}) {
+  try {
+    const stats = loadRecognitionStats();
+
+    if (!stats[productId]) {
+      stats[productId] = {
+        display: { attempts: 0, successes: 0 },
+        counting: { attempts: 0, successes: 0 },
+      };
+    }
+
+    if (!stats[productId][type]) {
+      stats[productId][type] = { attempts: 0, successes: 0 };
+    }
+
+    stats[productId][type].attempts++;
+    if (success) {
+      stats[productId][type].successes++;
+    }
+
+    // Сохраняем время последней попытки и метаданные
+    stats[productId][type].lastAttempt = new Date().toISOString();
+    if (metadata.shopAddress) {
+      stats[productId][type].lastShop = metadata.shopAddress;
+    }
+
+    saveRecognitionStats(stats);
+
+    console.log(`[Cigarette Vision] Записана попытка распознавания: ${productId} (${type}) - ${success ? 'успех' : 'провал'}`);
+    return true;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка записи попытки распознавания:', error);
+    return false;
+  }
+}
+
+/**
+ * Получить статистику распознаваний для товара
+ * @param {string} productId - ID товара
+ * @returns {Object} - { display: { accuracy, attempts, successes }, counting: { ... } }
+ */
+function getProductRecognitionStats(productId) {
+  const stats = loadRecognitionStats();
+  const productStats = stats[productId] || {
+    display: { attempts: 0, successes: 0 },
+    counting: { attempts: 0, successes: 0 },
+  };
+
+  const calcAccuracy = (data) => {
+    if (!data || data.attempts === 0) {
+      return null; // null означает "нет данных"
+    }
+    return Math.round((data.successes / data.attempts) * 100);
+  };
+
+  return {
+    display: {
+      accuracy: calcAccuracy(productStats.display),
+      attempts: productStats.display?.attempts || 0,
+      successes: productStats.display?.successes || 0,
+      lastAttempt: productStats.display?.lastAttempt || null,
+    },
+    counting: {
+      accuracy: calcAccuracy(productStats.counting),
+      attempts: productStats.counting?.attempts || 0,
+      successes: productStats.counting?.successes || 0,
+      lastAttempt: productStats.counting?.lastAttempt || null,
+    },
+  };
+}
+
+/**
+ * Получить статистику распознаваний для всех товаров
+ * @returns {Object} - { productId: { display: {...}, counting: {...} }, ... }
+ */
+function getAllRecognitionStats() {
+  const stats = loadRecognitionStats();
+  const result = {};
+
+  for (const productId of Object.keys(stats)) {
+    result[productId] = getProductRecognitionStats(productId);
+  }
+
+  return result;
+}
+
+/**
+ * Сбросить статистику распознаваний для товара
+ * @param {string} productId - ID товара
+ * @param {string} type - 'display', 'counting' или null (оба)
+ */
+function resetRecognitionStats(productId, type = null) {
+  try {
+    const stats = loadRecognitionStats();
+
+    if (!stats[productId]) {
+      return true;
+    }
+
+    if (type) {
+      stats[productId][type] = { attempts: 0, successes: 0 };
+    } else {
+      stats[productId] = {
+        display: { attempts: 0, successes: 0 },
+        counting: { attempts: 0, successes: 0 },
+      };
+    }
+
+    saveRecognitionStats(stats);
+    console.log(`[Cigarette Vision] Сброшена статистика для ${productId}${type ? ` (${type})` : ''}`);
+    return true;
+  } catch (error) {
+    console.error('[Cigarette Vision] Ошибка сброса статистики:', error);
+    return false;
+  }
+}
+
 module.exports = {
   init,
   getProductsWithTrainingInfo,
@@ -2204,4 +2375,9 @@ module.exports = {
   getProblemSamples,
   PROBLEM_SAMPLES_DIR,
   AI_ERROR_THRESHOLD,
+  // Статистика точности распознавания
+  recordRecognitionAttempt,
+  getProductRecognitionStats,
+  getAllRecognitionStats,
+  resetRecognitionStats,
 };

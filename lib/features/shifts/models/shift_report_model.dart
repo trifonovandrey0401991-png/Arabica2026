@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
+import 'shift_shortage_model.dart';
 
 /// Статусы отчёта пересменки
 enum ShiftReportStatus {
@@ -127,6 +128,10 @@ class ShiftReport {
   final DateTime? failedAt; // Время когда был отмечен как failed
   final DateTime? rejectedAt; // Время автоматического отклонения
 
+  // Поля для ИИ проверки при пересменке
+  final List<ShiftShortage>? shortages; // Список недостач (товары, которые отсутствуют, но есть на остатках)
+  final bool? aiVerificationPassed; // Прошла ли ИИ проверка (null = не проводилась)
+
   ShiftReport({
     required this.id,
     required this.employeeName,
@@ -146,6 +151,8 @@ class ShiftReport {
     this.reviewDeadline,
     this.failedAt,
     this.rejectedAt,
+    this.shortages,
+    this.aiVerificationPassed,
   });
 
   /// Генерировать уникальный ID на основе комбинации
@@ -174,6 +181,8 @@ class ShiftReport {
     'reviewDeadline': reviewDeadline?.toIso8601String(),
     'failedAt': failedAt?.toIso8601String(),
     'rejectedAt': rejectedAt?.toIso8601String(),
+    if (shortages != null) 'shortages': shortages!.map((s) => s.toJson()).toList(),
+    if (aiVerificationPassed != null) 'aiVerificationPassed': aiVerificationPassed,
   };
 
   factory ShiftReport.fromJson(Map<String, dynamic> json) => ShiftReport(
@@ -209,6 +218,12 @@ class ShiftReport {
     rejectedAt: json['rejectedAt'] != null
         ? DateTime.parse(json['rejectedAt'])
         : null,
+    shortages: json['shortages'] != null
+        ? (json['shortages'] as List<dynamic>)
+            .map((s) => ShiftShortage.fromJson(s))
+            .toList()
+        : null,
+    aiVerificationPassed: json['aiVerificationPassed'],
   );
 
   /// Проверить, старше ли недели
@@ -252,6 +267,8 @@ class ShiftReport {
     DateTime? reviewDeadline,
     DateTime? failedAt,
     DateTime? rejectedAt,
+    List<ShiftShortage>? shortages,
+    bool? aiVerificationPassed,
   }) {
     return ShiftReport(
       id: id,
@@ -272,6 +289,8 @@ class ShiftReport {
       reviewDeadline: reviewDeadline ?? this.reviewDeadline,
       failedAt: failedAt ?? this.failedAt,
       rejectedAt: rejectedAt ?? this.rejectedAt,
+      shortages: shortages ?? this.shortages,
+      aiVerificationPassed: aiVerificationPassed ?? this.aiVerificationPassed,
     );
   }
 

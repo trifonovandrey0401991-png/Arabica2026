@@ -587,6 +587,42 @@ class _TrainingSettingsPageState extends State<TrainingSettingsPage> {
                             ),
                           ),
                         ],
+                        // Показываем % распознавания если есть данные
+                        if (product.displayAccuracy != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: product.displayAccuracy! >= 80
+                                  ? Colors.green.shade100
+                                  : Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_graph,
+                                  size: 12,
+                                  color: product.displayAccuracy! >= 80
+                                      ? Colors.green[700]
+                                      : Colors.orange[700],
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${product.displayAccuracy}%',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: product.displayAccuracy! >= 80
+                                        ? Colors.green[800]
+                                        : Colors.orange[800],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const Spacer(),
                         Text(
                           'Всего: ${product.trainingPhotosCount + product.countingPhotosCount}',

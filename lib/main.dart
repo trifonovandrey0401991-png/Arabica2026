@@ -325,14 +325,7 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF004D40),
-        body: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-      );
+      return const _SplashScreen();
     }
 
     if (_isRegistered) {
@@ -355,5 +348,42 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
     }
 
     return const RegistrationPage();
+  }
+}
+
+/// Экран загрузки с адаптивным логотипом
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    // Адаптивный размер логотипа - 50% от ширины экрана
+    final screenWidth = MediaQuery.of(context).size.width;
+    final logoSize = screenWidth * 0.5;
+
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF1A4D4D), // Основной тёмно-бирюзовый
+              Color(0xFF0D3030), // Ещё темнее внизу
+            ],
+          ),
+        ),
+        child: Center(
+          child: Image.asset(
+            'assets/images/arabica_logo.png',
+            width: logoSize,
+            height: logoSize,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
   }
 }

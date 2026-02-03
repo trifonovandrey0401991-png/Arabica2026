@@ -44,6 +44,7 @@ class ShiftQuestionService {
     String? answerFormatC,
     List<String>? shops,
     Map<String, String>? referencePhotos,
+    bool? isAiCheck,
   }) async {
     Logger.debug('📤 Создание вопроса пересменки: $question');
 
@@ -54,6 +55,7 @@ class ShiftQuestionService {
     if (answerFormatC != null) requestBody['answerFormatC'] = answerFormatC;
     if (shops != null) requestBody['shops'] = shops;
     if (referencePhotos != null) requestBody['referencePhotos'] = referencePhotos;
+    if (isAiCheck != null) requestBody['isAiCheck'] = isAiCheck;
 
     return await BaseHttpService.post<ShiftQuestion>(
       endpoint: baseEndpoint,
@@ -71,6 +73,7 @@ class ShiftQuestionService {
     String? answerFormatC,
     List<String>? shops,
     Map<String, String>? referencePhotos,
+    bool? isAiCheck,
   }) async {
     Logger.debug('📤 Обновление вопроса пересменки: $id');
 
@@ -80,6 +83,7 @@ class ShiftQuestionService {
     if (answerFormatC != null) body['answerFormatC'] = answerFormatC;
     if (shops != null) body['shops'] = shops;
     if (referencePhotos != null) body['referencePhotos'] = referencePhotos;
+    if (isAiCheck != null) body['isAiCheck'] = isAiCheck;
 
     return await BaseHttpService.put<ShiftQuestion>(
       endpoint: '$baseEndpoint/$id',

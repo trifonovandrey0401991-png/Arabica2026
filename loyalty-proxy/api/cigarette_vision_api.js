@@ -234,13 +234,22 @@ function setupCigaretteVisionAPI(app) {
   // Проверка выкладки
   app.post('/api/cigarette-vision/display-check', async (req, res) => {
     try {
-      const { imageBase64, shopAddress } = req.body;
+      const { imageBase64, shopAddress, productId } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Изображение обязательно' });
       }
 
       const result = await cigaretteVision.checkDisplay(imageBase64, shopAddress);
+
+      // Записываем статистику распознавания для display (если передан productId)
+      if (productId) {
+        const isSuccessfulDetection = result.success && result.detected;
+        cigaretteVision.recordRecognitionAttempt(productId, 'display', isSuccessfulDetection, {
+          shopAddress: shopAddress || '',
+        });
+      }
+
       res.json(result);
     } catch (error) {
       console.error('[Cigarette Vision API] Ошибка проверки выкладки:', error);
@@ -446,6 +455,15 @@ function setupCigaretteVisionAPI(app) {
 
       // Выполняем детекцию
       const result = await cigaretteVision.detectAndCount(imageBase64, productId);
+
+      // Записываем статистику распознавания
+      // success = true если ИИ нашёл хотя бы один объект
+      const isSuccessfulDetection = result.success && result.count > 0;
+      cigaretteVision.recordRecognitionAttempt(productId, 'counting', isSuccessfulDetection, {
+        shopAddress: shopAddress || '',
+        detectedCount: result.count || 0,
+        expectedCount: employeeAnswer || null,
+      });
 
       // НОВАЯ ЛОГИКА: Сохраняем фото для товаров с isAiActive=true (для обучения)
       // Не зависит от результата детекции - сохраняем ВСЕ фото

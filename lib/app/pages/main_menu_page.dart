@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/services.dart' show rootBundle;
 import '../../features/menu/pages/menu_groups_page.dart';
 import '../../features/orders/pages/cart_page.dart';
@@ -21,6 +22,8 @@ import '../../features/employees/pages/employee_panel_page.dart';
 import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
 import '../../features/rating/widgets/rating_badge_widget.dart';
+import '../../features/rating/services/rating_service.dart';
+import '../../features/rating/models/employee_rating_model.dart';
 import '../../core/utils/logger.dart';
 import '../../core/widgets/shop_icon.dart';
 import '../../core/services/report_notification_service.dart';
@@ -31,6 +34,36 @@ import 'my_dialogs_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
 import '../services/my_dialogs_counter_service.dart';
+// Импорты для функций сотрудника
+import 'client_functions_page.dart';
+import '../../features/training/pages/training_page.dart';
+import '../../features/tests/pages/test_page.dart';
+import '../../features/shifts/pages/shift_shop_selection_page.dart';
+import '../../features/shift_handover/pages/shift_handover_shop_selection_page.dart';
+import '../../features/recount/pages/recount_shop_selection_page.dart';
+import '../../features/recipes/pages/recipes_list_page.dart';
+import '../../features/attendance/services/attendance_service.dart';
+import '../../features/rko/pages/rko_type_selection_page.dart';
+import '../../features/employees/services/employee_registration_service.dart';
+import '../../features/orders/pages/employee_orders_page.dart';
+import '../../features/orders/services/order_service.dart';
+import '../../features/employee_chat/pages/employee_chats_list_page.dart';
+import '../../features/work_schedule/services/shift_transfer_service.dart';
+import '../../features/loyalty/pages/loyalty_scanner_page.dart';
+import '../../features/work_schedule/pages/my_schedule_page.dart';
+import '../../features/product_questions/pages/product_questions_management_page.dart';
+import '../../features/product_questions/services/product_question_service.dart';
+import '../../features/efficiency/pages/my_efficiency_page.dart';
+import '../../features/tasks/pages/my_tasks_page.dart';
+import '../../features/fortune_wheel/pages/fortune_wheel_page.dart';
+import '../../features/fortune_wheel/services/fortune_wheel_service.dart';
+import '../../features/tasks/services/task_service.dart';
+import '../../features/tasks/models/task_model.dart';
+import '../../features/employees/services/employee_service.dart';
+import '../../features/ai_training/pages/ai_training_page.dart';
+import '../../features/work_schedule/services/work_schedule_service.dart';
+import '../../features/work_schedule/models/work_schedule_model.dart';
+import '../../features/attendance/models/attendance_model.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -42,64 +75,167 @@ class MainMenuPage extends StatefulWidget {
 class _MainMenuPageState extends State<MainMenuPage> {
   String? _userName;
   UserRoleData? _userRole;
-  String? _employeeId; // ID сотрудника для рейтинга
-  bool _isLoadingRole = false; // Флаг для предотвращения параллельных запросов
-  int _totalUnviewedReports = 0; // Счётчик непросмотренных отчётов
-  int _unconfirmedWithdrawalsCount = 0; // Счётчик неподтвержденных выемок
-  int _myDialogsUnreadCount = 0; // Счётчик непрочитанных в "Мои диалоги"
+  String? _employeeId;
+  bool _isLoadingRole = false;
+  int _totalUnviewedReports = 0;
+  int _unconfirmedWithdrawalsCount = 0;
+  int _myDialogsUnreadCount = 0;
+  EmployeeRating? _employeeRating;
+
+  // Поля для бейджей сотрудника
+  int _pendingOrdersCount = 0;
+  int _unreadProductQuestionsCount = 0;
+  int _activeTasksCount = 0;
+  int _availableSpins = 0;
+  int _shiftTransferUnreadCount = 0;
+  int? _referralCode;
+
+  // ═══════════════════════════════════════════════════════════════
+  // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - только изумруд и белый
+  // ═══════════════════════════════════════════════════════════════
+  static const Color _emerald = Color(0xFF1A4D4D);       // Из логотипа
+  static const Color _emeraldLight = Color(0xFF2A6363); // Светлее
+  static const Color _emeraldDark = Color(0xFF0D2E2E);  // Темнее
+  static const Color _night = Color(0xFF051515);        // Почти чёрный
 
   @override
   void initState() {
     super.initState();
-    // Сначала загружаем кэшированную роль для немедленного отображения
     _loadCachedRole();
-    // Затем обновляем роль через API
     _loadUserData();
-    // Синхронизация отчетов при открытии главного меню
     _syncReports();
-    // Загружаем ID сотрудника для рейтинга
     _loadEmployeeId();
-    // Загружаем счётчик непросмотренных отчётов
     _loadReportCounts();
-    // Загружаем счётчик неподтвержденных выемок
     _loadUnconfirmedWithdrawalsCount();
-    // Загружаем счётчик "Мои диалоги"
     _loadMyDialogsCount();
+    _loadEmployeeRating();
+    // Загрузка счётчиков для сотрудников
+    _loadEmployeeCounters();
   }
 
   Future<void> _loadReportCounts() async {
     final counts = await ReportNotificationService.getUnviewedCounts();
-    if (mounted) {
-      setState(() {
-        _totalUnviewedReports = counts.total;
-      });
-    }
+    if (mounted) setState(() => _totalUnviewedReports = counts.total);
   }
 
   Future<void> _loadUnconfirmedWithdrawalsCount() async {
     try {
       final withdrawals = await WithdrawalService.getWithdrawals();
-      final unconfirmedCount = withdrawals.where((w) => !w.confirmed).length;
-      if (mounted) {
-        setState(() {
-          _unconfirmedWithdrawalsCount = unconfirmedCount;
-        });
-      }
+      final count = withdrawals.where((w) => !w.confirmed).length;
+      if (mounted) setState(() => _unconfirmedWithdrawalsCount = count);
     } catch (e) {
-      Logger.error('Ошибка загрузки счетчика неподтвержденных выемок', e);
+      Logger.error('Ошибка загрузки счетчика выемок', e);
     }
   }
 
   Future<void> _loadMyDialogsCount() async {
     try {
       final count = await MyDialogsCounterService.getTotalUnreadCount();
-      if (mounted) {
-        setState(() {
-          _myDialogsUnreadCount = count;
-        });
+      if (mounted) setState(() => _myDialogsUnreadCount = count);
+    } catch (e) {
+      Logger.error('Ошибка загрузки счетчика диалогов', e);
+    }
+  }
+
+  /// Загрузка всех счётчиков для сотрудника
+  Future<void> _loadEmployeeCounters() async {
+    _loadPendingOrdersCount();
+    _loadUnreadProductQuestionsCount();
+    _loadActiveTasksCount();
+    _loadAvailableSpins();
+    _loadShiftTransferUnreadCount();
+    _loadReferralCode();
+  }
+
+  Future<void> _loadPendingOrdersCount() async {
+    try {
+      final orders = await OrderService.getAllOrders(status: 'pending');
+      if (mounted) setState(() => _pendingOrdersCount = orders.length);
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика заказов', e);
+    }
+  }
+
+  Future<void> _loadUnreadProductQuestionsCount() async {
+    try {
+      final dialogs = await ProductQuestionService.getAllPersonalDialogs();
+      final unreadDialogsCount = dialogs.where((d) => d.hasUnreadFromClient).length;
+      final unansweredQuestionsCount = await ProductQuestionService.getUnansweredQuestionsCount();
+      final totalCount = unreadDialogsCount + unansweredQuestionsCount;
+      if (mounted) setState(() => _unreadProductQuestionsCount = totalCount);
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика вопросов о товарах', e);
+    }
+  }
+
+  Future<void> _loadActiveTasksCount() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final assignments = await TaskService.getMyAssignments(employeeId);
+        final activeCount = assignments.where((a) =>
+          a.status == TaskStatus.pending || a.status == TaskStatus.submitted
+        ).length;
+        if (mounted) setState(() => _activeTasksCount = activeCount);
       }
     } catch (e) {
-      Logger.error('Ошибка загрузки счетчика "Мои диалоги"', e);
+      Logger.error('Ошибка загрузки счётчика задач', e);
+    }
+  }
+
+  Future<void> _loadAvailableSpins() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final spins = await FortuneWheelService.getAvailableSpins(employeeId);
+        if (mounted) setState(() => _availableSpins = spins?.availableSpins ?? 0);
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки прокруток', e);
+    }
+  }
+
+  Future<void> _loadShiftTransferUnreadCount() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final count = await ShiftTransferService.getUnreadCount(employeeId);
+        if (mounted) setState(() => _shiftTransferUnreadCount = count);
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки счётчика пересменок', e);
+    }
+  }
+
+  Future<void> _loadReferralCode() async {
+    try {
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (employeeId != null) {
+        final employees = await EmployeeService.getEmployees();
+        final employee = employees.firstWhere(
+          (e) => e.id == employeeId,
+          orElse: () => throw StateError('Employee not found'),
+        );
+        if (mounted && employee.referralCode != null) {
+          setState(() => _referralCode = employee.referralCode);
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки referralCode', e);
+    }
+  }
+
+  Future<void> _loadEmployeeRating() async {
+    if (_employeeId == null) {
+      // Подождём загрузки employeeId
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (_employeeId == null) return;
+    }
+    try {
+      final rating = await RatingService.getCurrentEmployeeRating(_employeeId!);
+      if (mounted) setState(() => _employeeRating = rating);
+    } catch (e) {
+      Logger.error('Ошибка загрузки рейтинга', e);
     }
   }
 
@@ -107,9 +243,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     try {
       final employeeId = await EmployeesPage.getCurrentEmployeeId();
       if (mounted && employeeId != null) {
-        setState(() {
-          _employeeId = employeeId;
-        });
+        setState(() => _employeeId = employeeId);
+        _loadEmployeeRating();
       }
     } catch (e) {
       Logger.error('Ошибка загрузки employeeId', e);
@@ -120,32 +255,26 @@ class _MainMenuPageState extends State<MainMenuPage> {
   /// Например: "Иванов Иван Иванович" -> "Иван"
   String _getFirstName(String? fullName) {
     if (fullName == null || fullName.isEmpty) return 'Гость';
-
     final parts = fullName.trim().split(' ');
-    // Если есть минимум 2 слова, берём второе (имя)
     if (parts.length >= 2) {
       return parts[1];
     }
-    // Иначе возвращаем первое слово
     return parts[0];
   }
 
-  /// Загрузить кэшированную роль для немедленного отображения
   Future<void> _loadCachedRole() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final name = prefs.getString('user_name');
       final cachedRole = await UserRoleService.loadUserRole();
-      
       if (mounted) {
         setState(() {
           _userName = cachedRole?.displayName ?? name;
           _userRole = cachedRole;
         });
-        Logger.debug('Кэшированная роль загружена: ${cachedRole?.role.name ?? "нет"}');
       }
     } catch (e) {
-      Logger.warning('Ошибка загрузки кэшированной роли: $e');
+      Logger.warning('Ошибка загрузки роли: $e');
     }
   }
 
@@ -158,133 +287,1584 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   Future<void> _loadUserData() async {
-    // Предотвращаем параллельные запросы
-    if (_isLoadingRole) {
-      Logger.debug('Загрузка роли уже выполняется, пропускаем...');
-      return;
-    }
-    
+    if (_isLoadingRole) return;
     _isLoadingRole = true;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final name = prefs.getString('user_name');
       final phone = prefs.getString('user_phone');
-      
-      // Загружаем роль пользователя из кэша (как fallback)
+
       UserRoleData? cachedRole = await UserRoleService.loadUserRole();
       UserRoleData? roleData = cachedRole;
-      
-      // Сохраняем текущую роль перед запросом, чтобы не перезаписать при таймауте
-      final roleBeforeRequest = roleData;
-      
-      // Всегда проверяем роль через API (если есть телефон)
+
       if (phone != null && phone.isNotEmpty) {
         try {
-          Logger.debug('Обновление роли через API...');
           roleData = await UserRoleService.getUserRole(phone);
           await UserRoleService.saveUserRole(roleData);
-          Logger.success('Роль обновлена: ${roleData.role.name}');
-          // Обновляем имя, если нужно
           if (roleData.displayName.isNotEmpty) {
             await prefs.setString('user_name', roleData.displayName);
           }
         } catch (e) {
-          Logger.warning('Ошибка загрузки роли через API: $e');
-          // При таймауте или другой ошибке используем кэшированную роль
-          // НЕ перезаписываем роль на client, если она уже была admin
-          if (cachedRole != null) {
-            Logger.debug('Используем кэшированную роль (при ошибке API): ${cachedRole.role.name}');
-            roleData = cachedRole;
-            // НЕ сохраняем роль заново, чтобы не перезаписать admin на client
-          } else {
-            // Если кэша нет, только тогда используем client по умолчанию
-            Logger.warning('Кэшированной роли нет, используем client по умолчанию');
-            roleData = UserRoleData(
-              role: UserRole.client,
-              displayName: name ?? '',
-              phone: phone ?? '',
-            );
-          }
+          roleData = cachedRole ?? UserRoleData(
+            role: UserRole.client,
+            displayName: name ?? '',
+            phone: phone,
+          );
         }
       }
-      
-      // Используем имя из роли, если есть
-      final displayName = roleData?.displayName ?? name;
-      
+
       if (mounted) {
         setState(() {
-          _userName = displayName;
+          _userName = roleData?.displayName ?? name;
           _userRole = roleData;
         });
-        Logger.debug('Состояние обновлено: роль=${roleData?.role.name}, имя=$displayName');
       }
     } finally {
       _isLoadingRole = false;
     }
   }
 
-  /// Выход из аккаунта
   Future<void> _logout() async {
-    // Показываем диалог подтверждения
-    final shouldLogout = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Выход'),
-        content: const Text('Вы уверены, что хотите выйти? Вы сможете войти под другим номером телефона.'),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.2)),
+        ),
+        title: const Text('Выход', style: TextStyle(color: Colors.white)),
+        content: const Text('Выйти из аккаунта?', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Выйти'),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Выйти', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
 
-    if (shouldLogout != true) {
-      return; // Пользователь отменил выход
-    }
+    if (confirm != true) return;
 
     try {
-      // Очищаем все данные пользователя
       final prefs = await SharedPreferences.getInstance();
-      
-      // Очищаем данные регистрации
       await prefs.remove('is_registered');
       await prefs.remove('user_name');
       await prefs.remove('user_phone');
-      
-      // Очищаем данные роли
       await UserRoleService.clearUserRole();
-      
-      // Очищаем данные лояльности
       await LoyaltyStorage.clear();
-      
-      // Перенаправляем на страницу регистрации
+
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => const RegistrationPage(),
-          ),
-          (route) => false, // Удаляем все предыдущие маршруты
+          MaterialPageRoute(builder: (_) => const RegistrationPage()),
+          (_) => false,
         );
       }
     } catch (e) {
-      Logger.error('Ошибка при выходе', e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ошибка при выходе: $e'),
-            backgroundColor: Colors.red,
+      Logger.error('Ошибка выхода', e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final role = _userRole?.role ?? UserRole.client;
+
+    return Scaffold(
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: _buildMenuForRole(role),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Выбор меню в зависимости от роли
+  Widget _buildMenuForRole(UserRole role) {
+    switch (role) {
+      case UserRole.client:
+        return _buildClientMenu();
+      case UserRole.employee:
+        return _buildEmployeeMenu();
+      case UserRole.admin:
+        return _buildAdminMenu();
+    }
+  }
+
+  /// Компактное меню для клиентов - помещается на экран без прокрутки
+  Widget _buildClientMenu() {
+    final items = _getClientMenuItems();
+    // 9 пунктов + 1 пустая ячейка = 10, сетка 2x5
+    const rows = 5;
+    const cols = 2;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+          final availableWidth = constraints.maxWidth;
+          final spacing = 12.0;
+
+          final tileWidth = (availableWidth - spacing) / cols;
+          final tileHeight = (availableHeight - spacing * (rows - 1)) / rows;
+          final aspectRatio = tileWidth / tileHeight;
+
+          return GridView.count(
+            crossAxisCount: cols,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: aspectRatio,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              ...items,
+              // Пустая ячейка в конце
+              const SizedBox(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Стандартное меню для админов (прокручивается)
+  Widget _buildDefaultMenu() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: GridView.count(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.0,
+        children: _getMenuItems(),
+      ),
+    );
+  }
+
+  /// Меню для админов - 4 широкие строки на весь экран
+  Widget _buildAdminMenu() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+
+          // 4 кнопки + 3 отступа между ними
+          const buttonCount = 4;
+          const spacing = 16.0;
+          final totalSpacing = spacing * (buttonCount - 1);
+          final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
+
+          return Column(
+            children: [
+              _buildAdminRow(
+                Icons.tune_rounded,
+                'Управление',
+                'Настройки системы и данные',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage())),
+              ),
+              const SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.analytics_outlined,
+                'Отчёты',
+                'Аналитика и статистика',
+                buttonHeight,
+                () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
+                  _loadReportCounts();
+                  _loadUnconfirmedWithdrawalsCount();
+                },
+                badge: _totalUnviewedReports + _unconfirmedWithdrawalsCount,
+              ),
+              const SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.grid_view_rounded,
+                'Панель сотрудника',
+                'Функции сотрудника',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage())),
+              ),
+              const SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.person_outline,
+                'Клиент',
+                'Клиентские функции',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage())),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAdminRow(
+    IconData icon,
+    String title,
+    String subtitle,
+    double height,
+    VoidCallback onTap, {
+    int? badge,
+  }) {
+    return SizedBox(
+      height: height,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          splashColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.white.withOpacity(0.05),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.02),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white.withOpacity(0.1),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white.withOpacity(0.9),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.95),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (badge != null && badge > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      badge > 99 ? '99+' : '$badge',
+                      style: TextStyle(
+                        color: _emerald,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white.withOpacity(0.4),
+                    size: 28,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Компактное меню для сотрудников - 3x6 без прокрутки + футуристичная кнопка ИИ
+  Widget _buildEmployeeMenu() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+          final availableWidth = constraints.maxWidth;
+
+          // Фиксированные размеры
+          const headerHeight = 20.0;
+          const aiButtonHeight = 52.0;
+          const aiButtonTopMargin = 10.0;
+
+          // Всё оставшееся пространство делим между 3 секциями
+          final totalGridHeight = availableHeight - (headerHeight * 3) - aiButtonHeight - aiButtonTopMargin;
+          final sectionSpacing = totalGridHeight * 0.03; // 3% на отступы между секциями
+          final gridHeight = totalGridHeight - (sectionSpacing * 2); // минус 2 отступа между секциями
+          final sectionHeight = gridHeight / 3 + headerHeight;
+
+          final sections = _getEmployeeSections();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildEmployeeSection('Повседневные Задачи', sectionHeight, availableWidth, sections[0], headerHeight),
+              SizedBox(height: sectionSpacing),
+              _buildEmployeeSection('Информация', sectionHeight, availableWidth, sections[1], headerHeight),
+              SizedBox(height: sectionSpacing),
+              _buildEmployeeSection('Работа с клиентами', sectionHeight, availableWidth, sections[2], headerHeight),
+              SizedBox(height: aiButtonTopMargin),
+              _buildAITrainingButton(aiButtonHeight),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmployeeSection(String title, double height, double width, List<Widget> items, double headerHeight) {
+    const cols = 3;
+    const rows = 2; // 2 ряда по 3 плитки = 6 функций
+    const spacing = 6.0;
+
+    final tileWidth = (width - spacing * (cols - 1)) / cols;
+    final gridHeight = height - headerHeight;
+    final tileHeight = (gridHeight - spacing * (rows - 1)) / rows;
+    final aspectRatio = tileWidth / tileHeight;
+
+    return SizedBox(
+      height: height,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: headerHeight,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: cols,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+              childAspectRatio: aspectRatio,
+              physics: const NeverScrollableScrollPhysics(),
+              children: items,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Кнопка для Обучения ИИ - выделяется, но вписывается в дизайн
+  Widget _buildAITrainingButton([double height = 52]) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _emeraldLight.withOpacity(0.8),
+            _emerald,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF4ECDC4).withOpacity(0.6), // Бирюзовый акцент
+          width: 1.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AITrainingPage()));
+          },
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.white.withOpacity(0.2),
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.smart_toy_outlined,
+                  color: Colors.white.withOpacity(0.9),
+                  size: 24,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Обучение ИИ',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.95),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4ECDC4).withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: const Color(0xFF4ECDC4).withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Text(
+                    'AI',
+                    style: TextStyle(
+                      color: Color(0xFF4ECDC4),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    final showRating = _employeeRating != null &&
+        _employeeRating!.position > 0 &&
+        (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin);
+
+    final isEmployee = _userRole?.role == UserRole.employee;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, isEmployee ? 8 : 16, 24, isEmployee ? 8 : 20),
+      child: Column(
+        children: [
+          // Рейтинг, Логотип и выход
+          SizedBox(
+            height: isEmployee ? 36 : 44,
+            child: Stack(
+              children: [
+                // Логотип всегда по центру
+                Center(
+                  child: Image.asset(
+                    'assets/images/arabica_logo.png',
+                    height: isEmployee ? 36 : 44,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+
+                // Рейтинг слева
+                if (showRating)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(child: _buildRatingBadge()),
+                  ),
+
+                // Кнопка выхода справа
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: _logout,
+                      child: Container(
+                        width: isEmployee ? 32 : 40,
+                        height: isEmployee ? 32 : 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        child: Icon(
+                          Icons.logout_rounded,
+                          color: Colors.white.withOpacity(0.7),
+                          size: isEmployee ? 16 : 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: isEmployee ? 8 : 20),
+
+          // Приветствие
+          if (_userName != null && _userName!.isNotEmpty) ...[
+            // Линия
+            Container(
+              width: 40,
+              height: 1,
+              color: Colors.white.withOpacity(0.3),
+            ),
+            SizedBox(height: isEmployee ? 6 : 16),
+
+            Text(
+              _getFirstName(_userName),
+              style: TextStyle(
+                fontSize: isEmployee ? 20 : 24,
+                fontWeight: FontWeight.w300,
+                color: Colors.white,
+                letterSpacing: 3,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Минималистичный бейдж рейтинга для левого верхнего угла
+  Widget _buildRatingBadge() {
+    if (_employeeRating == null) return const SizedBox(width: 40);
+
+    final rating = _employeeRating!;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.leaderboard_outlined,
+            color: Colors.white.withOpacity(0.8),
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${rating.position}/${rating.totalEmployees}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Пункты меню только для клиентов (9 пунктов)
+  List<Widget> _getClientMenuItems() {
+    return [
+      _buildCompactTile(Icons.coffee_outlined, 'Меню', () async {
+        final shop = await _showShopDialog(context);
+        if (!mounted || shop == null) return;
+        final cats = await _loadCategories(shop.address);
+        if (!mounted) return;
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => MenuGroupsPage(groups: cats, selectedShop: shop.address),
+        ));
+      }),
+      _buildCompactTile(Icons.shopping_bag_outlined, 'Корзина', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
+      }),
+      _buildCompactTile(Icons.receipt_long_outlined, 'Заказы', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersPage()));
+      }),
+      _buildCompactTile(Icons.place_outlined, 'Кофейни', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopsOnMapPage()));
+      }),
+      _buildCompactTile(Icons.card_membership_outlined, 'Лояльность', () async {
+        final enabled = await FirebaseService.areNotificationsEnabled();
+        if (!enabled && context.mounted) {
+          final result = await NotificationRequiredDialog.show(context);
+          if (result == true) {
+            await Future.delayed(const Duration(milliseconds: 500));
+            final ok = await FirebaseService.areNotificationsEnabled();
+            if (ok && context.mounted) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+            }
+          }
+          return;
+        }
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+      }),
+      _buildCompactTile(Icons.star_outline_rounded, 'Отзывы', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewTypeSelectionPage()));
+      }),
+      _buildCompactTile(
+        Icons.chat_bubble_outline_rounded, 'Диалоги', () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const MyDialogsPage()));
+          _loadMyDialogsCount();
+        },
+        badge: _myDialogsUnreadCount,
+      ),
+      _buildCompactTile(Icons.search_outlined, 'Поиск', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchShopSelectionPage()));
+      }),
+      _buildCompactTile(Icons.work_outline_rounded, 'Работа', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const JobApplicationWelcomePage()));
+      }),
+    ];
+  }
+
+  /// Секции меню для сотрудников (3 секции по 6 функций)
+  List<List<Widget>> _getEmployeeSections() {
+    // Секция 1: Повседневные Задачи (6 функций)
+    final dailyTasks = _getDailyTasksSection();
+    // Секция 2: Информация (6 функций)
+    final information = _getInformationSection();
+    // Секция 3: Работа с клиентами (6 функций)
+    final clientWork = _getClientWorkSection();
+
+    return [dailyTasks, information, clientWork];
+  }
+
+  /// Секция: Повседневные Задачи
+  List<Widget> _getDailyTasksSection() {
+    return [
+      // 1. Я на работе
+      _buildCompactTile(Icons.access_time_outlined, 'Я на работе', () async {
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        try {
+          final hasAttendance = await AttendanceService.hasAttendanceToday(employeeName);
+          if (!context.mounted) return;
+          if (hasAttendance) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: const Text('Вы уже отметились сегодня'), backgroundColor: Colors.orange.shade700),
+            );
+            return;
+          }
+        } catch (e) {
+          Logger.warning('Ошибка проверки отметки: $e');
+        }
+        if (!context.mounted) return;
+        await _markAttendanceAutomatically(context, employeeName);
+      }),
+      // 2. Пересменка
+      _buildCompactTile(Icons.swap_horiz_rounded, 'Пересменка', () async {
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftShopSelectionPage(employeeName: employeeName)));
+      }),
+      // 3. Сдать смену
+      _buildCompactTile(Icons.check_circle_outline_rounded, 'Сдать смену', () async {
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ShiftHandoverShopSelectionPage(employeeName: employeeName)));
+      }),
+      // 4. Пересчёт
+      _buildCompactTile(Icons.inventory_2_outlined, 'Пересчёт', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const RecountShopSelectionPage()));
+      }),
+      // 5. РКО
+      _buildCompactTile(Icons.receipt_long_outlined, 'РКО', () async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final phone = prefs.getString('userPhone') ?? prefs.getString('user_phone');
+          if (phone == null || phone.isEmpty) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: const Text('Не удалось определить телефон сотрудника'), backgroundColor: Colors.red.shade700),
+              );
+            }
+            return;
+          }
+          final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+          final registration = await EmployeeRegistrationService.getRegistration(normalizedPhone);
+          if (registration == null || !registration.isVerified) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: const Text('Только верифицированные сотрудники могут создавать РКО'), backgroundColor: Colors.orange.shade700),
+              );
+            }
+            return;
+          }
+          if (!context.mounted) return;
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const RKOTypeSelectionPage()));
+        } catch (e) {
+          Logger.error('Ошибка проверки верификации', e);
+        }
+      }),
+      // 6. Задачи
+      _buildCompactTile(Icons.task_alt_outlined, 'Задачи', () async {
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeId = await EmployeesPage.getCurrentEmployeeId();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted) return;
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => MyTasksPage(employeeId: employeeId ?? employeeName, employeeName: employeeName),
+        ));
+        _loadActiveTasksCount();
+      }, badge: _activeTasksCount),
+    ];
+  }
+
+  /// Секция: Информация
+  List<Widget> _getInformationSection() {
+    return [
+      // 1. Рецепты
+      _buildCompactTile(Icons.restaurant_menu_outlined, 'Рецепты', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const RecipesListPage()));
+      }),
+      // 2. Обучение
+      _buildCompactTile(Icons.menu_book_outlined, 'Обучение', () => _showTrainingDialog(context)),
+      // 3. Мой график
+      _buildCompactTile(Icons.calendar_month_outlined, 'Мой график', () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const MySchedulePage()));
+        _loadShiftTransferUnreadCount();
+      }, badge: _shiftTransferUnreadCount),
+      // 4. Эффективность
+      _buildCompactTile(Icons.trending_up_outlined, 'Эффектив.', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const MyEfficiencyPage()));
+      }),
+      // 5. Колесо
+      _buildCompactTile(Icons.album_outlined, 'Колесо', () async {
+        final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
+        final employeeId = await EmployeesPage.getCurrentEmployeeId();
+        final employeeName = systemEmployeeName ?? _userRole?.displayName ?? _userName ?? 'Сотрудник';
+        if (!context.mounted || employeeId == null) return;
+        await Navigator.push(context, MaterialPageRoute(
+          builder: (_) => FortuneWheelPage(employeeId: employeeId, employeeName: employeeName),
+        ));
+        _loadAvailableSpins();
+      }, badge: _availableSpins),
+      // 6. Чат
+      _buildCompactTile(Icons.chat_outlined, 'Чат', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeeChatsListPage()));
+      }),
+    ];
+  }
+
+  /// Секция: Работа с клиентами
+  List<Widget> _getClientWorkSection() {
+    return [
+      // 1. Бонусы
+      _buildCompactTile(Icons.card_giftcard_outlined, 'Бонусы', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyScannerPage()));
+      }),
+      // 2. Код
+      _buildCompactTile(Icons.person_add_outlined, 'Код', () {
+        if (_referralCode != null) {
+          _showReferralCodeDialog(_referralCode!);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Код приглашения не назначен'), backgroundColor: Colors.orange.shade700),
+          );
+        }
+      }),
+      // 3. Ответы
+      _buildCompactTile(Icons.search_outlined, 'Ответы', () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductQuestionsManagementPage()));
+        _loadUnreadProductQuestionsCount();
+      }, badge: _unreadProductQuestionsCount),
+      // 4. Заказы
+      _buildCompactTile(Icons.shopping_cart_outlined, 'Заказы', () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeeOrdersPage()));
+        _loadPendingOrdersCount();
+      }, badge: _pendingOrdersCount),
+      // 5. Клиент
+      _buildCompactTile(Icons.person_outline, 'Клиент', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage()));
+      }),
+      // 6. Пустое место (Обучение ИИ перенесено вниз)
+      const SizedBox(),
+    ];
+  }
+
+
+  /// Диалог выбора обучения (тесты или статьи)
+  Future<void> _showTrainingDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: const Text('Обучение', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.quiz_outlined, color: Colors.white.withOpacity(0.8)),
+              title: Text('Тестирование', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const TestPage()));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.article_outlined, color: Colors.white.withOpacity(0.8)),
+              title: Text('Статьи', style: TextStyle(color: Colors.white.withOpacity(0.9))),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const TrainingPage()));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Диалог показа кода приглашения
+  void _showReferralCodeDialog(int code) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: const Text('Код приглашения', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$code',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Поделитесь этим кодом с клиентом',
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Закрыть', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Автоматическая отметка посещаемости с GPS
+  Future<void> _markAttendanceAutomatically(BuildContext context, String employeeName) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        content: Row(
+          children: [
+            CircularProgressIndicator(color: Colors.white.withOpacity(0.8)),
+            const SizedBox(width: 16),
+            Text(
+              'Определяем местоположение...',
+              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final position = await AttendanceService.getCurrentLocation();
+      final shops = await Shop.loadShopsFromServer();
+
+      if (!context.mounted) return;
+
+      final nearestShop = AttendanceService.findNearestShop(
+        position.latitude,
+        position.longitude,
+        shops,
+      );
+
+      Navigator.pop(context);
+
+      if (nearestShop == null || nearestShop.latitude == null || nearestShop.longitude == null) {
+        _showAttendanceErrorDialog(context, 'Магазины не найдены');
+        return;
+      }
+
+      final isWithinRadius = AttendanceService.isWithinRadius(
+        position.latitude,
+        position.longitude,
+        nearestShop.latitude!,
+        nearestShop.longitude!,
+      );
+
+      if (!isWithinRadius) {
+        final distance = AttendanceService.calculateDistance(
+          position.latitude,
+          position.longitude,
+          nearestShop.latitude!,
+          nearestShop.longitude!,
         );
+        _showAttendanceErrorDialog(
+          context,
+          'Вы не находитесь рядом с магазином\n\n'
+          'Ближайший магазин: ${nearestShop.name}\n'
+          'Расстояние: ${distance.toStringAsFixed(0)} м\n'
+          'Допустимый радиус: 750 м',
+        );
+        return;
+      }
+
+      final employeeId = await EmployeesPage.getCurrentEmployeeId();
+      if (!context.mounted) return;
+
+      bool hasScheduledShift = false;
+      String? scheduledShopAddress;
+      String? scheduledShiftType;
+
+      if (employeeId != null) {
+        try {
+          final today = DateTime.now();
+          final schedule = await WorkScheduleService.getEmployeeSchedule(employeeId, today);
+          if (!context.mounted) return;
+
+          for (var entry in schedule.entries) {
+            if (entry.date.year == today.year &&
+                entry.date.month == today.month &&
+                entry.date.day == today.day) {
+              hasScheduledShift = true;
+              scheduledShopAddress = entry.shopAddress;
+              scheduledShiftType = entry.shiftType.label;
+              break;
+            }
+          }
+        } catch (e) {
+          Logger.warning('Ошибка проверки графика: $e');
+        }
+      }
+
+      if (!hasScheduledShift) {
+        if (!context.mounted) return;
+        final shouldContinue = await _showNoScheduleWarning(context, nearestShop.name);
+        if (!context.mounted) return;
+        if (!shouldContinue) return;
+      }
+
+      if (hasScheduledShift &&
+          scheduledShopAddress != null &&
+          scheduledShopAddress != nearestShop.address) {
+        if (!context.mounted) return;
+        final shouldContinue = await _showWrongShopWarning(
+          context,
+          nearestShop.name,
+          scheduledShopAddress,
+          scheduledShiftType ?? '',
+        );
+        if (!context.mounted) return;
+        if (!shouldContinue) return;
+      }
+
+      if (!context.mounted) return;
+      final distance = AttendanceService.calculateDistance(
+        position.latitude,
+        position.longitude,
+        nearestShop.latitude!,
+        nearestShop.longitude!,
+      );
+
+      final result = await AttendanceService.markAttendance(
+        employeeName: employeeName,
+        shopAddress: nearestShop.address,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        distance: distance,
+      );
+
+      if (!context.mounted) return;
+      _showAttendanceResultDialog(context, result, nearestShop.name);
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        _showAttendanceErrorDialog(context, 'Ошибка: $e');
+      }
+    }
+  }
+
+  void _showAttendanceErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.red.shade300),
+            const SizedBox(width: 8),
+            Text(
+              'Ошибка',
+              style: TextStyle(color: Colors.white.withOpacity(0.9)),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _showNoScheduleWarning(BuildContext context, String shopName) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade300),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Смена не найдена',
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'У вас сегодня нет запланированной смены в графике.\n\n'
+          'Магазин: $shopName\n\n'
+          'Всё равно отметиться?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade700,
+            ),
+            child: const Text('Отметиться'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _showWrongShopWarning(
+    BuildContext context,
+    String actualShop,
+    String scheduledShop,
+    String shiftType,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.swap_horiz_rounded, color: Colors.orange.shade300),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Другой магазин',
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'По графику вы должны работать в другом магазине.\n\n'
+          'По графику: $scheduledShop ($shiftType)\n'
+          'Вы находитесь: $actualShop\n\n'
+          'Всё равно отметиться здесь?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade700,
+            ),
+            child: const Text('Отметиться'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _showAttendanceResultDialog(BuildContext context, AttendanceResult result, String shopName) {
+    String title;
+    String message;
+    Color iconColor;
+    IconData icon;
+
+    if (result.success) {
+      if (result.isOnTime == true) {
+        title = 'Вы пришли вовремя';
+        message = 'Магазин: $shopName\n${result.message ?? ''}';
+        iconColor = Colors.green.shade300;
+        icon = Icons.check_circle_outline_rounded;
+      } else if (result.isOnTime == false && result.lateMinutes != null) {
+        title = 'Вы опоздали';
+        message = 'Магазин: $shopName\nОпоздание: ${result.lateMinutes} минут';
+        iconColor = Colors.orange.shade300;
+        icon = Icons.warning_amber_rounded;
+      } else {
+        title = 'Отметка сохранена';
+        message = 'Магазин: $shopName\n${result.message ?? 'Отметка вне смены'}';
+        iconColor = Colors.amber.shade300;
+        icon = Icons.info_outline_rounded;
+      }
+    } else {
+      title = 'Ошибка';
+      message = result.error ?? 'Неизвестная ошибка';
+      iconColor = Colors.red.shade300;
+      icon = Icons.error_outline_rounded;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+        ),
+        title: Row(
+          children: [
+            Icon(icon, color: iconColor),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(color: Colors.white.withOpacity(0.9)),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _getMenuItems() {
+    final role = _userRole?.role ?? UserRole.client;
+    final items = <Widget>[];
+
+    // Для админа - только административные функции + Клиент
+    if (role == UserRole.admin) {
+      items.add(_buildTile(Icons.tune_rounded, 'Управление', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage()));
+      }));
+
+      items.add(_buildTile(
+        Icons.analytics_outlined, 'Отчёты', () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
+          _loadReportCounts();
+          _loadUnconfirmedWithdrawalsCount();
+        },
+        badge: _totalUnviewedReports + _unconfirmedWithdrawalsCount,
+      ));
+
+      items.add(_buildTile(Icons.grid_view_rounded, 'Панель', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage()));
+      }));
+
+      items.add(_buildTile(Icons.person_outline, 'Клиент', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage()));
+      }));
+
+      return items;
+    }
+
+    // Для остальных ролей - полное меню (на случай если используется)
+    items.add(_buildTile(Icons.coffee_rounded, 'Меню', () async {
+      final shop = await _showShopDialog(context);
+      if (!mounted || shop == null) return;
+      final cats = await _loadCategories(shop.address);
+      if (!mounted) return;
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => MenuGroupsPage(groups: cats, selectedShop: shop.address),
+      ));
+    }));
+
+    items.add(_buildTile(Icons.shopping_bag_outlined, 'Корзина', () {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CartPage()));
+    }));
+
+    items.add(_buildTile(Icons.receipt_long_outlined, 'Заказы', () {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersPage()));
+    }));
+
+    items.add(_buildTile(Icons.place_outlined, 'Кофейни', () {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const ShopsOnMapPage()));
+    }));
+
+    items.add(_buildTile(Icons.card_membership_outlined, 'Лояльность', () async {
+      final enabled = await FirebaseService.areNotificationsEnabled();
+      if (!enabled && context.mounted) {
+        final result = await NotificationRequiredDialog.show(context);
+        if (result == true) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          final ok = await FirebaseService.areNotificationsEnabled();
+          if (ok && context.mounted) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+          }
+        }
+        return;
+      }
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyPage()));
+    }));
+
+    items.add(_buildTile(Icons.star_outline_rounded, 'Отзывы', () {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewTypeSelectionPage()));
+    }));
+
+    items.add(_buildTile(
+      Icons.chat_bubble_outline_rounded, 'Диалоги', () async {
+        await Navigator.push(context, MaterialPageRoute(builder: (_) => const MyDialogsPage()));
+        _loadMyDialogsCount();
+      },
+      badge: _myDialogsUnreadCount,
+    ));
+
+    items.add(_buildTile(Icons.search_rounded, 'Поиск', () {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchShopSelectionPage()));
+    }));
+
+    if (role == UserRole.employee) {
+      items.add(_buildTile(Icons.grid_view_rounded, 'Панель', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage()));
+      }));
+    }
+
+    return items;
+  }
+
+  /// ═══════════════════════════════════════════════════════════════
+  /// КОМПАКТНАЯ ПЛИТКА ДЛЯ КЛИЕНТОВ - помещается на экран
+  /// ═══════════════════════════════════════════════════════════════
+  Widget _buildCompactTile(IconData icon, String label, VoidCallback onTap, {int? badge}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.15),
+              width: 1,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(16),
+              splashColor: Colors.white.withOpacity(0.1),
+              highlightColor: Colors.white.withOpacity(0.05),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: Icon(
+                          icon,
+                          size: 32,
+                          color: Colors.white.withOpacity(0.85),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.75),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Бейдж
+        if (badge != null && badge > 0)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                badge > 99 ? '99+' : badge.toString(),
+                style: TextStyle(
+                  color: _emerald,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// ═══════════════════════════════════════════════════════════════
+  /// МИНИМАЛИСТИЧНАЯ ПЛИТКА - для админов и сотрудников
+  /// ═══════════════════════════════════════════════════════════════
+  Widget _buildTile(IconData icon, String label, VoidCallback onTap, {int? badge}) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Основная кнопка
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(20),
+              splashColor: Colors.white.withOpacity(0.1),
+              highlightColor: Colors.white.withOpacity(0.05),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: Icon(
+                          icon,
+                          size: 44,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 0.3,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Бейдж
+        if (badge != null && badge > 0)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                badge > 99 ? '99+' : badge.toString(),
+                style: TextStyle(
+                  color: _emerald,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<Shop?> _showShopDialog(BuildContext context) async {
+    return Navigator.push<Shop>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const _ShopSelectionPage(),
+      ),
+    );
+  }
+
+  Future<List<String>> _loadCategories(String address) async {
+    try {
+      final recipes = await Recipe.loadRecipesFromServer();
+      return recipes.map((r) => r.category).where((c) => c.isNotEmpty).toSet().toList()..sort();
+    } catch (e) {
+      Logger.error('Ошибка загрузки категорий', e);
+      return [];
+    }
+  }
+}
+
+/// Полноэкранная страница выбора магазина
+class _ShopSelectionPage extends StatefulWidget {
+  const _ShopSelectionPage();
+
+  @override
+  State<_ShopSelectionPage> createState() => _ShopSelectionPageState();
+}
+
+class _ShopSelectionPageState extends State<_ShopSelectionPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
+  List<Shop>? _shops;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShops();
+  }
+
+  Future<void> _loadShops() async {
+    try {
+      final shops = await Shop.loadShopsFromGoogleSheets();
+      if (mounted) {
+        setState(() {
+          _shops = shops;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка загрузки магазинов', e);
+      if (mounted) {
+        setState(() {
+          _error = 'Не удалось загрузить список магазинов';
+          _isLoading = false;
+        });
       }
     }
   }
@@ -292,1341 +1872,185 @@ class _MainMenuPageState extends State<MainMenuPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Арабика'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Выход',
-            onPressed: _logout,
-          ),
-        ],
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6, // Увеличена прозрачность для лучшей видимости логотипа
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: Column(
-          children: [
-          // Приветствие с именем
-          if (_userName != null && _userName!.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20.0),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.white.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: _buildContent(),
               ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.waving_hand,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: Text(
-                          'Привет, ${_getFirstName(_userName)}!',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Бейдж рейтинга для сотрудников и админов
-                  if ((_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin) && _employeeId != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Ваш Рейтинг: ',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                        RatingBadgeWidget(employeeId: _employeeId!),
-                      ],
-                    ),
-                  ],
-                ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'Выберите кофейню',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
               ),
             ),
-          // Сетка меню
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Builder(
-                builder: (context) {
-                  final menuItems = _getMenuItems();
-                  Logger.debug('GridView.build: получено ${menuItems.length} кнопок');
-                  return GridView.count(
-                    crossAxisCount: 2,           // 2 кнопки в строке
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1,         // делает плитки квадратными
-                    children: menuItems,
-                  );
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.white.withOpacity(0.6),
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _error = null;
+                  });
+                  _loadShops();
                 },
-              ),
-            ),
-          ),
-        ],
-        ),
-      ),
-    );
-  }
-
-  /// Получить список кнопок меню в зависимости от роли пользователя
-  List<Widget> _getMenuItems() {
-    final role = _userRole?.role ?? UserRole.client;
-    final items = <Widget>[];
-    Logger.debug('_getMenuItems() вызван, роль: ${role.name}');
-
-    // Меню - видно всем
-    items.add(_tileMenu(context, 'Меню', () async {
-      final shop = await _showShopSelectionDialog(context);
-      if (!mounted || shop == null) return;
-      final categories = await _loadCategoriesForShop(context, shop.address);
-      if (!mounted) return;
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MenuGroupsPage(
-              groups: categories,
-              selectedShop: shop.address,
-            ),
-          ),
-        );
-      }
-    }));
-
-    // Корзина - видно всем
-    items.add(_tileCart(context, 'Корзина', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CartPage()),
-      );
-    }));
-
-    // Мои заказы - видно всем
-    items.add(_tileMyOrders(context, 'Мои заказы', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const OrdersPage()),
-      );
-    }));
-
-    // Магазины на карте - видно всем
-    items.add(_tileShopsOnMap(context, 'Магазины на карте', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ShopsOnMapPage()),
-      );
-    }));
-
-    // Управление данными - только админ (включает управление сотрудниками)
-    if (role == UserRole.admin) {
-      items.add(_tileDataManagement(context, 'Управление данными', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DataManagementPage()),
-        );
-      }));
-    }
-
-    // Отчеты - только для админов
-    if (role == UserRole.admin) {
-      items.add(_tileReports(context, 'Отчеты', _totalUnviewedReports + _unconfirmedWithdrawalsCount, () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ReportsPage()),
-        );
-        // Обновляем счётчики после возврата
-        _loadReportCounts();
-        _loadUnconfirmedWithdrawalsCount();
-      }));
-    }
-
-
-
-    // Карта лояльности - видно всем (с проверкой уведомлений)
-    items.add(_tileLoyalty(context, 'Карта лояльности', () async {
-      // Проверяем, включены ли уведомления
-      final enabled = await FirebaseService.areNotificationsEnabled();
-      if (!enabled) {
-        if (context.mounted) {
-          final result = await NotificationRequiredDialog.show(context);
-          // Если пользователь нажал "Включить", проверяем снова после возврата из настроек
-          if (result == true) {
-            // Даём время на переключение в настройках и обратно
-            await Future.delayed(const Duration(milliseconds: 500));
-            final enabledNow = await FirebaseService.areNotificationsEnabled();
-            if (enabledNow && context.mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoyaltyPage()),
-              );
-            }
-          }
-        }
-        return;
-      }
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const LoyaltyPage()),
-      );
-    }));
-
-    // Отзывы - видно всем
-    items.add(_tileReviews(context, 'Отзывы', () {
-      Logger.debug('Нажата кнопка "Отзывы"');
-      if (!context.mounted) {
-        Logger.warning('Context не mounted');
-        return;
-      }
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ReviewTypeSelectionPage(),
-        ),
-      );
-    }));
-
-    // Мои диалоги - видно всем (клиентам, сотрудникам и админам)
-    items.add(_tileMyDialogs(context, 'Мои диалоги', _myDialogsUnreadCount, () async {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const MyDialogsPage()),
-      );
-      // Обновляем счётчик после возврата
-      _loadMyDialogsCount();
-    }));
-
-
-    // Поиск товара - видно всем
-    items.add(_tileProductSearch(context, 'Поиск товара', () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ProductSearchShopSelectionPage(),
-        ),
-      );
-    }));
-
-    // Устроиться на работу - только для клиентов
-    if (role == UserRole.client) {
-      items.add(_tileJobApplication(context, 'Устроиться на работу', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const JobApplicationWelcomePage()),
-        );
-      }));
-    }
-
-    // Панель работника - только сотрудник и админ
-    if (role == UserRole.employee || role == UserRole.admin) {
-      items.add(_tileEmployeePanel(context, 'Панель работника', () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const EmployeePanelPage()),
-        );
-      }));
-    }
-
-    Logger.debug('Всего кнопок в меню: ${items.length}');
-
-    return items;
-  }
-
-  Widget _tile(
-      BuildContext ctx, IconData icon, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: Icon(icon, size: 64, color: Colors.white),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Кнопка с кастомной иконкой чата
-  Widget _tileChat(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/chat_icon.png',
-                  fit: BoxFit.contain,
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                label: const Text('Повторить', style: TextStyle(color: Colors.white)),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.white.withOpacity(0.3)),
                 ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Кнопка с кастомной иконкой корзины
-  Widget _tileCart(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/cart_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Кастомная иконка меню в стиле логотипа (как на картинке)
-  Widget _buildMenuIcon() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Image.asset(
-        'assets/images/main_menu_icon.png',
-        width: 80,
-        height: 80,
-        fit: BoxFit.contain,
-      ),
-    );
-  }
-
-  /// Кастомная иконка карты лояльности
-  Widget _buildLoyaltyIcon() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Image.asset(
-        'assets/images/loyalty_card_icon.png',
-        width: 80,
-        height: 80,
-        fit: BoxFit.contain,
-      ),
-    );
-  }
-
-  /// Плитка карты лояльности с кастомной иконкой
-  Widget _tileLoyalty(BuildContext ctx, String label, Function() onTap) {
-    return ElevatedButton(
-      onPressed: () => onTap(),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/loyalty_card_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка меню с кастомной иконкой
-  Widget _tileMenu(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/main_menu_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tileWithBadge(
-      BuildContext ctx, IconData icon, String label, int badgeCount, VoidCallback onTap) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ElevatedButton(
-          onPressed: onTap,
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.all(12),
-            backgroundColor: Colors.white.withOpacity(0.2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: Colors.white.withOpacity(0.5),
-                width: 1,
-              ),
-            ),
-            elevation: 4,
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: Center(
-                  child: Icon(icon, size: 64, color: Colors.white),
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
         ),
-        if (badgeCount > 0)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badgeCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
+      );
+    }
 
-  /// Показать диалог выбора магазина
-  Future<Shop?> _showShopSelectionDialog(BuildContext context) async {
-    try {
-      final shops = await Shop.loadShopsFromGoogleSheets();
-      if (!context.mounted) return null;
-
-      return await showDialog<Shop>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF004D40).withOpacity(0.95),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: Colors.white.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          title: const Text(
-            'Выберите магазин',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: MediaQuery.of(context).size.height * 0.7,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: shops.length,
-              itemBuilder: (context, index) {
-                final shop = shops[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Material(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () => Navigator.pop(context, shop),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.5),
-                            width: 2,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const ShopIcon(size: 56),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                shop.address,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right,
-                              color: Colors.white70,
-                              size: 28,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+    if (_shops == null || _shops!.isEmpty) {
+      return Center(
+        child: Text(
+          'Магазины не найдены',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.6),
+            fontSize: 16,
           ),
         ),
       );
-    } catch (e) {
-      Logger.error('Ошибка загрузки магазинов', e);
-      return null;
     }
-  }
 
-  /// Загрузить категории для конкретного магазина (только те, что есть в рецептах)
-  Future<List<String>> _loadCategoriesForShop(BuildContext context, String shopAddress) async {
-    try {
-      // Загружаем рецепты с сервера - в меню показываем только категории с рецептами
-      final recipes = await Recipe.loadRecipesFromServer();
-
-      // Получаем уникальные категории из рецептов
-      final categories = recipes
-          .map((r) => r.category)
-          .where((c) => c.isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
-
-      return categories;
-    } catch (e) {
-      Logger.error('Ошибка загрузки категорий', e);
-      return [];
-    }
-  }
-
-  /// Плитка поиска товара с кастомной иконкой
-  Widget _tileProductSearch(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/search_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      itemCount: _shops!.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final shop = _shops![i];
+        return _buildShopRow(shop);
+      },
     );
   }
 
-  /// Плитка "Отчеты" с кастомной иконкой и бейджем
-  Widget _tileReports(BuildContext ctx, String label, int badgeCount, Future<void> Function() onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
+  Widget _buildShopRow(Shop shop) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => Navigator.pop(context, shop),
+        borderRadius: BorderRadius.circular(16),
+        splashColor: Colors.white.withOpacity(0.1),
+        highlightColor: Colors.white.withOpacity(0.05),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.15)),
           ),
-        ),
-        elevation: 4,
-      ),
-      child: Stack(
-        children: [
-          Column(
+          child: Row(
             children: [
-              Expanded(
-                child: Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/images/reports_icon.png',
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          if (badgeCount > 0)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(6),
+              Container(
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white.withOpacity(0.1),
                 ),
-                constraints: const BoxConstraints(
-                  minWidth: 24,
-                  minHeight: 24,
-                ),
-                child: Text(
-                  badgeCount > 99 ? '99+' : '$badgeCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+                child: Icon(
+                  Icons.storefront_outlined,
+                  color: Colors.white.withOpacity(0.85),
+                  size: 22,
                 ),
               ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка "Управление данными" с кастомной иконкой
-  Widget _tileDataManagement(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/data_management_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка "Панель работника" с кастомной иконкой
-  Widget _tileEmployeePanel(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/employee_panel_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка "Мои заказы" с кастомной иконкой
-  Widget _tileMyOrders(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/my_orders_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка "Магазины на карте" с кастомной иконкой
-  Widget _tileShopsOnMap(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/map_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Плитка "Мои диалоги" с кастомной иконкой чата и счётчиком
-  Widget _tileMyDialogs(BuildContext ctx, String label, int badgeCount, VoidCallback onTap) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ElevatedButton(
-          onPressed: onTap,
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.all(12),
-            backgroundColor: Colors.white.withOpacity(0.2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: Colors.white.withOpacity(0.5),
-                width: 1,
-              ),
-            ),
-            elevation: 4,
-          ),
-          child: Column(
-            children: [
+              const SizedBox(width: 14),
               Expanded(
-                child: Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/images/chat_icon.png',
-                      fit: BoxFit.contain,
-                    ),
+                child: Text(
+                  shop.address,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withOpacity(0.4),
+                size: 24,
               ),
             ],
           ),
         ),
-        if (badgeCount > 0)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badgeCount > 99 ? '99+' : badgeCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// Плитка "Отзывы" с кастомной иконкой
-  Widget _tileReviews(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/reviews_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
-
-  /// Плитка "Устроиться на работу" с кастомной иконкой
-  Widget _tileJobApplication(BuildContext ctx, String label, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        backgroundColor: Colors.white.withOpacity(0.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Colors.white.withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        elevation: 4,
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/images/job_application_icon.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
 }
-
-/// Painter для рисования стакана с напитком (как на оригинальной картинке)
-class _DrinkIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
-
-    // Стакан - трапеция
-    final glassPath = Path();
-    glassPath.moveTo(centerX - 10, centerY - 10); // Верх левый
-    glassPath.lineTo(centerX + 10, centerY - 10); // Верх правый
-    glassPath.lineTo(centerX + 8, centerY + 12); // Низ правый
-    glassPath.lineTo(centerX - 8, centerY + 12); // Низ левый
-    glassPath.close();
-    canvas.drawPath(glassPath, paint);
-
-    // Трубочка
-    canvas.drawLine(
-      Offset(centerX + 4, centerY - 10),
-      Offset(centerX + 10, centerY - 18),
-      paint,
-    );
-
-    // Кубики льда (маленькие квадраты)
-    paint.style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTWH(centerX - 6, centerY - 4, 5, 5),
-      paint,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(centerX + 1, centerY + 2, 5, 5),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Painter для иконки карты лояльности (QR-код со стрелкой на телефон)
-class _LoyaltyQRIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 2;
-
-    // Белый фон круга
-    final bgPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, radius, bgPaint);
-
-    // Тёмно-синяя рамка круга (как на картинке)
-    final borderPaint = Paint()
-      ..color = const Color(0xFF1A365D) // Тёмно-синий
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    canvas.drawCircle(center, radius - 1.5, borderPaint);
-
-    // QR-код - чёрные квадраты
-    final qrPaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-
-    // Размер QR-кода - крупнее, занимает большую часть
-    final qrSize = size.width * 0.65;
-    final qrLeft = center.dx - qrSize / 2 - 8; // Сдвиг влево
-    final qrTop = center.dy - qrSize / 2 + 3;
-    final cellSize = qrSize / 21; // 21x21 для более детального QR
-
-    // Функция для рисования угловых маркеров QR (7x7)
-    void drawCornerMarker(double left, double top) {
-      // Внешний квадрат
-      for (int i = 0; i < 7; i++) {
-        canvas.drawRect(Rect.fromLTWH(left + i * cellSize, top, cellSize, cellSize), qrPaint);
-        canvas.drawRect(Rect.fromLTWH(left + i * cellSize, top + 6 * cellSize, cellSize, cellSize), qrPaint);
-        canvas.drawRect(Rect.fromLTWH(left, top + i * cellSize, cellSize, cellSize), qrPaint);
-        canvas.drawRect(Rect.fromLTWH(left + 6 * cellSize, top + i * cellSize, cellSize, cellSize), qrPaint);
-      }
-      // Внутренний квадрат 3x3
-      for (int row = 2; row < 5; row++) {
-        for (int col = 2; col < 5; col++) {
-          canvas.drawRect(Rect.fromLTWH(left + col * cellSize, top + row * cellSize, cellSize, cellSize), qrPaint);
-        }
-      }
-    }
-
-    // Три угловых маркера
-    drawCornerMarker(qrLeft, qrTop); // Верхний левый
-    drawCornerMarker(qrLeft, qrTop + 14 * cellSize); // Нижний левый
-    drawCornerMarker(qrLeft + 14 * cellSize, qrTop); // Верхний правый
-
-    // Дополнительные данные QR (случайный паттерн)
-    final dataPoints = [
-      // Горизонтальная линия тайминга
-      [8, 6], [10, 6], [12, 6],
-      // Вертикальная линия тайминга
-      [6, 8], [6, 10], [6, 12],
-      // Данные
-      [8, 8], [9, 8], [11, 8], [12, 9],
-      [8, 10], [10, 10], [12, 10],
-      [9, 11], [11, 11],
-      [8, 12], [10, 12], [12, 12],
-      [8, 14], [9, 14], [11, 14], [12, 14],
-      [14, 8], [15, 9], [14, 10], [16, 10],
-      [14, 12], [15, 12], [16, 12],
-      [8, 16], [10, 16], [12, 16],
-      [14, 14], [15, 15], [16, 14], [17, 15],
-      [14, 16], [16, 16], [17, 17], [18, 16],
-      [17, 8], [18, 9], [19, 8],
-      [17, 11], [18, 10], [19, 11],
-    ];
-
-    for (final point in dataPoints) {
-      canvas.drawRect(
-        Rect.fromLTWH(qrLeft + point[0] * cellSize, qrTop + point[1] * cellSize, cellSize, cellSize),
-        qrPaint,
-      );
-    }
-
-    // Зелёная изогнутая стрелка (как на картинке - сверху вниз)
-    final arrowPaint = Paint()
-      ..color = const Color(0xFF4CAF50) // Яркий зелёный
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-
-    final arrowPath = Path();
-    // Начало сверху
-    arrowPath.moveTo(center.dx + 10, center.dy - 38);
-    // Изгиб вправо и вниз к телефону
-    arrowPath.quadraticBezierTo(
-      center.dx + 42, center.dy - 25, // Контрольная точка (вправо)
-      center.dx + 35, center.dy + 5, // Конечная точка (вниз к телефону)
-    );
-    canvas.drawPath(arrowPath, arrowPaint);
-
-    // Наконечник стрелки (треугольник)
-    final arrowHeadPaint = Paint()
-      ..color = const Color(0xFF4CAF50)
-      ..style = PaintingStyle.fill;
-
-    final arrowHeadPath = Path();
-    arrowHeadPath.moveTo(center.dx + 35, center.dy + 12); // Кончик
-    arrowHeadPath.lineTo(center.dx + 28, center.dy + 2);
-    arrowHeadPath.lineTo(center.dx + 40, center.dy + 2);
-    arrowHeadPath.close();
-    canvas.drawPath(arrowHeadPath, arrowHeadPaint);
-
-    // Телефон справа внизу
-    final phonePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final phoneBorderPaint = Paint()
-      ..color = const Color(0xFF1A365D)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    // Корпус телефона
-    final phoneLeft = center.dx + 22;
-    final phoneTop = center.dy + 8;
-    final phoneWidth = 20.0;
-    final phoneHeight = 32.0;
-
-    final phoneRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(phoneLeft, phoneTop, phoneWidth, phoneHeight),
-      const Radius.circular(3),
-    );
-    canvas.drawRRect(phoneRect, phonePaint);
-    canvas.drawRRect(phoneRect, phoneBorderPaint);
-
-    // Мини QR на экране телефона
-    final screenPaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.fill;
-
-    final miniCell = 2.5;
-    final screenLeft = phoneLeft + 3;
-    final screenTop = phoneTop + 5;
-
-    // Маленький QR на экране (5x5)
-    final miniQrPattern = [
-      [1,1,1,0,1],
-      [1,0,1,0,1],
-      [1,1,1,0,0],
-      [0,0,0,1,0],
-      [1,1,0,0,1],
-    ];
-
-    for (int row = 0; row < 5; row++) {
-      for (int col = 0; col < 5; col++) {
-        if (miniQrPattern[row][col] == 1) {
-          canvas.drawRect(
-            Rect.fromLTWH(screenLeft + col * miniCell, screenTop + row * miniCell, miniCell, miniCell),
-            screenPaint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-

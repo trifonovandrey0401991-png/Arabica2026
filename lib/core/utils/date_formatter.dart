@@ -35,4 +35,62 @@ class DateFormatter {
     }
     return '';
   }
+
+  /// Форматирует дату в формат dd.MM.yyyy
+  /// Например: DateTime(2026, 1, 31) -> "31.01.2026"
+  static String formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month.${date.year}';
+  }
+
+  /// Форматирует дату в короткий формат dd.MM
+  /// Например: DateTime(2026, 1, 31) -> "31.01"
+  static String formatShortDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month';
+  }
+
+  /// Форматирует дату и время в формат dd.MM.yyyy HH:mm
+  /// Например: DateTime(2026, 1, 31, 14, 30) -> "31.01.2026 14:30"
+  static String formatDateTime(DateTime dateTime) {
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$day.$month.${dateTime.year} $hour:$minute';
+  }
+
+  /// Форматирует дату и время в короткий формат dd.MM HH:mm
+  /// Например: DateTime(2026, 1, 31, 14, 30) -> "31.01 14:30"
+  static String formatShortDateTime(DateTime dateTime) {
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$day.$month $hour:$minute';
+  }
+
+  /// Генерирует ключ месяца для API в формате YYYY-MM
+  /// Например: DateTime(2026, 1, 31) -> "2026-01"
+  static String toMonthKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  }
+
+  /// Форматирует время в формат HH:mm
+  /// Например: DateTime(2026, 1, 31, 14, 30) -> "14:30"
+  static String formatTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  /// Форматирует дату для имени файла (без спецсимволов)
+  /// Например: DateTime(2026, 1, 31) -> "31_01_2026"
+  static String formatForFilename(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '${day}_${month}_${date.year}';
+  }
 }

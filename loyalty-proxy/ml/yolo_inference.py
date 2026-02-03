@@ -297,7 +297,9 @@ def check_display(image_input, expected_products, model_path=None, confidence_th
         'missingProducts': missing,
         'expectedCount': len(expected_set),
         'foundExpectedCount': len(detected_in_expected),
-        'isComplete': len(missing) == 0 if expected_products else True
+        'isComplete': len(missing) == 0 if expected_products else True,
+        # Добавляем raw boxes для positive samples (обучение YOLO)
+        'boxes': detection_result.get('boxes', [])
     }
 
 

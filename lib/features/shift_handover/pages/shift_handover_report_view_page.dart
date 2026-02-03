@@ -177,6 +177,134 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
     return Colors.green;
   }
 
+  /// Карточка результатов AI верификации
+  Widget _buildAiVerificationCard() {
+    final aiPassed = _currentReport.aiVerificationPassed;
+    final aiSkipped = _currentReport.aiVerificationSkipped ?? false;
+    final aiShortages = _currentReport.aiShortages ?? [];
+
+    Color cardColor;
+    IconData cardIcon;
+    String cardTitle;
+    String cardSubtitle;
+
+    if (aiSkipped) {
+      cardColor = Colors.grey;
+      cardIcon = Icons.skip_next;
+      cardTitle = 'ИИ проверка пропущена';
+      cardSubtitle = 'Сотрудник пропустил автоматическую проверку товаров';
+    } else if (aiPassed == true) {
+      cardColor = Colors.green;
+      cardIcon = Icons.verified;
+      cardTitle = 'ИИ проверка пройдена';
+      cardSubtitle = 'Все товары найдены на фотографиях';
+    } else if (aiPassed == false) {
+      cardColor = Colors.orange;
+      cardIcon = Icons.warning;
+      cardTitle = 'Выявлены недостачи';
+      cardSubtitle = 'ИИ обнаружил отсутствующие товары';
+    } else {
+      // Не должно произойти, но на всякий случай
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: cardColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(cardIcon, color: cardColor, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cardTitle,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: cardColor,
+                        ),
+                      ),
+                      Text(
+                        cardSubtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Показываем список недостач если есть
+            if (aiShortages.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Недостачи (${aiShortages.length}):',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...aiShortages.map((shortage) {
+                final productName = shortage['productName'] ?? 'Неизвестный товар';
+                final barcode = shortage['barcode'] ?? '';
+                final stockQty = shortage['stockQuantity'] ?? 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cancel, color: Colors.red, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              productName,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              'Код: $barcode • На остатках: $stockQty шт.',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -270,6 +398,15 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
                       ),
                     ),
                   ),
+
+                  // AI Verification результаты
+                  if (_currentReport.aiVerificationPassed != null ||
+                      _currentReport.aiVerificationSkipped == true ||
+                      (_currentReport.aiShortages != null && _currentReport.aiShortages!.isNotEmpty)) ...[
+                    const SizedBox(height: 16),
+                    _buildAiVerificationCard(),
+                  ],
+
                   const SizedBox(height: 16),
 
                   // Ответы на вопросы

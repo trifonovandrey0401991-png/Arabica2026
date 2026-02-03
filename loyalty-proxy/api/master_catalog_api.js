@@ -23,6 +23,38 @@ let productsCache = null;
 let mappingsCache = null;
 let pendingCodesCache = null;
 
+// Кэш для training данных (тяжёлые вычисления)
+// Структура: { key: { data, timestamp } }
+const trainingDataCache = new Map();
+const TRAINING_CACHE_TTL = 30000; // 30 секунд
+
+/**
+ * Получить данные из кэша training
+ */
+function getTrainingCache(key) {
+  const cached = trainingDataCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.timestamp > TRAINING_CACHE_TTL) {
+    trainingDataCache.delete(key);
+    return null;
+  }
+  return cached.data;
+}
+
+/**
+ * Сохранить данные в кэш training
+ */
+function setTrainingCache(key, data) {
+  trainingDataCache.set(key, { data, timestamp: Date.now() });
+}
+
+/**
+ * Очистить кэш training (вызывать при изменении данных)
+ */
+function clearTrainingCache() {
+  trainingDataCache.clear();
+}
+
 /**
  * Загрузить продукты мастер-каталога
  */
@@ -56,6 +88,7 @@ function saveProducts(products) {
 
     fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
     productsCache = products;
+    clearTrainingCache(); // Очищаем кэш training данных
     return true;
   } catch (error) {
     console.error('[Master Catalog API] Ошибка сохранения продуктов:', error);
@@ -958,25 +991,44 @@ function setupMasterCatalogAPI(app) {
   /**
    * GET /api/master-catalog/for-training
    * Получить товары для AI обучения с per-shop статистикой
+   * Поддерживает пагинацию: limit, offset
+   * Поддерживает кэширование (TTL 30 сек) для ускорения повторных запросов
    */
   app.get('/api/master-catalog/for-training', (req, res) => {
     try {
-      const { productGroup, shopAddress } = req.query;
+      const { productGroup, shopAddress, limit, offset } = req.query;
       // shopAddress - если передан, возвращаем perShopDisplayStats только для этого магазина
       // Это критически важно для производительности при 100+ магазинах
       const filterShopAddress = shopAddress ? decodeURIComponent(shopAddress) : null;
 
-      let products = loadProducts();
+      // Пагинация
+      const pageLimit = limit ? parseInt(limit, 10) : null;
+      const pageOffset = offset ? parseInt(offset, 10) : 0;
 
-      // Фильтр по группе
-      if (productGroup) {
-        products = products.filter((p) => p.group === productGroup);
-      }
+      // Кэш-ключ на основе параметров (без пагинации - кэшируем полный список)
+      const cacheKey = `training_${productGroup || 'all'}_${filterShopAddress || 'all'}`;
 
-      // Загружаем данные для статистики из cigarette-vision
-      const samples = cigaretteVision.loadSamples();
+      // Пробуем получить из кэша
+      let trainingProducts = getTrainingCache(cacheKey);
+
+      if (!trainingProducts) {
+        // Кэш пуст - вычисляем данные
+        const startTime = Date.now();
+
+        let products = loadProducts();
+
+        // Фильтр по группе
+        if (productGroup) {
+          products = products.filter((p) => p.group === productGroup);
+        }
+
+        // Загружаем данные для статистики из cigarette-vision
+        const samples = cigaretteVision.loadSamples();
       const settings = cigaretteVision.getSettings();
       const shops = cigaretteVision.loadAllShops();
+
+      // Загружаем статистику распознаваний (accuracy)
+      const allRecognitionStats = cigaretteVision.getAllRecognitionStats();
 
       const requiredRecount = settings.requiredRecountPhotos || 10;
       const requiredDisplayPerShop = settings.requiredDisplayPhotosPerShop || 3;
@@ -1058,10 +1110,16 @@ function setupMasterCatalogAPI(app) {
       });
 
       // Преобразуем в формат для AI Training с per-shop статистикой
-      const trainingProducts = products.map((p) => {
+      trainingProducts = products.map((p) => {
         const recountPhotos = recountPhotosByProduct[p.id] || recountPhotosByProduct[p.barcode] || 0;
         const countingPhotos = countingPhotosByProduct[p.id] || countingPhotosByProduct[p.barcode] || 0;
         const pendingCountingPhotos = pendingCountingPhotosByProduct[p.id] || pendingCountingPhotosByProduct[p.barcode] || 0;
+
+        // Получаем статистику распознаваний (accuracy)
+        const recognitionStats = allRecognitionStats[p.id] || allRecognitionStats[p.barcode] || {
+          display: { accuracy: null, attempts: 0, successes: 0 },
+          counting: { accuracy: null, attempts: 0, successes: 0 },
+        };
         const completedTemplatesSet = completedTemplatesByProduct[p.id] || completedTemplatesByProduct[p.barcode] || new Set();
         const completedTemplates = Array.from(completedTemplatesSet).sort((a, b) => a - b);
         const isRecountComplete = completedTemplates.length >= requiredRecount;
@@ -1136,10 +1194,38 @@ function setupMasterCatalogAPI(app) {
           shopsWithAiReady: shopsWithAiReady,
           totalShops: shops.length,
           shopCodes: p.shopCodes,
+          // Статистика точности распознавания ИИ
+          displayAccuracy: recognitionStats.display.accuracy,
+          displayAttempts: recognitionStats.display.attempts,
+          displaySuccesses: recognitionStats.display.successes,
+          countingAccuracy: recognitionStats.counting.accuracy,
+          countingAttempts: recognitionStats.counting.attempts,
+          countingSuccesses: recognitionStats.counting.successes,
         };
       });
 
-      res.json({ success: true, products: trainingProducts });
+        // Сохраняем в кэш
+        setTrainingCache(cacheKey, trainingProducts);
+        console.log(`[Master Catalog API] for-training: вычислено за ${Date.now() - startTime}ms, закэшировано`);
+      } // конец блока if (!trainingProducts)
+
+      // Общее количество товаров (до пагинации)
+      const total = trainingProducts.length;
+
+      // Применяем пагинацию
+      let paginatedProducts = trainingProducts;
+      if (pageLimit) {
+        paginatedProducts = trainingProducts.slice(pageOffset, pageOffset + pageLimit);
+      }
+
+      res.json({
+        success: true,
+        products: paginatedProducts,
+        total: total,
+        offset: pageOffset,
+        limit: pageLimit,
+        cached: !!getTrainingCache(cacheKey),
+      });
     } catch (error) {
       console.error('[Master Catalog API] Ошибка получения товаров для обучения:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -1169,7 +1255,22 @@ function setupMasterCatalogAPI(app) {
     }
   });
 
-  console.log('[Master Catalog API] Готово');
+  // ============ ОЧИСТКА КЭША ============
+
+  /**
+   * POST /api/master-catalog/clear-cache
+   * Очистить кэш training данных (для принудительного обновления)
+   */
+  app.post('/api/master-catalog/clear-cache', (req, res) => {
+    try {
+      clearTrainingCache();
+      res.json({ success: true, message: 'Кэш очищен' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  console.log('[Master Catalog API] Готово (с кэшированием TTL 30s)');
 }
 
 module.exports = {
@@ -1185,4 +1286,5 @@ module.exports = {
   isCodeInPending,
   getMasterNameByBarcode,
   getMasterProductByBarcode,
+  clearTrainingCache,
 };

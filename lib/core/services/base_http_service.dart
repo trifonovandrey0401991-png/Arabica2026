@@ -52,7 +52,7 @@ class BaseHttpService {
       Logger.debug('📥 GET $endpoint');
 
       final response = await http
-          .get(uri)
+          .get(uri, headers: ApiConstants.headersWithApiKey)
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
@@ -93,7 +93,10 @@ class BaseHttpService {
       Logger.debug('📥 GET $endpoint');
 
       final response = await http
-          .get(Uri.parse('${ApiConstants.serverUrl}$endpoint'))
+          .get(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+          )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
@@ -133,7 +136,7 @@ class BaseHttpService {
       final response = await http
           .post(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -175,7 +178,7 @@ class BaseHttpService {
       final response = await http
           .put(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -210,7 +213,10 @@ class BaseHttpService {
       Logger.debug('🗑️ DELETE $endpoint');
 
       final response = await http
-          .delete(Uri.parse('${ApiConstants.serverUrl}$endpoint'))
+          .delete(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+          )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
@@ -243,7 +249,10 @@ class BaseHttpService {
       Logger.debug('🗑️ DELETE $endpoint');
 
       final response = await http
-          .delete(Uri.parse('${ApiConstants.serverUrl}$endpoint'))
+          .delete(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+          )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
@@ -286,7 +295,7 @@ class BaseHttpService {
       final response = await http
           .post(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -375,7 +384,7 @@ class BaseHttpService {
       final response = await http
           .post(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -412,7 +421,7 @@ class BaseHttpService {
       final response = await http
           .patch(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -445,7 +454,7 @@ class BaseHttpService {
       final response = await http
           .patch(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -477,7 +486,7 @@ class BaseHttpService {
       final response = await http
           .patch(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);
@@ -507,7 +516,7 @@ class BaseHttpService {
       final response = await http
           .put(
             Uri.parse('${ApiConstants.serverUrl}$endpoint'),
-            headers: ApiConstants.jsonHeaders,
+            headers: ApiConstants.headersWithApiKey,
             body: jsonEncode(body),
           )
           .timeout(timeout ?? ApiConstants.defaultTimeout);

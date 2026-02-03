@@ -296,195 +296,393 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
   }
 
+  // Брендовые цвета Arabica
+  static const Color _primaryColor = Color(0xFF1A4D4D); // Основной темно-бирюзовый
+  static const Color _primaryLight = Color(0xFF2D6B6B); // Светлее
+  static const Color _primaryDark = Color(0xFF0D3333); // Темнее
+  static const Color _accentGold = Color(0xFFD4AF37); // Золотистый акцент
+
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    required String hintText,
+    required IconData icon,
+    String? prefixText,
+    Widget? suffixIcon,
+    String? helperText,
+    bool isValid = false,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      prefixText: prefixText,
+      prefixStyle: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: _primaryColor,
+      ),
+      labelStyle: TextStyle(
+        color: _primaryColor.withOpacity(0.8),
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(
+        color: Colors.grey[400],
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: _primaryColor.withOpacity(0.3)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: _primaryColor.withOpacity(0.3), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _primaryColor, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.95),
+      prefixIcon: Container(
+        margin: const EdgeInsets.only(left: 12, right: 8),
+        child: Icon(icon, color: _primaryColor, size: 22),
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 48),
+      suffixIcon: suffixIcon,
+      helperText: helperText,
+      helperStyle: TextStyle(
+        color: isValid ? const Color(0xFF2E7D32) : Colors.orange[700],
+        fontWeight: FontWeight.w500,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 700;
+
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40), // Темно-бирюзовый фон (fallback)
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6, // Прозрачность фона для хорошей видимости логотипа
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _primaryColor,
+              _primaryDark,
+              Color(0xFF0A2626),
+            ],
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
         child: SafeArea(
           child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: isSmallScreen ? 16 : 24,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Иконка и заголовок
-                      const Icon(
-                        Icons.person_add,
-                        size: 64,
-                        color: Color(0xFF004D40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Логотип Arabica (без обрезки)
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: Colors.white.withOpacity(0.1),
+                      border: Border.all(
+                        color: _accentGold.withOpacity(0.3),
+                        width: 2,
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Регистрация',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF004D40),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 2,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Заполните данные для продолжения',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Поле номера телефона
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        decoration: InputDecoration(
-                          labelText: 'Номер телефона',
-                          hintText: '9001234567',
-                          prefixText: '+7 ',
-                          prefixStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF004D40),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          prefixIcon: const Icon(Icons.phone),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Введите номер телефона';
-                          }
-                          if (value.length != 10) {
-                            return 'Номер должен содержать 10 цифр';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Поле имени
-                      TextFormField(
-                        controller: _nameController,
-                        keyboardType: TextInputType.name,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: InputDecoration(
-                          labelText: 'Как к Вам обращаться?',
-                          hintText: 'Введите ваше имя',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          prefixIcon: const Icon(Icons.person),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Введите ваше имя';
-                          }
-                          if (value.length < 2) {
-                            return 'Имя должно содержать минимум 2 символа';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Поле кода приглашения (необязательное)
-                      TextFormField(
-                        controller: _referralCodeController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(4),
-                        ],
-                        decoration: InputDecoration(
-                          labelText: 'Код сотрудника (необязательно)',
-                          hintText: 'Если вас пригласили',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          prefixIcon: const Icon(Icons.person_pin),
-                          suffixIcon: _referralCodeController.text.isNotEmpty
-                              ? Icon(
-                                  _isReferralValid ? Icons.check_circle : Icons.error,
-                                  color: _isReferralValid ? Colors.green : Colors.orange,
-                                )
-                              : null,
-                          helperText: _referralValidationMessage,
-                          helperStyle: TextStyle(
-                            color: _isReferralValid ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                        onChanged: (value) {
-                          _validateReferralCode(value);
-                        },
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Кнопка регистрации
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _register,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF004D40),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Text(
-                                'Зарегистрироваться',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/arabica_logo.png',
+                      width: isSmallScreen ? 100 : 120,
+                      height: isSmallScreen ? 100 : 120,
+                      fit: BoxFit.contain,
+                    ),
                   ),
-                ),
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  // Приветственный текст
+                  Text(
+                    'Добро пожаловать!',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 24 : 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 20 : 32),
+
+                  // Карточка формы с glassmorphism эффектом
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: Colors.white.withOpacity(0.95),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 30,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 10),
+                        ),
+                        BoxShadow(
+                          color: _primaryColor.withOpacity(0.1),
+                          blurRadius: 40,
+                          spreadRadius: -10,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isSmallScreen ? 24 : 32),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Заголовок карточки
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: _primaryColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.person_add_alt_1_rounded,
+                                    size: 28,
+                                    color: _primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Регистрация',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: _primaryColor,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Создайте аккаунт для участия в программе лояльности',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                                height: 1.3,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 28),
+
+                            // Поле номера телефона
+                            TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: _primaryDark,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              decoration: _buildInputDecoration(
+                                labelText: 'Номер телефона',
+                                hintText: '9001234567',
+                                icon: Icons.phone_android_rounded,
+                                prefixText: '+7 ',
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Введите номер телефона';
+                                }
+                                if (value.length != 10) {
+                                  return 'Номер должен содержать 10 цифр';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Поле имени
+                            TextFormField(
+                              controller: _nameController,
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: _primaryDark,
+                              ),
+                              decoration: _buildInputDecoration(
+                                labelText: 'Как к Вам обращаться?',
+                                hintText: 'Введите ваше имя',
+                                icon: Icons.person_outline_rounded,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Введите ваше имя';
+                                }
+                                if (value.length < 2) {
+                                  return 'Имя должно содержать минимум 2 символа';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Поле кода приглашения (необязательное)
+                            TextFormField(
+                              controller: _referralCodeController,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: _primaryDark,
+                              ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(4),
+                              ],
+                              decoration: _buildInputDecoration(
+                                labelText: 'Код сотрудника (необязательно)',
+                                hintText: 'Если вас пригласили',
+                                icon: Icons.card_giftcard_rounded,
+                                suffixIcon: _referralCodeController.text.isNotEmpty
+                                    ? Container(
+                                        margin: const EdgeInsets.only(right: 12),
+                                        child: Icon(
+                                          _isReferralValid
+                                              ? Icons.check_circle_rounded
+                                              : Icons.info_outline_rounded,
+                                          color: _isReferralValid
+                                              ? const Color(0xFF2E7D32)
+                                              : Colors.orange[700],
+                                          size: 24,
+                                        ),
+                                      )
+                                    : null,
+                                helperText: _referralValidationMessage,
+                                isValid: _isReferralValid,
+                              ),
+                              onChanged: (value) {
+                                _validateReferralCode(value);
+                              },
+                            ),
+                            const SizedBox(height: 28),
+
+                            // Кнопка регистрации с градиентом
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: const LinearGradient(
+                                  colors: [_primaryLight, _primaryColor, _primaryDark],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _primaryColor.withOpacity(0.4),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _register,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  disabledBackgroundColor: Colors.transparent,
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 22,
+                                        width: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.login_rounded, size: 22),
+                                          SizedBox(width: 10),
+                                          Text(
+                                            'Зарегистрироваться',
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  // Декоративный текст внизу
+                  Text(
+                    'Собирайте баллы • Получайте подарки',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.6),
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
-        ),
     );
   }
 }

@@ -11,6 +11,63 @@ let learnedPatternsCache = null;
 let learnedPatternsCacheTime = 0;
 const CACHE_TTL = 60000; // 1 минута
 
+/**
+ * Улучшенная нормализация OCR текста
+ * Исправляет типичные ошибки распознавания перед парсингом
+ * @param {string} text - Исходный текст с чека
+ * @returns {string} - Нормализованный текст
+ */
+function enhancedOcrNormalize(text) {
+  let normalized = text;
+
+  // 1. Исправляем типичные ошибки в ключевых словах (СУННА → СУММА, СУМНА → СУММА)
+  normalized = normalized.replace(/СУ[МН]+[АН]А?/gi, 'СУММА');
+  normalized = normalized.replace(/ИТАГО/gi, 'ИТОГО');
+  normalized = normalized.replace(/ВСЕГА/gi, 'ВСЕГО');
+  normalized = normalized.replace(/НАЛИЧН[ЫА]?Е?/gi, 'НАЛИЧН');
+  normalized = normalized.replace(/НЕПЕРЕДАНН?Ы?Х?/gi, 'НЕПЕРЕДАННЫХ');
+
+  // 2. Исправляем O (буква) → 0 (цифра) в контексте чисел
+  // О перед цифрами: "О12345" → "012345"
+  normalized = normalized.replace(/([^А-Яа-яA-Za-z])О(\d)/g, '$10$2');
+  normalized = normalized.replace(/^О(\d)/gm, '0$1');
+  // О после цифр: "1234О" → "12340"
+  normalized = normalized.replace(/(\d)О([^А-Яа-яA-Za-z]|$)/g, '$10$2');
+  // О между цифрами: "12О34" → "12034"
+  normalized = normalized.replace(/(\d)О(\d)/g, '$10$2');
+
+  // 3. Исправляем l (маленькая L) → 1 перед цифрами
+  normalized = normalized.replace(/([^A-Za-zА-Яа-я])l(\d)/g, '$11$2');
+  normalized = normalized.replace(/^l(\d)/gm, '1$1');
+
+  // 4. Исправляем I (большая i) → 1 между цифрами
+  normalized = normalized.replace(/(\d)I(\d)/g, '$11$2');
+
+  // 5. Исправляем S → 5 между цифрами (только если окружено цифрами)
+  normalized = normalized.replace(/(\d)S(\d)/g, '$15$2');
+
+  // 6. Убираем случайные символы между цифрами в суммах
+  // "14.0 95.00" → "14095.00" (пробел перед десятичной точкой)
+  normalized = normalized.replace(/(\d+)\s+(\d{2})\.(\d{2})/g, '$1$2.$3');
+
+  // 7. Исправляем запятую на точку в десятичных числах
+  normalized = normalized.replace(/(\d),(\d{2})(?!\d)/g, '$1.$2');
+
+  // 8. Исправляем "АН." → " AH." для ресурса ключей (унификация)
+  normalized = normalized.replace(/(\d+)\s*[АA][НH]\.?/gi, '$1 AH.');
+
+  // 9. Исправляем опечатки в "СМЕНЫ" / "СНЕНЫ"
+  normalized = normalized.replace(/СНЕНЫ/gi, 'СМЕНЫ');
+  normalized = normalized.replace(/СНЕНУ/gi, 'СМЕНУ');
+
+  // 10. Убираем мусорные символы в начале строк ($ перед числами от OCR)
+  normalized = normalized.replace(/^\$(\d)/gm, '$1');
+
+  console.log('[Z-Report OCR Normalize] Применена нормализация');
+
+  return normalized;
+}
+
 // Инициализация клиента Vision API
 const client = new vision.ImageAnnotatorClient({
   keyFilename: path.join(__dirname, '../credentials/vision-key.json')
@@ -148,15 +205,21 @@ async function getLearnedPatternsWithCache() {
  * Поддерживает АТОЛ, Штрих-М, Эвотор и другие кассы
  * ТЕПЕРЬ ИСПОЛЬЗУЕТ ВЫУЧЕННЫЕ ПАТТЕРНЫ!
  */
-async function extractZReportData(text, learnedPatterns = null) {
+async function extractZReportData(originalText, learnedPatterns = null) {
+  // ============ УЛУЧШЕННАЯ НОРМАЛИЗАЦИЯ OCR ============
+  // Применяем нормализацию для исправления типичных ошибок OCR
+  const text = enhancedOcrNormalize(originalText);
+
   const lines = text.split('\n').map(l => l.trim());
 
   const result = {
     totalSum: null,        // Общая сумма
     cashSum: null,         // Сумма наличных
+    cardSum: null,         // Сумма безналичных (вычисляется)
     ofdNotSent: null,      // Чеки не переданные в ОФД
     resourceKeys: null,    // Ресурс ключей
-    confidence: {}
+    confidence: {},
+    validationWarnings: [] // Предупреждения перекрёстной валидации
   };
 
   // Загружаем выученные паттерны если не переданы
@@ -164,7 +227,7 @@ async function extractZReportData(text, learnedPatterns = null) {
     learnedPatterns = await getLearnedPatternsWithCache();
   }
 
-  // Нормализуем текст для лучшего поиска
+  // Нормализуем текст для лучшего поиска (дополнительно к OCR нормализации)
   const normalizedText = text
     .replace(/\s+/g, ' ')
     .replace(/[—–-]/g, '-');
@@ -570,29 +633,112 @@ async function extractZReportData(text, learnedPatterns = null) {
     }
   }
 
-  // ============ ВАЛИДАЦИЯ РЕЗУЛЬТАТОВ ============
+  // ============ ПЕРЕКРЁСТНАЯ ВАЛИДАЦИЯ РЕЗУЛЬТАТОВ ============
 
-  // Проверка логических зависимостей
+  // 1. Вычисляем cardSum (безналичные) если есть totalSum и cashSum
   if (result.totalSum !== null && result.cashSum !== null) {
-    // cashSum не может быть больше totalSum
+    result.cardSum = Math.max(0, result.totalSum - result.cashSum);
+    result.confidence.cardSum = 'calculated';
+    console.log('[Z-Report] Вычислены безналичные (cardSum):', result.cardSum);
+  }
+
+  // 2. Проверка: cashSum не может быть больше totalSum
+  if (result.totalSum !== null && result.cashSum !== null) {
     if (result.cashSum > result.totalSum) {
-      console.log('[Z-Report] Предупреждение: cashSum > totalSum, возможно ошибка OCR');
+      console.log('[Z-Report] ВАЛИДАЦИЯ: cashSum > totalSum - возможна ошибка OCR');
       result.confidence.cashSum = 'suspicious';
+      result.validationWarnings.push({
+        type: 'cashSum_exceeds_total',
+        message: `Наличные (${result.cashSum}) больше общей суммы (${result.totalSum})`,
+        severity: 'warning'
+      });
     }
   }
 
-  // ofdNotSent не может быть слишком большим (обычно 0-1000)
-  if (result.ofdNotSent !== null && result.ofdNotSent > 10000) {
-    console.log('[Z-Report] Предупреждение: ofdNotSent слишком большой:', result.ofdNotSent);
-    result.ofdNotSent = null;
-    result.confidence.ofdNotSent = 'invalid';
+  // 3. Проверка разумности выручки (типичный диапазон для кофейни: 1000-500000 руб)
+  if (result.totalSum !== null) {
+    if (result.totalSum < 100) {
+      console.log('[Z-Report] ВАЛИДАЦИЯ: totalSum подозрительно мал:', result.totalSum);
+      result.validationWarnings.push({
+        type: 'totalSum_too_low',
+        message: `Выручка подозрительно мала: ${result.totalSum} руб`,
+        severity: 'info'
+      });
+    }
+    if (result.totalSum > 500000) {
+      console.log('[Z-Report] ВАЛИДАЦИЯ: totalSum подозрительно велик:', result.totalSum);
+      result.validationWarnings.push({
+        type: 'totalSum_too_high',
+        message: `Выручка подозрительно велика: ${result.totalSum} руб`,
+        severity: 'warning'
+      });
+      result.confidence.totalSum = 'suspicious';
+    }
   }
 
-  // Помечаем не найденные поля
+  // 4. Проверка cashSum не может быть отрицательным
+  if (result.cashSum !== null && result.cashSum < 0) {
+    console.log('[Z-Report] ВАЛИДАЦИЯ: cashSum отрицательный - ошибка OCR');
+    result.cashSum = null;
+    result.confidence.cashSum = 'invalid';
+  }
+
+  // 5. Проверка соотношения наличные/безналичные (обычно наличные 10-90% от выручки)
+  if (result.totalSum !== null && result.cashSum !== null && result.totalSum > 0) {
+    const cashPercent = (result.cashSum / result.totalSum) * 100;
+    if (cashPercent > 95) {
+      console.log('[Z-Report] ВАЛИДАЦИЯ: доля наличных необычно высока:', cashPercent.toFixed(1) + '%');
+      result.validationWarnings.push({
+        type: 'cash_ratio_high',
+        message: `Доля наличных необычно высока: ${cashPercent.toFixed(1)}%`,
+        severity: 'info'
+      });
+    }
+  }
+
+  // 6. ofdNotSent не может быть слишком большим (обычно 0-1000)
+  if (result.ofdNotSent !== null) {
+    if (result.ofdNotSent > 10000) {
+      console.log('[Z-Report] ВАЛИДАЦИЯ: ofdNotSent слишком большой:', result.ofdNotSent);
+      result.ofdNotSent = null;
+      result.confidence.ofdNotSent = 'invalid';
+      result.validationWarnings.push({
+        type: 'ofd_invalid',
+        message: 'Значение "не передано в ОФД" недопустимо велико',
+        severity: 'error'
+      });
+    } else if (result.ofdNotSent > 100) {
+      console.log('[Z-Report] ВАЛИДАЦИЯ: ofdNotSent подозрительно велик:', result.ofdNotSent);
+      result.validationWarnings.push({
+        type: 'ofd_high',
+        message: `Много чеков не передано в ОФД: ${result.ofdNotSent}`,
+        severity: 'warning'
+      });
+    }
+  }
+
+  // 7. Проверка ресурса ключей (обычно 1-500)
+  if (result.resourceKeys !== null) {
+    if (result.resourceKeys < 10) {
+      console.log('[Z-Report] ВАЛИДАЦИЯ: resourceKeys критически низкий:', result.resourceKeys);
+      result.validationWarnings.push({
+        type: 'resource_keys_low',
+        message: `Ресурс ключей критически низкий: ${result.resourceKeys}`,
+        severity: 'warning'
+      });
+    }
+  }
+
+  // 8. Помечаем не найденные поля
   if (result.totalSum === null) result.confidence.totalSum = 'not_found';
   if (result.cashSum === null) result.confidence.cashSum = 'not_found';
   if (result.ofdNotSent === null) result.confidence.ofdNotSent = 'not_found';
   if (result.resourceKeys === null) result.confidence.resourceKeys = 'not_found';
+
+  // Логируем итоговые предупреждения
+  if (result.validationWarnings.length > 0) {
+    console.log('[Z-Report] Всего предупреждений валидации:', result.validationWarnings.length);
+  }
 
   return result;
 }

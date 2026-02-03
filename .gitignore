@@ -47,3 +47,6 @@ nul
 
 # MCP config with API keys
 .mcp.json
+
+# Файл с паролями (НЕ КОММИТИТЬ!)
+START.md

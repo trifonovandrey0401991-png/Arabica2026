@@ -87,11 +87,8 @@ class _ReviewDetailPageState extends State<ReviewDetailPage> {
         _messageController.clear();
         await _loadReview();
         
-        // Если это ответ админа, отправляем push-уведомление клиенту
-        if (widget.isAdmin) {
-          // TODO: Отправить push-уведомление клиенту через FCM
-          // Это будет реализовано после настройки Firebase
-        }
+        // Если это ответ админа - push-уведомление отправляется через сервер
+        // (см. loyalty-proxy/index.js - POST /api/reviews/:id/reply)
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

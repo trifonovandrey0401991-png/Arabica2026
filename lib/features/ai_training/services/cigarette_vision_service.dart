@@ -307,6 +307,46 @@ class CigaretteVisionService {
     }
   }
 
+  /// Получить подтверждённые counting фото для товара
+  static Future<List<TrainingSample>> getCountingSamplesForProduct(String productId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-samples/$productId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['samples'] as List? ?? [];
+        return list.map((json) => TrainingSample.fromJson(json)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      Logger.error('Ошибка получения counting samples для товара', e);
+      return [];
+    }
+  }
+
+  /// Удалить counting фото
+  static Future<bool> deleteCountingSample(String sampleId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.serverUrl}/api/cigarette-vision/counting-samples/$sampleId'),
+        headers: ApiConstants.jsonHeaders,
+      ).timeout(ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка удаления counting sample', e);
+      return false;
+    }
+  }
+
   /// Детекция и подсчёт пачек на фото (без сохранения для обучения)
   static Future<DetectionResult> detectAndCount({
     required Uint8List imageBytes,

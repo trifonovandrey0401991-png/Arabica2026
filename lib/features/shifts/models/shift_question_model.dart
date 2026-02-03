@@ -9,6 +9,7 @@ class ShiftQuestion {
   final String? answerFormatC; // Столбец C
   final List<String>? shops; // Список адресов магазинов, для которых задан вопрос. null означает "для всех магазинов"
   final Map<String, String>? referencePhotos; // Объект с ключами-адресами магазинов и значениями-URL эталонных фото
+  final bool isAiCheck; // Проверять ли ИИ фото этого вопроса (только для вопросов типа "Фото")
 
   ShiftQuestion({
     required this.id,
@@ -17,6 +18,7 @@ class ShiftQuestion {
     this.answerFormatC,
     this.shops,
     this.referencePhotos,
+    this.isAiCheck = false,
   });
 
   /// Создать ShiftQuestion из JSON
@@ -44,6 +46,7 @@ class ShiftQuestion {
       answerFormatC: json['answerFormatC'],
       shops: shops,
       referencePhotos: referencePhotos,
+      isAiCheck: json['isAiCheck'] ?? false,
     );
   }
 
@@ -56,6 +59,7 @@ class ShiftQuestion {
       'answerFormatC': answerFormatC,
       if (shops != null) 'shops': shops,
       if (referencePhotos != null) 'referencePhotos': referencePhotos,
+      'isAiCheck': isAiCheck,
     };
   }
 

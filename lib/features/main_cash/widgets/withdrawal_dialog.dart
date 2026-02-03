@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../models/withdrawal_model.dart';
+import '../models/withdrawal_expense_model.dart';
 import '../services/withdrawal_service.dart';
 
 /// Диалог создания выемки
@@ -65,12 +66,23 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
     setState(() => _isSaving = true);
 
     try {
+      final amount = double.parse(_amountController.text.replaceAll(' ', ''));
+      final comment = _commentController.text.trim();
+      final adminName = _adminName ?? 'Администратор';
+
       final withdrawal = Withdrawal(
         shopAddress: _selectedShop!,
         type: _selectedType,
-        amount: double.parse(_amountController.text.replaceAll(' ', '')),
-        comment: _commentController.text.trim(),
-        adminName: _adminName ?? 'Администратор',
+        employeeName: adminName,
+        employeeId: '',
+        totalAmount: amount,
+        expenses: [
+          WithdrawalExpense(
+            comment: comment.isNotEmpty ? comment : 'Выемка',
+            amount: amount,
+          ),
+        ],
+        adminName: adminName,
       );
 
       final result = await WithdrawalService.createWithdrawal(withdrawal);

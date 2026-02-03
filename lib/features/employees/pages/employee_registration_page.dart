@@ -267,7 +267,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
 
       // Загружаем фото из сохраненных байтов (более надежно для Android)
       if (_passportFrontPhotoBytes != null) {
-        debugPrint('📤 Загрузка фото front из байтов: ${_passportFrontPhotoBytes!.length} байт');
+        Logger.debug('Загрузка фото front из байтов: ${_passportFrontPhotoBytes!.length} байт');
 
         frontPhotoUrl = await EmployeeRegistrationService.uploadPhotoFromBytes(
           _passportFrontPhotoBytes!,
@@ -281,7 +281,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       }
 
       if (_passportRegistrationPhotoBytes != null) {
-        debugPrint('📤 Загрузка фото registration из байтов: ${_passportRegistrationPhotoBytes!.length} байт');
+        Logger.debug('Загрузка фото registration из байтов: ${_passportRegistrationPhotoBytes!.length} байт');
 
         registrationPhotoUrl = await EmployeeRegistrationService.uploadPhotoFromBytes(
           _passportRegistrationPhotoBytes!,
@@ -295,7 +295,7 @@ class _EmployeeRegistrationPageState extends State<EmployeeRegistrationPage> {
       }
 
       if (_additionalPhotoBytes != null) {
-        debugPrint('📤 Загрузка дополнительного фото из байтов: ${_additionalPhotoBytes!.length} байт');
+        Logger.debug('Загрузка дополнительного фото из байтов: ${_additionalPhotoBytes!.length} байт');
 
         additionalPhotoUrl = await EmployeeRegistrationService.uploadPhotoFromBytes(
           _additionalPhotoBytes!,

@@ -49,6 +49,13 @@ class NotificationService {
     if (response.payload != null && _globalContext != null) {
       final orderId = response.payload!;
       final orderProvider = OrderProvider.of(_globalContext!);
+
+      // Безопасный поиск заказа (BUG-001 fix: проверка пустого списка)
+      if (orderProvider.orders.isEmpty) {
+        debugPrint('⚠️ Notification tapped but orders list is empty');
+        return;
+      }
+
       final order = orderProvider.orders.firstWhere(
         (o) => o.id == orderId,
         orElse: () => orderProvider.orders.first,
@@ -234,6 +241,7 @@ class NotificationService {
   ) async {
     final TextEditingController reasonController = TextEditingController();
 
+    // BUG-002 fix: dispose controller after dialog closes
     return showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -303,7 +311,10 @@ class NotificationService {
           ),
         ],
       ),
-    );
+    ).then((_) {
+      // BUG-002 fix: dispose controller to prevent memory leak
+      reasonController.dispose();
+    });
   }
 
   /// Отправить уведомление клиенту об отказе от заказа

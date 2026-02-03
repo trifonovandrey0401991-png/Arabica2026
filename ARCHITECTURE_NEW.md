@@ -15837,7 +15837,431 @@ Future<int> _calculateTotalCount() async {
 
 ---
 
-  ## Следующие разделы (TODO)
+## 29. HR-модуль - ПРЕМИИ И ШТРАФЫ (Bonuses)
+
+### 29.1 Обзор модуля
+
+**Назначение:** Система ручного начисления премий и штрафов сотрудникам администратором. Записи отображаются в "Моя эффективность" сотрудника.
+
+**Файлы модуля:**
+```
+lib/features/bonuses/
+├── models/
+│   └── bonus_penalty_model.dart     # Модель премии/штрафа
+├── pages/
+│   ├── bonus_penalty_management_page.dart  # Управление (админ)
+│   └── bonus_penalty_history_page.dart     # История
+└── services/
+    └── bonus_penalty_service.dart   # API сервис
+```
+
+---
+
+### 29.2 Модель данных
+
+```dart
+class BonusPenalty {
+  final String id;
+  final String employeeId;
+  final String employeeName;
+  final String type;        // 'bonus' или 'penalty'
+  final double amount;      // Сумма
+  final String comment;     // Комментарий админа
+  final String adminName;   // Кто назначил
+  final DateTime createdAt;
+  final String month;       // YYYY-MM
+
+  bool get isBonus => type == 'bonus';
+  bool get isPenalty => type == 'penalty';
+  double get signedAmount => isBonus ? amount : -amount;
+}
+```
+
+---
+
+### 29.3 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/bonus-penalties` | Получить записи за месяц |
+| GET | `/api/bonus-penalties?employeeId=X` | Записи сотрудника |
+| POST | `/api/bonus-penalties` | Создать премию/штраф |
+| DELETE | `/api/bonus-penalties/:id` | Удалить запись |
+| GET | `/api/bonus-penalties/summary` | Сводка для сотрудника |
+
+---
+
+### 29.4 Интеграция с эффективностью
+
+```mermaid
+flowchart LR
+    Admin[Админ] --> BP[BonusPenaltyManagementPage]
+    BP --> API[POST /api/bonus-penalties]
+    API --> DB[(bonus-penalties/YYYY-MM.json)]
+
+    subgraph "Моя Эффективность"
+        EFF[EfficiencyPage]
+        EFF --> GET[GET /api/bonus-penalties]
+        GET --> DB
+        EFF --> Display[Отображение в списке]
+    end
+```
+
+---
+
+### 29.5 Серверные данные
+
+- `/var/www/bonus-penalties/YYYY-MM.json` - Записи по месяцам
+
+---
+
+### 29.6 Критические файлы
+
+| Файл | Статус |
+|------|--------|
+| `lib/features/bonuses/services/bonus_penalty_service.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/bonuses/models/bonus_penalty_model.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/bonuses/pages/bonus_penalty_management_page.dart` | ✅ НЕ ТРОГАТЬ |
+
+---
+
+## 30. Администрирование - ОЧИСТКА ДАННЫХ (Data Cleanup)
+
+### 30.1 Обзор модуля
+
+**Назначение:** Инструмент для администраторов для управления дисковым пространством сервера. Позволяет просматривать статистику использования и удалять старые данные по категориям.
+
+**Файлы модуля:**
+```
+lib/features/data_cleanup/
+├── models/
+│   └── cleanup_category.dart    # Модель категории данных
+├── pages/
+│   └── data_cleanup_page.dart   # Главная страница
+├── services/
+│   └── cleanup_service.dart     # API сервис
+└── widgets/
+    └── cleanup_period_dialog.dart  # Диалог выбора периода
+
+loyalty-proxy/api/
+└── data_cleanup_api.js          # Серверный API
+```
+
+---
+
+### 30.2 Категории данных
+
+| Категория | Директория | Тип |
+|-----------|------------|-----|
+| Отчёты пересчётов | `/var/www/recount-reports` | Отчёты |
+| Отчёты смен | `/var/www/shift-reports` | Отчёты |
+| Отчёты пересменок | `/var/www/shift-handover-reports` | Отчёты |
+| Отчёты конвертов | `/var/www/envelope-reports` | Отчёты |
+| РКО отчёты | `/var/www/rko-reports` | Отчёты |
+| Фото смен | `/var/www/shift-photos` | Фото |
+| Фото вопросов пересменок | `/var/www/shift-handover-question-photos` | Фото |
+| Фото вопросов товаров | `/var/www/product-question-photos` | Фото |
+| Фото сотрудников | `/var/www/employee-photos` | Фото |
+| Фото рецептов | `/var/www/recipe-photos` | Фото |
+| Заказы | `/var/www/orders` | История |
+| Выемки | `/var/www/withdrawals` | История |
+
+---
+
+### 30.3 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/admin/disk-info` | Информация о дисковом пространстве |
+| GET | `/api/admin/data-stats` | Статистика по категориям |
+| GET | `/api/admin/cleanup-preview` | Предварительный подсчёт удаляемых файлов |
+| POST | `/api/admin/cleanup` | Выполнить очистку |
+
+---
+
+### 30.4 Модель DiskInfo
+
+```dart
+class DiskInfo {
+  final int totalBytes;
+  final int usedBytes;
+  final int availableBytes;
+  final int usedPercent;
+
+  String get formattedTotal => _formatBytes(totalBytes);  // "50.0 GB"
+  String get formattedUsed => _formatBytes(usedBytes);    // "32.5 GB"
+  String get formattedAvailable => _formatBytes(availableBytes);
+}
+```
+
+---
+
+### 30.5 Поток очистки
+
+```mermaid
+sequenceDiagram
+    participant Admin as Администратор
+    participant Page as DataCleanupPage
+    participant Dialog as CleanupPeriodDialog
+    participant API as Server API
+
+    Admin->>Page: Открывает страницу
+    Page->>API: GET /api/admin/disk-info
+    Page->>API: GET /api/admin/data-stats
+    API-->>Page: DiskInfo + Categories
+
+    Admin->>Page: Выбирает категорию
+    Page->>Dialog: Открывает диалог
+    Admin->>Dialog: Выбирает период (30/60/90 дней)
+    Dialog->>API: GET /api/admin/cleanup-preview
+    API-->>Dialog: Количество файлов для удаления
+
+    Admin->>Dialog: Подтверждает
+    Dialog->>API: POST /api/admin/cleanup
+    API-->>Dialog: Успех / Ошибка
+    Dialog->>Page: Обновить статистику
+```
+
+---
+
+### 30.6 Критические файлы
+
+| Файл | Статус |
+|------|--------|
+| `lib/features/data_cleanup/services/cleanup_service.dart` | ✅ НЕ ТРОГАТЬ |
+| `loyalty-proxy/api/data_cleanup_api.js` | ✅ НЕ ТРОГАТЬ |
+
+**⚠️ ВАЖНО:** Очистка данных необратима! API требует подтверждения и делает preview перед удалением.
+
+---
+
+## 31. Снабжение - ПОСТАВЩИКИ (Suppliers)
+
+### 31.1 Обзор модуля
+
+**Назначение:** Управление базой поставщиков с привязкой к магазинам, днями доставки и ответственными заведующими. Интегрируется с циклическими задачами для автоматического создания задач по приёму товара.
+
+**Файлы модуля:**
+```
+lib/features/suppliers/
+├── models/
+│   └── supplier_model.dart          # Модель поставщика
+├── pages/
+│   └── suppliers_management_page.dart  # Управление поставщиками
+└── services/
+    └── supplier_service.dart        # API сервис
+```
+
+---
+
+### 31.2 Модель данных
+
+```dart
+class Supplier {
+  final String id;
+  final String name;              // Название компании
+  final String? inn;              // ИНН
+  final String? phone;            // Телефон
+  final String? email;            // Email
+  final String? contactPerson;    // Контактное лицо
+  final String legalType;         // 'ООО', 'ИП', 'АО'
+  final String paymentType;       // 'БезНал', 'Наличные'
+  final List<SupplierShopDelivery> shopDeliveries;  // Доставки по магазинам
+}
+
+class SupplierShopDelivery {
+  final String shopId;
+  final String shopName;
+  final List<String> days;        // ['Понедельник', 'Среда', 'Пятница']
+  final List<String>? managerIds; // ID ответственных заведующих
+  final List<String>? managerNames;
+}
+```
+
+---
+
+### 31.3 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/suppliers` | Получить всех поставщиков |
+| GET | `/api/suppliers/:id` | Получить поставщика по ID |
+| POST | `/api/suppliers` | Создать поставщика |
+| PUT | `/api/suppliers/:id` | Обновить поставщика |
+| DELETE | `/api/suppliers/:id` | Удалить поставщика |
+
+---
+
+### 31.4 Интеграция с циклическими задачами
+
+```mermaid
+flowchart LR
+    subgraph Suppliers["Поставщики"]
+        S[Supplier]
+        SD[SupplierShopDelivery]
+        S --> SD
+    end
+
+    subgraph Tasks["Циклические задачи"]
+        RT[RecurringTask]
+        RT --> |"type: supplier_delivery"| TA[TaskAssignment]
+    end
+
+    SD --> |"days + managerIds"| RT
+```
+
+При создании поставщика с днями доставки можно автоматически создать циклическую задачу для заведующих.
+
+---
+
+### 31.5 Серверные данные
+
+- `/var/www/suppliers/` - JSON файлы поставщиков
+
+---
+
+### 31.6 Критические файлы
+
+| Файл | Статус |
+|------|--------|
+| `lib/features/suppliers/services/supplier_service.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/suppliers/models/supplier_model.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/suppliers/pages/suppliers_management_page.dart` | ✅ НЕ ТРОГАТЬ |
+
+---
+
+## 32. Обучение - СТАТЬИ (Training)
+
+### 32.1 Обзор модуля
+
+**Назначение:** Система статей обучения для сотрудников. Поддерживает блочный контент (текст + изображения), фильтрацию по видимости (для всех / только заведующие), группировку по темам.
+
+**Файлы модуля:**
+```
+lib/features/training/
+├── models/
+│   ├── training_model.dart       # Модель статьи
+│   └── content_block.dart        # Модель блока контента
+├── pages/
+│   ├── training_page.dart                    # Список статей
+│   ├── training_article_view_page.dart       # Просмотр статьи
+│   ├── training_article_editor_page.dart     # Редактор (админ)
+│   └── training_articles_management_page.dart # Управление (админ)
+└── services/
+    └── training_article_service.dart  # API сервис
+```
+
+---
+
+### 32.2 Модель данных
+
+```dart
+class TrainingArticle {
+  final String id;
+  final String group;            // Группа/категория статьи
+  final String title;            // Заголовок
+  final String content;          // Простой текст (обратная совместимость)
+  final String? url;             // Внешняя ссылка (опционально)
+  final List<ContentBlock> contentBlocks;  // Блоки контента
+  final String visibility;       // 'all' или 'managers'
+
+  bool get hasContent => content.isNotEmpty || contentBlocks.isNotEmpty;
+  bool get hasBlocks => contentBlocks.isNotEmpty;
+  bool get hasUrl => url != null && url!.isNotEmpty;
+}
+
+class ContentBlock {
+  final String type;    // 'text' или 'image'
+  final String content; // Текст или URL изображения
+}
+```
+
+---
+
+### 32.3 Видимость статей
+
+| Visibility | Описание | Кто видит |
+|------------|----------|-----------|
+| `all` | Для всех сотрудников | Все |
+| `managers` | Только для заведующих | `employee.isManager == true` |
+
+```dart
+// Фильтрация в TrainingPage
+final filteredArticles = allArticles.where((article) {
+  if (article.visibility == 'managers') {
+    return _isManager;  // Только заведующие
+  }
+  return true;  // 'all' видят все
+}).toList();
+```
+
+---
+
+### 32.4 API Endpoints
+
+| Метод | Endpoint | Описание |
+|-------|----------|----------|
+| GET | `/api/training-articles` | Получить все статьи |
+| GET | `/api/training-articles/:id` | Получить статью по ID |
+| POST | `/api/training-articles` | Создать статью |
+| PUT | `/api/training-articles/:id` | Обновить статью |
+| DELETE | `/api/training-articles/:id` | Удалить статью |
+| POST | `/upload-training-image` | Загрузить изображение |
+
+---
+
+### 32.5 Блочный редактор
+
+```mermaid
+flowchart TB
+    subgraph Editor["Редактор статьи"]
+        Title[Заголовок]
+        Group[Группа]
+        Vis[Видимость]
+        Blocks[Блоки контента]
+    end
+
+    subgraph BlockTypes["Типы блоков"]
+        Text[Текстовый блок]
+        Image[Изображение]
+    end
+
+    Blocks --> Text
+    Blocks --> Image
+
+    subgraph Actions["Действия"]
+        Add[Добавить блок]
+        Reorder[Переупорядочить]
+        Delete[Удалить блок]
+    end
+
+    Blocks --> Add
+    Blocks --> Reorder
+    Blocks --> Delete
+```
+
+---
+
+### 32.6 Серверные данные
+
+- `/var/www/training-articles/` - JSON файлы статей
+- `/var/www/training-images/` - Изображения статей
+
+---
+
+### 32.7 Критические файлы
+
+| Файл | Статус |
+|------|--------|
+| `lib/features/training/models/training_model.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/training/services/training_article_service.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/training/pages/training_page.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/training/pages/training_article_view_page.dart` | ✅ НЕ ТРОГАТЬ |
+| `lib/features/training/pages/training_article_editor_page.dart` | ✅ НЕ ТРОГАТЬ |
+
+---
+
+## Следующие разделы (TODO)
 
 - [x] 1. Управление данными - МАГАЗИНЫ
 - [x] 2. Управление данными - СОТРУДНИКИ
@@ -15867,3 +16291,7 @@ Future<int> _calculateTotalCount() async {
 - [x] 26. Клиентский модуль - КАРТА ЛОЯЛЬНОСТИ И БОНУСЫ
 - [x] 27. Коммуникации - ЧАТ СОТРУДНИКОВ (Employee Chat)
 - [x] 28. Клиентский модуль - МОИ ДИАЛОГИ (Расширенная интеграция)
+- [x] 29. HR-модуль - ПРЕМИИ И ШТРАФЫ (Bonuses)
+- [x] 30. Администрирование - ОЧИСТКА ДАННЫХ (Data Cleanup)
+- [x] 31. Снабжение - ПОСТАВЩИКИ (Suppliers)
+- [x] 32. Обучение - СТАТЬИ (Training)

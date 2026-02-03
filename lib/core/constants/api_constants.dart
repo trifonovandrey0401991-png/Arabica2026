@@ -2,6 +2,10 @@ class ApiConstants {
   // URL
   static const String serverUrl = 'https://arabica26.ru';
 
+  // API Key для аутентификации (null = отключено)
+  // ВАЖНО: При включении API_KEY_ENABLED на сервере нужно установить этот ключ
+  static const String? apiKey = null; // Установить ключ когда сервер будет готов
+
   // Timeouts
   static const Duration shortTimeout = Duration(seconds: 10);
   static const Duration defaultTimeout = Duration(seconds: 15);
@@ -13,6 +17,15 @@ class ApiConstants {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
+
+  /// Получить заголовки с API ключом (если настроен)
+  static Map<String, String> get headersWithApiKey {
+    final headers = Map<String, String>.from(jsonHeaders);
+    if (apiKey != null && apiKey!.isNotEmpty) {
+      headers['X-API-Key'] = apiKey!;
+    }
+    return headers;
+  }
 
   // Endpoints - Core
   static const String attendanceEndpoint = '/api/attendance';

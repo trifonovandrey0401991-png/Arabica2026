@@ -57,6 +57,11 @@ class ShiftHandoverReport {
   final String? status; // "pending" | "confirmed" | "expired"
   final DateTime? expiredAt; // Когда был просрочен
 
+  // AI Verification - результаты проверки ИИ
+  final bool? aiVerificationPassed; // Прошла ли проверка ИИ (все товары найдены)
+  final bool? aiVerificationSkipped; // Была ли пропущена проверка ИИ
+  final List<Map<String, dynamic>>? aiShortages; // Недостачи выявленные ИИ
+
   ShiftHandoverReport({
     required this.id,
     required this.employeeName,
@@ -69,6 +74,9 @@ class ShiftHandoverReport {
     this.confirmedByAdmin,
     this.status,
     this.expiredAt,
+    this.aiVerificationPassed,
+    this.aiVerificationSkipped,
+    this.aiShortages,
   });
 
   /// Генерировать уникальный ID
@@ -90,6 +98,9 @@ class ShiftHandoverReport {
     'confirmedByAdmin': confirmedByAdmin,
     'status': status,
     'expiredAt': expiredAt?.toUtc().toIso8601String(),
+    if (aiVerificationPassed != null) 'aiVerificationPassed': aiVerificationPassed,
+    if (aiVerificationSkipped != null) 'aiVerificationSkipped': aiVerificationSkipped,
+    if (aiShortages != null) 'aiShortages': aiShortages,
   };
 
   /// Парсит дату из JSON, обрабатывая UTC и локальное время
@@ -118,6 +129,11 @@ class ShiftHandoverReport {
     status: json['status'],
     expiredAt: json['expiredAt'] != null
         ? _parseDateTime(json['expiredAt'])
+        : null,
+    aiVerificationPassed: json['aiVerificationPassed'],
+    aiVerificationSkipped: json['aiVerificationSkipped'],
+    aiShortages: json['aiShortages'] != null
+        ? List<Map<String, dynamic>>.from(json['aiShortages'])
         : null,
   );
 
@@ -157,6 +173,9 @@ class ShiftHandoverReport {
     String? confirmedByAdmin,
     String? status,
     DateTime? expiredAt,
+    bool? aiVerificationPassed,
+    bool? aiVerificationSkipped,
+    List<Map<String, dynamic>>? aiShortages,
   }) {
     return ShiftHandoverReport(
       id: id,
@@ -170,6 +189,9 @@ class ShiftHandoverReport {
       confirmedByAdmin: confirmedByAdmin ?? this.confirmedByAdmin,
       status: status ?? this.status,
       expiredAt: expiredAt ?? this.expiredAt,
+      aiVerificationPassed: aiVerificationPassed ?? this.aiVerificationPassed,
+      aiVerificationSkipped: aiVerificationSkipped ?? this.aiVerificationSkipped,
+      aiShortages: aiShortages ?? this.aiShortages,
     );
   }
 

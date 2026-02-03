@@ -210,6 +210,20 @@ class WorkScheduleService {
     }
   }
 
+  /// Удалить шаблон
+  static Future<bool> deleteTemplate(String templateId) async {
+    try {
+      Logger.debug('Удаление шаблона: $templateId');
+
+      return await BaseHttpService.delete(
+        endpoint: '$_baseEndpoint/template/$templateId',
+      );
+    } catch (e) {
+      Logger.error('Ошибка удаления шаблона', e);
+      return false;
+    }
+  }
+
   /// Получить список шаблонов
   static Future<List<ScheduleTemplate>> getTemplates() async {
     try {

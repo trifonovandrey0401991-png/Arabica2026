@@ -13,804 +13,261 @@ import '../../features/tasks/pages/task_management_page.dart';
 import '../../features/bonuses/pages/bonus_penalty_management_page.dart';
 import '../../features/data_cleanup/pages/data_cleanup_page.dart';
 import '../../features/work_schedule/pages/work_schedule_page.dart';
+import '../../features/ai_training/pages/ai_training_page.dart';
 
 /// Страница управления данными (только для администраторов)
 class DataManagementPage extends StatelessWidget {
   const DataManagementPage({super.key});
 
+  // ═══════════════════════════════════════════════════════════════
+  // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - как в главном меню
+  // ═══════════════════════════════════════════════════════════════
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Управление данными'),
-        backgroundColor: const Color(0xFF004D40),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                  children: [
+                    _buildRow(
+                      icon: Icons.storefront_outlined,
+                      title: 'Магазины',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ShopsManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.people_outline_rounded,
+                      title: 'Сотрудники',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const EmployeesPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.calendar_month_outlined,
+                      title: 'График работы',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WorkSchedulePage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.swap_horiz_rounded,
+                      title: 'Вопросы пересменки',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ShiftQuestionsManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.calculate_outlined,
+                      title: 'Вопросы пересчёта',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RecountManagementTabsPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.quiz_outlined,
+                      title: 'Вопросы тестирования',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TestQuestionsManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.check_circle_outline_rounded,
+                      title: 'Вопросы (Сдать смену)',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ShiftHandoverQuestionsManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.menu_book_outlined,
+                      title: 'Статьи обучения',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TrainingArticlesManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.groups_outlined,
+                      title: 'Клиенты',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ClientsManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.local_shipping_outlined,
+                      title: 'Поставщики',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SuppliersManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.stars_outlined,
+                      title: 'Установка баллов',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PointsSettingsPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.task_alt_outlined,
+                      title: 'Установить задачи',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TaskManagementPage(createdBy: 'admin')),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Премия / Штрафы',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BonusPenaltyManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.psychology_outlined,
+                      title: 'Обучение ИИ',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AITrainingPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.delete_sweep_outlined,
+                      title: 'Очистка историй',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const DataCleanupPage()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 24, 16),
+      child: Row(
         children: [
-          _buildShopsSection(
-            context,
-            title: 'Магазины',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ShopsManagementPage(),
-                ),
-              );
-            },
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white.withOpacity(0.8),
+              size: 22,
+            ),
           ),
-          const SizedBox(height: 8),
-          _buildEmployeesSection(
-            context,
-            title: 'Сотрудники',
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const EmployeesPage()),
-              );
-              // Обновляем страницу после возврата (на случай, если были изменения)
-              if (context.mounted) {
-                // Можно добавить обновление данных, если нужно
-              }
-            },
+          const Expanded(
+            child: Text(
+              'Управление',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1,
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          _buildScheduleSection(
-            context,
-            title: 'График работы',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const WorkSchedulePage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildShiftHandoverSection(
-            context,
-            title: 'Вопросы пересменки',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ShiftQuestionsManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildRecountSection(
-            context,
-            title: 'Вопросы пересчета',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RecountManagementTabsPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildTestQuestionsSection(
-            context,
-            title: 'Вопросы тестирования',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TestQuestionsManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildShiftCompleteSection(
-            context,
-            title: 'Вопросы (Сдать Смену)',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ShiftHandoverQuestionsManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildTrainingSection(
-            context,
-            title: 'Статьи обучения',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TrainingArticlesManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildClientsSection(
-            context,
-            title: 'Клиенты',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ClientsManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSuppliersSection(
-            context,
-            title: 'Поставщики',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SuppliersManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildPointsSection(
-            context,
-            title: 'Установка баллов',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PointsSettingsPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildTaskSection(
-            context,
-            title: 'Установить Задачи',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TaskManagementPage(createdBy: 'admin'),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Премия/Штрафы',
-            icon: Icons.monetization_on,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BonusPenaltyManagementPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildAITrainingSection(
-            context,
-            title: 'Вопросы Для Обучения ИИ',
-            onTap: () {
-              // TODO: Логика будет добавлена позже
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Функционал в разработке')),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _buildSection(
-            context,
-            title: 'Очистка Историй',
-            icon: Icons.cleaning_services,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DataCleanupPage(),
-                ),
-              );
-            },
-          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
   }
 
-  Widget _buildSection(
-    BuildContext context, {
-    required String title,
+  /// Минималистичная строка меню
+  Widget _buildRow({
     required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 2,
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF004D40)),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  /// Кнопка сдачи смены с кастомной иконкой
-  Widget _buildShiftCompleteSection(
-    BuildContext context, {
     required String title,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/shift_complete_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.white.withOpacity(0.05),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+            ),
+            child: Row(
+              children: [
+                // Иконка
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withOpacity(0.1),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white.withOpacity(0.85),
+                    size: 22,
                   ),
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+                const SizedBox(width: 14),
 
-  /// Кнопка пересменки с кастомной иконкой
-  Widget _buildShiftHandoverSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/shift_handover_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
+                // Название
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  /// Кнопка обучения ИИ с кастомной иконкой
-  Widget _buildAITrainingSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/ai_training_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
+                // Стрелка
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white.withOpacity(0.4),
+                  size: 24,
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка "Статьи обучения" с кастомной иконкой
-  Widget _buildTrainingSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/training_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка задач с кастомной иконкой чеклиста
-  Widget _buildTaskSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/tasks_checklist_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка магазинов с кастомной иконкой
-  Widget _buildShopsSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/shops_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка вопросов тестирования с кастомной иконкой
-  Widget _buildTestQuestionsSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/testing_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка установки баллов с кастомной иконкой
-  Widget _buildPointsSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/points_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка пересчета с кастомной иконкой
-  Widget _buildRecountSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/recount_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка клиентов с кастомной иконкой
-  Widget _buildClientsSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/clients_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка сотрудников с кастомной иконкой
-  Widget _buildEmployeesSection(
-    BuildContext context, {
-    required String title,
-    required Future<void> Function() onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/employees_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка поставщиков с кастомной иконкой
-  Widget _buildSuppliersSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/supplier_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Кнопка графика работы с кастомной иконкой
-  Widget _buildScheduleSection(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'assets/images/schedule_icon.png',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF004D40),
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Color(0xFF004D40)),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -24,6 +24,11 @@ class ChatWebSocketService {
   Timer? _reconnectTimer;
   Timer? _pingTimer;
 
+  // BUG-003 fix: Reconnection logic with exponential backoff
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 10;
+  static const Duration _baseReconnectDelay = Duration(seconds: 2);
+
   // Stream controllers для событий
   final _newMessageController = StreamController<ChatWebSocketNewMessage>.broadcast();
   final _typingController = StreamController<ChatWebSocketTyping>.broadcast();
@@ -71,6 +76,7 @@ class ChatWebSocketService {
 
       _isConnected = true;
       _connectionStatusController.add(true);
+      _resetReconnectAttempts(); // BUG-003 fix: reset counter on successful connection
 
       // Запускаем ping для поддержания соединения
       _startPing();
@@ -279,12 +285,31 @@ class ChatWebSocketService {
 
   void _scheduleReconnect() {
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+
+    // BUG-003 fix: Limit reconnection attempts
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      Logger.error('WebSocket: максимальное количество попыток переподключения ($_maxReconnectAttempts) исчерпано');
+      return;
+    }
+
+    // Exponential backoff: 2s, 4s, 8s, 16s, 32s, max 60s
+    final delay = Duration(
+      seconds: (_baseReconnectDelay.inSeconds * (1 << _reconnectAttempts)).clamp(2, 60),
+    );
+
+    _reconnectAttempts++;
+    Logger.debug('WebSocket: попытка переподключения $_reconnectAttempts/$_maxReconnectAttempts через ${delay.inSeconds}с');
+
+    _reconnectTimer = Timer(delay, () {
       if (_userPhone != null && !_isConnected) {
-        Logger.debug('WebSocket: попытка переподключения...');
         connect(_userPhone!);
       }
     });
+  }
+
+  /// Сбросить счётчик переподключений (вызывать при успешном подключении)
+  void _resetReconnectAttempts() {
+    _reconnectAttempts = 0;
   }
 
   void _startPing() {

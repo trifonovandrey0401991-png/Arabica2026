@@ -86,6 +86,14 @@ class CigaretteProduct {
   final int shopsWithAiReady;
   final int totalShops;
 
+  // НОВОЕ: Статистика точности распознавания ИИ
+  final int? displayAccuracy;      // Процент точности выкладки (0-100 или null если нет данных)
+  final int displayAttempts;       // Кол-во попыток распознавания выкладки
+  final int displaySuccesses;      // Кол-во успешных распознаваний выкладки
+  final int? countingAccuracy;     // Процент точности пересчёта (0-100 или null если нет данных)
+  final int countingAttempts;      // Кол-во попыток распознавания при пересчёте
+  final int countingSuccesses;     // Кол-во успешных распознаваний при пересчёте
+
   CigaretteProduct({
     required this.id,
     required this.barcode,
@@ -114,6 +122,13 @@ class CigaretteProduct {
     this.requiredDisplayPhotosPerShop = 3,
     this.shopsWithAiReady = 0,
     this.totalShops = 0,
+    // Статистика точности ИИ
+    this.displayAccuracy,
+    this.displayAttempts = 0,
+    this.displaySuccesses = 0,
+    this.countingAccuracy,
+    this.countingAttempts = 0,
+    this.countingSuccesses = 0,
   });
 
   factory CigaretteProduct.fromJson(Map<String, dynamic> json) {
@@ -162,6 +177,13 @@ class CigaretteProduct {
       requiredDisplayPhotosPerShop: json['requiredDisplayPhotosPerShop'] ?? 3,
       shopsWithAiReady: json['shopsWithAiReady'] ?? 0,
       totalShops: json['totalShops'] ?? 0,
+      // Статистика точности ИИ
+      displayAccuracy: json['displayAccuracy'] as int?,
+      displayAttempts: json['displayAttempts'] ?? 0,
+      displaySuccesses: json['displaySuccesses'] ?? 0,
+      countingAccuracy: json['countingAccuracy'] as int?,
+      countingAttempts: json['countingAttempts'] ?? 0,
+      countingSuccesses: json['countingSuccesses'] ?? 0,
     );
   }
 
@@ -193,6 +215,13 @@ class CigaretteProduct {
     'requiredDisplayPhotosPerShop': requiredDisplayPhotosPerShop,
     'shopsWithAiReady': shopsWithAiReady,
     'totalShops': totalShops,
+    // Статистика точности ИИ
+    'displayAccuracy': displayAccuracy,
+    'displayAttempts': displayAttempts,
+    'displaySuccesses': displaySuccesses,
+    'countingAccuracy': countingAccuracy,
+    'countingAttempts': countingAttempts,
+    'countingSuccesses': countingSuccesses,
   };
 
   /// Получить статистику для конкретного магазина
