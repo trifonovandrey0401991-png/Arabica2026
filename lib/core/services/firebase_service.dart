@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart' if (dart.library.htm
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -26,11 +27,14 @@ import 'package:firebase_core/firebase_core.dart' as firebase_core;
 /// Сервис для работы с Firebase Cloud Messaging (FCM)
 class FirebaseService {
   static FirebaseMessaging? _messaging;
-  static final FlutterLocalNotificationsPlugin _localNotifications = 
+  static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
   static bool _initialized = false;
   static BuildContext? _globalContext;
+
+  /// Флаг для предотвращения повторного показа диалога блокировки
+  static bool _verificationRevokedDialogShown = false;
   
   /// Получить экземпляр FirebaseMessaging (ленивая инициализация)
   static FirebaseMessaging _getMessaging() {
@@ -225,6 +229,15 @@ class FirebaseService {
     try {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         Logger.debug('Получено сообщение в foreground: ${message.notification?.title}');
+
+        // Проверяем тип уведомления - если верификация отозвана, сразу показываем диалог
+        final type = message.data['type'] as String?;
+        if (type == 'verification_revoked') {
+          Logger.debug('Получено уведомление об отзыве верификации в foreground');
+          _showVerificationRevokedDialog();
+          return;
+        }
+
         _showLocalNotification(message);
       });
     } catch (e) {
@@ -510,11 +523,74 @@ class FirebaseService {
     }
   }
 
+  /// Показать блокирующий диалог при отзыве верификации
+  static void _showVerificationRevokedDialog() {
+    if (_globalContext == null || _verificationRevokedDialogShown) return;
+
+    _verificationRevokedDialogShown = true;
+    Logger.debug('Показываем диалог блокировки - верификация отозвана');
+
+    showDialog(
+      context: _globalContext!,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          icon: const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 48,
+          ),
+          title: const Text(
+            'Верификация отозвана',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Ваша верификация была отозвана администратором.\n\n'
+            'Для продолжения работы необходимо перезапустить приложение.',
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Закрываем приложение (на Android/iOS)
+                  // SystemNavigator.pop() корректно закрывает приложение
+                  SystemNavigator.pop();
+                },
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Перезапустить приложение'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004D40),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Навигация к диалогу при открытии уведомления
   static void _handleNotificationNavigation(Map<String, dynamic> data) {
     if (_globalContext == null) return;
 
     final type = data['type'] as String?;
+
+    // Обработка уведомления об отзыве верификации - показываем блокирующий диалог
+    if (type == 'verification_revoked') {
+      _showVerificationRevokedDialog();
+      return;
+    }
 
     // Обработка уведомлений о новом заказе (для сотрудников)
     if (type == 'new_order') {

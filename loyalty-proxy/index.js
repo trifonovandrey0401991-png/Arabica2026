@@ -1627,7 +1627,24 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     
     fs.writeFileSync(registrationFile, JSON.stringify(registration, null, 2), 'utf8');
     console.log('Статус верификации обновлен:', registrationFile);
-    
+
+    // Если верификация снята - отправляем push уведомление сотруднику
+    // чтобы приложение заблокировалось и потребовало перезапуск
+    if (!isVerified) {
+      try {
+        await sendPushToPhone(
+          phone,
+          'Верификация отозвана',
+          'Ваша верификация была отозвана администратором. Пожалуйста, перезапустите приложение.',
+          { type: 'verification_revoked' }
+        );
+        console.log('Push-уведомление о снятии верификации отправлено:', phone);
+      } catch (pushError) {
+        console.error('Ошибка отправки push при снятии верификации:', pushError);
+        // Не блокируем основную операцию из-за ошибки push
+      }
+    }
+
     res.json({
       success: true,
       message: isVerified ? 'Сотрудник верифицирован' : 'Верификация снята'
