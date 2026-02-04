@@ -5,11 +5,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const EMPLOYEES_DIR = '/var/www/employees';
-const CLIENTS_DIR = '/var/www/clients';
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const REFERRALS_VIEWED_FILE = '/var/www/referrals-viewed.json';
-const REFERRALS_CACHE_FILE = '/var/www/cache/referral-stats/stats.json';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const CLIENTS_DIR = `${DATA_DIR}/clients`;
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const REFERRALS_VIEWED_FILE = `${DATA_DIR}/referrals-viewed.json`;
+const REFERRALS_CACHE_FILE = `${DATA_DIR}/cache/referral-stats/stats.json`;
 const CACHE_VALIDITY_MINUTES = 5; // Кэш актуален 5 минут
 
 // Создаем директории если нет
@@ -289,7 +291,7 @@ function countUnviewedReferrals(clients, employees, lastViewedAt) {
 // =====================================================
 
 const DAILY_REFERRAL_LIMIT = 20; // Максимум приглашений в день от одного сотрудника
-const ANTIFRAUD_LOG_FILE = '/var/www/logs/referral-antifraud.log';
+const ANTIFRAUD_LOG_FILE = `${DATA_DIR}/logs/referral-antifraud.log`;
 
 // Проверка лимита приглашений для referralCode
 function checkReferralLimit(referralCode) {

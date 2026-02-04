@@ -48,12 +48,20 @@ nul
 # MCP config with API keys
 .mcp.json
 
+# Temporary images in root (design files, screenshots)
+/*.jpg
+/*.png
+/*.jpeg
+
 # Файл с паролями (НЕ КОММИТИТЬ!)
 START.md
 
 # Node modules (не нужны в репозитории)
 loyalty-proxy/node_modules/
 dbf-sync-agent/node_modules/
+
+# Local test data (для локального тестирования сервера)
+loyalty-proxy/test-data/
 
 # Конфигурации с секретами
 dbf-sync-agent/config.json
@@ -72,3 +80,10 @@ TOV.DBF
 
 # Прочие временные файлы
 TEST_PROGRESS.md
+
+# Release signing (КРИТИЧЕСКИ ВАЖНО - НЕ КОММИТИТЬ!)
+android/key.properties
+android/*.jks
+android/*.keystore
+*.jks
+*.keystore

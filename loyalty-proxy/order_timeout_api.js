@@ -7,11 +7,13 @@ const path = require('path');
 const { sendPushNotification } = require('./report_notifications_api');
 
 // Директории
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
-const ORDERS_DIR = '/var/www/orders';
-const ATTENDANCE_DIR = '/var/www/attendance';
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const ORDERS_DIR = `${DATA_DIR}/orders`;
+const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 
 // Файл настроек заказов
 const ORDER_SETTINGS_FILE = path.join(POINTS_SETTINGS_DIR, 'orders.json');

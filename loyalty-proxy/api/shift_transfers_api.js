@@ -2,8 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const { isAdminPhone } = require('../utils/admin_cache');
 
-const SHIFT_TRANSFERS_FILE = '/var/www/shift-transfers.json';
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const SHIFT_TRANSFERS_FILE = `${DATA_DIR}/shift-transfers.json`;
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 
 // Импорт модуля уведомлений
 const {

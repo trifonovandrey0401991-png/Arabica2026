@@ -5,7 +5,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const JOB_APPLICATIONS_DIR = '/var/www/job-applications';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const JOB_APPLICATIONS_DIR = `${DATA_DIR}/job-applications`;
 
 // Нормализация телефонного номера (убираем все кроме цифр и +)
 function normalizePhone(phone) {
@@ -64,11 +66,11 @@ async function sendPushToAdmins(title, body) {
     }
 
     // Получаем список админов из employees
-    const employeesDir = '/var/www/employees';
+    const employeesDir = `${DATA_DIR}/employees`;
     if (!fs.existsSync(employeesDir)) return;
 
     const files = fs.readdirSync(employeesDir);
-    const fcmTokensDir = '/var/www/fcm-tokens';
+    const fcmTokensDir = `${DATA_DIR}/fcm-tokens`;
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;

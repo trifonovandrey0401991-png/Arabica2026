@@ -25,13 +25,15 @@ try {
 }
 
 // Directories
-const RKO_REPORTS_DIR = '/var/www/rko-reports';
-const RKO_PENDING_DIR = '/var/www/rko-pending';
-const SHOPS_DIR = '/var/www/shops';
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const RKO_AUTOMATION_STATE_DIR = '/var/www/rko-automation-state';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const RKO_REPORTS_DIR = `${DATA_DIR}/rko-reports`;
+const RKO_PENDING_DIR = `${DATA_DIR}/rko-pending`;
+const SHOPS_DIR = `${DATA_DIR}/shops`;
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const RKO_AUTOMATION_STATE_DIR = `${DATA_DIR}/rko-automation-state`;
 const STATE_FILE = path.join(RKO_AUTOMATION_STATE_DIR, 'state.json');
 
 // Constants

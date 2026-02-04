@@ -12,6 +12,8 @@ const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
 const { preloadAdminCache, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
 
 // ============================================
 // SECURITY: Global Error Handlers
@@ -270,7 +272,7 @@ if (rateLimit) {
 }
 
 // Статические файлы для редактора координат
-app.use('/static', express.static('/var/www/html'));
+app.use('/static', express.static(`${DATA_DIR}/html`));
 
 // ============================================
 // SECURITY: File Type Validation для всех uploads
@@ -325,7 +327,7 @@ function isPathSafe(baseDir, filePath) {
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/shift-photos';
+    const uploadDir = `${DATA_DIR}/shift-photos`;
     // Создаем директорию, если её нет
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -352,7 +354,7 @@ const upload = multer({
 // Настройка multer для загрузки эталонных фото сдачи смены
 const shiftHandoverPhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/shift-handover-question-photos';
+    const uploadDir = `${DATA_DIR}/shift-handover-question-photos`;
     // Создаем директорию, если её нет
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -377,7 +379,7 @@ const uploadShiftHandoverPhoto = multer({
 // Настройка multer для загрузки фото вопросов о товарах
 const productQuestionPhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/product-question-photos';
+    const uploadDir = `${DATA_DIR}/product-question-photos`;
     // Создаем директорию, если её нет
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -402,7 +404,7 @@ const uploadProductQuestionPhoto = multer({
 // Настройка multer для загрузки медиа в чате
 const chatMediaStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = '/var/www/chat-media';
+    const uploadDir = `${DATA_DIR}/chat-media`;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -522,7 +524,7 @@ app.post('/api/recount-reports', async (req, res) => {
 
     if (shiftType) {
       // Загружаем настройки пересчёта
-      const settingsFile = '/var/www/points-settings/recount_points_settings.json';
+      const settingsFile = `${DATA_DIR}/points-settings/recount_points_settings.json`;
       let recountSettings = {
         morningStartTime: '08:00',
         morningEndTime: '14:00',
@@ -572,7 +574,7 @@ app.post('/api/recount-reports', async (req, res) => {
     // ============================================
     // Сохранение отчёта
     // ============================================
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = `${DATA_DIR}/recount-reports`;
     if (!fs.existsSync(reportsDir)) {
       fs.mkdirSync(reportsDir, { recursive: true });
     }
@@ -584,7 +586,7 @@ app.post('/api/recount-reports', async (req, res) => {
 
     // Загружаем настройки для вычисления reviewDeadline
     let adminReviewTimeout = 2; // часы по умолчанию
-    const settingsFile = '/var/www/points-settings/recount_points_settings.json';
+    const settingsFile = `${DATA_DIR}/points-settings/recount_points_settings.json`;
     if (fs.existsSync(settingsFile)) {
       try {
         const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
@@ -655,7 +657,7 @@ app.get('/api/recount-reports', async (req, res) => {
   try {
     console.log('GET /api/recount-reports:', req.query);
     
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = `${DATA_DIR}/recount-reports`;
     const reports = [];
     
     // Читаем отчеты из локальной директории
@@ -716,7 +718,7 @@ app.get('/api/recount-reports/expired', async (req, res) => {
   try {
     console.log('GET /api/recount-reports/expired');
 
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = `${DATA_DIR}/recount-reports`;
     const reports = [];
 
     if (fs.existsSync(reportsDir)) {
@@ -761,7 +763,7 @@ app.get('/api/pending-recount-reports', async (req, res) => {
   try {
     console.log('GET /api/pending-recount-reports');
 
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = `${DATA_DIR}/recount-reports`;
     const reports = [];
 
     if (fs.existsSync(reportsDir)) {
@@ -812,7 +814,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     console.log(`POST /api/recount-reports/${reportId}/rating:`, req.body);
     console.log(`Санитизированный ID: ${sanitizedId}`);
 
-    const reportsDir = '/var/www/recount-reports';
+    const reportsDir = `${DATA_DIR}/recount-reports`;
     let reportFile = path.join(reportsDir, `${sanitizedId}.json`);
     let actualFile = reportFile;
 
@@ -844,7 +846,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     console.log('✅ Оценка сохранена для отчета:', reportId);
 
     // Загружаем настройки баллов пересчёта
-    const settingsFile = '/var/www/points-settings/recount_points_settings.json';
+    const settingsFile = `${DATA_DIR}/points-settings/recount_points_settings.json`;
     let settings = {
       minPoints: -3,
       zeroThreshold: 7,
@@ -865,7 +867,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const today = now.toISOString().split('T')[0];
-    const efficiencyDir = '/var/www/efficiency-penalties';
+    const efficiencyDir = `${DATA_DIR}/efficiency-penalties`;
 
     if (!fs.existsSync(efficiencyDir)) {
       fs.mkdirSync(efficiencyDir, { recursive: true });
@@ -944,8 +946,8 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 });
 
 // Статическая раздача фото
-app.use('/shift-photos', express.static('/var/www/shift-photos'));
-app.use('/product-question-photos', express.static('/var/www/product-question-photos'));
+app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
+app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
 
 // ============================================
 // Вспомогательные функции для проверки времени смены
@@ -954,7 +956,7 @@ app.use('/product-question-photos', express.static('/var/www/product-question-ph
 // Загрузить настройки магазина
 function loadShopSettings(shopAddress) {
   try {
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = `${DATA_DIR}/shop-settings`;
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
 
@@ -974,7 +976,7 @@ function loadShopSettings(shopAddress) {
 // Загрузить настройки баллов за attendance
 function loadAttendancePointsSettings() {
   try {
-    const settingsFile = '/var/www/points-settings/attendance.json';
+    const settingsFile = `${DATA_DIR}/points-settings/attendance.json`;
 
     if (!fs.existsSync(settingsFile)) {
       console.log('Настройки баллов attendance не найдены, используются значения по умолчанию');
@@ -1111,7 +1113,7 @@ function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
     };
 
     // Сохраняем в файл штрафов
-    const penaltiesDir = '/var/www/efficiency-penalties';
+    const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
     if (!fs.existsSync(penaltiesDir)) {
       fs.mkdirSync(penaltiesDir, { recursive: true });
     }
@@ -1168,7 +1170,7 @@ function createOnTimeBonus(employeeName, shopAddress, shiftType) {
     };
 
     // Сохраняем в файл бонусов
-    const penaltiesDir = '/var/www/efficiency-penalties';
+    const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
     if (!fs.existsSync(penaltiesDir)) {
       fs.mkdirSync(penaltiesDir, { recursive: true });
     }
@@ -1208,7 +1210,7 @@ app.post('/api/attendance', async (req, res) => {
       });
     }
 
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = `${DATA_DIR}/attendance`;
     if (!fs.existsSync(attendanceDir)) {
       fs.mkdirSync(attendanceDir, { recursive: true });
     }
@@ -1290,7 +1292,7 @@ app.post('/api/attendance/confirm-shift', async (req, res) => {
       });
     }
 
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = `${DATA_DIR}/attendance`;
     const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const recordFile = path.join(attendanceDir, `${sanitizedId}.json`);
 
@@ -1364,7 +1366,7 @@ app.get('/api/attendance/check', async (req, res) => {
       return res.json({ success: true, hasAttendance: false });
     }
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = `${DATA_DIR}/attendance`;
     if (!fs.existsSync(attendanceDir)) {
       return res.json({ success: true, hasAttendance: false });
     }
@@ -1404,7 +1406,7 @@ app.get('/api/attendance', async (req, res) => {
   try {
     console.log('GET /api/attendance:', req.query);
     
-    const attendanceDir = '/var/www/attendance';
+    const attendanceDir = `${DATA_DIR}/attendance`;
     const records = [];
     
     if (fs.existsSync(attendanceDir)) {
@@ -1461,7 +1463,7 @@ app.get('/api/attendance', async (req, res) => {
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = '/var/www/employee-photos';
+    const uploadDir = `${DATA_DIR}/employee-photos`;
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -1508,7 +1510,7 @@ app.post('/api/employee-registration', async (req, res) => {
   try {
     console.log('POST /api/employee-registration:', JSON.stringify(req.body).substring(0, 200));
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = `${DATA_DIR}/employee-registrations`;
     if (!fs.existsSync(registrationDir)) {
       fs.mkdirSync(registrationDir, { recursive: true });
     }
@@ -1565,7 +1567,7 @@ app.get('/api/employee-registration/:phone', async (req, res) => {
     const phone = decodeURIComponent(req.params.phone);
     console.log('GET /api/employee-registration:', phone);
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = `${DATA_DIR}/employee-registrations`;
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
@@ -1593,7 +1595,7 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     const { isVerified, verifiedBy } = req.body;
     console.log('POST /api/employee-registration/:phone/verify:', phone, isVerified);
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = `${DATA_DIR}/employee-registrations`;
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
@@ -1665,7 +1667,7 @@ app.get('/api/employee-registrations', async (req, res) => {
   try {
     console.log('GET /api/employee-registrations');
     
-    const registrationDir = '/var/www/employee-registrations';
+    const registrationDir = `${DATA_DIR}/employee-registrations`;
     const registrations = [];
     
     if (fs.existsSync(registrationDir)) {
@@ -1702,7 +1704,7 @@ app.get('/api/employee-registrations', async (req, res) => {
 
 // ========== API для сотрудников ==========
 
-const EMPLOYEES_DIR = '/var/www/employees';
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
 // GET /api/employees - получить всех сотрудников
 app.get('/api/employees', (req, res) => {
@@ -1969,7 +1971,7 @@ app.delete('/api/employees/:id', (req, res) => {
 
 // ========== API для магазинов ==========
 
-const SHOPS_DIR = '/var/www/shops';
+const SHOPS_DIR = `${DATA_DIR}/shops`;
 
 // Дефолтные магазины (создаются при первом запуске)
 const DEFAULT_SHOPS = [
@@ -2129,7 +2131,7 @@ app.get('/api/shop-settings/:shopAddress', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('GET /api/shop-settings:', shopAddress);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = `${DATA_DIR}/shop-settings`;
     if (!fs.existsSync(settingsDir)) {
       fs.mkdirSync(settingsDir, { recursive: true });
     }
@@ -2163,7 +2165,7 @@ app.post('/api/shop-settings', async (req, res) => {
     console.log('📝 POST /api/shop-settings');
     console.log('   Тело запроса:', JSON.stringify(req.body, null, 2));
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = `${DATA_DIR}/shop-settings`;
     console.log('   Проверка директории:', settingsDir);
     
     if (!fs.existsSync(settingsDir)) {
@@ -2275,7 +2277,7 @@ app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('GET /api/shop-settings/:shopAddress/document-number:', shopAddress);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = `${DATA_DIR}/shop-settings`;
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
     
@@ -2314,7 +2316,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
     const { documentNumber } = req.body;
     console.log('POST /api/shop-settings/:shopAddress/document-number:', shopAddress, documentNumber);
     
-    const settingsDir = '/var/www/shop-settings';
+    const settingsDir = `${DATA_DIR}/shop-settings`;
     if (!fs.existsSync(settingsDir)) {
       fs.mkdirSync(settingsDir, { recursive: true });
     }
@@ -2352,7 +2354,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
 
 // ========== API для РКО отчетов ==========
 
-const rkoReportsDir = '/var/www/rko-reports';
+const rkoReportsDir = `${DATA_DIR}/rko-reports`;
 const rkoMetadataFile = path.join(rkoReportsDir, 'rko_metadata.json');
 
 // Инициализация директорий для РКО
@@ -3175,11 +3177,11 @@ app.post('/api/attendance/gps-check', async (req, res) => {
     // 3. Проверяем расписание - есть ли смена сегодня на этом магазине
     const today = new Date().toISOString().split('T')[0];
     const monthKey = today.substring(0, 7); // YYYY-MM
-    const scheduleFile = path.join('/var/www/work-schedules', `${monthKey}.json`);
+    const scheduleFile = path.join(`${DATA_DIR}/work-schedules`, `${monthKey}.json`);
 
     // Сначала ищем сотрудника по телефону в базе employees
     let employeeId = null;
-    const employeesDir = '/var/www/employees';
+    const employeesDir = `${DATA_DIR}/employees`;
     try {
       const empFiles = fs.readdirSync(employeesDir).filter(f => f.endsWith('.json'));
       for (const file of empFiles) {
@@ -3283,47 +3285,47 @@ app.post('/api/attendance/gps-check', async (req, res) => {
 
 // Endpoint для редактора координат
 app.get('/rko_coordinates_editor.html', (req, res) => {
-  res.sendFile('/var/www/html/rko_coordinates_editor.html');
+  res.sendFile(`${DATA_DIR}/html/rko_coordinates_editor.html`);
 });
 
 // Endpoint для координат HTML
 app.get('/coordinates.html', (req, res) => {
-  res.sendFile('/var/www/html/coordinates.html');
+  res.sendFile(`${DATA_DIR}/html/coordinates.html`);
 });
 
 // Endpoint для тестового PDF
 app.get('/test_rko_corrected.pdf', (req, res) => {
-  res.sendFile('/var/www/html/test_rko_corrected.pdf');
+  res.sendFile(`${DATA_DIR}/html/test_rko_corrected.pdf`);
 });
 
 // Endpoint для изображения шаблона
 app.get('/rko_template.jpg', (req, res) => {
-  res.sendFile('/var/www/html/rko_template.jpg');
+  res.sendFile(`${DATA_DIR}/html/rko_template.jpg`);
 });
 
 // Endpoint для финального тестового PDF
 app.get('/test_rko_final.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile('/var/www/html/test_rko_final.pdf');
+  res.sendFile(`${DATA_DIR}/html/test_rko_final.pdf`);
 });
 
 // Endpoint для нового тестового PDF с исправленными координатами
 app.get('/test_rko_new_coords.pdf', (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
-  res.sendFile('/var/www/html/test_rko_new_coords.pdf');
+  res.sendFile(`${DATA_DIR}/html/test_rko_new_coords.pdf`);
 });
 
 // Endpoint для тестового РКО КО-2 с фиксированными высотами
 app.get('/test_rko_ko2_fixed.docx', (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', 'inline; filename="test_rko_ko2_fixed.docx"');
-  res.sendFile('/var/www/html/test_rko_ko2_fixed.docx');
+  res.sendFile(`${DATA_DIR}/html/test_rko_ko2_fixed.docx`);
 });
 
 // ==================== API для выемок (главная касса) ====================
 
-const WITHDRAWALS_DIR = '/var/www/withdrawals';
-const MAIN_CASH_DIR = '/var/www/main_cash';
+const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
+const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;
 
 // Создаем директории, если их нет
 if (!fs.existsSync(WITHDRAWALS_DIR)) {
@@ -3363,7 +3365,7 @@ function loadAllEmployeesForWithdrawals() {
 function getFCMTokenByPhoneForWithdrawals(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, "");
-    const FCM_TOKENS_DIR = "/var/www/fcm-tokens";
+    const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
     const path = require("path");
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
@@ -3381,7 +3383,7 @@ function getFCMTokenByPhoneForWithdrawals(phone) {
 
 // Получить FCM токены пользователей для уведомлений о выемках
 function getFCMTokensForWithdrawalNotifications(phones) {
-  const FCM_TOKENS_DIR = "/var/www/fcm-tokens";
+  const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
   
   if (!fs.existsSync(FCM_TOKENS_DIR)) {
     console.log("⚠️  Папка FCM токенов не существует");
@@ -3764,8 +3766,8 @@ app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
 
 // ==================== API для графика работы ====================
 
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const WORK_SCHEDULE_TEMPLATES_DIR = '/var/www/work-schedule-templates';
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+const WORK_SCHEDULE_TEMPLATES_DIR = `${DATA_DIR}/work-schedule-templates`;
 
 // Создаем директории, если их нет
 if (!fs.existsSync(WORK_SCHEDULES_DIR)) {
@@ -4152,7 +4154,7 @@ app.get('/api/work-schedule/template', (req, res) => {
 
 // ========== API для поставщиков ==========
 
-const SUPPLIERS_DIR = '/var/www/suppliers';
+const SUPPLIERS_DIR = `${DATA_DIR}/suppliers`;
 
 // GET /api/suppliers - получить всех поставщиков
 app.get('/api/suppliers', (req, res) => {
@@ -4378,7 +4380,7 @@ app.delete('/api/suppliers/:id', (req, res) => {
 // API для вопросов пересчета (Recount Questions)
 // ============================================================================
 
-const RECOUNT_QUESTIONS_DIR = '/var/www/recount-questions';
+const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
 // Создаем директорию, если её нет
 if (!fs.existsSync(RECOUNT_QUESTIONS_DIR)) {
@@ -4732,7 +4734,7 @@ app.post('/api/recount-questions/bulk-add-new', async (req, res) => {
 // API для вопросов пересменки (Shift Questions)
 // ============================================================================
 
-const SHIFT_QUESTIONS_DIR = '/var/www/shift-questions';
+const SHIFT_QUESTIONS_DIR = `${DATA_DIR}/shift-questions`;
 
 // Создаем директорию, если её нет
 if (!fs.existsSync(SHIFT_QUESTIONS_DIR)) {
@@ -4989,7 +4991,7 @@ app.delete('/api/shift-questions/:questionId', async (req, res) => {
 // API для вопросов сдачи смены (Shift Handover Questions)
 // ============================================================================
 
-const SHIFT_HANDOVER_QUESTIONS_DIR = '/var/www/shift-handover-questions';
+const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
 
 // Создаем директорию, если её нет
 if (!fs.existsSync(SHIFT_HANDOVER_QUESTIONS_DIR)) {
@@ -5241,7 +5243,7 @@ app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
 });
 
 // ========== API для вопросов конверта (Envelope Questions) ==========
-const ENVELOPE_QUESTIONS_DIR = '/var/www/envelope-questions';
+const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;
 
 // Создаем директорию, если её нет
 if (!fs.existsSync(ENVELOPE_QUESTIONS_DIR)) {
@@ -5422,7 +5424,7 @@ app.delete('/api/envelope-questions/:id', async (req, res) => {
 });
 
 // ========== API для отчётов конвертов ==========
-const ENVELOPE_REPORTS_DIR = '/var/www/envelope-reports';
+const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) {
   fs.mkdirSync(ENVELOPE_REPORTS_DIR, { recursive: true });
 }
@@ -5669,7 +5671,7 @@ app.delete('/api/envelope-reports/:id', async (req, res) => {
 app.get('/api/envelope-pending', async (req, res) => {
   try {
     console.log('GET /api/envelope-pending');
-    const pendingDir = '/var/www/envelope-pending';
+    const pendingDir = `${DATA_DIR}/envelope-pending`;
     const reports = [];
 
     if (fs.existsSync(pendingDir)) {
@@ -5704,7 +5706,7 @@ app.get('/api/envelope-pending', async (req, res) => {
 app.get('/api/envelope-failed', async (req, res) => {
   try {
     console.log('GET /api/envelope-failed');
-    const pendingDir = '/var/www/envelope-pending';
+    const pendingDir = `${DATA_DIR}/envelope-pending`;
     const reports = [];
 
     if (fs.existsSync(pendingDir)) {
@@ -5736,7 +5738,7 @@ app.get('/api/envelope-failed', async (req, res) => {
 });
 
 // ========== API для клиентов ==========
-const CLIENTS_DIR = '/var/www/clients';
+const CLIENTS_DIR = `${DATA_DIR}/clients`;
 if (!fs.existsSync(CLIENTS_DIR)) {
   fs.mkdirSync(CLIENTS_DIR, { recursive: true });
 }
@@ -5842,7 +5844,7 @@ app.post('/api/clients', async (req, res) => {
       try {
         // Ищем сотрудника по referralCode
         let employeeName = 'Сотрудник';
-        const employeesDir = '/var/www/employees';
+        const employeesDir = `${DATA_DIR}/employees`;
         if (fs.existsSync(employeesDir)) {
           const empFiles = fs.readdirSync(employeesDir).filter(f => f.endsWith('.json'));
           for (const empFile of empFiles) {
@@ -5909,7 +5911,7 @@ app.post('/api/clients/:phone/free-drink', async (req, res) => {
 });
 
 // ========== API для сообщений клиентам (network messages) ==========
-const NETWORK_MESSAGES_DIR = '/var/www/network-messages';
+const NETWORK_MESSAGES_DIR = `${DATA_DIR}/network-messages`;
 if (!fs.existsSync(NETWORK_MESSAGES_DIR)) {
   fs.mkdirSync(NETWORK_MESSAGES_DIR, { recursive: true });
 }
@@ -6086,7 +6088,7 @@ app.get('/api/clients/:phone/messages', async (req, res) => {
 });
 
 // ========== API для отчетов пересменки ==========
-const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
+const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
 if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
   fs.mkdirSync(SHIFT_REPORTS_DIR, { recursive: true });
 }
@@ -6318,7 +6320,7 @@ app.put('/api/shift-reports/:id', async (req, res) => {
       // Начисление баллов эффективности
       try {
         // Загружаем настройки баллов пересменки
-        const settingsFile = '/var/www/points-settings/shift_points_settings.json';
+        const settingsFile = `${DATA_DIR}/points-settings/shift_points_settings.json`;
         let settings = {
           minPoints: -3,
           zeroThreshold: 7,
@@ -6339,7 +6341,7 @@ app.put('/api/shift-reports/:id', async (req, res) => {
         const now = new Date();
         const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const today = now.toISOString().split('T')[0];
-        const efficiencyDir = '/var/www/efficiency-penalties';
+        const efficiencyDir = `${DATA_DIR}/efficiency-penalties`;
 
         if (!fs.existsSync(efficiencyDir)) {
           fs.mkdirSync(efficiencyDir, { recursive: true });
@@ -6414,7 +6416,7 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
     console.log(`[ShiftNotification] Поиск сотрудника: ${employeeIdentifier}`);
 
     // Find employee in individual files (employee_*.json)
-    const employeesDir = '/var/www/employees';
+    const employeesDir = `${DATA_DIR}/employees`;
     if (!fs.existsSync(employeesDir)) {
       console.log('[ShiftNotification] Директория сотрудников не найдена');
       return;
@@ -6451,7 +6453,7 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
 
     // Get FCM token from /var/www/fcm-tokens/{phone}.json
     const normalizedPhone = foundEmployee.phone.replace(/[\s+]/g, '');
-    const tokenFile = path.join('/var/www/fcm-tokens', `${normalizedPhone}.json`);
+    const tokenFile = path.join(`${DATA_DIR}/fcm-tokens`, `${normalizedPhone}.json`);
 
     if (!fs.existsSync(tokenFile)) {
       console.log(`[ShiftNotification] FCM токен не найден для телефона ${normalizedPhone}`);
@@ -6487,7 +6489,7 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
 }
 
 // ========== API для статей обучения ==========
-const TRAINING_ARTICLES_DIR = '/var/www/training-articles';
+const TRAINING_ARTICLES_DIR = `${DATA_DIR}/training-articles`;
 if (!fs.existsSync(TRAINING_ARTICLES_DIR)) {
   fs.mkdirSync(TRAINING_ARTICLES_DIR, { recursive: true });
 }
@@ -6588,7 +6590,7 @@ app.delete('/api/training-articles/:id', async (req, res) => {
 });
 
 // Настройка multer для загрузки изображений статей обучения
-const TRAINING_ARTICLES_MEDIA_DIR = '/var/www/training-articles-media';
+const TRAINING_ARTICLES_MEDIA_DIR = `${DATA_DIR}/training-articles-media`;
 if (!fs.existsSync(TRAINING_ARTICLES_MEDIA_DIR)) {
   fs.mkdirSync(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
 }
@@ -6667,7 +6669,7 @@ app.delete('/api/training-articles/delete-image/:filename', (req, res) => {
 app.use('/training-articles-media', express.static(TRAINING_ARTICLES_MEDIA_DIR));
 
 // ========== API для вопросов тестирования ==========
-const TEST_QUESTIONS_DIR = '/var/www/test-questions';
+const TEST_QUESTIONS_DIR = `${DATA_DIR}/test-questions`;
 if (!fs.existsSync(TEST_QUESTIONS_DIR)) {
   fs.mkdirSync(TEST_QUESTIONS_DIR, { recursive: true });
 }
@@ -6757,7 +6759,7 @@ app.delete('/api/test-questions/:id', async (req, res) => {
 });
 
 // ========== API для результатов тестирования ==========
-const TEST_RESULTS_DIR = '/var/www/test-results';
+const TEST_RESULTS_DIR = `${DATA_DIR}/test-results`;
 if (!fs.existsSync(TEST_RESULTS_DIR)) {
   fs.mkdirSync(TEST_RESULTS_DIR, { recursive: true });
 }
@@ -6800,7 +6802,7 @@ async function assignTestPoints(result) {
     const monthKey = today.substring(0, 7); // YYYY-MM
 
     // Загрузка настроек баллов
-    const settingsFile = '/var/www/points-settings/test_points_settings.json';
+    const settingsFile = `${DATA_DIR}/points-settings/test_points_settings.json`;
     let settings = {
       maxPoints: 5,
       minPoints: -2,
@@ -6840,7 +6842,7 @@ async function assignTestPoints(result) {
 
     // Дедупликация
     const sourceId = `test_${result.id}`;
-    const PENALTIES_DIR = '/var/www/efficiency-penalties';
+    const PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
     if (!fs.existsSync(PENALTIES_DIR)) {
       fs.mkdirSync(PENALTIES_DIR, { recursive: true });
     }
@@ -6927,7 +6929,7 @@ app.post('/api/test-results', async (req, res) => {
 });
 
 // ========== API для отзывов ==========
-const REVIEWS_DIR = '/var/www/reviews';
+const REVIEWS_DIR = `${DATA_DIR}/reviews`;
 if (!fs.existsSync(REVIEWS_DIR)) {
   fs.mkdirSync(REVIEWS_DIR, { recursive: true });
 }
@@ -7126,8 +7128,8 @@ app.post('/api/reviews/:id/mark-read', async (req, res) => {
 // ============================================
 // Recipes API
 // ============================================
-const RECIPES_DIR = '/var/www/recipes';
-const RECIPE_PHOTOS_DIR = '/var/www/recipe-photos';
+const RECIPES_DIR = `${DATA_DIR}/recipes`;
+const RECIPE_PHOTOS_DIR = `${DATA_DIR}/recipe-photos`;
 
 if (!fs.existsSync(RECIPES_DIR)) {
   fs.mkdirSync(RECIPES_DIR, { recursive: true });
@@ -7299,7 +7301,7 @@ app.delete('/api/recipes/:id', async (req, res) => {
 // ============================================
 // Shift Handover Reports API
 // ============================================
-const SHIFT_HANDOVER_REPORTS_DIR = '/var/www/shift-handover-reports';
+const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
 
 if (!fs.existsSync(SHIFT_HANDOVER_REPORTS_DIR)) {
   fs.mkdirSync(SHIFT_HANDOVER_REPORTS_DIR, { recursive: true });
@@ -7540,7 +7542,7 @@ app.get('/api/shift-handover/failed', (req, res) => {
 // ============================================
 // Menu API
 // ============================================
-const MENU_DIR = '/var/www/menu';
+const MENU_DIR = `${DATA_DIR}/menu`;
 
 if (!fs.existsSync(MENU_DIR)) {
   fs.mkdirSync(MENU_DIR, { recursive: true });
@@ -7689,7 +7691,7 @@ app.delete('/api/menu/:id', async (req, res) => {
 // ============================================
 // Orders API
 // ============================================
-const ORDERS_DIR = '/var/www/orders';
+const ORDERS_DIR = `${DATA_DIR}/orders`;
 
 if (!fs.existsSync(ORDERS_DIR)) {
   fs.mkdirSync(ORDERS_DIR, { recursive: true });
@@ -7859,7 +7861,7 @@ app.post('/api/fcm-tokens', async (req, res) => {
 
     const normalizedPhone = phone.replace(/[\s+]/g, '');
 
-    const tokenDir = '/var/www/fcm-tokens';
+    const tokenDir = `${DATA_DIR}/fcm-tokens`;
     if (!fs.existsSync(tokenDir)) {
       fs.mkdirSync(tokenDir, { recursive: true });
     }
@@ -7880,7 +7882,7 @@ app.post('/api/fcm-tokens', async (req, res) => {
 });
 
 // ==================== ПРЕМИИ И ШТРАФЫ ====================
-const BONUS_PENALTIES_DIR = '/var/www/bonus-penalties';
+const BONUS_PENALTIES_DIR = `${DATA_DIR}/bonus-penalties`;
 
 // Вспомогательная функция для получения месяца в формате YYYY-MM
 function getCurrentMonth() {
@@ -8136,7 +8138,7 @@ function loadShiftReportsForPeriod(startDate, endDate) {
  */
 function loadRecountReportsForPeriod(startDate, endDate) {
   const reports = [];
-  const reportsDir = '/var/www/recount-reports';
+  const reportsDir = `${DATA_DIR}/recount-reports`;
 
   if (!fs.existsSync(reportsDir)) {
     return reports;
@@ -8197,7 +8199,7 @@ function loadShiftHandoverReportsForPeriod(startDate, endDate) {
  */
 function loadAttendanceForPeriod(startDate, endDate) {
   const records = [];
-  const attendanceDir = '/var/www/attendance';
+  const attendanceDir = `${DATA_DIR}/attendance`;
 
   if (!fs.existsSync(attendanceDir)) {
     return records;
@@ -8324,7 +8326,7 @@ app.get('/api/efficiency-penalties', async (req, res) => {
 
     console.log(`📊 GET /api/efficiency-penalties?month=${month}`);
 
-    const penaltiesDir = '/var/www/efficiency-penalties';
+    const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
     const penaltiesFile = path.join(penaltiesDir, `${month}.json`);
 
     let penalties = [];
@@ -8455,7 +8457,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 // ═══════════════════════════════════════════════════════════════════
 // LOYALTY PROMO API
 // ═══════════════════════════════════════════════════════════════════
-const LOYALTY_PROMO_FILE = '/var/www/loyalty-promo.json';
+const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
 
 // GET /api/loyalty-promo - получить настройки акции
 app.get('/api/loyalty-promo', (req, res) => {
@@ -8513,7 +8515,7 @@ app.post('/api/loyalty-promo', async (req, res) => {
 });
 
 // ==================== APP VERSION ====================
-const APP_VERSION_FILE = "/var/www/app-version.json";
+const APP_VERSION_FILE = `${DATA_DIR}/app-version.json`;
 
 // GET /api/app-version - получить информацию о версии приложения
 app.get("/api/app-version", (req, res) => {

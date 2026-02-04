@@ -5,7 +5,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const CONFIG_FILE = '/var/www/task-points-config.json';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const CONFIG_FILE = `${DATA_DIR}/task-points-config.json`;
 
 // Дефолтные настройки
 const DEFAULT_CONFIG = {

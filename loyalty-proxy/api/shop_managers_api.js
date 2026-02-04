@@ -25,7 +25,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const SHOP_MANAGERS_FILE = '/var/www/shop-managers.json';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 
 /**
  * Инициализация файла shop-managers.json

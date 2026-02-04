@@ -24,19 +24,21 @@
 const fs = require('fs');
 const path = require('path');
 
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
-const RECOUNT_REPORTS_DIR = '/var/www/recount-reports';
-const HANDOVER_REPORTS_DIR = '/var/www/shift-handovers';
-const ATTENDANCE_DIR = '/var/www/attendance';
-const TESTS_DIR = '/var/www/test-results';
-const REVIEWS_DIR = '/var/www/client-reviews';
-const PRODUCT_QUESTIONS_DIR = '/var/www/product-questions';
-const RKO_DIR = '/var/www/rko';
-const TASKS_DIR = '/var/www/tasks';
-const RECURRING_TASKS_DIR = '/var/www/recurring-tasks';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
-const ENVELOPE_REPORTS_DIR = '/var/www/envelope-reports';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
+const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`;
+const HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handovers`;
+const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const TESTS_DIR = `${DATA_DIR}/test-results`;
+const REVIEWS_DIR = `${DATA_DIR}/client-reviews`;
+const PRODUCT_QUESTIONS_DIR = `${DATA_DIR}/product-questions`;
+const RKO_DIR = `${DATA_DIR}/rko`;
+const TASKS_DIR = `${DATA_DIR}/tasks`;
+const RECURRING_TASKS_DIR = `${DATA_DIR}/recurring-tasks`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 
 // =====================================================
 // OPTIMIZATION: Cache for batch operations

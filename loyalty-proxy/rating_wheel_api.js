@@ -7,11 +7,13 @@ const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('./efficiency_calc');
 
-const RATINGS_DIR = '/var/www/employee-ratings';
-const FORTUNE_WHEEL_DIR = '/var/www/fortune-wheel';
-const EMPLOYEES_DIR = '/var/www/employees';
-const ATTENDANCE_DIR = '/var/www/attendance';
-const EFFICIENCY_DIR = '/var/www/efficiency-penalties';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const RATINGS_DIR = `${DATA_DIR}/employee-ratings`;
+const FORTUNE_WHEEL_DIR = `${DATA_DIR}/fortune-wheel`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const EFFICIENCY_DIR = `${DATA_DIR}/efficiency-penalties`;
 
 // Хелпер: текущий месяц YYYY-MM
 function getCurrentMonth() {
@@ -82,7 +84,7 @@ function getFullEfficiency(employeeId, employeeName, month) {
 // Получить баллы за рефералов (с поддержкой милестоунов)
 function getReferralPoints(employeeId, month) {
   try {
-    const referralsDir = '/var/www/referral-clients';
+    const referralsDir = `${DATA_DIR}/referral-clients`;
     if (!fs.existsSync(referralsDir)) return 0;
 
     const files = fs.readdirSync(referralsDir);
@@ -100,7 +102,7 @@ function getReferralPoints(employeeId, month) {
     }
 
     // Получить настройки баллов за рефералов (новый формат с милестоунами)
-    const settingsPath = '/var/www/points-settings/referrals.json';
+    const settingsPath = `${DATA_DIR}/points-settings/referrals.json`;
     let basePoints = 1;
     let milestoneThreshold = 0;
     let milestonePoints = 1;
@@ -259,7 +261,7 @@ function loadAllAttendanceForMonth(month) {
 
 // OPTIMIZATION: Загрузить ВСЕ referral записи за месяц ОДИН раз
 function loadAllReferralsForMonth(month) {
-  const referralsDir = '/var/www/referral-clients';
+  const referralsDir = `${DATA_DIR}/referral-clients`;
   const records = [];
 
   if (!fs.existsSync(referralsDir)) return records;
@@ -288,7 +290,7 @@ function loadAllReferralsForMonth(month) {
 
 // Загрузить настройки рефералов
 function loadReferralSettings() {
-  const settingsPath = '/var/www/points-settings/referrals.json';
+  const settingsPath = `${DATA_DIR}/points-settings/referrals.json`;
 
   try {
     if (fs.existsSync(settingsPath)) {

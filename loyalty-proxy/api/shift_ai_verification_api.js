@@ -7,10 +7,12 @@ const fs = require('fs');
 const path = require('path');
 
 // Директории
-const SHIFT_AI_SETTINGS_DIR = '/var/www/shift-ai-settings';
-const SHIFT_AI_ANNOTATIONS_DIR = '/var/www/shift-ai-annotations';
-const MASTER_CATALOG_DIR = '/var/www/master-catalog';
-const DBF_STOCKS_DIR = '/var/www/dbf-stocks';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const SHIFT_AI_SETTINGS_DIR = `${DATA_DIR}/shift-ai-settings`;
+const SHIFT_AI_ANNOTATIONS_DIR = `${DATA_DIR}/shift-ai-annotations`;
+const MASTER_CATALOG_DIR = `${DATA_DIR}/master-catalog`;
+const DBF_STOCKS_DIR = `${DATA_DIR}/dbf-stocks`;
 
 // Убедимся что директории существуют
 [SHIFT_AI_SETTINGS_DIR, SHIFT_AI_ANNOTATIONS_DIR].forEach(dir => {

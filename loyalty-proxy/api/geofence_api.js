@@ -7,9 +7,11 @@ const fs = require('fs');
 const path = require('path');
 
 // Директории хранения данных
-const GEOFENCE_SETTINGS_FILE = '/var/www/geofence-settings.json';
-const GEOFENCE_NOTIFICATIONS_DIR = '/var/www/geofence-notifications';
-const SHOPS_DIR = '/var/www/shops';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const GEOFENCE_SETTINGS_FILE = `${DATA_DIR}/geofence-settings.json`;
+const GEOFENCE_NOTIFICATIONS_DIR = `${DATA_DIR}/geofence-notifications`;
+const SHOPS_DIR = `${DATA_DIR}/shops`;
 
 // Создаём директории если не существуют
 if (!fs.existsSync(GEOFENCE_NOTIFICATIONS_DIR)) {

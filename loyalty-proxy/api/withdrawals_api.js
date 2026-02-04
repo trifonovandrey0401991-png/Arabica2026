@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 
-const WITHDRAWALS_DIR = '/var/www/withdrawals';
-const MAIN_CASH_DIR = '/var/www/main_cash';
-const EMPLOYEES_DIR = '/var/www/employees';
-const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
+const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
 // Убедиться что директория существует
 function ensureDirectoryExists(dir) {

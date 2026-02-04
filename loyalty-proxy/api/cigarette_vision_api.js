@@ -9,7 +9,9 @@ const path = require('path');
 const cigaretteVision = require('../modules/cigarette-vision');
 
 // Директория с вопросами пересчёта (та же что в index.js)
-const RECOUNT_QUESTIONS_DIR = '/var/www/recount-questions';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
 // Кэш вопросов пересчёта
 let recountQuestionsCache = [];

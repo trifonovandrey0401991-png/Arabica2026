@@ -11,10 +11,12 @@ try {
   console.log('⚠️ WebSocket модуль не загружен, real-time уведомления отключены');
 }
 
-const EMPLOYEE_CHATS_DIR = '/var/www/employee-chats';
-const EMPLOYEES_DIR = '/var/www/employees';
-const CLIENTS_DIR = '/var/www/clients';
-const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const EMPLOYEE_CHATS_DIR = `${DATA_DIR}/employee-chats`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const CLIENTS_DIR = `${DATA_DIR}/clients`;
+const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const MESSAGE_RETENTION_DAYS = 90;
 const MAX_GROUP_PARTICIPANTS = 100;
 

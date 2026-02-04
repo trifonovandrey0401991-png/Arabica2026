@@ -25,14 +25,16 @@ try {
 }
 
 // Directories
-const ATTENDANCE_DIR = '/var/www/attendance';
-const ATTENDANCE_PENDING_DIR = '/var/www/attendance-pending';
-const SHOPS_DIR = '/var/www/shops';
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const ATTENDANCE_AUTOMATION_STATE_DIR = '/var/www/attendance-automation-state';
-const EMPLOYEES_DIR = '/var/www/employees';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const ATTENDANCE_PENDING_DIR = `${DATA_DIR}/attendance-pending`;
+const SHOPS_DIR = `${DATA_DIR}/shops`;
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const ATTENDANCE_AUTOMATION_STATE_DIR = `${DATA_DIR}/attendance-automation-state`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const STATE_FILE = path.join(ATTENDANCE_AUTOMATION_STATE_DIR, 'state.json');
 
 // Constants

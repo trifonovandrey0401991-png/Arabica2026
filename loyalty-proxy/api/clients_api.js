@@ -4,11 +4,13 @@ const { sendPushNotification, sendPushToPhone } = require('../report_notificatio
 const { isAdminPhone } = require('../utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
 
-const CLIENTS_DIR = '/var/www/clients';
-const CLIENT_DIALOGS_DIR = '/var/www/client-dialogs';
-const CLIENT_MESSAGES_DIR = '/var/www/client-messages';
-const CLIENT_MESSAGES_NETWORK_DIR = '/var/www/client-messages-network';
-const CLIENT_MESSAGES_MANAGEMENT_DIR = '/var/www/client-messages-management';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const CLIENTS_DIR = `${DATA_DIR}/clients`;
+const CLIENT_DIALOGS_DIR = `${DATA_DIR}/client-dialogs`;
+const CLIENT_MESSAGES_DIR = `${DATA_DIR}/client-messages`;
+const CLIENT_MESSAGES_NETWORK_DIR = `${DATA_DIR}/client-messages-network`;
+const CLIENT_MESSAGES_MANAGEMENT_DIR = `${DATA_DIR}/client-messages-management`;
 
 [CLIENTS_DIR, CLIENT_DIALOGS_DIR, CLIENT_MESSAGES_DIR, CLIENT_MESSAGES_NETWORK_DIR, CLIENT_MESSAGES_MANAGEMENT_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

@@ -5,9 +5,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const RECOUNT_POINTS_DIR = '/var/www/recount-points';
-const RECOUNT_SETTINGS_FILE = '/var/www/recount-settings/settings.json';
-const EMPLOYEES_DIR = '/var/www/employees';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const RECOUNT_POINTS_DIR = `${DATA_DIR}/recount-points`;
+const RECOUNT_SETTINGS_FILE = `${DATA_DIR}/recount-settings/settings.json`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
 // Настройки по умолчанию
 const DEFAULT_SETTINGS = {
@@ -360,7 +362,7 @@ module.exports = function setupRecountPointsAPI(app) {
       }
 
       // Находим отчёт
-      const reportsDir = '/var/www/recount-reports';
+      const reportsDir = `${DATA_DIR}/recount-reports`;
       // Санитизируем ID (кириллица и спецсимволы заменяются на _)
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const reportFile = path.join(reportsDir, `${sanitizedId}.json`);

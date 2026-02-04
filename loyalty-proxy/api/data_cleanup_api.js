@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
 
 // Категории данных, которые можно очищать
 // Разделены на группы: отчёты, фото, история операций
@@ -9,35 +11,35 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'recount-reports',
     name: 'Отчёты пересчётов',
-    directory: '/var/www/recount-reports',
+    directory: `${DATA_DIR}/recount-reports`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'shift-reports',
     name: 'Отчёты смен',
-    directory: '/var/www/shift-reports',
+    directory: `${DATA_DIR}/shift-reports`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'shift-handover-reports',
     name: 'Отчёты пересменок',
-    directory: '/var/www/shift-handover-reports',
+    directory: `${DATA_DIR}/shift-handover-reports`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'envelope-reports',
     name: 'Отчёты конвертов',
-    directory: '/var/www/envelope-reports',
+    directory: `${DATA_DIR}/envelope-reports`,
     dateField: 'createdAt',
     isDirectory: true
   },
   {
     id: 'rko-reports',
     name: 'РКО отчёты',
-    directory: '/var/www/rko-reports',
+    directory: `${DATA_DIR}/rko-reports`,
     dateField: 'createdAt',
     isDirectory: true
   },
@@ -46,7 +48,7 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'shift-photos',
     name: 'Фото смен',
-    directory: '/var/www/shift-photos',
+    directory: `${DATA_DIR}/shift-photos`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true
@@ -54,7 +56,7 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'shift-handover-question-photos',
     name: 'Фото вопросов пересменок',
-    directory: '/var/www/shift-handover-question-photos',
+    directory: `${DATA_DIR}/shift-handover-question-photos`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true
@@ -62,7 +64,7 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'product-question-photos',
     name: 'Фото вопросов товаров',
-    directory: '/var/www/product-question-photos',
+    directory: `${DATA_DIR}/product-question-photos`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true
@@ -70,7 +72,7 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'employee-photos',
     name: 'Фото сотрудников',
-    directory: '/var/www/employee-photos',
+    directory: `${DATA_DIR}/employee-photos`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true
@@ -78,7 +80,7 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'recipe-photos',
     name: 'Фото рецептов',
-    directory: '/var/www/recipe-photos',
+    directory: `${DATA_DIR}/recipe-photos`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true
@@ -88,56 +90,56 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'orders',
     name: 'Заказы',
-    directory: '/var/www/orders',
+    directory: `${DATA_DIR}/orders`,
     dateField: 'createdAt',
     isDirectory: true
   },
   {
     id: 'withdrawals',
     name: 'Выемки',
-    directory: '/var/www/withdrawals',
+    directory: `${DATA_DIR}/withdrawals`,
     dateField: 'createdAt',
     isDirectory: true
   },
   {
     id: 'attendance',
     name: 'Посещаемость',
-    directory: '/var/www/attendance',
+    directory: `${DATA_DIR}/attendance`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'test-results',
     name: 'Результаты тестов',
-    directory: '/var/www/test-results',
+    directory: `${DATA_DIR}/test-results`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'reviews',
     name: 'Отзывы',
-    directory: '/var/www/reviews',
+    directory: `${DATA_DIR}/reviews`,
     dateField: 'createdAt',
     isDirectory: true
   },
   {
     id: 'efficiency-penalties',
     name: 'Штрафы эффективности',
-    directory: '/var/www/efficiency-penalties',
+    directory: `${DATA_DIR}/efficiency-penalties`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'bonus-penalties',
     name: 'Премии/Штрафы',
-    directory: '/var/www/bonus-penalties',
+    directory: `${DATA_DIR}/bonus-penalties`,
     dateField: 'date',
     isDirectory: true
   },
   {
     id: 'employee-registrations',
     name: 'Заявки на регистрацию',
-    directory: '/var/www/employee-registrations',
+    directory: `${DATA_DIR}/employee-registrations`,
     dateField: 'createdAt',
     isDirectory: true
   },
@@ -146,14 +148,14 @@ const CLEANUP_CATEGORIES = [
   {
     id: 'app-logs',
     name: 'Логи приложения',
-    directory: '/var/www/app-logs',
+    directory: `${DATA_DIR}/app-logs`,
     dateField: 'timestamp',
     isDirectory: true
   },
   {
     id: 'fcm-tokens',
     name: 'FCM токены',
-    directory: '/var/www/fcm-tokens',
+    directory: `${DATA_DIR}/fcm-tokens`,
     dateField: 'mtime',
     isDirectory: true,
     isPhotos: true  // Используем mtime для файлов

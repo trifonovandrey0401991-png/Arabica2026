@@ -15,14 +15,16 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories
-const SHOPS_DIR = '/var/www/shops';
-const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
-const RECOUNT_REPORTS_DIR = '/var/www/recount-reports';
-const SHIFT_HANDOVER_DIR = '/var/www/shift-handover-reports';
-const ATTENDANCE_DIR = '/var/www/attendance';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const SHOP_MANAGERS_FILE = '/var/www/shop-managers.json';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const SHOPS_DIR = `${DATA_DIR}/shops`;
+const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
+const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`;
+const SHIFT_HANDOVER_DIR = `${DATA_DIR}/shift-handover-reports`;
+const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const SHOP_MANAGERS_FILE = `${DATA_DIR}/shop-managers.json`;
 
 // Import efficiency calculation settings
 const efficiencyCalc = require('../efficiency_calc.js');

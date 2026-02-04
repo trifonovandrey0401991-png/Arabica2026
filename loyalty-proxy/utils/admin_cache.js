@@ -10,7 +10,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const EMPLOYEES_DIR = '/var/www/employees';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
 // ============================================
 // ADMIN CACHE

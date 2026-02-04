@@ -2,12 +2,14 @@ const fs = require('fs');
 const path = require('path');
 
 // Директории
-const ENVELOPE_PENDING_DIR = '/var/www/envelope-pending';
-const ENVELOPE_REPORTS_DIR = '/var/www/envelope-reports';
-const ENVELOPE_STATE_DIR = '/var/www/envelope-automation-state';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const ENVELOPE_PENDING_DIR = `${DATA_DIR}/envelope-pending`;
+const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
+const ENVELOPE_STATE_DIR = `${DATA_DIR}/envelope-automation-state`;
 const STATE_FILE = path.join(ENVELOPE_STATE_DIR, 'state.json');
-const SHOPS_FILE = '/var/www/shops/shops.json';
-const POINTS_SETTINGS_FILE = '/var/www/points-settings/envelope_points_settings.json';
+const SHOPS_FILE = `${DATA_DIR}/shops/shops.json`;
+const POINTS_SETTINGS_FILE = `${DATA_DIR}/points-settings/envelope_points_settings.json`;
 
 // Интервал проверки: 5 минут
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -392,7 +394,7 @@ async function assignPenaltyFromSchedule(report, settings) {
 
   // 1. Загрузить график работы
   const [year, month] = date.split('-');
-  const scheduleFile = `/var/www/work-schedules/${year}-${month}.json`;
+  const scheduleFile = `${DATA_DIR}/work-schedules/${year}-${month}.json`;
 
   if (!fs.existsSync(scheduleFile)) {
     console.log(`[Envelope] График не найден: ${scheduleFile}`);
@@ -434,7 +436,7 @@ async function assignPenaltyFromSchedule(report, settings) {
   };
 
   // 4. Сохранить в efficiency-penalties
-  const penaltiesDir = '/var/www/efficiency-penalties';
+  const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
   if (!fs.existsSync(penaltiesDir)) {
     fs.mkdirSync(penaltiesDir, { recursive: true });
   }

@@ -2,13 +2,15 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories
-const PRODUCT_QUESTIONS_DIR = '/var/www/product-questions';
-const PRODUCT_QUESTION_DIALOGS_DIR = '/var/www/product-question-dialogs';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const PENALTY_STATE_DIR = '/var/www/product-question-penalty-state';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const PRODUCT_QUESTIONS_DIR = `${DATA_DIR}/product-questions`;
+const PRODUCT_QUESTION_DIALOGS_DIR = `${DATA_DIR}/product-question-dialogs`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+const PENALTY_STATE_DIR = `${DATA_DIR}/product-question-penalty-state`;
 const STATE_FILE = path.join(PENALTY_STATE_DIR, 'processed.json');
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 
 // Settings
 const PENALTY_POINTS = -1;

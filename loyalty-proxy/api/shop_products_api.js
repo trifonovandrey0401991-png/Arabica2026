@@ -11,10 +11,12 @@ const { addPendingCode, isCodeInMasterCatalog, getMasterNameByBarcode } = requir
 const { notifyAdminsAboutNewCodes } = require('./master_catalog_notifications');
 
 // Директория для хранения товаров магазинов
-const SHOP_PRODUCTS_DIR = '/var/www/shop-products';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const SHOP_PRODUCTS_DIR = `${DATA_DIR}/shop-products`;
 
 // API ключи для авторизации агентов синхронизации
-const API_KEYS_FILE = '/var/www/dbf-sync-settings/api-keys.json';
+const API_KEYS_FILE = `${DATA_DIR}/dbf-sync-settings/api-keys.json`;
 
 // Кэш товаров магазинов
 const shopProductsCache = new Map();

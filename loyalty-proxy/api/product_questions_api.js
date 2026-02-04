@@ -9,9 +9,11 @@ const {
   notifyPersonalDialogEmployeeMessage
 } = require('./product_questions_notifications');
 
-const PRODUCT_QUESTIONS_DIR = '/var/www/product-questions';
-const PRODUCT_QUESTION_DIALOGS_DIR = '/var/www/product-question-dialogs';
-const PRODUCT_QUESTION_PHOTOS_DIR = '/var/www/product-question-photos';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const PRODUCT_QUESTIONS_DIR = `${DATA_DIR}/product-questions`;
+const PRODUCT_QUESTION_DIALOGS_DIR = `${DATA_DIR}/product-question-dialogs`;
+const PRODUCT_QUESTION_PHOTOS_DIR = `${DATA_DIR}/product-question-photos`;
 
 [PRODUCT_QUESTIONS_DIR, PRODUCT_QUESTION_DIALOGS_DIR, PRODUCT_QUESTION_PHOTOS_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -28,7 +30,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
     const today = now.toISOString().split('T')[0];
     const monthKey = today.substring(0, 7); // YYYY-MM
 
-    const PENALTIES_DIR = '/var/www/efficiency-penalties';
+    const PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
     if (!fs.existsSync(PENALTIES_DIR)) {
       fs.mkdirSync(PENALTIES_DIR, { recursive: true });
     }
@@ -386,7 +388,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
         const questionAge = (new Date() - new Date(question.timestamp)) / (1000 * 60); // минуты
 
         // Загружаем настройки баллов
-        const settingsFile = path.join('/var/www/points-settings', 'product_search_points_settings.json');
+        const settingsFile = path.join(`${DATA_DIR}/points-settings`, 'product_search_points_settings.json');
         let settings = { answeredPoints: 0.2, answerTimeoutMinutes: 30 };
         if (fs.existsSync(settingsFile)) {
           try {

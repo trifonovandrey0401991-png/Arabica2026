@@ -14,9 +14,11 @@ const path = require('path');
 const { admin, firebaseInitialized } = require('./firebase-admin-config');
 
 // Директория хранения уведомлений
-const NOTIFICATIONS_DIR = '/var/www/report-notifications';
-const EMPLOYEES_DIR = '/var/www/employees';
-const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const NOTIFICATIONS_DIR = `${DATA_DIR}/report-notifications`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
 // Создаём директорию если не существует
 if (!fs.existsSync(NOTIFICATIONS_DIR)) {

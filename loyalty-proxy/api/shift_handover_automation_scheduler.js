@@ -25,14 +25,16 @@ try {
 }
 
 // Directories
-const SHIFT_HANDOVER_REPORTS_DIR = '/var/www/shift-handover-reports';
-const SHIFT_HANDOVER_PENDING_DIR = '/var/www/shift-handover-pending';
-const SHOPS_DIR = '/var/www/shops';
-const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const SHIFT_HANDOVER_STATE_DIR = '/var/www/shift-handover-automation-state';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
+const SHIFT_HANDOVER_PENDING_DIR = `${DATA_DIR}/shift-handover-pending`;
+const SHOPS_DIR = `${DATA_DIR}/shops`;
+const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
+const SHIFT_HANDOVER_STATE_DIR = `${DATA_DIR}/shift-handover-automation-state`;
 const STATE_FILE = path.join(SHIFT_HANDOVER_STATE_DIR, 'state.json');
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
-const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
 
 // Penalty Constants
 const PENALTY_CATEGORY = 'shift_handover_missed_penalty';

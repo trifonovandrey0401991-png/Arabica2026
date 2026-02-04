@@ -5,10 +5,12 @@
 const fs = require('fs');
 const path = require('path');
 
-const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
-const EMPLOYEES_DIR = '/var/www/employees';
-const ATTENDANCE_DIR = '/var/www/attendance';
-const WORK_SCHEDULES_DIR = '/var/www/work-schedules';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 
 // Получить Firebase Admin
 function getFirebaseAdmin() {

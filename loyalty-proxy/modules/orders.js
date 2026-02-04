@@ -5,15 +5,17 @@ const { v4: uuidv4 } = require('uuid');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
 const { sendPushNotification } = require('../report_notifications_api');
 
-const ORDERS_DIR = '/var/www/orders';
+const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+
+const ORDERS_DIR = `${DATA_DIR}/orders`;
 const COUNTER_FILE = path.join(ORDERS_DIR, 'order-counter.json');
-const FCM_TOKENS_DIR = '/var/www/fcm-tokens';
-const DIALOGS_DIR = '/var/www/client-dialogs';
-const EMPLOYEES_DIR = '/var/www/employees';
+const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
+const DIALOGS_DIR = `${DATA_DIR}/client-dialogs`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
 // Файлы для отслеживания просмотров заказов
-const ORDERS_VIEWED_REJECTED_FILE = '/var/www/orders-viewed-rejected.json';
-const ORDERS_VIEWED_UNCONFIRMED_FILE = '/var/www/orders-viewed-unconfirmed.json';
+const ORDERS_VIEWED_REJECTED_FILE = `${DATA_DIR}/orders-viewed-rejected.json`;
+const ORDERS_VIEWED_UNCONFIRMED_FILE = `${DATA_DIR}/orders-viewed-unconfirmed.json`;
 
 async function fileExists(filePath) {
   try {
