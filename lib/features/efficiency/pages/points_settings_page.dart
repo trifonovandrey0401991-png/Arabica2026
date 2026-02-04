@@ -3,7 +3,6 @@ import '../../fortune_wheel/pages/wheel_settings_page.dart';
 import 'settings_tabs/test_points_settings_page.dart';
 import 'settings_tabs/attendance_points_settings_page.dart';
 import 'settings_tabs/shift_points_settings_page.dart';
-import 'settings_tabs/shift_points_settings_page_v2.dart';
 import 'settings_tabs/recount_efficiency_points_settings_page.dart';
 import 'settings_tabs/rko_points_settings_page.dart';
 import 'settings_tabs/shift_handover_points_settings_page.dart';
@@ -12,6 +11,7 @@ import 'settings_tabs/product_search_points_settings_page.dart';
 import 'settings_tabs/orders_points_settings_page.dart';
 import 'settings_tabs/task_points_settings_page.dart';
 import 'settings_tabs/envelope_points_settings_page.dart';
+import 'settings_tabs/manager_points_settings_page.dart';
 import '../../referrals/pages/referrals_points_settings_page.dart';
 
 /// Page for configuring efficiency points settings
@@ -112,6 +112,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       gradientColors: [const Color(0xFF00897B), const Color(0xFF26A69A)],
     ),
     _PointsCategory(
+      id: 'managers',
+      title: 'Управляющие',
+      icon: Icons.supervisor_account_outlined,
+      description: 'Баллы за оценку работы подчинённых',
+      gradientColors: [const Color(0xFF9C27B0), const Color(0xFF673AB7)],
+    ),
+    _PointsCategory(
       id: 'fortune_wheel',
       title: 'Колесо Удачи',
       icon: Icons.casino_outlined,
@@ -203,6 +210,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
         context,
         MaterialPageRoute(
           builder: (context) => const ReferralsPointsSettingsPage(),
+        ),
+      );
+    } else if (categoryId == 'managers') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ManagerPointsSettingsPage(),
         ),
       );
     } else if (categoryId == 'fortune_wheel') {

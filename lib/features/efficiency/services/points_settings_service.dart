@@ -493,4 +493,39 @@ class PointsSettingsService {
       itemKey: 'settings',
     );
   }
+
+  // ===== MANAGER POINTS (Управляющие) =====
+
+  /// Get manager points settings
+  static Future<ManagerPointsSettings> getManagerPointsSettings() async {
+    Logger.debug('Fetching manager points settings...');
+
+    final result = await BaseHttpService.get<ManagerPointsSettings>(
+      endpoint: '$baseEndpoint/manager',
+      fromJson: (json) => ManagerPointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+
+    return result ?? ManagerPointsSettings.defaults();
+  }
+
+  /// Save manager points settings
+  static Future<ManagerPointsSettings?> saveManagerPointsSettings({
+    required ManagerCategorySettings shiftSettings,
+    required ManagerCategorySettings recountSettings,
+    required ManagerCategorySettings shiftHandoverSettings,
+  }) async {
+    Logger.debug('Saving manager points settings...');
+
+    return await BaseHttpService.post<ManagerPointsSettings>(
+      endpoint: '$baseEndpoint/manager',
+      body: {
+        'shiftSettings': shiftSettings.toJson(),
+        'recountSettings': recountSettings.toJson(),
+        'shiftHandoverSettings': shiftHandoverSettings.toJson(),
+      },
+      fromJson: (json) => ManagerPointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+  }
 }

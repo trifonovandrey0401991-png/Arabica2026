@@ -12,6 +12,7 @@ const REVIEWS_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'reviews_points_setti
 const PRODUCT_SEARCH_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'product_search_points_settings.json');
 const ORDERS_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'orders_points_settings.json');
 const ENVELOPE_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'envelope_points_settings.json');
+const MANAGER_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'manager_points_settings.json');
 
 // Ensure directory exists
 function ensureDir() {
@@ -170,6 +171,25 @@ const DEFAULT_ENVELOPE_POINTS_SETTINGS = {
   category: 'envelope',
   submittedPoints: 1.0,     // Points for submitted envelope
   notSubmittedPoints: -3.0, // Points for not submitted envelope
+  createdAt: null,
+  updatedAt: null
+};
+
+// Default category settings for managers (simplified)
+// confirmedPoints - баллы за проверенный отчёт
+// rejectedPenalty - штраф за непроверенный отчёт
+const DEFAULT_MANAGER_CATEGORY_SETTINGS = {
+  confirmedPoints: 1.0,     // Points for confirmed/reviewed report
+  rejectedPenalty: -2.0     // Penalty for rejected/failed report
+};
+
+// Default settings for managers (Управляющие)
+const DEFAULT_MANAGER_POINTS_SETTINGS = {
+  id: 'manager_points',
+  category: 'manager',
+  shiftSettings: { ...DEFAULT_MANAGER_CATEGORY_SETTINGS },
+  recountSettings: { ...DEFAULT_MANAGER_CATEGORY_SETTINGS },
+  shiftHandoverSettings: { ...DEFAULT_MANAGER_CATEGORY_SETTINGS },
   createdAt: null,
   updatedAt: null
 };
@@ -1261,6 +1281,136 @@ function setupPointsSettingsAPI(app) {
       res.json({ success: true, settings });
     } catch (error) {
       console.error('Error saving envelope points settings:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ===== MANAGER POINTS SETTINGS (Управляющие) =====
+
+  // GET /api/points-settings/manager - Get manager points settings
+  // With migration from old format (subordinateQuality/reviewPercentage -> confirmed/rejected)
+  app.get('/api/points-settings/manager', async (req, res) => {
+    try {
+      ensureDir();
+
+      if (!fs.existsSync(MANAGER_POINTS_FILE)) {
+        // Return default settings if none exist
+        return res.json({
+          success: true,
+          settings: { ...DEFAULT_MANAGER_POINTS_SETTINGS, createdAt: new Date().toISOString() }
+        });
+      }
+
+      const content = fs.readFileSync(MANAGER_POINTS_FILE, 'utf8');
+      let settings = JSON.parse(content);
+
+      // Migration: check if old format (subordinateQualityMinPoints exists)
+      const migrateCategory = (cat) => {
+        if (cat && cat.subordinateQualityMinPoints !== undefined) {
+          return { ...DEFAULT_MANAGER_CATEGORY_SETTINGS };
+        }
+        return cat || { ...DEFAULT_MANAGER_CATEGORY_SETTINGS };
+      };
+
+      let needsMigration = false;
+      if (settings.shiftSettings?.subordinateQualityMinPoints !== undefined) {
+        needsMigration = true;
+      }
+
+      if (needsMigration) {
+        settings.shiftSettings = migrateCategory(settings.shiftSettings);
+        settings.recountSettings = migrateCategory(settings.recountSettings);
+        settings.shiftHandoverSettings = migrateCategory(settings.shiftHandoverSettings);
+        settings.updatedAt = new Date().toISOString();
+
+        // Save migrated settings
+        fs.writeFileSync(MANAGER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+        console.log('Manager points settings migrated to new format');
+      }
+
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('Error getting manager points settings:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/points-settings/manager - Save manager points settings
+  // Simplified: confirmedPoints (>=0), rejectedPenalty (<=0)
+  app.post('/api/points-settings/manager', async (req, res) => {
+    try {
+      ensureDir();
+
+      const { shiftSettings, recountSettings, shiftHandoverSettings } = req.body;
+
+      // Validation
+      if (!shiftSettings || !recountSettings || !shiftHandoverSettings) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: shiftSettings, recountSettings, shiftHandoverSettings'
+        });
+      }
+
+      // Validate each category settings (simplified)
+      const validateCategorySettings = (settings, name) => {
+        if (settings.confirmedPoints === undefined || settings.rejectedPenalty === undefined) {
+          return `${name} is missing required fields: confirmedPoints, rejectedPenalty`;
+        }
+        if (settings.confirmedPoints < 0) {
+          return `${name}.confirmedPoints must be >= 0`;
+        }
+        if (settings.rejectedPenalty > 0) {
+          return `${name}.rejectedPenalty must be <= 0`;
+        }
+        return null;
+      };
+
+      const shiftError = validateCategorySettings(shiftSettings, 'shiftSettings');
+      if (shiftError) {
+        return res.status(400).json({ success: false, error: shiftError });
+      }
+
+      const recountError = validateCategorySettings(recountSettings, 'recountSettings');
+      if (recountError) {
+        return res.status(400).json({ success: false, error: recountError });
+      }
+
+      const shiftHandoverError = validateCategorySettings(shiftHandoverSettings, 'shiftHandoverSettings');
+      if (shiftHandoverError) {
+        return res.status(400).json({ success: false, error: shiftHandoverError });
+      }
+
+      // Load existing or create new
+      let settings = { ...DEFAULT_MANAGER_POINTS_SETTINGS };
+      if (fs.existsSync(MANAGER_POINTS_FILE)) {
+        const content = fs.readFileSync(MANAGER_POINTS_FILE, 'utf8');
+        settings = JSON.parse(content);
+      } else {
+        settings.createdAt = new Date().toISOString();
+      }
+
+      // Update settings (simplified structure)
+      settings.shiftSettings = {
+        confirmedPoints: parseFloat(shiftSettings.confirmedPoints),
+        rejectedPenalty: parseFloat(shiftSettings.rejectedPenalty)
+      };
+      settings.recountSettings = {
+        confirmedPoints: parseFloat(recountSettings.confirmedPoints),
+        rejectedPenalty: parseFloat(recountSettings.rejectedPenalty)
+      };
+      settings.shiftHandoverSettings = {
+        confirmedPoints: parseFloat(shiftHandoverSettings.confirmedPoints),
+        rejectedPenalty: parseFloat(shiftHandoverSettings.rejectedPenalty)
+      };
+      settings.updatedAt = new Date().toISOString();
+
+      fs.writeFileSync(MANAGER_POINTS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+
+      console.log('Manager points settings saved:', settings);
+
+      res.json({ success: true, settings });
+    } catch (error) {
+      console.error('Error saving manager points settings:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

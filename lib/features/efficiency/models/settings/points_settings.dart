@@ -24,3 +24,6 @@ export 'envelope_points_settings.dart';
 
 // Настройки задач
 export 'task_points_settings.dart';
+
+// Настройки управляющих
+export 'manager_points_settings.dart';

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/efficiency_data_model.dart';
+import '../models/manager_efficiency_model.dart';
 import '../services/efficiency_data_service.dart';
+import '../services/manager_efficiency_service.dart';
 import '../utils/efficiency_utils.dart';
-import '../widgets/efficiency_common_widgets.dart';
 import '../../employees/pages/employees_page.dart';
 import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 import '../../bonuses/models/bonus_penalty_model.dart';
 import '../../bonuses/services/bonus_penalty_service.dart';
 import '../../bonuses/pages/bonus_penalty_history_page.dart';
@@ -36,6 +38,11 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
   EmployeeReferralPoints? _referralPoints;
   double? _avgTestScore; // Средний балл тестирования
   int _totalTests = 0; // Количество тестов
+
+  // Manager efficiency data (для admin с managedShopIds)
+  UserRoleData? _userRole;
+  ManagerEfficiencyData? _managerEfficiency;
+  bool _isManagerWithShops = false; // true если admin с managedShopIds
 
   late TabController _tabController;
   int _currentTabIndex = 0; // 0 = текущий месяц, 1 = прошлый месяц
@@ -84,10 +91,23 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     });
 
     try {
-      // Получаем имя текущего сотрудника
+      // Получаем имя текущего сотрудника и роль
       final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
       final roleData = await UserRoleService.loadUserRole();
       final employeeName = systemEmployeeName ?? roleData?.displayName;
+
+      _userRole = roleData;
+
+      // Проверяем, является ли пользователь admin с managedShopIds
+      final isAdmin = roleData?.role == UserRole.admin;
+      final hasManagedShops = roleData?.managedShopIds?.isNotEmpty ?? false;
+      _isManagerWithShops = isAdmin && hasManagedShops;
+
+      if (_isManagerWithShops && roleData?.phone != null) {
+        // Загружаем данные эффективности управляющего
+        await _loadManagerEfficiency(roleData!.phone!);
+        return;
+      }
 
       if (employeeName == null || employeeName.isEmpty) {
         setState(() {
@@ -194,6 +214,28 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     }
   }
 
+  /// Загружает данные эффективности для управляющего (admin)
+  Future<void> _loadManagerEfficiency(String phone) async {
+    try {
+      final month = '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}';
+
+      final efficiency = await ManagerEfficiencyService.getManagerEfficiencyWithComparison(
+        phone: phone,
+        currentMonth: month,
+      );
+
+      setState(() {
+        _managerEfficiency = efficiency ?? ManagerEfficiencyData.empty();
+        _employeeName = _userRole?.displayName;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Ошибка загрузки данных: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,6 +289,11 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           ],
         ),
       );
+    }
+
+    // Если это управляющий с магазинами - показываем специальный UI
+    if (_isManagerWithShops && _managerEfficiency != null) {
+      return _buildManagerEfficiencyBody();
     }
 
     // Проверяем есть ли хоть какие-то данные (эффективность, премии или приглашения)
@@ -1318,6 +1365,479 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
               fontWeight: FontWeight.w600,
               color: isPositive ? Colors.green[700] : Colors.red[700],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============= MANAGER EFFICIENCY UI =============
+
+  /// UI для управляющего (admin с managedShopIds)
+  Widget _buildManagerEfficiencyBody() {
+    final efficiency = _managerEfficiency!;
+
+    return RefreshIndicator(
+      onRefresh: () => _loadData(forceRefresh: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Главная карточка с общим %
+            _buildManagerTotalCard(efficiency),
+            const SizedBox(height: 16),
+            // Две карточки: Магазины и Отчёты
+            _buildManagerEfficiencyCards(efficiency),
+            const SizedBox(height: 16),
+            // Список магазинов
+            if (efficiency.shopBreakdown.isNotEmpty) ...[
+              _buildManagerShopsCard(efficiency),
+              const SizedBox(height: 16),
+            ],
+            // Категории отчётов
+            _buildManagerCategoriesCard(efficiency),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Главная карточка с общим % эффективности управляющего
+  Widget _buildManagerTotalCard(ManagerEfficiencyData efficiency) {
+    final totalPercent = efficiency.totalPercentage;
+    final change = efficiency.comparison?.totalChange;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF9C27B0),
+              const Color(0xFF673AB7),
+            ],
+          ),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Text(
+              EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${totalPercent.toStringAsFixed(1)}%',
+              style: const TextStyle(
+                fontSize: 56,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const Text(
+              'Моя эффективность',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white70,
+              ),
+            ),
+            if (change != null) ...[
+              const SizedBox(height: 12),
+              _buildManagerComparisonBadge(change),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManagerComparisonBadge(double change) {
+    final isPositive = change >= 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPositive ? Icons.trending_up : Icons.trending_down,
+            size: 18,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}% к прошлому месяцу',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Две карточки: Эффективность магазинов и Эффективность отчётов
+  Widget _buildManagerEfficiencyCards(ManagerEfficiencyData efficiency) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildEfficiencyMiniCard(
+            title: 'Магазины',
+            percentage: efficiency.shopEfficiencyPercentage,
+            change: efficiency.comparison?.shopEfficiencyChange,
+            icon: Icons.store,
+            color: Colors.blue,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildEfficiencyMiniCard(
+            title: 'Отчёты',
+            percentage: efficiency.reviewEfficiencyPercentage,
+            change: efficiency.comparison?.reviewEfficiencyChange,
+            icon: Icons.assignment_turned_in,
+            color: Colors.teal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEfficiencyMiniCard({
+    required String title,
+    required double percentage,
+    double? change,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 20, color: color),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${percentage.toStringAsFixed(1)}%',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            if (change != null) ...[
+              const SizedBox(height: 4),
+              _buildSmallChange(change),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmallChange(double change) {
+    final isPositive = change >= 0;
+    return Row(
+      children: [
+        Icon(
+          isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+          size: 14,
+          color: isPositive ? Colors.green : Colors.red,
+        ),
+        const SizedBox(width: 2),
+        Text(
+          '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}',
+          style: TextStyle(
+            fontSize: 12,
+            color: isPositive ? Colors.green : Colors.red,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Карточка со списком магазинов
+  Widget _buildManagerShopsCard(ManagerEfficiencyData efficiency) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.store, color: Color(0xFF9C27B0)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Магазины',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF9C27B0),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${efficiency.shopBreakdown.length} шт.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...efficiency.shopBreakdown.map((shop) => _buildShopItem(shop)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShopItem(ShopEfficiencyItem shop) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3E5F5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.storefront,
+              size: 22,
+              color: Color(0xFF9C27B0),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shop.shopName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${shop.totalPoints.toStringAsFixed(1)} баллов',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (shop.previousMonthChange != null) ...[
+            const SizedBox(width: 8),
+            _buildChangeIndicator(shop.previousMonthChange!),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChangeIndicator(double change) {
+    if (change == 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          '→ 0',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
+    final isPositive = change > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: (isPositive ? Colors.green : Colors.red).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+            size: 14,
+            color: isPositive ? Colors.green : Colors.red,
+          ),
+          Text(
+            '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: isPositive ? Colors.green : Colors.red,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Карточка с категориями отчётов
+  Widget _buildManagerCategoriesCard(ManagerEfficiencyData efficiency) {
+    final categories = efficiency.categoryBreakdown;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.category, color: Color(0xFF9C27B0)),
+                SizedBox(width: 8),
+                Text(
+                  'Категории оценки',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF9C27B0),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildCategoryItem(
+              icon: Icons.swap_horiz,
+              name: 'Пересменка',
+              points: categories.shiftPoints,
+              change: categories.shiftChange,
+              color: const Color(0xFFf093fb),
+            ),
+            _buildCategoryItem(
+              icon: Icons.inventory_2,
+              name: 'Пересчёт',
+              points: categories.recountPoints,
+              change: categories.recountChange,
+              color: const Color(0xFF4facfe),
+            ),
+            _buildCategoryItem(
+              icon: Icons.assignment_turned_in,
+              name: 'Сдать смену',
+              points: categories.shiftHandoverPoints,
+              change: categories.shiftHandoverChange,
+              color: const Color(0xFF30cfd0),
+            ),
+            _buildCategoryItem(
+              icon: Icons.assignment,
+              name: 'Задачи',
+              points: categories.tasksPoints,
+              change: categories.tasksChange,
+              color: Colors.deepPurple,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem({
+    required IconData icon,
+    required String name,
+    required double points,
+    double? change,
+    required Color color,
+  }) {
+    final isPositive = points >= 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 22, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(fontSize: 15),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${isPositive ? '+' : ''}${points.toStringAsFixed(1)}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isPositive ? Colors.green[700] : Colors.red[700],
+                ),
+              ),
+              if (change != null && change != 0)
+                Text(
+                  '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: change >= 0 ? Colors.green : Colors.red,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
