@@ -2,8 +2,13 @@
  * Manager Efficiency API
  *
  * Эффективность управляющего (admin) состоит из двух компонентов:
- * - Эффективность магазинов (50%) — агрегация баллов сотрудников по managedShopIds
+ * - Эффективность магазинов (50%) — агрегация баллов по shopAddress
  * - Эффективность отчётов (50%) — баллы за проверку отчётов + задачи
+ *
+ * Использует тот же подход что и Flutter клиент (efficiency_data_service.dart):
+ * - Загружает все отчёты через те же источники
+ * - Фильтрует по managedShopIds (адресам)
+ * - Агрегирует по магазинам
  */
 
 const fs = require('fs');
@@ -11,20 +16,16 @@ const path = require('path');
 
 // Directories
 const SHOPS_DIR = '/var/www/shops';
-const EMPLOYEES_DIR = '/var/www/employees';
-const SHIFT_REPORTS_DIR = '/var/www/shift_handover_reports';
-const RECOUNT_REPORTS_DIR = '/var/www/recount_reports';
-const SHIFT_HANDOVER_DIR = '/var/www/shift_handover_reports';
-const TASKS_DIR = '/var/www/tasks';
-const RECURRING_TASKS_DIR = '/var/www/recurring-tasks';
+const SHIFT_REPORTS_DIR = '/var/www/shift-reports';
+const RECOUNT_REPORTS_DIR = '/var/www/recount-reports';
+const SHIFT_HANDOVER_DIR = '/var/www/shift-handover-reports';
+const ATTENDANCE_DIR = '/var/www/attendance';
+const EFFICIENCY_PENALTIES_DIR = '/var/www/efficiency-penalties';
 const POINTS_SETTINGS_DIR = '/var/www/points-settings';
-const EFFICIENCY_DIR = '/var/www/efficiency';
+const SHOP_MANAGERS_FILE = '/var/www/shop-managers.json';
 
-// Default manager category settings
-const DEFAULT_MANAGER_CATEGORY_SETTINGS = {
-  confirmedPoints: 1.0,
-  rejectedPenalty: -2.0
-};
+// Import efficiency calculation settings
+const efficiencyCalc = require('../efficiency_calc.js');
 
 /**
  * Load JSON file safely
@@ -39,24 +40,6 @@ function loadJsonFile(filePath) {
     console.error(`Error loading ${filePath}:`, e.message);
   }
   return null;
-}
-
-/**
- * Get manager points settings
- */
-function getManagerPointsSettings() {
-  const settingsPath = path.join(POINTS_SETTINGS_DIR, 'manager_points_settings.json');
-  const settings = loadJsonFile(settingsPath);
-
-  if (!settings) {
-    return {
-      shiftSettings: { ...DEFAULT_MANAGER_CATEGORY_SETTINGS },
-      recountSettings: { ...DEFAULT_MANAGER_CATEGORY_SETTINGS },
-      shiftHandoverSettings: { ...DEFAULT_MANAGER_CATEGORY_SETTINGS }
-    };
-  }
-
-  return settings;
 }
 
 /**
@@ -83,49 +66,35 @@ function getAllShops() {
 }
 
 /**
- * Get employees for a specific shop
- */
-function getEmployeesForShop(shopId) {
-  const employees = [];
-  try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) return employees;
-
-    const files = fs.readdirSync(EMPLOYEES_DIR);
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const emp = loadJsonFile(path.join(EMPLOYEES_DIR, file));
-        if (emp && emp.shopId === shopId && emp.role === 'employee') {
-          employees.push(emp);
-        }
-      }
-    }
-  } catch (e) {
-    console.error('Error loading employees for shop:', e.message);
-  }
-  return employees;
-}
-
-/**
- * Get manager data by phone
+ * Get manager data by phone (with managedShopIds from shop-managers.json)
  */
 function getManagerByPhone(phone) {
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) return null;
-
     const normalizedPhone = phone.replace(/[\s+]/g, '');
-    const files = fs.readdirSync(EMPLOYEES_DIR);
 
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const emp = loadJsonFile(path.join(EMPLOYEES_DIR, file));
-        if (emp) {
-          const empPhone = (emp.phone || '').replace(/[\s+]/g, '');
-          if (empPhone === normalizedPhone && emp.role === 'admin') {
-            return emp;
-          }
-        }
-      }
+    // Load shop-managers.json to get managedShopIds
+    const shopManagersData = loadJsonFile(SHOP_MANAGERS_FILE);
+    if (!shopManagersData) {
+      console.log('shop-managers.json not found');
+      return null;
     }
+
+    // Check if user is a manager in shop-managers.json
+    const managerEntry = shopManagersData.managers?.find(m => {
+      const mPhone = (m.phone || '').replace(/[\s+]/g, '');
+      return mPhone === normalizedPhone;
+    });
+
+    if (managerEntry) {
+      return {
+        phone: normalizedPhone,
+        name: managerEntry.name,
+        managedShopIds: managerEntry.managedShops || [],
+        employees: managerEntry.employees || []
+      };
+    }
+
+    return null;
   } catch (e) {
     console.error('Error finding manager by phone:', e.message);
   }
@@ -133,155 +102,146 @@ function getManagerByPhone(phone) {
 }
 
 /**
- * Load efficiency data for an employee
+ * Load reports from directory for a specific month
+ * Handles both single-object files and array files
  */
-function getEmployeeEfficiency(employeePhone, month) {
-  const efficiencyPath = path.join(EFFICIENCY_DIR, `${month}.json`);
-  const efficiencyData = loadJsonFile(efficiencyPath);
-
-  if (!efficiencyData) return 0;
-
-  const normalizedPhone = employeePhone.replace(/[\s+]/g, '');
-
-  // Find employee data
-  const empData = efficiencyData.employees?.find(e => {
-    const ePhone = (e.phone || '').replace(/[\s+]/g, '');
-    return ePhone === normalizedPhone;
-  });
-
-  return empData?.totalPoints || 0;
-}
-
-/**
- * Count reports by status for a manager's shops
- */
-function countReportsByStatus(reportsDir, shopIds, month, categoryName) {
-  let confirmed = 0;
-  let rejected = 0;
-  let failed = 0;
-  let total = 0;
-
+function loadReportsForMonth(dir, month, dateField = 'date') {
+  const reports = [];
   try {
-    if (!fs.existsSync(reportsDir)) return { confirmed, rejected, failed, total };
+    if (!fs.existsSync(dir)) return reports;
 
-    const files = fs.readdirSync(reportsDir);
-
+    const files = fs.readdirSync(dir);
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
-      const report = loadJsonFile(path.join(reportsDir, file));
-      if (!report) continue;
+      // Check if filename contains the month (e.g., 2026-02-01.json)
+      if (file.startsWith(month)) {
+        const data = loadJsonFile(path.join(dir, file));
+        if (!data) continue;
 
-      // Check if report belongs to one of manager's shops
-      if (!shopIds.includes(report.shopId)) continue;
-
-      // Check if report is from the specified month
-      const reportDate = report.date || report.createdAt;
-      if (!reportDate || !reportDate.startsWith(month)) continue;
-
-      total++;
-
-      // Count by status
-      const status = report.status || 'pending';
-      if (status === 'confirmed' || status === 'approved') {
-        confirmed++;
-      } else if (status === 'rejected') {
-        rejected++;
-      } else if (status === 'failed') {
-        failed++;
-      }
-    }
-  } catch (e) {
-    console.error(`Error counting ${categoryName} reports:`, e.message);
-  }
-
-  return { confirmed, rejected, failed, total };
-}
-
-/**
- * Calculate review efficiency points
- */
-function calculateReviewPoints(reportCounts, settings) {
-  const { confirmed, rejected, failed, total } = reportCounts;
-  const { confirmedPoints, rejectedPenalty } = settings;
-
-  let points = 0;
-
-  // Points for confirmed reports
-  points += confirmed * confirmedPoints;
-
-  // Penalty for rejected and failed reports
-  points += (rejected + failed) * rejectedPenalty;
-
-  return points;
-}
-
-/**
- * Count manager's tasks for the month
- */
-function countManagerTasks(managerPhone, shopIds, month) {
-  let completed = 0;
-  let total = 0;
-
-  try {
-    // Regular tasks
-    if (fs.existsSync(TASKS_DIR)) {
-      const files = fs.readdirSync(TASKS_DIR);
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-
-        const task = loadJsonFile(path.join(TASKS_DIR, file));
-        if (!task) continue;
-
-        // Check if task belongs to one of manager's shops
-        if (!shopIds.includes(task.shopId)) continue;
-
-        // Check if task is from the specified month
-        const taskDate = task.dueDate || task.createdAt;
-        if (!taskDate || !taskDate.startsWith(month)) continue;
-
-        total++;
-        if (task.status === 'completed') {
-          completed++;
+        // Handle array of reports (shift-reports, shift-handover-reports)
+        if (Array.isArray(data)) {
+          for (const report of data) {
+            reports.push(report);
+          }
+        } else {
+          reports.push(data);
         }
+        continue;
       }
-    }
 
-    // Recurring tasks
-    if (fs.existsSync(RECURRING_TASKS_DIR)) {
-      const files = fs.readdirSync(RECURRING_TASKS_DIR);
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
+      // For files not named by date, check content
+      const data = loadJsonFile(path.join(dir, file));
+      if (!data) continue;
 
-        const task = loadJsonFile(path.join(RECURRING_TASKS_DIR, file));
-        if (!task) continue;
-
-        // Check if task belongs to one of manager's shops
-        if (!shopIds.includes(task.shopId)) continue;
-
-        // Count completions for the month
-        const completions = task.completions || [];
-        for (const completion of completions) {
-          if (completion.date?.startsWith(month)) {
-            total++;
-            if (completion.status === 'completed') {
-              completed++;
-            }
+      // Handle array of reports
+      if (Array.isArray(data)) {
+        for (const report of data) {
+          const reportDate = report[dateField] || report.createdAt || report.handoverDate || report.recountDate;
+          if (reportDate && reportDate.startsWith(month)) {
+            reports.push(report);
           }
         }
+      } else {
+        const reportDate = data[dateField] || data.createdAt || data.handoverDate || data.recountDate;
+        if (reportDate && reportDate.startsWith(month)) {
+          reports.push(data);
+        }
       }
     }
   } catch (e) {
-    console.error('Error counting manager tasks:', e.message);
+    console.error(`Error loading reports from ${dir}:`, e.message);
+  }
+  return reports;
+}
+
+/**
+ * Load penalties for month
+ */
+function loadPenaltiesForMonth(month) {
+  const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${month}.json`);
+  const data = loadJsonFile(filePath);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Load points settings
+ */
+function loadPointsSettings() {
+  return {
+    shift: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_points_settings.json')) || {},
+    recount: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'recount_points_settings.json')) || {},
+    handover: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'shift_handover_points_settings.json')) || {},
+    attendance: loadJsonFile(path.join(POINTS_SETTINGS_DIR, 'attendance_points_settings.json')) || {}
+  };
+}
+
+/**
+ * Calculate points based on rating (interpolation)
+ */
+function calculateRatingPoints(rating, settings) {
+  if (!settings || !rating) return 0;
+
+  const minRating = settings.minRating || 1;
+  const maxRating = settings.maxRating || 10;
+  const minPoints = settings.minPoints || -5;
+  const maxPoints = settings.maxPoints || 5;
+  const zeroThreshold = settings.zeroThreshold || 5;
+
+  if (rating <= minRating) return minPoints;
+  if (rating >= maxRating) return maxPoints;
+
+  if (rating <= zeroThreshold) {
+    const range = zeroThreshold - minRating;
+    if (range === 0) return 0;
+    return minPoints + (0 - minPoints) * ((rating - minRating) / range);
+  } else {
+    const range = maxRating - zeroThreshold;
+    if (range === 0) return maxPoints;
+    return 0 + (maxPoints - 0) * ((rating - zeroThreshold) / range);
+  }
+}
+
+/**
+ * Aggregate efficiency data by shop address
+ */
+function aggregateByShop(records, validAddresses) {
+  const byShop = {};
+
+  for (const record of records) {
+    const shopAddress = record.shopAddress;
+    if (!shopAddress || !validAddresses.has(shopAddress)) continue;
+
+    if (!byShop[shopAddress]) {
+      byShop[shopAddress] = {
+        shopAddress,
+        totalPoints: 0,
+        earnedPoints: 0,
+        lostPoints: 0,
+        recordsCount: 0
+      };
+    }
+
+    byShop[shopAddress].totalPoints += record.points || 0;
+    byShop[shopAddress].recordsCount++;
+
+    if ((record.points || 0) >= 0) {
+      byShop[shopAddress].earnedPoints += record.points || 0;
+    } else {
+      byShop[shopAddress].lostPoints += Math.abs(record.points || 0);
+    }
   }
 
-  return { completed, total };
+  return Object.values(byShop);
 }
 
 /**
  * Calculate manager efficiency
  */
 function calculateManagerEfficiency(phone, month) {
+  console.log(`\n========== Calculating manager efficiency ==========`);
+  console.log(`Phone: ${phone}, Month: ${month}`);
+
   // Find manager
   const manager = getManagerByPhone(phone);
   if (!manager) {
@@ -306,111 +266,219 @@ function calculateManagerEfficiency(phone, month) {
     };
   }
 
-  // Load settings
-  const pointsSettings = getManagerPointsSettings();
+  console.log(`Manager has ${managedShopIds.length} managed shops`);
 
-  // Get all shops info
+  // Get all shops and filter by managedShopIds
   const allShops = getAllShops();
   const managedShops = allShops.filter(s => managedShopIds.includes(s.id));
+  const validAddresses = new Set(managedShops.map(s => s.address));
 
-  // ===== PART 1: Shop Efficiency (50%) =====
-  let totalShopPoints = 0;
-  let totalTheoreticalMax = 0;
-  const shopBreakdown = [];
+  console.log(`Valid shop addresses: ${[...validAddresses].join(', ')}`);
 
-  for (const shop of managedShops) {
-    const employees = getEmployeesForShop(shop.id);
-    let shopPoints = 0;
+  // Load settings
+  const settings = loadPointsSettings();
 
-    for (const emp of employees) {
-      const empPoints = getEmployeeEfficiency(emp.phone, month);
-      shopPoints += empPoints;
+  // Create efficiency records from all sources
+  const allRecords = [];
+
+  // 1. Load shift reports
+  const shiftReports = loadReportsForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate');
+  console.log(`Loaded ${shiftReports.length} shift reports`);
+  for (const report of shiftReports) {
+    if (!validAddresses.has(report.shopAddress)) continue;
+
+    let points = 0;
+    if (report.status === 'confirmed' && report.adminRating) {
+      points = calculateRatingPoints(report.adminRating, settings.shift);
+    } else if (report.status === 'failed' || report.status === 'rejected') {
+      points = settings.shift?.minPoints || -5;
     }
 
-    // Теоретический максимум = кол-во сотрудников * 100 (или другая формула)
-    // Используем простую формулу: каждый сотрудник может заработать max 50 баллов
-    const theoreticalMax = employees.length * 50;
-
-    totalShopPoints += shopPoints;
-    totalTheoreticalMax += theoreticalMax;
-
-    const percentage = theoreticalMax > 0 ? (shopPoints / theoreticalMax) * 100 : 0;
-
-    shopBreakdown.push({
-      shopId: shop.id,
-      shopName: shop.name || shop.address || `Магазин ${shop.id}`,
-      totalPoints: Math.round(shopPoints * 10) / 10,
-      percentage: Math.round(percentage * 10) / 10
+    allRecords.push({
+      shopAddress: report.shopAddress,
+      employeeName: report.employeeName || '',
+      category: 'shift',
+      points,
+      status: report.status
     });
   }
 
-  const shopEfficiencyPercentage = totalTheoreticalMax > 0
-    ? (totalShopPoints / totalTheoreticalMax) * 100
+  // 2. Load recount reports
+  const recountReports = loadReportsForMonth(RECOUNT_REPORTS_DIR, month, 'recountDate');
+  console.log(`Loaded ${recountReports.length} recount reports`);
+  for (const report of recountReports) {
+    if (!validAddresses.has(report.shopAddress)) continue;
+
+    let points = 0;
+    if (report.status === 'confirmed' && report.adminRating) {
+      points = calculateRatingPoints(report.adminRating, settings.recount);
+    } else if (report.status === 'failed' || report.status === 'rejected') {
+      points = settings.recount?.minPoints || -5;
+    }
+
+    allRecords.push({
+      shopAddress: report.shopAddress,
+      employeeName: report.employeeName || '',
+      category: 'recount',
+      points,
+      status: report.status
+    });
+  }
+
+  // 3. Load shift handover reports
+  const handoverReports = loadReportsForMonth(SHIFT_HANDOVER_DIR, month, 'handoverDate');
+  console.log(`Loaded ${handoverReports.length} handover reports`);
+  for (const report of handoverReports) {
+    if (!validAddresses.has(report.shopAddress)) continue;
+
+    let points = 0;
+    if (report.status === 'confirmed' && report.adminRating) {
+      points = calculateRatingPoints(report.adminRating, settings.handover);
+    } else if (report.status === 'failed' || report.status === 'rejected') {
+      points = settings.handover?.minPoints || -5;
+    }
+
+    allRecords.push({
+      shopAddress: report.shopAddress,
+      employeeName: report.employeeName || '',
+      category: 'handover',
+      points,
+      status: report.status
+    });
+  }
+
+  // 4. Load penalties
+  const penalties = loadPenaltiesForMonth(month);
+  console.log(`Loaded ${penalties.length} penalties`);
+  for (const penalty of penalties) {
+    // Map penalty shopAddress to valid addresses if needed
+    let shopAddress = penalty.shopAddress || '';
+
+    // Some penalties might have different address format, try to match
+    if (!validAddresses.has(shopAddress)) {
+      // Try partial match
+      for (const validAddr of validAddresses) {
+        if (validAddr.includes(shopAddress) || shopAddress.includes(validAddr)) {
+          shopAddress = validAddr;
+          break;
+        }
+      }
+    }
+
+    if (!validAddresses.has(shopAddress)) continue;
+
+    allRecords.push({
+      shopAddress,
+      employeeName: penalty.entityName || penalty.employeeName || '',
+      category: 'penalty',
+      points: penalty.points || 0,
+      status: 'penalty'
+    });
+  }
+
+  console.log(`Total records after filtering: ${allRecords.length}`);
+
+  // Aggregate by shop
+  const shopBreakdown = aggregateByShop(allRecords, validAddresses);
+
+  // Calculate totals
+  let totalEarned = 0;
+  let totalLost = 0;
+
+  for (const shop of shopBreakdown) {
+    totalEarned += shop.earnedPoints;
+    totalLost += shop.lostPoints;
+  }
+
+  const totalPoints = totalEarned - totalLost;
+
+  // Calculate category breakdown
+  const categoryBreakdown = {
+    shiftPoints: 0,
+    recountPoints: 0,
+    shiftHandoverPoints: 0,
+    tasksPoints: 0
+  };
+
+  for (const record of allRecords) {
+    switch (record.category) {
+      case 'shift':
+        categoryBreakdown.shiftPoints += record.points;
+        break;
+      case 'recount':
+        categoryBreakdown.recountPoints += record.points;
+        break;
+      case 'handover':
+        categoryBreakdown.shiftHandoverPoints += record.points;
+        break;
+      case 'task':
+        categoryBreakdown.tasksPoints += record.points;
+        break;
+    }
+  }
+
+  // Format shop breakdown for response
+  const formattedShopBreakdown = shopBreakdown.map(shop => {
+    const managedShop = managedShops.find(s => s.address === shop.shopAddress);
+    return {
+      shopId: managedShop?.id || '',
+      shopName: managedShop?.name || shop.shopAddress,
+      totalPoints: Math.round(shop.totalPoints * 10) / 10,
+      earnedPoints: Math.round(shop.earnedPoints * 10) / 10,
+      lostPoints: Math.round(shop.lostPoints * 10) / 10,
+      recordsCount: shop.recordsCount,
+      percentage: 0 // Can be calculated if needed
+    };
+  });
+
+  // Sort by total points (descending)
+  formattedShopBreakdown.sort((a, b) => b.totalPoints - a.totalPoints);
+
+  // Calculate percentages
+  // Эффективность = earned / (earned + lost) * 100
+  // Если нет записей - 0%
+  const shopEfficiencyPercentage = (totalEarned + totalLost) > 0
+    ? (totalEarned / (totalEarned + totalLost)) * 100
     : 0;
 
-  // ===== PART 2: Review Efficiency (50%) =====
-
-  // Count shift reports
-  const shiftCounts = countReportsByStatus(
-    SHIFT_REPORTS_DIR,
-    managedShopIds,
-    month,
-    'shift'
-  );
-  const shiftPoints = calculateReviewPoints(shiftCounts, pointsSettings.shiftSettings || DEFAULT_MANAGER_CATEGORY_SETTINGS);
-
-  // Count recount reports
-  const recountCounts = countReportsByStatus(
-    RECOUNT_REPORTS_DIR,
-    managedShopIds,
-    month,
-    'recount'
-  );
-  const recountPoints = calculateReviewPoints(recountCounts, pointsSettings.recountSettings || DEFAULT_MANAGER_CATEGORY_SETTINGS);
-
-  // Count shift handover reports
-  const shiftHandoverCounts = countReportsByStatus(
-    SHIFT_HANDOVER_DIR,
-    managedShopIds,
-    month,
-    'shiftHandover'
-  );
-  const shiftHandoverPoints = calculateReviewPoints(shiftHandoverCounts, pointsSettings.shiftHandoverSettings || DEFAULT_MANAGER_CATEGORY_SETTINGS);
-
-  // Count tasks
-  const tasksCounts = countManagerTasks(phone, managedShopIds, month);
-  // Tasks give 1 point per completed, -1 per failed
-  const tasksPoints = tasksCounts.completed - (tasksCounts.total - tasksCounts.completed);
-
-  const totalReviewPoints = shiftPoints + recountPoints + shiftHandoverPoints + tasksPoints;
-
-  // Теоретический максимум для отчётов:
-  // confirmedPoints * количество отчётов для каждой категории
-  const shiftMaxPoints = shiftCounts.total * (pointsSettings.shiftSettings?.confirmedPoints || 1);
-  const recountMaxPoints = recountCounts.total * (pointsSettings.recountSettings?.confirmedPoints || 1);
-  const shiftHandoverMaxPoints = shiftHandoverCounts.total * (pointsSettings.shiftHandoverSettings?.confirmedPoints || 1);
-  const tasksMaxPoints = tasksCounts.total; // 1 point per task
-
-  const totalReviewMax = shiftMaxPoints + recountMaxPoints + shiftHandoverMaxPoints + tasksMaxPoints;
-
-  const reviewEfficiencyPercentage = totalReviewMax > 0
-    ? (totalReviewPoints / totalReviewMax) * 100
+  // Для отчётов - аналогичная формула по категориям
+  const categoryTotal = Math.abs(categoryBreakdown.shiftPoints) +
+                        Math.abs(categoryBreakdown.recountPoints) +
+                        Math.abs(categoryBreakdown.shiftHandoverPoints) +
+                        Math.abs(categoryBreakdown.tasksPoints);
+  const categoryEarned = Math.max(0, categoryBreakdown.shiftPoints) +
+                         Math.max(0, categoryBreakdown.recountPoints) +
+                         Math.max(0, categoryBreakdown.shiftHandoverPoints) +
+                         Math.max(0, categoryBreakdown.tasksPoints);
+  const reviewEfficiencyPercentage = categoryTotal > 0
+    ? (categoryEarned / categoryTotal) * 100
     : 0;
 
-  // ===== TOTAL EFFICIENCY =====
-  // Average of shop efficiency and review efficiency (50/50)
+  // Общая эффективность = среднее
   const totalPercentage = (shopEfficiencyPercentage + reviewEfficiencyPercentage) / 2;
 
+  console.log(`\nResults:`);
+  console.log(`  Total earned: ${totalEarned}`);
+  console.log(`  Total lost: ${totalLost}`);
+  console.log(`  Total points: ${totalPoints}`);
+  console.log(`  Shops: ${formattedShopBreakdown.length}`);
+  console.log(`  Shop efficiency: ${shopEfficiencyPercentage.toFixed(1)}%`);
+  console.log(`  Review efficiency: ${reviewEfficiencyPercentage.toFixed(1)}%`);
+  console.log(`  Total efficiency: ${totalPercentage.toFixed(1)}%`);
+
   return {
-    totalPercentage: Math.round(Math.max(0, totalPercentage) * 10) / 10,
-    shopEfficiencyPercentage: Math.round(Math.max(0, shopEfficiencyPercentage) * 10) / 10,
-    reviewEfficiencyPercentage: Math.round(Math.max(0, Math.min(100, reviewEfficiencyPercentage)) * 10) / 10,
-    shopBreakdown,
+    totalPercentage: Math.round(totalPercentage * 10) / 10,
+    shopEfficiencyPercentage: Math.round(shopEfficiencyPercentage * 10) / 10,
+    reviewEfficiencyPercentage: Math.round(reviewEfficiencyPercentage * 10) / 10,
+    totalEarned: Math.round(totalEarned * 10) / 10,
+    totalLost: Math.round(totalLost * 10) / 10,
+    totalPoints: Math.round(totalPoints * 10) / 10,
+    shopBreakdown: formattedShopBreakdown,
     categoryBreakdown: {
-      shiftPoints: Math.round(shiftPoints * 10) / 10,
-      recountPoints: Math.round(recountPoints * 10) / 10,
-      shiftHandoverPoints: Math.round(shiftHandoverPoints * 10) / 10,
-      tasksPoints: Math.round(tasksPoints * 10) / 10
+      shiftPoints: Math.round(categoryBreakdown.shiftPoints * 10) / 10,
+      recountPoints: Math.round(categoryBreakdown.recountPoints * 10) / 10,
+      shiftHandoverPoints: Math.round(categoryBreakdown.shiftHandoverPoints * 10) / 10,
+      tasksPoints: Math.round(categoryBreakdown.tasksPoints * 10) / 10
     }
   };
 }
