@@ -23,14 +23,13 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   // Данные для вкладок
   List<String> _developers = [];
   List<Map<String, dynamic>> _managers = [];
-  // ignore: unused_field
   List<Map<String, dynamic>> _storeManagers = [];
   List<Shop> _allShops = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadCurrentUser();
   }
 
@@ -90,6 +89,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             Tab(icon: Icon(Icons.business_center), text: 'Управляющие'),
             Tab(icon: Icon(Icons.store), text: 'Магазины'),
             Tab(icon: Icon(Icons.people), text: 'Сотрудники'),
+            Tab(icon: Icon(Icons.supervisor_account), text: 'Заведующие'),
           ],
         ),
       ),
@@ -102,6 +102,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                 _buildManagersTab(),
                 _buildShopsTab(),
                 _buildEmployeesTab(),
+                _buildStoreManagersTab(),
               ],
             ),
     );
@@ -1024,6 +1025,429 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ==================== ВКЛАДКА ЗАВЕДУЮЩИЕ ====================
+
+  Widget _buildStoreManagersTab() {
+    return Column(
+      children: [
+        // Кнопка добавления
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: ElevatedButton.icon(
+            onPressed: _showAddStoreManagerDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Добавить заведующую'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+          ),
+        ),
+
+        // Список заведующих
+        Expanded(
+          child: _storeManagers.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Нет заведующих\n\nЗаведующая — это сотрудник магазина с расширенными правами',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _storeManagers.length,
+                  itemBuilder: (context, index) {
+                    final sm = _storeManagers[index];
+                    final phone = sm['phone']?.toString() ?? '';
+                    final shopId = sm['shopId']?.toString() ?? '';
+                    final canSeeAll = sm['canSeeAllManagerShops'] == true;
+
+                    // Найти название магазина
+                    final shop = _allShops.where((s) => s.id == shopId).firstOrNull;
+                    final shopName = shop?.name ?? shopId;
+
+                    // Найти управляющего этого магазина
+                    String? managerName;
+                    for (final manager in _managers) {
+                      final shops = manager['managedShops'] as List?;
+                      if (shops?.contains(shopId) == true) {
+                        managerName = manager['name']?.toString() ?? 'Без имени';
+                        break;
+                      }
+                    }
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: ExpansionTile(
+                        leading: CircleAvatar(
+                          backgroundColor: canSeeAll ? Colors.green : Colors.amber,
+                          child: const Icon(Icons.supervisor_account, color: Colors.white),
+                        ),
+                        title: Text(_formatPhone(phone)),
+                        subtitle: Text('Магазин: $shopName'),
+                        trailing: Chip(
+                          label: Text(
+                            canSeeAll ? 'Все магазины' : 'Только свой',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: canSeeAll ? Colors.green.shade100 : Colors.amber.shade100,
+                        ),
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.store),
+                            title: const Text('Основной магазин'),
+                            subtitle: Text(shopName),
+                          ),
+                          if (managerName != null)
+                            ListTile(
+                              leading: const Icon(Icons.business_center),
+                              title: const Text('Управляющий'),
+                              subtitle: Text(managerName),
+                            ),
+                          ListTile(
+                            leading: Icon(
+                              canSeeAll ? Icons.visibility : Icons.visibility_off,
+                              color: canSeeAll ? Colors.green : Colors.amber,
+                            ),
+                            title: const Text('Видимость магазинов'),
+                            subtitle: Text(
+                              canSeeAll
+                                  ? 'Видит ВСЕ магазины своего управляющего'
+                                  : 'Видит ТОЛЬКО свой магазин',
+                            ),
+                            trailing: Switch(
+                              value: canSeeAll,
+                              onChanged: (value) => _toggleStoreManagerVisibility(phone, value),
+                            ),
+                          ),
+                          OverflowBar(
+                            alignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => _showEditStoreManagerDialog(sm),
+                                icon: const Icon(Icons.edit),
+                                label: const Text('Изменить'),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _confirmRemoveStoreManager(phone),
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                label: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+
+        // Информация
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.amber.withOpacity(0.1),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.amber),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Заведующая может видеть только свой магазин или все магазины своего управляющего (настраивается)',
+                  style: TextStyle(color: Colors.amber),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showAddStoreManagerDialog() {
+    final phoneController = TextEditingController();
+    String? selectedShopId;
+    bool canSeeAll = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Добавить заведующую'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Номер телефона',
+                    hintText: '79001234567',
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Магазин:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedShopId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.store),
+                    border: OutlineInputBorder(),
+                  ),
+                  hint: const Text('Выберите магазин'),
+                  items: _allShops.map((shop) {
+                    return DropdownMenuItem(
+                      value: shop.id,
+                      child: Text(shop.name, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() => selectedShopId = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Видеть все магазины управляющего'),
+                  subtitle: Text(
+                    canSeeAll
+                        ? 'Заведующая увидит ВСЕ магазины'
+                        : 'Заведующая увидит ТОЛЬКО свой магазин',
+                    style: TextStyle(color: canSeeAll ? Colors.green : Colors.grey),
+                  ),
+                  value: canSeeAll,
+                  onChanged: (value) {
+                    setDialogState(() => canSeeAll = value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final phone = phoneController.text.trim().replaceAll(RegExp(r'[\s\+]'), '');
+                if (phone.isEmpty || selectedShopId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Заполните все поля'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+
+                final success = await NetworkManagementService.saveStoreManager(
+                  _currentUserPhone!,
+                  {
+                    'phone': phone,
+                    'shopId': selectedShopId,
+                    'canSeeAllManagerShops': canSeeAll,
+                  },
+                );
+
+                if (success) {
+                  _loadAllData();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Заведующая добавлена')),
+                    );
+                  }
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Ошибка добавления'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Добавить'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditStoreManagerDialog(Map<String, dynamic> sm) {
+    String? selectedShopId = sm['shopId']?.toString();
+    bool canSeeAll = sm['canSeeAllManagerShops'] == true;
+    final phone = sm['phone']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Редактировать: ${_formatPhone(phone)}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Магазин:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedShopId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.store),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _allShops.map((shop) {
+                    return DropdownMenuItem(
+                      value: shop.id,
+                      child: Text(shop.name, overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() => selectedShopId = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Видеть все магазины управляющего'),
+                  subtitle: Text(
+                    canSeeAll
+                        ? 'Заведующая увидит ВСЕ магазины'
+                        : 'Заведующая увидит ТОЛЬКО свой магазин',
+                    style: TextStyle(color: canSeeAll ? Colors.green : Colors.grey),
+                  ),
+                  value: canSeeAll,
+                  onChanged: (value) {
+                    setDialogState(() => canSeeAll = value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (selectedShopId == null) return;
+
+                Navigator.pop(context);
+
+                final success = await NetworkManagementService.saveStoreManager(
+                  _currentUserPhone!,
+                  {
+                    'phone': phone,
+                    'shopId': selectedShopId,
+                    'canSeeAllManagerShops': canSeeAll,
+                  },
+                );
+
+                if (success) {
+                  _loadAllData();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Заведующая обновлена')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Сохранить'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleStoreManagerVisibility(String phone, bool canSeeAll) async {
+    // Найти текущие данные заведующей
+    final sm = _storeManagers.firstWhere(
+      (s) => s['phone']?.toString() == phone,
+      orElse: () => {},
+    );
+    if (sm.isEmpty) return;
+
+    final success = await NetworkManagementService.saveStoreManager(
+      _currentUserPhone!,
+      {
+        'phone': phone,
+        'shopId': sm['shopId'],
+        'canSeeAllManagerShops': canSeeAll,
+      },
+    );
+
+    if (success) {
+      _loadAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              canSeeAll
+                  ? 'Заведующая теперь видит все магазины'
+                  : 'Заведующая теперь видит только свой магазин',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _confirmRemoveStoreManager(String phone) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Удалить заведующую?'),
+        content: Text('Удалить ${_formatPhone(phone)} из списка заведующих?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              final success = await NetworkManagementService.removeStoreManager(
+                _currentUserPhone!,
+                phone,
+              );
+
+              if (success) {
+                _loadAllData();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Заведующая удалена')),
+                  );
+                }
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Ошибка удаления'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Удалить'),
+          ),
+        ],
       ),
     );
   }
