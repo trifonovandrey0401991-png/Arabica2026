@@ -443,33 +443,85 @@ function calculateManagerEfficiency(phone, month) {
   // Sort by total points (descending)
   formattedShopBreakdown.sort((a, b) => b.totalPoints - a.totalPoints);
 
-  // Calculate percentages
-  // Эффективность = earned / (earned + lost) * 100
-  // Если нет записей - 0%
-  const shopEfficiencyPercentage = (totalEarned + totalLost) > 0
-    ? (totalEarned / (totalEarned + totalLost)) * 100
+  // ============ ВАРИАНТ 2: Средний балл за отчёт ============
+  // Формула: efficiency% = ((avgPoints - minPoints) / (maxPoints - minPoints)) × 100
+  // Где avgPoints = totalPoints / количество_отчётов
+
+  // Подсчитываем количество обработанных отчётов (с баллами != 0)
+  const processedRecords = allRecords.filter(r => r.points !== 0);
+  const totalRecordsCount = processedRecords.length;
+
+  // Получаем границы баллов из настроек (усреднённые по категориям)
+  const avgMinPoints = (
+    (settings.shift?.minPoints || -5) +
+    (settings.recount?.minPoints || -5) +
+    (settings.handover?.minPoints || -5)
+  ) / 3;
+
+  const avgMaxPoints = (
+    (settings.shift?.maxPoints || 5) +
+    (settings.recount?.maxPoints || 5) +
+    (settings.handover?.maxPoints || 5)
+  ) / 3;
+
+  // Эффективность магазинов: средний балл за отчёт, нормализованный
+  let shopEfficiencyPercentage = 0;
+  if (totalRecordsCount > 0 && avgMaxPoints !== avgMinPoints) {
+    const avgPointsPerRecord = totalPoints / totalRecordsCount;
+    // Нормализация: (value - min) / (max - min) * 100
+    shopEfficiencyPercentage = ((avgPointsPerRecord - avgMinPoints) / (avgMaxPoints - avgMinPoints)) * 100;
+    // Ограничиваем 0-100%
+    shopEfficiencyPercentage = Math.max(0, Math.min(100, shopEfficiencyPercentage));
+  }
+
+  // Эффективность отчётов: по категориям (shift, recount, handover)
+  // Считаем отдельно для каждой категории и усредняем
+  const categoryEfficiencies = [];
+
+  // Shift efficiency
+  const shiftRecords = allRecords.filter(r => r.category === 'shift' && r.points !== 0);
+  if (shiftRecords.length > 0) {
+    const shiftAvg = categoryBreakdown.shiftPoints / shiftRecords.length;
+    const shiftMin = settings.shift?.minPoints || -5;
+    const shiftMax = settings.shift?.maxPoints || 5;
+    const shiftEff = ((shiftAvg - shiftMin) / (shiftMax - shiftMin)) * 100;
+    categoryEfficiencies.push(Math.max(0, Math.min(100, shiftEff)));
+  }
+
+  // Recount efficiency
+  const recountRecords = allRecords.filter(r => r.category === 'recount' && r.points !== 0);
+  if (recountRecords.length > 0) {
+    const recountAvg = categoryBreakdown.recountPoints / recountRecords.length;
+    const recountMin = settings.recount?.minPoints || -5;
+    const recountMax = settings.recount?.maxPoints || 5;
+    const recountEff = ((recountAvg - recountMin) / (recountMax - recountMin)) * 100;
+    categoryEfficiencies.push(Math.max(0, Math.min(100, recountEff)));
+  }
+
+  // Handover efficiency
+  const handoverRecords = allRecords.filter(r => r.category === 'handover' && r.points !== 0);
+  if (handoverRecords.length > 0) {
+    const handoverAvg = categoryBreakdown.shiftHandoverPoints / handoverRecords.length;
+    const handoverMin = settings.handover?.minPoints || -5;
+    const handoverMax = settings.handover?.maxPoints || 5;
+    const handoverEff = ((handoverAvg - handoverMin) / (handoverMax - handoverMin)) * 100;
+    categoryEfficiencies.push(Math.max(0, Math.min(100, handoverEff)));
+  }
+
+  // Среднее по категориям (или 0 если нет данных)
+  const reviewEfficiencyPercentage = categoryEfficiencies.length > 0
+    ? categoryEfficiencies.reduce((a, b) => a + b, 0) / categoryEfficiencies.length
     : 0;
 
-  // Для отчётов - аналогичная формула по категориям
-  const categoryTotal = Math.abs(categoryBreakdown.shiftPoints) +
-                        Math.abs(categoryBreakdown.recountPoints) +
-                        Math.abs(categoryBreakdown.shiftHandoverPoints) +
-                        Math.abs(categoryBreakdown.tasksPoints);
-  const categoryEarned = Math.max(0, categoryBreakdown.shiftPoints) +
-                         Math.max(0, categoryBreakdown.recountPoints) +
-                         Math.max(0, categoryBreakdown.shiftHandoverPoints) +
-                         Math.max(0, categoryBreakdown.tasksPoints);
-  const reviewEfficiencyPercentage = categoryTotal > 0
-    ? (categoryEarned / categoryTotal) * 100
-    : 0;
-
-  // Общая эффективность = среднее
+  // Общая эффективность = среднее от магазинов и отчётов
   const totalPercentage = (shopEfficiencyPercentage + reviewEfficiencyPercentage) / 2;
 
-  console.log(`\nResults:`);
+  console.log(`\nResults (Вариант 2 - средний балл):`);
+  console.log(`  Total records: ${totalRecordsCount}`);
   console.log(`  Total earned: ${totalEarned}`);
   console.log(`  Total lost: ${totalLost}`);
   console.log(`  Total points: ${totalPoints}`);
+  console.log(`  Avg points/record: ${totalRecordsCount > 0 ? (totalPoints / totalRecordsCount).toFixed(2) : 0}`);
   console.log(`  Shops: ${formattedShopBreakdown.length}`);
   console.log(`  Shop efficiency: ${shopEfficiencyPercentage.toFixed(1)}%`);
   console.log(`  Review efficiency: ${reviewEfficiencyPercentage.toFixed(1)}%`);
