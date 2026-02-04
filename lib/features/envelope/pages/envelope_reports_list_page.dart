@@ -42,7 +42,7 @@ class _EnvelopeReportsListPageState extends State<EnvelopeReportsListPage>
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final reports = await EnvelopeReportService.getReports();
+      final reports = await EnvelopeReportService.getReportsForCurrentUser();
       final pendingReports = await EnvelopeReportService.getPendingReports();
       // Сортируем по дате (новые сверху)
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));

@@ -2,6 +2,7 @@ import '../models/shift_handover_report_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 class ShiftHandoverReportService {
   static const String baseEndpoint = ApiConstants.shiftHandoverReportsEndpoint;
@@ -44,6 +45,26 @@ class ShiftHandoverReportService {
       fromJson: (json) => ShiftHandoverReport.fromJson(json),
       listKey: 'reports',
       queryParams: queryParams.isNotEmpty ? queryParams : null,
+    );
+  }
+
+  /// Получить отчеты сдачи смены с фильтрацией по мультитенантности
+  ///
+  /// Developer видит все, Admin видит только свои магазины
+  static Future<List<ShiftHandoverReport>> getReportsForCurrentUser({
+    String? employeeName,
+    String? shopAddress,
+    DateTime? date,
+  }) async {
+    final reports = await getReports(
+      employeeName: employeeName,
+      shopAddress: shopAddress,
+      date: date,
+    );
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (report) => report.shopAddress,
     );
   }
 

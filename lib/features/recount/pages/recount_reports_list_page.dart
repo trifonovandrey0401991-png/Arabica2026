@@ -207,7 +207,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     // Загружаем отчеты с сервера
     try {
-      final serverReports = await RecountService.getReports();
+      final serverReports = await RecountService.getReportsForCurrentUser();
       Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
       _allReports = serverReports;
@@ -2835,7 +2835,7 @@ class _RecountReportsListPageState extends State<RecountReportsListPage>
 
     try {
       // Загружаем отчёты за выбранную дату
-      final allReports = await RecountService.getReports(date: _pivotDate);
+      final allReports = await RecountService.getReportsForCurrentUser(date: _pivotDate);
 
       // Фильтруем по магазину
       final shopReports = allReports.where((r) => r.shopAddress == shop.shopId).toList();

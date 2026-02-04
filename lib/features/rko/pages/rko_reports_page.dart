@@ -4,7 +4,6 @@ import '../../shops/models/shop_model.dart';
 import '../services/rko_reports_service.dart';
 import 'rko_employee_reports_page.dart';
 import 'rko_shop_reports_page.dart';
-import 'rko_pdf_viewer_page.dart';
 import '../../../core/services/report_notification_service.dart';
 import '../../../core/utils/logger.dart';
 
@@ -63,8 +62,8 @@ class _RKOReportsPageState extends State<RKOReportsPage>
       final results = await Future.wait([
         EmployeesPage.loadEmployeesForNotifications(),
         Shop.loadShopsFromServer(),
-        RKOReportsService.getPendingRKOs(),
-        RKOReportsService.getFailedRKOs(),
+        RKOReportsService.getPendingRKOsForCurrentUser(),
+        RKOReportsService.getFailedRKOsForCurrentUser(),
       ]);
 
       setState(() {

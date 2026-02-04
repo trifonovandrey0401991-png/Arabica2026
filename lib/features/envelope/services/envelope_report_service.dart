@@ -3,6 +3,7 @@ import '../models/pending_envelope_report_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -29,6 +30,28 @@ class EnvelopeReportService {
       fromJson: (json) => EnvelopeReport.fromJson(json),
       listKey: 'reports',
       queryParams: queryParams.isNotEmpty ? queryParams : null,
+    );
+  }
+
+  /// Получить отчеты конвертов с фильтрацией по мультитенантности
+  ///
+  /// Developer видит все, Admin видит только свои магазины
+  static Future<List<EnvelopeReport>> getReportsForCurrentUser({
+    String? shopAddress,
+    String? status,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    final reports = await getReports(
+      shopAddress: shopAddress,
+      status: status,
+      fromDate: fromDate,
+      toDate: toDate,
+    );
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (report) => report.shopAddress,
     );
   }
 

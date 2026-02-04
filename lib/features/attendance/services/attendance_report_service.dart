@@ -40,7 +40,7 @@ class AttendanceReportService {
     final shops = await Shop.loadShopsFromServer();
 
     // 2. Загружаем ВСЕ отметки
-    final allRecords = await AttendanceService.getAttendanceRecords();
+    final allRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
 
     // 3. Группируем по магазинам
     final summaries = <ShopAttendanceSummary>[];
@@ -181,7 +181,7 @@ class AttendanceReportService {
     final employees = await EmployeesPage.loadEmployeesForNotifications();
 
     // 2. Загружаем ВСЕ отметки
-    final allRecords = await AttendanceService.getAttendanceRecords();
+    final allRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
 
     // 3. Текущая дата
     final now = DateTime.now();
@@ -234,7 +234,7 @@ class AttendanceReportService {
 
   /// Получить опоздавших за сегодня
   static Future<List<AttendanceRecord>> getTodayLateRecords() async {
-    final allRecords = await AttendanceService.getAttendanceRecords();
+    final allRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -248,7 +248,7 @@ class AttendanceReportService {
   /// Получить сотрудников, которые не отметились сегодня
   static Future<List<Employee>> getNotMarkedToday() async {
     final employees = await EmployeesPage.loadEmployeesForNotifications();
-    final allRecords = await AttendanceService.getAttendanceRecords();
+    final allRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/shift_report_model.dart';
 import '../models/pending_shift_report_model.dart';
-import '../models/shift_question_model.dart';
 import '../services/shift_report_service.dart';
-import '../services/shift_question_service.dart';
 import 'shift_report_view_page.dart';
 import 'shift_summary_report_page.dart';
 import '../../../core/utils/logger.dart';
@@ -130,7 +128,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
   Future<List<String>> _loadShopAddresses() async {
     try {
-      final serverReports = await ShiftReportService.getReports();
+      final serverReports = await ShiftReportService.getReportsForCurrentUser();
       final localReports = await ShiftReport.loadAllReports();
 
       final addresses = <String>{};
@@ -175,7 +173,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
 
     // Загружаем отчеты с сервера
     try {
-      final serverReports = await ShiftReportService.getReports();
+      final serverReports = await ShiftReportService.getReportsForCurrentUser();
       Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
       final localReports = await ShiftReport.loadAllReports();
@@ -277,7 +275,7 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       }
 
       // Также загружаем failed отчёты (статус 'failed') за сегодня
-      final allTodayReports = await ShiftReportService.getReports(date: today);
+      final allTodayReports = await ShiftReportService.getReportsForCurrentUser(date: today);
       final failedReports = allTodayReports.where((r) => r.status == 'failed').toList();
       Logger.info('Failed отчётов за сегодня: ${failedReports.length}');
 

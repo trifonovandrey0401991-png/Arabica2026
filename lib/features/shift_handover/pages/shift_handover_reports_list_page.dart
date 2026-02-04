@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/shift_handover_report_model.dart';
 import '../models/pending_shift_handover_model.dart';
-import '../models/pending_shift_handover_report_model.dart';
 import '../services/shift_handover_report_service.dart';
 import '../services/pending_shift_handover_service.dart';
 import '../../../core/utils/logger.dart';
@@ -89,7 +88,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
   Future<List<String>> _loadShopAddresses() async {
     try {
-      final serverReports = await ShiftHandoverReportService.getReports();
+      final serverReports = await ShiftHandoverReportService.getReportsForCurrentUser();
       final localReports = await ShiftHandoverReport.loadAllLocal();
 
       final addresses = <String>{};
@@ -316,7 +315,7 @@ class _ShiftHandoverReportsListPageState extends State<ShiftHandoverReportsListP
 
     // Загружаем отчеты с сервера
     try {
-      final serverReports = await ShiftHandoverReportService.getReports();
+      final serverReports = await ShiftHandoverReportService.getReportsForCurrentUser();
       Logger.success('Загружено отчетов с сервера: ${serverReports.length}');
 
       final localReports = await ShiftHandoverReport.loadAllLocal();

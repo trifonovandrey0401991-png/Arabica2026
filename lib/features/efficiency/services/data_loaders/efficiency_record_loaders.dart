@@ -26,7 +26,7 @@ Future<List<EfficiencyRecord>> loadShiftRecords(
 ) async {
   try {
     Logger.debug('Loading shift reports...');
-    final reports = await ShiftReportService.getReports();
+    final reports = await ShiftReportService.getReportsForCurrentUser();
 
     final records = <EfficiencyRecord>[];
     for (final report in reports) {
@@ -67,7 +67,7 @@ Future<List<EfficiencyRecord>> loadRecountRecords(
 ) async {
   try {
     Logger.debug('Loading recount reports...');
-    final reports = await RecountService.getReports();
+    final reports = await RecountService.getReportsForCurrentUser();
 
     final records = <EfficiencyRecord>[];
     for (final report in reports) {
@@ -108,7 +108,7 @@ Future<List<EfficiencyRecord>> loadShiftHandoverRecords(
 ) async {
   try {
     Logger.debug('Loading shift handover reports...');
-    final reports = await ShiftHandoverReportService.getReports();
+    final reports = await ShiftHandoverReportService.getReportsForCurrentUser();
 
     final records = <EfficiencyRecord>[];
     for (final report in reports) {
@@ -149,7 +149,7 @@ Future<List<EfficiencyRecord>> loadAttendanceRecords(
 ) async {
   try {
     Logger.debug('Loading attendance records...');
-    final attendanceRecords = await AttendanceService.getAttendanceRecords();
+    final attendanceRecords = await AttendanceService.getAttendanceRecordsForCurrentUser();
 
     final records = <EfficiencyRecord>[];
     for (final attendance in attendanceRecords) {
@@ -458,7 +458,7 @@ Future<List<EfficiencyRecord>> loadRkoRecords(
     final monthKey = '${start.year}-${start.month.toString().padLeft(2, '0')}';
 
     // Загружаем все РКО за месяц
-    final rkos = await RKOReportsService.getAllRKOs(month: monthKey);
+    final rkos = await RKOReportsService.getAllRKOsForCurrentUser(month: monthKey);
 
     final records = <EfficiencyRecord>[];
     for (final rko in rkos) {

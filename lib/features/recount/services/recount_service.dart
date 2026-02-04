@@ -9,6 +9,7 @@ import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 // Условный импорт: по умолчанию stub, на веб - dart:html
 import '../../../core/services/html_stub.dart' as html if (dart.library.html) 'dart:html';
 
@@ -306,6 +307,26 @@ class RecountService {
       Logger.error('❌ Ошибка загрузки отчетов', e);
       return [];
     }
+  }
+
+  /// Получить отчеты пересчёта с фильтрацией по мультитенантности
+  ///
+  /// Developer видит все, Admin видит только свои магазины
+  static Future<List<RecountReport>> getReportsForCurrentUser({
+    String? shopAddress,
+    String? employeeName,
+    DateTime? date,
+  }) async {
+    final reports = await getReports(
+      shopAddress: shopAddress,
+      employeeName: employeeName,
+      date: date,
+    );
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (report) => report.shopAddress,
+    );
   }
 
   /// Поставить оценку отчету

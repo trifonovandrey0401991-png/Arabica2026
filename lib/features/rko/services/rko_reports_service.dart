@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 // http и dart:convert оставлены для multipart загрузки файлов и binary скачивания
 
@@ -200,5 +201,37 @@ class RKOReportsService {
       Logger.error('Ошибка получения всех РКО', e);
       return [];
     }
+  }
+
+  /// Получить все РКО с фильтрацией по мультитенантности
+  ///
+  /// Developer видит все, Admin видит только свои магазины
+  static Future<List<Map<String, dynamic>>> getAllRKOsForCurrentUser({String? month}) async {
+    final rkos = await getAllRKOs(month: month);
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      rkos,
+      (rko) => rko['shopAddress']?.toString() ?? '',
+    );
+  }
+
+  /// Получить pending РКО с фильтрацией по мультитенантности
+  static Future<List<dynamic>> getPendingRKOsForCurrentUser() async {
+    final rkos = await getPendingRKOs();
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      rkos.map((item) => item as Map<String, dynamic>).toList(),
+      (rko) => rko['shopAddress']?.toString() ?? '',
+    );
+  }
+
+  /// Получить failed РКО с фильтрацией по мультитенантности
+  static Future<List<dynamic>> getFailedRKOsForCurrentUser() async {
+    final rkos = await getFailedRKOs();
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      rkos.map((item) => item as Map<String, dynamic>).toList(),
+      (rko) => rko['shopAddress']?.toString() ?? '',
+    );
   }
 }

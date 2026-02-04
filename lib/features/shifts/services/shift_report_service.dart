@@ -4,6 +4,7 @@ import '../models/shift_report_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 /// Результат отправки отчёта пересменки
 class ShiftSubmitResult {
@@ -107,6 +108,26 @@ class ShiftReportService {
       fromJson: (json) => ShiftReport.fromJson(json),
       listKey: 'reports',
       queryParams: queryParams.isNotEmpty ? queryParams : null,
+    );
+  }
+
+  /// Получить отчеты пересменки с фильтрацией по мультитенантности
+  ///
+  /// Developer видит все, Admin видит только свои магазины
+  static Future<List<ShiftReport>> getReportsForCurrentUser({
+    String? employeeName,
+    String? shopAddress,
+    DateTime? date,
+  }) async {
+    final reports = await getReports(
+      employeeName: employeeName,
+      shopAddress: shopAddress,
+      date: date,
+    );
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      reports,
+      (report) => report.shopAddress,
     );
   }
 

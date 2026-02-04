@@ -78,8 +78,12 @@ class _RoleTestPageState extends State<RoleTestPage> {
 
   String _getRoleName(UserRole role) {
     switch (role) {
+      case UserRole.developer:
+        return 'Разработчик';
       case UserRole.admin:
         return 'Админ';
+      case UserRole.manager:
+        return 'Заведующая';
       case UserRole.employee:
         return 'Сотрудник';
       case UserRole.client:
@@ -89,8 +93,12 @@ class _RoleTestPageState extends State<RoleTestPage> {
 
   Color _getRoleColor(UserRole role) {
     switch (role) {
+      case UserRole.developer:
+        return Colors.purple;
       case UserRole.admin:
         return Colors.red;
+      case UserRole.manager:
+        return Colors.orange;
       case UserRole.employee:
         return Colors.blue;
       case UserRole.client:

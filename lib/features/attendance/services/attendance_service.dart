@@ -6,6 +6,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/report_notification_service.dart';
+import '../../../core/services/multitenancy_filter_service.dart';
 
 class AttendanceService {
   static const String _baseEndpoint = ApiConstants.attendanceEndpoint;
@@ -250,6 +251,26 @@ class AttendanceService {
       Logger.error('Ошибка загрузки отметок', e);
       return [];
     }
+  }
+
+  /// Получить отметки посещаемости с фильтрацией по мультитенантности
+  ///
+  /// Developer видит все, Admin видит только свои магазины
+  static Future<List<AttendanceRecord>> getAttendanceRecordsForCurrentUser({
+    String? employeeName,
+    String? shopAddress,
+    DateTime? date,
+  }) async {
+    final records = await getAttendanceRecords(
+      employeeName: employeeName,
+      shopAddress: shopAddress,
+      date: date,
+    );
+
+    return await MultitenancyFilterService.filterByShopAddress(
+      records,
+      (record) => record.shopAddress,
+    );
   }
 }
 
