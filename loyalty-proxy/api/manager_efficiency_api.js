@@ -288,8 +288,10 @@ function calculateManagerEfficiency(phone, month) {
     if (!validAddresses.has(report.shopAddress)) continue;
 
     let points = 0;
-    if (report.status === 'confirmed' && report.adminRating) {
-      points = calculateRatingPoints(report.adminRating, settings.shift);
+    // Note: report uses 'rating' field, not 'adminRating'
+    const rating = report.adminRating || report.rating;
+    if (report.status === 'confirmed' && rating) {
+      points = calculateRatingPoints(rating, settings.shift);
     } else if (report.status === 'failed' || report.status === 'rejected') {
       points = settings.shift?.minPoints || -5;
     }
@@ -310,8 +312,9 @@ function calculateManagerEfficiency(phone, month) {
     if (!validAddresses.has(report.shopAddress)) continue;
 
     let points = 0;
-    if (report.status === 'confirmed' && report.adminRating) {
-      points = calculateRatingPoints(report.adminRating, settings.recount);
+    const rating = report.adminRating || report.rating;
+    if (report.status === 'confirmed' && rating) {
+      points = calculateRatingPoints(rating, settings.recount);
     } else if (report.status === 'failed' || report.status === 'rejected') {
       points = settings.recount?.minPoints || -5;
     }
@@ -332,8 +335,9 @@ function calculateManagerEfficiency(phone, month) {
     if (!validAddresses.has(report.shopAddress)) continue;
 
     let points = 0;
-    if (report.status === 'confirmed' && report.adminRating) {
-      points = calculateRatingPoints(report.adminRating, settings.handover);
+    const rating = report.adminRating || report.rating;
+    if (report.status === 'confirmed' && rating) {
+      points = calculateRatingPoints(rating, settings.handover);
     } else if (report.status === 'failed' || report.status === 'rejected') {
       points = settings.handover?.minPoints || -5;
     }
