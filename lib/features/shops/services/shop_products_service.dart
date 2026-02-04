@@ -11,6 +11,7 @@ class ShopProduct {
   final int stock;
   final int sales;
   final DateTime? updatedAt;
+  final String shopId; // ID магазина (для результатов поиска)
 
   ShopProduct({
     required this.kod,
@@ -19,6 +20,7 @@ class ShopProduct {
     required this.stock,
     this.sales = 0,
     this.updatedAt,
+    this.shopId = '',
   });
 
   factory ShopProduct.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class ShopProduct {
       stock: json['stock'] is int ? json['stock'] : int.tryParse(json['stock']?.toString() ?? '0') ?? 0,
       sales: json['sales'] is int ? json['sales'] : int.tryParse(json['sales']?.toString() ?? '0') ?? 0,
       updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+      shopId: json['shopId']?.toString() ?? '',
     );
   }
 
@@ -163,7 +166,7 @@ class ShopProductsService {
   /// Поиск товара по всем магазинам
   static Future<List<ShopProduct>> searchProducts(String query, {String? shopId}) async {
     try {
-      var url = '${ApiConstants.serverUrl}/api/shop-products/search?q=${Uri.encodeComponent(query)}';
+      var url = '${ApiConstants.serverUrl}/api/shop-products-search?q=${Uri.encodeComponent(query)}';
       if (shopId != null) {
         url += '&shopId=$shopId';
       }

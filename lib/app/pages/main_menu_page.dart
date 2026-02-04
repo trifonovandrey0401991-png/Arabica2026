@@ -52,6 +52,7 @@ import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/loyalty/pages/loyalty_scanner_page.dart';
 import '../../features/work_schedule/pages/my_schedule_page.dart';
 import '../../features/product_questions/pages/product_questions_management_page.dart';
+import '../../features/product_questions/pages/product_search_page.dart';
 import '../../features/product_questions/services/product_question_service.dart';
 import '../../features/efficiency/pages/my_efficiency_page.dart';
 import '../../features/tasks/pages/my_tasks_page.dart';
@@ -820,27 +821,61 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     child: Center(child: _buildRatingBadge()),
                   ),
 
-                // Кнопка выхода справа
+                // Кнопка поиска товара + Кнопка выхода справа
                 Positioned(
                   right: 0,
                   top: 0,
                   bottom: 0,
                   child: Center(
-                    child: GestureDetector(
-                      onTap: _logout,
-                      child: Container(
-                        width: isEmployee ? 32 : 40,
-                        height: isEmployee ? 32 : 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Жёлтая кнопка поиска товара
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchPage()));
+                          },
+                          child: Container(
+                            width: isEmployee ? 32 : 40,
+                            height: isEmployee ? 32 : 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFFFC107), // Жёлтый цвет
+                              border: Border.all(color: const Color(0xFFFFD54F), width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFC107).withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.search_rounded,
+                              color: Colors.black87,
+                              size: isEmployee ? 16 : 20,
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          Icons.logout_rounded,
-                          color: Colors.white.withOpacity(0.7),
-                          size: isEmployee ? 16 : 20,
+                        const SizedBox(width: 8),
+                        // Кнопка выхода
+                        GestureDetector(
+                          onTap: _logout,
+                          child: Container(
+                            width: isEmployee ? 32 : 40,
+                            height: isEmployee ? 32 : 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white.withOpacity(0.7),
+                              size: isEmployee ? 16 : 20,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),

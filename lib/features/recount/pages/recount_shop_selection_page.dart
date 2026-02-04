@@ -22,9 +22,12 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   bool _isLoading = true;
   String? _employeeName;
   String? _employeePhone;
-  Set<String> _shopsWithProducts = {}; // ID магазинов с синхронизированными товарами
+  Map<String, ShopSyncInfo> _shopsSyncInfo = {}; // Информация о синхронизации магазинов
   List<PendingRecountReport> _pendingRecounts = []; // Ожидающие пересчёты
   RecountPointsSettings? _recountSettings; // Настройки интервалов
+
+  /// Таймаут для определения устаревших данных (5 минут)
+  static const Duration _staleDataTimeout = Duration(minutes: 5);
 
   @override
   void initState() {
@@ -203,10 +206,46 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
   Future<void> _loadShopsWithProducts() async {
     try {
       final syncedShops = await ShopProductsService.getShopsWithProducts();
-      _shopsWithProducts = syncedShops.map((s) => s.shopId).toSet();
-      Logger.debug('📦 Магазины с DBF товарами: $_shopsWithProducts');
+      _shopsSyncInfo = {for (var s in syncedShops) s.shopId: s};
+      Logger.debug('📦 Магазины с DBF товарами: ${_shopsSyncInfo.keys}');
     } catch (e) {
       Logger.error('Ошибка загрузки магазинов с товарами', e);
+    }
+  }
+
+  /// Проверить, есть ли у магазина синхронизированные данные DBF
+  bool _hasDbfData(String shopId) {
+    return _shopsSyncInfo.containsKey(shopId);
+  }
+
+  /// Проверить, устарели ли данные DBF (более 5 минут с последней синхронизации)
+  bool _isDbfDataStale(String shopId) {
+    final syncInfo = _shopsSyncInfo[shopId];
+    if (syncInfo == null || syncInfo.lastSync == null) {
+      return true; // Если нет данных о синхронизации, считаем устаревшими
+    }
+    final now = DateTime.now();
+    final timeSinceSync = now.difference(syncInfo.lastSync!);
+    return timeSinceSync > _staleDataTimeout;
+  }
+
+  /// Получить время с последней синхронизации в читаемом формате
+  String _getTimeSinceSync(String shopId) {
+    final syncInfo = _shopsSyncInfo[shopId];
+    if (syncInfo == null || syncInfo.lastSync == null) {
+      return 'нет данных';
+    }
+    final now = DateTime.now();
+    final diff = now.difference(syncInfo.lastSync!);
+
+    if (diff.inDays > 0) {
+      return '${diff.inDays} дн. назад';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours} ч. назад';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes} мин. назад';
+    } else {
+      return 'только что';
     }
   }
 
@@ -393,10 +432,10 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(12),
                                             border: Border.all(
-                                              color: _shopsWithProducts.contains(shop.id)
-                                                  ? Colors.green
+                                              color: _hasDbfData(shop.id)
+                                                  ? (_isDbfDataStale(shop.id) ? Colors.red : Colors.green)
                                                   : Colors.white.withOpacity(0.5),
-                                              width: _shopsWithProducts.contains(shop.id) ? 3 : 2,
+                                              width: _hasDbfData(shop.id) ? 3 : 2,
                                             ),
                                           ),
                                           child: Row(
@@ -417,22 +456,28 @@ class _RecountShopSelectionPageState extends State<RecountShopSelectionPage> {
                                                       maxLines: 2,
                                                       overflow: TextOverflow.ellipsis,
                                                     ),
-                                                    if (_shopsWithProducts.contains(shop.id)) ...[
+                                                    if (_hasDbfData(shop.id)) ...[
                                                       const SizedBox(height: 4),
                                                       Container(
                                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                                         decoration: BoxDecoration(
-                                                          color: Colors.green,
+                                                          color: _isDbfDataStale(shop.id) ? Colors.red : Colors.green,
                                                           borderRadius: BorderRadius.circular(8),
                                                         ),
-                                                        child: const Row(
+                                                        child: Row(
                                                           mainAxisSize: MainAxisSize.min,
                                                           children: [
-                                                            Icon(Icons.inventory_2, color: Colors.white, size: 12),
-                                                            SizedBox(width: 4),
+                                                            Icon(
+                                                              _isDbfDataStale(shop.id) ? Icons.warning : Icons.inventory_2,
+                                                              color: Colors.white,
+                                                              size: 12,
+                                                            ),
+                                                            const SizedBox(width: 4),
                                                             Text(
-                                                              'Остатки из DBF',
-                                                              style: TextStyle(
+                                                              _isDbfDataStale(shop.id)
+                                                                  ? 'DBF: ${_getTimeSinceSync(shop.id)}'
+                                                                  : 'Остатки из DBF',
+                                                              style: const TextStyle(
                                                                 color: Colors.white,
                                                                 fontSize: 11,
                                                                 fontWeight: FontWeight.bold,

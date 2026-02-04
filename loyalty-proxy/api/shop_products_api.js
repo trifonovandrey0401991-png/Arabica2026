@@ -455,10 +455,11 @@ function setupShopProductsAPI(app) {
   // ============ ПОИСК ============
 
   /**
-   * GET /api/shop-products/search
+   * GET /api/shop-products-search
    * Поиск товара по всем магазинам
+   * Использует пословный поиск - все слова запроса должны быть в названии или коде
    */
-  app.get('/api/shop-products/search', (req, res) => {
+  app.get('/api/shop-products-search', (req, res) => {
     try {
       const { q, shopId, group } = req.query;
 
@@ -470,6 +471,7 @@ function setupShopProductsAPI(app) {
       }
 
       const searchLower = q.toLowerCase();
+      const searchWords = searchLower.split(/\s+/).filter(w => w.length >= 2);
       const results = [];
       const shops = shopId ? [{ shopId }] : getShopsWithProducts();
 
@@ -478,11 +480,15 @@ function setupShopProductsAPI(app) {
         const products = shopData.products || [];
 
         products.forEach((product) => {
-          // Поиск по названию или коду
-          const nameMatch = product.name?.toLowerCase().includes(searchLower);
-          const kodMatch = product.kod?.toLowerCase().includes(searchLower);
+          const nameLower = (product.name || '').toLowerCase();
+          const kodLower = (product.kod || '').toLowerCase();
 
-          if (nameMatch || kodMatch) {
+          // Пословный поиск - все слова запроса должны быть в названии или коде
+          const allWordsMatch = searchWords.every(word =>
+            nameLower.includes(word) || kodLower.includes(word)
+          );
+
+          if (allWordsMatch) {
             // Фильтр по группе
             if (group && product.group !== group) return;
 
