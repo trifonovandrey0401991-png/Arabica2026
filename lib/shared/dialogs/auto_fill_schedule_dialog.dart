@@ -38,8 +38,10 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedStartDay = widget.startDay;
-    _selectedEndDay = widget.endDay;
+    // Ограничиваем значения максимальным днём месяца
+    final maxDay = DateTime(widget.selectedMonth.year, widget.selectedMonth.month + 1, 0).day;
+    _selectedStartDay = widget.startDay.clamp(1, maxDay);
+    _selectedEndDay = widget.endDay.clamp(_selectedStartDay, maxDay);
   }
 
   int get _maxDay {

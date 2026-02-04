@@ -73,56 +73,70 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
 
   /// Показать диалог об отсутствии pending отчёта
   void _showNoPendingDialog() {
-    final currentShift = _getCurrentShiftType();
-    final shiftName = currentShift == 'morning' ? 'утренней' : 'вечерней';
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-            const SizedBox(width: 12),
-            const Text('Сдача смены недоступна'),
-          ],
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Для $shiftName смены на этом магазине нет активного отчёта.',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 12),
+            // Иконка
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                shape: BoxShape.circle,
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Возможно, время сдачи смены истекло и отчёт перешёл в "Не в срок".',
-                      style: TextStyle(fontSize: 13),
-                    ),
+              child: const Icon(
+                Icons.schedule,
+                color: Colors.orange,
+                size: 48,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Заголовок
+            const Text(
+              'Время для сдачи прошло',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF004D40),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            // Подзаголовок
+            Text(
+              'Ожидайте следующей возможности',
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Кнопка
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004D40),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ],
+                ),
+                child: const Text(
+                  'Понятно',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Понятно'),
-          ),
-        ],
       ),
     );
   }
@@ -237,29 +251,16 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                       ),
                       const SizedBox(height: 16),
 
-                      // Сотрудник
+                      // Сдать смену - роль определяется автоматически по флагу isManager
                       _buildOptionCard(
                         context,
-                        title: 'Сотрудник',
-                        icon: Icons.person,
-                        description: 'Вопросы для сотрудников',
+                        title: 'Сдать Смену',
+                        icon: Icons.assignment_turned_in,
+                        description: 'Ответить на вопросы по смене',
                         color: _hasPendingReport() ? Colors.blue : Colors.grey,
-                        onTap: () => _onQuestionsCardTap('employee'),
+                        onTap: () => _onQuestionsCardTap(widget.isCurrentUserManager ? 'manager' : 'employee'),
                         isDisabled: !_hasPendingReport(),
                       ),
-                      // Заведующая - показываем только для сотрудников с флагом isManager
-                      if (widget.isCurrentUserManager) ...[
-                        const SizedBox(height: 16),
-                        _buildOptionCard(
-                          context,
-                          title: 'Заведующая',
-                          icon: Icons.supervisor_account,
-                          description: 'Вопросы для заведующих',
-                          color: _hasPendingReport() ? Colors.purple : Colors.grey,
-                          onTap: () => _onQuestionsCardTap('manager'),
-                          isDisabled: !_hasPendingReport(),
-                        ),
-                      ],
                     ],
                   ),
                 ),

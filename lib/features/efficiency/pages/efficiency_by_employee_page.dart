@@ -7,6 +7,7 @@ import 'employee_efficiency_detail_page.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../referrals/models/referral_stats_model.dart';
 import '../../employees/services/employee_service.dart';
+import '../../employees/services/employee_registration_service.dart';
 
 /// Страница списка эффективности по сотрудникам
 class EfficiencyByEmployeePage extends StatefulWidget {
@@ -19,6 +20,7 @@ class EfficiencyByEmployeePage extends StatefulWidget {
 class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
   bool _isLoading = true;
   EfficiencyData? _data;
+  List<EfficiencySummary> _filteredEmployees = []; // Только верифицированные
   String? _error;
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
@@ -38,13 +40,27 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     });
 
     try {
-      final data = await EfficiencyDataService.loadMonthData(
-        _selectedYear,
-        _selectedMonth,
-        forceRefresh: forceRefresh,
-      );
+      // Загружаем данные эффективности и информацию о верификации параллельно
+      final results = await Future.wait([
+        EfficiencyDataService.loadMonthData(
+          _selectedYear,
+          _selectedMonth,
+          forceRefresh: forceRefresh,
+        ),
+        _loadVerifiedEmployeeNames(),
+      ]);
+
+      final data = results[0] as EfficiencyData;
+      final verifiedNames = results[1] as Set<String>;
+
+      // Фильтруем только верифицированных сотрудников
+      final filtered = data.byEmployee.where((summary) {
+        return verifiedNames.contains(summary.entityName.toLowerCase());
+      }).toList();
+
       setState(() {
         _data = data;
+        _filteredEmployees = filtered;
         _isLoading = false;
       });
 
@@ -58,8 +74,45 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
     }
   }
 
+  /// Загрузить Set имён верифицированных сотрудников (в нижнем регистре)
+  Future<Set<String>> _loadVerifiedEmployeeNames() async {
+    try {
+      // Загружаем сотрудников и регистрации параллельно
+      final results = await Future.wait([
+        EmployeeService.getEmployees(),
+        EmployeeRegistrationService.getAllRegistrations(),
+      ]);
+
+      final employees = results[0] as List<dynamic>;
+      final registrations = results[1] as List<dynamic>;
+
+      // Создаём Map телефон -> isVerified
+      final phoneToVerified = <String, bool>{};
+      for (final reg in registrations) {
+        final phone = reg.phone?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+        if (phone.isNotEmpty) {
+          phoneToVerified[phone] = reg.isVerified;
+        }
+      }
+
+      // Создаём Set верифицированных имён
+      final verifiedNames = <String>{};
+      for (final emp in employees) {
+        final phone = emp.phone?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+        if (phone.isNotEmpty && phoneToVerified[phone] == true) {
+          verifiedNames.add(emp.name.toLowerCase());
+        }
+      }
+
+      return verifiedNames;
+    } catch (e) {
+      // При ошибке возвращаем пустой Set - не показываем никого
+      return <String>{};
+    }
+  }
+
   Future<void> _loadReferralPoints() async {
-    if (_data == null || _data!.byEmployee.isEmpty) return;
+    if (_filteredEmployees.isEmpty) return;
 
     setState(() => _isLoadingReferrals = true);
 
@@ -73,8 +126,8 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
 
       final Map<String, EmployeeReferralPoints> pointsMap = {};
 
-      // Для каждого сотрудника в данных эффективности
-      for (final summary in _data!.byEmployee) {
+      // Для каждого сотрудника в отфильтрованном списке
+      for (final summary in _filteredEmployees) {
         final employeeName = summary.entityId.toLowerCase();
         final employeeId = nameToIdMap[employeeName];
 
@@ -141,7 +194,7 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       );
     }
 
-    if (_data == null || _data!.byEmployee.isEmpty) {
+    if (_data == null || _filteredEmployees.isEmpty) {
       return EfficiencyEmptyState(
         monthName: EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
       );
@@ -151,12 +204,12 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
       onRefresh: () => _loadData(forceRefresh: true),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _data!.byEmployee.length + 1,
+        itemCount: _filteredEmployees.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
             return _buildSummaryCard();
           }
-          return _buildEmployeeCard(_data!.byEmployee[index - 1], index);
+          return _buildEmployeeCard(_filteredEmployees[index - 1], index);
         },
       ),
     );
@@ -164,8 +217,8 @@ class _EfficiencyByEmployeePageState extends State<EfficiencyByEmployeePage> {
 
   Widget _buildSummaryCard() {
     return EfficiencySummaryCard(
-      summaries: _data!.byEmployee,
-      additionalInfo: '${_data!.byEmployee.length} сотрудников',
+      summaries: _filteredEmployees,
+      additionalInfo: '${_filteredEmployees.length} сотрудников',
     );
   }
 

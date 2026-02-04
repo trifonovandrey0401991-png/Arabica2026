@@ -229,6 +229,9 @@ Future<List<EfficiencyRecord>> loadTaskRecords(
     Logger.debug('Loading task assignments...');
     final assignments = await TaskService.getAllAssignments();
 
+    // Загружаем настройки баллов за задачи
+    final taskSettings = await EfficiencyCalculationService.regularTaskSettings;
+
     final records = <EfficiencyRecord>[];
     for (final assignment in assignments) {
       // Проверяем период (по времени ответа или проверки)
@@ -245,20 +248,16 @@ Future<List<EfficiencyRecord>> loadTaskRecords(
       if (recordDate == null) continue;
       if (recordDate.isBefore(start) || recordDate.isAfter(end)) continue;
 
-      // Определяем баллы по статусу
+      // Определяем баллы по статусу (из настроек)
       double points;
       switch (assignment.status) {
         case TaskStatus.approved:
-          points = 1.0; // +1 за выполненную задачу
+          points = taskSettings.completionPoints; // За выполненную задачу
           break;
         case TaskStatus.rejected:
-          points = -3.0; // -3 за отклоненную админом
-          break;
         case TaskStatus.expired:
-          points = -3.0; // -3 за просроченную
-          break;
         case TaskStatus.declined:
-          points = -3.0; // -3 за отказ
+          points = taskSettings.penaltyPoints; // Штраф за невыполнение
           break;
         default:
           continue; // Пропускаем pending/submitted

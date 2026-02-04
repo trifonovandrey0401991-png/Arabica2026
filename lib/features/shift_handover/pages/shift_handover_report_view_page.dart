@@ -48,6 +48,7 @@ class _ShiftHandoverReportViewPageState extends State<ShiftHandoverReportViewPag
       confirmedAt: DateTime.now(),
       rating: rating,
       confirmedByAdmin: adminName,
+      status: 'approved', // Для push-уведомления сотруднику
     );
 
     // Сохраняем локально

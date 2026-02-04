@@ -47,6 +47,7 @@ class ShiftHandoverAnswer {
 class ShiftHandoverReport {
   final String id;
   final String employeeName;
+  final String? employeePhone; // Для push-уведомлений при подтверждении
   final String shopAddress;
   final DateTime createdAt;
   final List<ShiftHandoverAnswer> answers;
@@ -65,6 +66,7 @@ class ShiftHandoverReport {
   ShiftHandoverReport({
     required this.id,
     required this.employeeName,
+    this.employeePhone,
     required this.shopAddress,
     required this.createdAt,
     required this.answers,
@@ -89,6 +91,7 @@ class ShiftHandoverReport {
   Map<String, dynamic> toJson() => {
     'id': id,
     'employeeName': employeeName,
+    if (employeePhone != null) 'employeePhone': employeePhone,
     'shopAddress': shopAddress,
     'createdAt': createdAt.toUtc().toIso8601String(),
     'answers': answers.map((a) => a.toJson()).toList(),
@@ -115,6 +118,7 @@ class ShiftHandoverReport {
   factory ShiftHandoverReport.fromJson(Map<String, dynamic> json) => ShiftHandoverReport(
     id: json['id'] ?? '',
     employeeName: json['employeeName'] ?? '',
+    employeePhone: json['employeePhone'],
     shopAddress: json['shopAddress'] ?? '',
     createdAt: _parseDateTime(json['createdAt']),
     answers: (json['answers'] as List<dynamic>?)
@@ -180,6 +184,7 @@ class ShiftHandoverReport {
     return ShiftHandoverReport(
       id: id,
       employeeName: employeeName,
+      employeePhone: employeePhone, // Сохраняем телефон для push-уведомлений
       shopAddress: shopAddress,
       createdAt: createdAt,
       answers: answers,

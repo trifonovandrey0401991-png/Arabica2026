@@ -66,6 +66,7 @@ import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/attendance/models/attendance_model.dart';
 import '../../core/services/app_update_service.dart';
+import '../../features/efficiency/services/efficiency_data_service.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -95,6 +96,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
   // Флаг доступности обновления
   bool _isUpdateAvailable = false;
 
+  // Баллы эффективности за текущий месяц
+  double? _efficiencyPoints;
+
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - только изумруд и белый
   // ═══════════════════════════════════════════════════════════════
@@ -118,12 +122,38 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _loadEmployeeCounters();
     // Проверка обновлений
     _checkForUpdates();
+    // Загрузка эффективности
+    _loadEfficiencyPoints();
   }
 
   Future<void> _checkForUpdates() async {
     final hasUpdate = await AppUpdateService.checkUpdateAvailability();
     if (mounted) {
       setState(() => _isUpdateAvailable = hasUpdate);
+    }
+  }
+
+  Future<void> _loadEfficiencyPoints() async {
+    try {
+      // Получаем имя текущего сотрудника
+      final employeeName = await EmployeesPage.getCurrentEmployeeName();
+      if (employeeName == null || employeeName.isEmpty) return;
+
+      // Загружаем данные эффективности за текущий месяц
+      final now = DateTime.now();
+      final data = await EfficiencyDataService.loadMonthData(now.year, now.month);
+
+      // Ищем сотрудника в данных
+      final employeeSummary = data.byEmployee.firstWhere(
+        (summary) => summary.entityName == employeeName,
+        orElse: () => throw StateError('Employee not found'),
+      );
+
+      if (mounted) {
+        setState(() => _efficiencyPoints = employeeSummary.totalPoints);
+      }
+    } catch (e) {
+      Logger.warning('Ошибка загрузки эффективности: $e');
     }
   }
 
@@ -805,177 +835,182 @@ class _MainMenuPageState extends State<MainMenuPage> {
         _employeeRating!.position > 0 &&
         (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin);
 
+    final showEfficiency = _efficiencyPoints != null &&
+        (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin);
+
     final isEmployee = _userRole?.role == UserRole.employee;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, isEmployee ? 8 : 16, 24, isEmployee ? 8 : 20),
       child: Column(
         children: [
-          // Рейтинг, Логотип и выход
+          // Рейтинг, Логотип и выход - Row layout для правильного центрирования
           SizedBox(
             height: isEmployee ? 36 : 44,
-            child: Stack(
+            child: Row(
               children: [
-                // Логотип всегда по центру
-                Center(
-                  child: Image.asset(
-                    'assets/images/arabica_logo.png',
-                    height: isEmployee ? 36 : 44,
-                    fit: BoxFit.contain,
+                // Левая часть - бейджи (фиксированная ширина)
+                SizedBox(
+                  width: 140,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      if (showRating) _buildRatingBadge(),
+                      if (showRating && showEfficiency) const SizedBox(width: 4),
+                      if (showEfficiency) _buildEfficiencyBadge(),
+                    ],
                   ),
                 ),
 
-                // Рейтинг слева
-                if (showRating)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: Center(child: _buildRatingBadge()),
-                  ),
-
-                // Кнопка обновления + Кнопка поиска товара + Кнопка выхода справа
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
+                // Центр - логотип
+                Expanded(
                   child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Кнопка обновления (только для сотрудников и админов)
-                        if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
-                          GestureDetector(
-                            onTap: () async {
-                              if (_isUpdateAvailable) {
-                                await AppUpdateService.performUpdate(context);
-                              } else {
-                                // Повторная проверка
-                                final hasUpdate = await AppUpdateService.checkUpdateAvailability();
-                                if (mounted) {
-                                  setState(() => _isUpdateAvailable = hasUpdate);
-                                  if (hasUpdate) {
-                                    await AppUpdateService.performUpdate(context);
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Установлена актуальная версия'),
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
+                    child: Image.asset(
+                      'assets/images/arabica_logo.png',
+                      height: isEmployee ? 36 : 44,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+
+                // Правая часть - кнопки (фиксированная ширина)
+                SizedBox(
+                  width: 140,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Кнопка обновления (только для сотрудников и админов)
+                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
+                        GestureDetector(
+                          onTap: () async {
+                            if (_isUpdateAvailable) {
+                              await AppUpdateService.performUpdate(context);
+                            } else {
+                              // Повторная проверка
+                              final hasUpdate = await AppUpdateService.checkUpdateAvailability();
+                              if (mounted) {
+                                setState(() => _isUpdateAvailable = hasUpdate);
+                                if (hasUpdate) {
+                                  await AppUpdateService.performUpdate(context);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Установлена актуальная версия'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
                                 }
                               }
-                            },
-                            child: Stack(
-                              children: [
-                                Container(
-                                  width: isEmployee ? 32 : 40,
-                                  height: isEmployee ? 32 : 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
+                            }
+                          },
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: isEmployee ? 32 : 40,
+                                height: isEmployee ? 32 : 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _isUpdateAvailable
+                                      ? const Color(0xFF4CAF50) // Зелёный если есть обновление
+                                      : Colors.white.withOpacity(0.1),
+                                  border: Border.all(
                                     color: _isUpdateAvailable
-                                        ? const Color(0xFF4CAF50) // Зелёный если есть обновление
-                                        : Colors.white.withOpacity(0.1),
-                                    border: Border.all(
-                                      color: _isUpdateAvailable
-                                          ? const Color(0xFF81C784)
-                                          : Colors.white.withOpacity(0.3),
-                                      width: 2,
-                                    ),
-                                    boxShadow: _isUpdateAvailable
-                                        ? [
-                                            BoxShadow(
-                                              color: const Color(0xFF4CAF50).withOpacity(0.4),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ]
-                                        : null,
+                                        ? const Color(0xFF81C784)
+                                        : Colors.white.withOpacity(0.3),
+                                    width: 2,
                                   ),
-                                  child: Icon(
-                                    Icons.system_update_rounded,
-                                    color: _isUpdateAvailable ? Colors.white : Colors.white.withOpacity(0.7),
-                                    size: isEmployee ? 16 : 20,
-                                  ),
-                                ),
-                                // Badge с индикатором
-                                if (_isUpdateAvailable)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      width: isEmployee ? 12 : 14,
-                                      height: isEmployee ? 12 : 14,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red,
-                                        border: Border.all(color: _emerald, width: 2),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '1',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: isEmployee ? 7 : 8,
-                                            fontWeight: FontWeight.bold,
+                                  boxShadow: _isUpdateAvailable
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(0xFF4CAF50).withOpacity(0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
                                           ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Icon(
+                                  Icons.system_update_rounded,
+                                  color: _isUpdateAvailable ? Colors.white : Colors.white.withOpacity(0.7),
+                                  size: isEmployee ? 16 : 20,
+                                ),
+                              ),
+                              // Badge с индикатором
+                              if (_isUpdateAvailable)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: isEmployee ? 12 : 14,
+                                    height: isEmployee ? 12 : 14,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red,
+                                      border: Border.all(color: _emerald, width: 2),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '1',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isEmployee ? 7 : 8,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
-                        if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
-                          const SizedBox(width: 8),
-                        // Жёлтая кнопка поиска товара
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchPage()));
-                          },
-                          child: Container(
-                            width: isEmployee ? 32 : 40,
-                            height: isEmployee ? 32 : 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFFFFC107), // Жёлтый цвет
-                              border: Border.all(color: const Color(0xFFFFD54F), width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFFC107).withOpacity(0.4),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
                                 ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.search_rounded,
-                              color: Colors.black87,
-                              size: isEmployee ? 16 : 20,
-                            ),
+                            ],
                           ),
                         ),
+                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
                         const SizedBox(width: 8),
-                        // Кнопка выхода
-                        GestureDetector(
-                          onTap: _logout,
-                          child: Container(
-                            width: isEmployee ? 32 : 40,
-                            height: isEmployee ? 32 : 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withOpacity(0.3)),
-                            ),
-                            child: Icon(
-                              Icons.logout_rounded,
-                              color: Colors.white.withOpacity(0.7),
-                              size: isEmployee ? 16 : 20,
-                            ),
+                      // Жёлтая кнопка поиска товара
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchPage()));
+                        },
+                        child: Container(
+                          width: isEmployee ? 32 : 40,
+                          height: isEmployee ? 32 : 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFFFC107), // Жёлтый цвет
+                            border: Border.all(color: const Color(0xFFFFD54F), width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFFC107).withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.search_rounded,
+                            color: Colors.black87,
+                            size: isEmployee ? 16 : 20,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Кнопка выхода
+                      GestureDetector(
+                        onTap: _logout,
+                        child: Container(
+                          width: isEmployee ? 32 : 40,
+                          height: isEmployee ? 32 : 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Icon(
+                            Icons.logout_rounded,
+                            color: Colors.white.withOpacity(0.7),
+                            size: isEmployee ? 16 : 20,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1011,14 +1046,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   /// Минималистичный бейдж рейтинга для левого верхнего угла
   Widget _buildRatingBadge() {
-    if (_employeeRating == null) return const SizedBox(width: 40);
+    if (_employeeRating == null) return const SizedBox.shrink();
 
     final rating = _employeeRating!;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
       ),
       child: Row(
@@ -1027,16 +1062,64 @@ class _MainMenuPageState extends State<MainMenuPage> {
           Icon(
             Icons.leaderboard_outlined,
             color: Colors.white.withOpacity(0.8),
-            size: 16,
+            size: 14,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Text(
             '${rating.position}/${rating.totalEmployees}',
             style: TextStyle(
               color: Colors.white.withOpacity(0.9),
-              fontSize: 13,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Бейдж эффективности для левого верхнего угла
+  Widget _buildEfficiencyBadge() {
+    if (_efficiencyPoints == null) return const SizedBox.shrink();
+
+    final points = _efficiencyPoints!;
+    final isPositive = points >= 0;
+    final formattedPoints = isPositive
+        ? '+${points.toStringAsFixed(1)}'
+        : points.toStringAsFixed(1);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isPositive
+              ? const Color(0xFF4CAF50).withOpacity(0.5)
+              : Colors.orange.withOpacity(0.5),
+        ),
+        color: isPositive
+            ? const Color(0xFF4CAF50).withOpacity(0.15)
+            : Colors.orange.withOpacity(0.15),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPositive ? Icons.trending_up_outlined : Icons.trending_down_outlined,
+            color: isPositive
+                ? const Color(0xFF81C784)
+                : Colors.orange.shade300,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            formattedPoints,
+            style: TextStyle(
+              color: isPositive
+                  ? const Color(0xFF81C784)
+                  : Colors.orange.shade300,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

@@ -469,26 +469,66 @@ class CartPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(20),
         ),
-        title: const Text(
-          'Через сколько заберёте заказ?',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
+        backgroundColor: Colors.white,
+        title: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF004D40).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.access_time_rounded,
+                size: 32,
+                color: Color(0xFF004D40),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Когда заберёте?',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF004D40),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildTimeOption(context, dialogContext, cart, comment, 5),
-            const SizedBox(height: 8),
-            _buildTimeOption(context, dialogContext, cart, comment, 10),
-            const SizedBox(height: 8),
-            _buildTimeOption(context, dialogContext, cart, comment, 15),
-            const SizedBox(height: 8),
-            _buildTimeOption(context, dialogContext, cart, comment, 30),
+            // Сетка 2x2 для времени
+            Row(
+              children: [
+                Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 5)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 10)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 15)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildTimeOption(context, dialogContext, cart, comment, 30)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Кнопка отмены
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'Отмена',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -503,25 +543,52 @@ class CartPage extends StatelessWidget {
     String? comment,
     int minutes,
   ) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () async {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
           Navigator.of(dialogContext).pop();
           await _createOrderWithPickupTime(context, cart, comment, minutes);
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF004D40),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF004D40),
+                const Color(0xFF00695C),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF004D40).withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ),
-        child: Text(
-          '$minutes мин',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+          child: Column(
+            children: [
+              Text(
+                '$minutes',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const Text(
+                'мин',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -591,14 +658,33 @@ class CartPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(20),
         ),
-        title: const Text(
-          'Комментарий к заказу',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF004D40).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.edit_note_rounded,
+                size: 24,
+                color: Color(0xFF004D40),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Комментарий',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF004D40),
+              ),
+            ),
+          ],
         ),
         content: SizedBox(
           width: double.maxFinite,
@@ -607,62 +693,81 @@ class CartPage extends StatelessWidget {
             children: [
               TextField(
                 controller: controller,
-                maxLines: 5,
+                maxLines: 4,
                 decoration: InputDecoration(
-                  hintText: 'Введите комментарий к заказу...',
+                  hintText: 'Напишите пожелания к заказу...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  filled: true,
+                  fillColor: Colors.grey[50],
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF004D40), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.all(16),
                 ),
               ),
-              const SizedBox(height: 16),
-              // Две кнопки внизу диалога
+              const SizedBox(height: 20),
+              // Две кнопки одинакового размера
               Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(dialogContext).pop();
-                        final comment = controller.text.trim().isEmpty
-                            ? null
-                            : controller.text.trim();
-                        _showPickupTimeDialog(context, cart, comment);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF004D40),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          final comment = controller.text.trim().isEmpty
+                              ? null
+                              : controller.text.trim();
+                          _showPickupTimeDialog(context, cart, comment);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004D40),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
                         ),
-                      ),
-                      child: const Text(
-                        'Заказать',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        child: const Text(
+                          'Заказать',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Просто закрываем диалог и возвращаемся к корзине
-                        Navigator.of(dialogContext).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[600],
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[700],
+                          side: BorderSide(color: Colors.grey[400]!, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Вернуться к заказу',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        child: const Text(
+                          'Назад',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

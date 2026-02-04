@@ -12,6 +12,8 @@ import '../../../core/services/report_notification_service.dart';
 import '../../attendance/services/attendance_service.dart';
 import '../../shift_handover/services/shift_handover_report_service.dart';
 import '../../recount/services/recount_service.dart';
+// Сервис настроек баллов для проверки временного окна
+import '../../efficiency/services/points_settings_service.dart';
 
 /// Страница ввода суммы и создания РКО
 class RKOAmountInputPage extends StatefulWidget {
@@ -39,10 +41,84 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
   bool _isCreating = false;
   String? _employeeName;
 
+  // Проверка временного окна
+  bool _isCheckingTime = true;
+  bool _isTimeWindowOpen = false;
+  String? _nextWindowTime;
+
   @override
   void initState() {
     super.initState();
+    _checkTimeWindow();
     _initialize();
+  }
+
+  /// Парсинг времени из строки "HH:MM"
+  TimeOfDay _parseTime(String timeStr) {
+    final parts = timeStr.split(':');
+    return TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+  }
+
+  /// Проверка находится ли время в диапазоне
+  bool _isTimeInRange(TimeOfDay current, TimeOfDay start, TimeOfDay end) {
+    final currentMinutes = current.hour * 60 + current.minute;
+    final startMinutes = start.hour * 60 + start.minute;
+    final endMinutes = end.hour * 60 + end.minute;
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  }
+
+  /// Проверка временного окна для сдачи РКО
+  Future<void> _checkTimeWindow() async {
+    try {
+      final settings = await PointsSettingsService.getRkoPointsSettings();
+      final now = TimeOfDay.now();
+
+      final morningStart = _parseTime(settings.morningStartTime);
+      final morningEnd = _parseTime(settings.morningEndTime);
+      final eveningStart = _parseTime(settings.eveningStartTime);
+      final eveningEnd = _parseTime(settings.eveningEndTime);
+
+      bool isOpen = false;
+      String? nextWindow;
+
+      if (_isTimeInRange(now, morningStart, morningEnd)) {
+        isOpen = true;
+      } else if (_isTimeInRange(now, eveningStart, eveningEnd)) {
+        isOpen = true;
+      } else {
+        // Определяем следующее окно
+        final currentMinutes = now.hour * 60 + now.minute;
+        final morningStartMinutes = morningStart.hour * 60 + morningStart.minute;
+        final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
+
+        if (currentMinutes < morningStartMinutes) {
+          nextWindow = '${settings.morningStartTime} - ${settings.morningEndTime}';
+        } else if (currentMinutes < eveningStartMinutes) {
+          nextWindow = '${settings.eveningStartTime} - ${settings.eveningEndTime}';
+        } else {
+          nextWindow = '${settings.morningStartTime} - ${settings.morningEndTime} (завтра)';
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _isCheckingTime = false;
+          _isTimeWindowOpen = isOpen;
+          _nextWindowTime = nextWindow;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка проверки временного окна РКО', e);
+      if (mounted) {
+        setState(() {
+          _isCheckingTime = false;
+          _isTimeWindowOpen = true; // В случае ошибки разрешаем доступ
+        });
+      }
+    }
   }
 
   Future<void> _initialize() async {
@@ -479,6 +555,110 @@ class _RKOAmountInputPageState extends State<RKOAmountInputPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Проверка загрузки временного окна
+    if (_isCheckingTime) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('РКО: ${widget.rkoType}'),
+          backgroundColor: _primaryColor,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Если временное окно закрыто - показываем сообщение
+    if (!_isTimeWindowOpen) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('РКО: ${widget.rkoType}'),
+          backgroundColor: _primaryColor,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.orange, width: 2),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 64,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Окно сдачи РКО закрыто',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'РКО можно сдать только в определённое время',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Следующее окно:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _nextWindowTime ?? 'Следующее окно',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF004D40),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Назад'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('РКО: ${widget.rkoType}'),

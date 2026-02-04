@@ -15,6 +15,8 @@ class EfficiencyCalculationService {
   static ReviewsPointsSettings? _reviewsSettings;
   static ProductSearchPointsSettings? _productSearchSettings;
   static OrdersPointsSettings? _ordersSettings;
+  static RegularTaskPointsSettings? _regularTaskSettings;
+  static RecurringTaskPointsSettings? _recurringTaskSettings;
 
   /// Загрузить все настройки баллов
   static Future<void> loadAllSettings() async {
@@ -31,6 +33,8 @@ class EfficiencyCalculationService {
         PointsSettingsService.getReviewsPointsSettings(),
         PointsSettingsService.getProductSearchPointsSettings(),
         PointsSettingsService.getOrdersPointsSettings(),
+        PointsSettingsService.getRegularTaskPointsSettings(),
+        PointsSettingsService.getRecurringTaskPointsSettings(),
       ]);
 
       _testSettings = futures[0] as TestPointsSettings;
@@ -42,6 +46,8 @@ class EfficiencyCalculationService {
       _reviewsSettings = futures[6] as ReviewsPointsSettings;
       _productSearchSettings = futures[7] as ProductSearchPointsSettings;
       _ordersSettings = futures[8] as OrdersPointsSettings;
+      _regularTaskSettings = futures[9] as RegularTaskPointsSettings;
+      _recurringTaskSettings = futures[10] as RecurringTaskPointsSettings;
 
       Logger.debug('All points settings loaded successfully');
     } catch (e) {
@@ -56,6 +62,8 @@ class EfficiencyCalculationService {
       _reviewsSettings = ReviewsPointsSettings.defaults();
       _productSearchSettings = ProductSearchPointsSettings.defaults();
       _ordersSettings = OrdersPointsSettings.defaults();
+      _regularTaskSettings = RegularTaskPointsSettings.defaults();
+      _recurringTaskSettings = RecurringTaskPointsSettings.defaults();
     }
   }
 
@@ -70,6 +78,8 @@ class EfficiencyCalculationService {
     _reviewsSettings = null;
     _productSearchSettings = null;
     _ordersSettings = null;
+    _regularTaskSettings = null;
+    _recurringTaskSettings = null;
   }
 
   /// Получить настройки (с автозагрузкой)
@@ -116,6 +126,16 @@ class EfficiencyCalculationService {
   static Future<OrdersPointsSettings> get ordersSettings async {
     if (_ordersSettings == null) await loadAllSettings();
     return _ordersSettings!;
+  }
+
+  static Future<RegularTaskPointsSettings> get regularTaskSettings async {
+    if (_regularTaskSettings == null) await loadAllSettings();
+    return _regularTaskSettings!;
+  }
+
+  static Future<RecurringTaskPointsSettings> get recurringTaskSettings async {
+    if (_recurringTaskSettings == null) await loadAllSettings();
+    return _recurringTaskSettings!;
   }
 
   // ===== МЕТОДЫ РАСЧЕТА БАЛЛОВ =====

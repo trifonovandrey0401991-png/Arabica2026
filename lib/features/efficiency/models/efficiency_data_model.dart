@@ -383,12 +383,18 @@ class EfficiencyPenalty {
   ///   - employeeName для группировки по сотрудникам
   ///   - shopAddress для агрегации в статистику магазина
   EfficiencyRecord toRecord() {
+    // Определяем имя сотрудника: сначала employeeName, потом entityName
+    // type может быть null для старых штрафов, поэтому проверяем наличие имени
+    final resolvedEmployeeName = employeeName ?? entityName;
+    final isEmployeePenalty = type == 'employee' ||
+        (type == null && resolvedEmployeeName.isNotEmpty);
+
     return EfficiencyRecord(
       id: id,
       category: EfficiencyCategory.shiftPenalty,
       // Для employee-штрафов также заполняем shopAddress для агрегации в магазин
       shopAddress: shopAddress,
-      employeeName: type == 'employee' ? (employeeName ?? entityName) : '',
+      employeeName: isEmployeePenalty ? resolvedEmployeeName : '',
       date: DateTime.tryParse(date) ?? DateTime.now(),
       points: points,
       rawValue: {

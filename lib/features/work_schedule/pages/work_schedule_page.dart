@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1384,13 +1385,17 @@ class _WorkSchedulePageState extends State<WorkSchedulePage> with SingleTickerPr
                   color: Colors.white.withOpacity(0.8),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               // Компактная статистика
-              Text(
-                '${_employees.length} сотр. | $totalShifts смен | ${_shops.length} маг.',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.7),
+              Flexible(
+                child: Text(
+                  '${_employees.length} сотр. | $totalShifts смен | ${_shops.length} маг.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
                 ),
               ),
             ],
@@ -3273,8 +3278,9 @@ class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
   @override
   void initState() {
     super.initState();
-    _startDay = widget.startDay;
-    _endDay = widget.endDay;
+    // Ограничиваем значения максимальным днём месяца
+    _startDay = widget.startDay.clamp(1, widget.maxDay);
+    _endDay = widget.endDay.clamp(_startDay, widget.maxDay);
   }
 
   @override
@@ -3361,8 +3367,8 @@ class _PeriodSelectionDialogState extends State<_PeriodSelectionDialog> {
   }
 }
 
-/// Страница предпросмотра PDF с кнопкой назад
-class _PdfPreviewPage extends StatelessWidget {
+/// Страница предпросмотра PDF в горизонтальном режиме на весь экран
+class _PdfPreviewPage extends StatefulWidget {
   final Uint8List pdfBytes;
   final String fileName;
   final String title;
@@ -3374,46 +3380,146 @@ class _PdfPreviewPage extends StatelessWidget {
   });
 
   @override
+  State<_PdfPreviewPage> createState() => _PdfPreviewPageState();
+}
+
+class _PdfPreviewPageState extends State<_PdfPreviewPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Принудительно переключаем в горизонтальный режим
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    // Скрываем системный UI для полноэкранного режима
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    // Восстанавливаем портретный режим
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    // Восстанавливаем системный UI
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF004D40),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // PDF на весь экран
+            Positioned.fill(
+              child: PdfPreview(
+                build: (format) async => widget.pdfBytes,
+                canChangeOrientation: false,
+                canChangePageFormat: false,
+                canDebug: false,
+                pdfFileName: widget.fileName,
+                initialPageFormat: PdfPageFormat.a4.landscape,
+                useActions: false,
+                allowSharing: false,
+                allowPrinting: false,
+                padding: EdgeInsets.zero,
+                previewPageMargin: EdgeInsets.zero,
+              ),
+            ),
+            // Кнопки управления сверху
+            Positioned(
+              top: 8,
+              left: 8,
+              right: 8,
+              child: Row(
+                children: [
+                  // Кнопка назад
+                  _buildControlButton(
+                    icon: Icons.arrow_back,
+                    onTap: () => Navigator.pop(context),
+                    tooltip: 'Назад',
+                  ),
+                  const SizedBox(width: 8),
+                  // Заголовок
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Кнопка поделиться
+                  _buildControlButton(
+                    icon: Icons.share,
+                    onTap: () async {
+                      await Printing.sharePdf(
+                        bytes: widget.pdfBytes,
+                        filename: widget.fileName,
+                      );
+                    },
+                    tooltip: 'Поделиться',
+                  ),
+                  const SizedBox(width: 8),
+                  // Кнопка печати
+                  _buildControlButton(
+                    icon: Icons.print,
+                    onTap: () async {
+                      await Printing.layoutPdf(
+                        onLayout: (format) async => widget.pdfBytes,
+                        name: widget.fileName,
+                        format: PdfPageFormat.a4.landscape,
+                      );
+                    },
+                    tooltip: 'Печать',
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        title: Text(title),
-        actions: [
-          // Кнопка поделиться
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () async {
-              await Printing.sharePdf(bytes: pdfBytes, filename: fileName);
-            },
-            tooltip: 'Поделиться',
-          ),
-          // Кнопка печати/сохранения
-          IconButton(
-            icon: const Icon(Icons.print),
-            onPressed: () async {
-              await Printing.layoutPdf(
-                onLayout: (format) async => pdfBytes,
-                name: fileName,
-                format: PdfPageFormat.a4.landscape,
-              );
-            },
-            tooltip: 'Печать / Сохранить',
-          ),
-        ],
       ),
-      body: PdfPreview(
-        build: (format) async => pdfBytes,
-        canChangeOrientation: false,
-        canChangePageFormat: false,
-        canDebug: false,
-        pdfFileName: fileName,
-        initialPageFormat: PdfPageFormat.a4.landscape,
-        actions: const [], // Убираем стандартные кнопки, у нас свои в AppBar
+    );
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String tooltip,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
       ),
     );
   }

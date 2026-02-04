@@ -16,6 +16,8 @@ import '../../envelope/pages/envelope_form_page.dart';
 import '../../ai_training/pages/shift_ai_verification_page.dart';
 import '../../ai_training/services/shift_ai_verification_service.dart';
 import '../../shifts/models/shift_shortage_model.dart';
+import '../../employees/services/employee_service.dart';
+import '../../employees/pages/employees_page.dart';
 
 /// Страница с вопросами сдачи смены
 class ShiftHandoverQuestionsPage extends StatefulWidget {
@@ -572,9 +574,27 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
       // Конвертируем AI shortages в Map для сохранения
       final aiShortagesJson = _aiShortages.map((s) => s.toJson()).toList();
 
+      // Получаем телефон сотрудника для push-уведомлений
+      String? employeePhone;
+      try {
+        final employeeId = await EmployeesPage.getCurrentEmployeeId();
+        if (employeeId != null) {
+          final employees = await EmployeeService.getEmployees();
+          final employee = employees.firstWhere(
+            (e) => e.id == employeeId,
+            orElse: () => throw StateError('Employee not found'),
+          );
+          employeePhone = employee.phone;
+          Logger.debug('Телефон сотрудника для push: $employeePhone');
+        }
+      } catch (e) {
+        Logger.warning('Не удалось получить телефон сотрудника: $e');
+      }
+
       final report = ShiftHandoverReport(
         id: reportId,
         employeeName: widget.employeeName,
+        employeePhone: employeePhone,
         shopAddress: widget.shopAddress,
         createdAt: now,
         answers: syncedAnswers,
@@ -684,18 +704,42 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
       return Scaffold(
         backgroundColor: _backgroundColor,
         appBar: AppBar(
-          title: const Text('Загрузка...'),
+          title: const Text(
+            'Сдача смены',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
           elevation: 0,
+          centerTitle: true,
         ),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: _primaryColor),
-              SizedBox(height: 16),
-              Text('Загрузка вопросов...', style: TextStyle(color: Colors.grey)),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: _primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: _primaryColor,
+                    strokeWidth: 3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Загрузка вопросов...',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -706,28 +750,77 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
       return Scaffold(
         backgroundColor: _backgroundColor,
         appBar: AppBar(
-          title: const Text('Ошибка'),
+          title: const Text(
+            'Сдача смены',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
           elevation: 0,
+          centerTitle: true,
         ),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                'Вопросы не найдены',
-                style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(backgroundColor: _primaryColor),
-                child: const Text('Назад', style: TextStyle(color: Colors.white)),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Icon(
+                    Icons.quiz_outlined,
+                    size: 48,
+                    color: Colors.orange.shade400,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Вопросы не найдены',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Администратор еще не настроил\nвопросы для сдачи смены',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Вернуться назад',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -760,98 +853,170 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: Text('Вопрос ${_currentQuestionIndex + 1} из ${_questions!.length}'),
+        title: Text(
+          'Вопрос ${_currentQuestionIndex + 1}',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          // Прогресс-бар
-          Container(
-            height: 4,
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.grey[300],
-              valueColor: const AlwaysStoppedAnimation<Color>(_primaryColor),
-            ),
-          ),
-          // Основной контент
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // Карточка с вопросом
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Иконка типа вопроса
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: _primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              _getQuestionIcon(question),
-                              color: _primaryColor,
-                              size: 28,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Текст вопроса
-                          Text(
-                            question.question,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2D3748),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Прогресс-бар с анимацией
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+              ),
+              child: Stack(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    width: MediaQuery.of(context).size.width * progress,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryColor, _primaryColorLight],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                  ),
+                ],
+              ),
+            ),
+            // Основной контент
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Карточка с вопросом
+                      Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(maxWidth: 500),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _primaryColor.withOpacity(0.08),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Иконка типа вопроса
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    _primaryColor.withOpacity(0.15),
+                                    _primaryColorLight.withOpacity(0.1),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Icon(
+                                _getQuestionIcon(question),
+                                color: _primaryColor,
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            // Текст вопроса
+                            Text(
+                              question.question,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2D3748),
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
 
-                    // Ввод ответа
-                    if (question.isNumberOnly) ...[
-                      _buildNumberInput(),
-                    ] else if (question.isPhotoOnly) ...[
-                      _buildPhotoInput(question),
-                    ] else if (question.isYesNo) ...[
-                      _buildYesNoButtons(),
-                    ] else ...[
-                      _buildTextInput(),
+                      // Ввод ответа
+                      Container(
+                        constraints: const BoxConstraints(maxWidth: 500),
+                        child: Column(
+                          children: [
+                            if (question.isNumberOnly) ...[
+                              _buildNumberInput(),
+                            ] else if (question.isPhotoOnly) ...[
+                              _buildPhotoInput(question),
+                            ] else if (question.isYesNo) ...[
+                              _buildYesNoButtons(),
+                            ] else ...[
+                              _buildTextInput(),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
                     ],
-
-                    const SizedBox(height: 32),
-
-                    // Кнопки навигации
-                    _buildNavigationButtons(),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            // Нижняя панель с прогрессом и кнопками
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Текст прогресса
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      '${_currentQuestionIndex + 1} из ${_questions!.length}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                  // Кнопки навигации
+                  _buildNavigationButtons(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -867,19 +1032,44 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryColor.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: TextField(
         controller: _numberController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: _primaryColor,
+        ),
         decoration: InputDecoration(
-          hintText: 'Введите число',
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 18),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.all(20),
+          hintText: '0',
+          hintStyle: TextStyle(
+            color: Colors.grey[300],
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: _primaryColor, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         ),
         onChanged: (_) => setState(() {}),
         onSubmitted: (_) {
@@ -895,18 +1085,35 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _primaryColor.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: TextField(
         controller: _textController,
         maxLines: 4,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 16),
+        style: const TextStyle(fontSize: 16, height: 1.5),
         decoration: InputDecoration(
-          hintText: 'Введите ответ',
+          hintText: 'Введите ваш ответ здесь...',
           hintStyle: TextStyle(color: Colors.grey[400]),
-          border: InputBorder.none,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: _primaryColor, width: 2),
+          ),
           contentPadding: const EdgeInsets.all(20),
         ),
         onChanged: (_) => setState(() {}),
@@ -921,12 +1128,14 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
 
   Widget _buildYesNoButtons() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(
           child: _buildYesNoButton(
             label: 'Да',
             isSelected: _selectedYesNo == 'Да',
-            color: Colors.green,
+            color: const Color(0xFF43A047),
+            icon: Icons.check_rounded,
             onTap: () {
               setState(() => _selectedYesNo = 'Да');
               if (_canProceed()) {
@@ -940,7 +1149,8 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
           child: _buildYesNoButton(
             label: 'Нет',
             isSelected: _selectedYesNo == 'Нет',
-            color: Colors.red,
+            color: const Color(0xFFE53935),
+            icon: Icons.close_rounded,
             onTap: () {
               setState(() => _selectedYesNo = 'Нет');
               if (_canProceed()) {
@@ -957,46 +1167,63 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     required String label,
     required bool isSelected,
     required Color color,
+    required IconData icon,
     required VoidCallback onTap,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 24),
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 28),
           decoration: BoxDecoration(
-            color: isSelected ? color : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? color : Colors.grey.shade300,
-              width: 2,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: color.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: [color, color.withOpacity(0.85)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
                 : null,
+            color: isSelected ? null : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade200,
+              width: isSelected ? 0 : 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected ? color.withOpacity(0.35) : Colors.black.withOpacity(0.06),
+                blurRadius: isSelected ? 16 : 10,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                label == 'Да' ? Icons.check_circle_outline : Icons.cancel_outlined,
-                size: 40,
-                color: isSelected ? Colors.white : color,
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withOpacity(0.2) : color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: isSelected ? Colors.white : color,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                   color: isSelected ? Colors.white : color,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
@@ -1010,44 +1237,60 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
     final referencePhotoUrl = _findReferencePhoto(question);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Эталонное фото (если есть и фото сотрудника еще не сделано)
         if (referencePhotoUrl != null && _photoPath == null) ...[
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _primaryColor.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryColor.withOpacity(0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.photo_library, color: _primaryColor, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Эталонное фото',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                // Заголовок с иконкой
                 Container(
-                  height: 300,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.photo_library_rounded, color: _primaryColor, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Образец',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Изображение
+                Container(
+                  height: 280,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _primaryColor.withOpacity(0.2)),
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.grey[100],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     child: Image.network(
                       referencePhotoUrl,
                       fit: BoxFit.contain,
@@ -1056,6 +1299,7 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                         return Center(
                           child: CircularProgressIndicator(
                             color: _primaryColor,
+                            strokeWidth: 3,
                             value: loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
                                     loadingProgress.expectedTotalBytes!
@@ -1068,11 +1312,11 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error, size: 48, color: Colors.grey[400]),
+                              Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey[400]),
                               const SizedBox(height: 8),
                               Text(
-                                'Ошибка загрузки',
-                                style: TextStyle(color: Colors.grey[500]),
+                                'Не удалось загрузить',
+                                style: TextStyle(color: Colors.grey[500], fontSize: 13),
                               ),
                             ],
                           ),
@@ -1081,64 +1325,83 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Text(
-                  'Сделайте фото как на образце выше',
+                  'Сделайте фото как на образце',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
         ],
 
         // Фото сотрудника (если сделано)
         if (_photoPath != null) ...[
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.green.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.green.shade300, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.15),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Ваше фото',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                // Заголовок с галочкой
                 Container(
-                  height: 250,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: Colors.green.shade600, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ваше фото',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Изображение
+                Container(
+                  height: 240,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green.withOpacity(0.2)),
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.grey[100],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     child: kIsWeb
                         ? Image.network(
                             _photoPath!,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return const Center(child: Icon(Icons.error, size: 64));
+                              return Center(
+                                child: Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                              );
                             },
                           )
                         : Image.file(
@@ -1150,34 +1413,64 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
         ],
 
         // Кнопка фотографирования
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              Logger.debug('Нажата кнопка фотографирования');
-              await _takePhoto();
-              if (_photoPath != null) {
-                Logger.success('Фото сделано: $_photoPath');
-                if (_canProceed()) {
-                  _saveAndNext();
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () async {
+                Logger.debug('Нажата кнопка фотографирования');
+                await _takePhoto();
+                if (_photoPath != null) {
+                  Logger.success('Фото сделано: $_photoPath');
+                  if (_canProceed()) {
+                    _saveAndNext();
+                  }
                 }
-              }
-            },
-            icon: Icon(_photoPath == null ? Icons.camera_alt : Icons.refresh),
-            label: Text(
-              _photoPath == null ? 'Сфотографировать' : 'Переснять',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _photoPath == null
+                        ? [_primaryColor, _primaryColorLight]
+                        : [Colors.grey.shade400, Colors.grey.shade500],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_photoPath == null ? _primaryColor : Colors.grey).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _photoPath == null ? Icons.camera_alt_rounded : Icons.refresh_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _photoPath == null ? 'Сфотографировать' : 'Переснять',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1201,17 +1494,14 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                 onTap: _isSubmitting ? null : _previousQuestion,
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(
+                      color: Colors.grey[300]!,
+                      width: 1.5,
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1219,15 +1509,15 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                       Icon(
                         Icons.arrow_back_ios_rounded,
                         size: 18,
-                        color: _primaryColor,
+                        color: Colors.grey[700],
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         'Назад',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
                         ),
                       ),
                     ],
@@ -1254,29 +1544,37 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                           _nextQuestion();
                         }),
               borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 18),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: (_isSubmitting || !canProceed)
-                      ? Colors.white.withOpacity(0.5)
-                      : Colors.white,
+                  gradient: (_isSubmitting || !canProceed)
+                      ? null
+                      : LinearGradient(
+                          colors: [_primaryColor, _primaryColorLight],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                  color: (_isSubmitting || !canProceed) ? Colors.grey[300] : null,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  boxShadow: (_isSubmitting || !canProceed)
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: _primaryColor.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                 ),
                 child: _isSubmitting
-                    ? Center(
+                    ? const Center(
                         child: SizedBox(
                           height: 22,
                           width: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         ),
                       )
@@ -1285,22 +1583,22 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                         children: [
                           if (isLastQuestion) ...[
                             Icon(
-                              Icons.send_rounded,
-                              size: 20,
+                              Icons.check_circle_outline_rounded,
+                              size: 22,
                               color: (_isSubmitting || !canProceed)
-                                  ? Colors.grey
-                                  : _primaryColor,
+                                  ? Colors.grey[600]
+                                  : Colors.white,
                             ),
                             const SizedBox(width: 10),
                           ],
                           Text(
-                            isLastQuestion ? 'Отправить' : 'Далее',
+                            isLastQuestion ? 'Завершить' : 'Далее',
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               color: (_isSubmitting || !canProceed)
-                                  ? Colors.grey
-                                  : _primaryColor,
+                                  ? Colors.grey[600]
+                                  : Colors.white,
                             ),
                           ),
                           if (!isLastQuestion) ...[
@@ -1309,8 +1607,8 @@ class _ShiftHandoverQuestionsPageState extends State<ShiftHandoverQuestionsPage>
                               Icons.arrow_forward_ios_rounded,
                               size: 18,
                               color: (_isSubmitting || !canProceed)
-                                  ? Colors.grey
-                                  : _primaryColor,
+                                  ? Colors.grey[600]
+                                  : Colors.white,
                             ),
                           ],
                         ],

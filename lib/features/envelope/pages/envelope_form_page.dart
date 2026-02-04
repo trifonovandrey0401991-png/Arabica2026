@@ -13,6 +13,7 @@ import '../../ai_training/services/z_report_service.dart';
 import '../../ai_training/widgets/z_report_recognition_dialog.dart';
 import '../../../core/services/media_upload_service.dart';
 import '../../../core/utils/logger.dart';
+import '../../efficiency/services/points_settings_service.dart';
 
 class EnvelopeFormPage extends StatefulWidget {
   final String employeeName;
@@ -37,6 +38,11 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   bool _isSaving = false;
   List<Supplier> _suppliers = [];
   List<EnvelopeQuestion> _questions = [];
+
+  // Проверка временного окна
+  bool _isCheckingTime = true;
+  bool _isTimeWindowOpen = false;
+  String? _nextWindowTime;
 
   // Данные формы
   String _shiftType = 'morning';
@@ -76,7 +82,76 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
   @override
   void initState() {
     super.initState();
+    _checkTimeWindow();
     _loadData();
+  }
+
+  /// Парсинг времени из строки "HH:MM"
+  TimeOfDay _parseTime(String timeStr) {
+    final parts = timeStr.split(':');
+    return TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+  }
+
+  /// Проверка находится ли время в диапазоне
+  bool _isTimeInRange(TimeOfDay current, TimeOfDay start, TimeOfDay end) {
+    final currentMinutes = current.hour * 60 + current.minute;
+    final startMinutes = start.hour * 60 + start.minute;
+    final endMinutes = end.hour * 60 + end.minute;
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  }
+
+  /// Проверка временного окна для сдачи конверта
+  Future<void> _checkTimeWindow() async {
+    try {
+      final settings = await PointsSettingsService.getEnvelopePointsSettings();
+      final now = TimeOfDay.now();
+
+      final morningStart = _parseTime(settings.morningStartTime);
+      final morningEnd = _parseTime(settings.morningEndTime);
+      final eveningStart = _parseTime(settings.eveningStartTime);
+      final eveningEnd = _parseTime(settings.eveningEndTime);
+
+      bool isOpen = false;
+      String? nextWindow;
+
+      if (_isTimeInRange(now, morningStart, morningEnd)) {
+        isOpen = true;
+      } else if (_isTimeInRange(now, eveningStart, eveningEnd)) {
+        isOpen = true;
+      } else {
+        // Определяем следующее окно
+        final currentMinutes = now.hour * 60 + now.minute;
+        final morningStartMinutes = morningStart.hour * 60 + morningStart.minute;
+        final eveningStartMinutes = eveningStart.hour * 60 + eveningStart.minute;
+
+        if (currentMinutes < morningStartMinutes) {
+          nextWindow = '${settings.morningStartTime} - ${settings.morningEndTime}';
+        } else if (currentMinutes < eveningStartMinutes) {
+          nextWindow = '${settings.eveningStartTime} - ${settings.eveningEndTime}';
+        } else {
+          nextWindow = '${settings.morningStartTime} - ${settings.morningEndTime} (завтра)';
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _isCheckingTime = false;
+          _isTimeWindowOpen = isOpen;
+          _nextWindowTime = nextWindow;
+        });
+      }
+    } catch (e) {
+      Logger.error('Ошибка проверки временного окна', e);
+      if (mounted) {
+        setState(() {
+          _isCheckingTime = false;
+          _isTimeWindowOpen = true; // В случае ошибки разрешаем доступ
+        });
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -456,6 +531,87 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Показываем загрузку пока проверяем время
+    if (_isCheckingTime) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Конверт'),
+          backgroundColor: _primaryColor,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Если временное окно закрыто - показываем сообщение
+    if (!_isTimeWindowOpen) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Конверт'),
+          backgroundColor: _primaryColor,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.timer_off, size: 80, color: Colors.orange),
+                const SizedBox(height: 24),
+                const Text(
+                  'Время вышло',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF004D40),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Вы можете сдать конверт в:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF004D40).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _nextWindowTime ?? 'Следующее окно',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF004D40),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Назад'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_stepTitles[_currentStep]),
@@ -563,63 +719,231 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Выберите тип смены:',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        // Заголовок с иконкой
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.teal.shade50, Colors.cyan.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.teal.shade100),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.teal.shade400, Colors.cyan.shade400],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.teal.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.schedule,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Выберите смену',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Укажите какую смену вы сдаёте',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 24),
-        _buildShiftOption('morning', 'Утренняя смена', Icons.wb_sunny),
+        const SizedBox(height: 32),
+
+        // Утренняя смена
+        _buildShiftOption(
+          value: 'morning',
+          label: 'Утренняя смена',
+          subtitle: '00:00 — 14:00',
+          icon: Icons.wb_sunny_rounded,
+          gradient: [const Color(0xFFFF9800), const Color(0xFFFFB74D)],
+          lightColor: Colors.orange.shade50,
+        ),
         const SizedBox(height: 16),
-        _buildShiftOption('evening', 'Вечерняя смена', Icons.nights_stay),
+
+        // Вечерняя смена
+        _buildShiftOption(
+          value: 'evening',
+          label: 'Вечерняя смена',
+          subtitle: '14:00 — 00:00',
+          icon: Icons.nights_stay_rounded,
+          gradient: [const Color(0xFF3F51B5), const Color(0xFF7986CB)],
+          lightColor: Colors.indigo.shade50,
+        ),
       ],
     );
   }
 
-  Widget _buildShiftOption(String value, String label, IconData icon) {
+  Widget _buildShiftOption({
+    required String value,
+    required String label,
+    required String subtitle,
+    required IconData icon,
+    required List<Color> gradient,
+    required Color lightColor,
+  }) {
     final isSelected = _shiftType == value;
-    final color = value == 'morning' ? Colors.orange : Colors.indigo;
-    return InkWell(
+
+    return GestureDetector(
       onTap: () => setState(() => _shiftType = value),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? lightColor : Colors.white,
           border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
+            color: isSelected ? gradient[0] : Colors.grey.shade200,
+            width: isSelected ? 2.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: isSelected
+                  ? gradient[0].withOpacity(0.25)
+                  : Colors.black.withOpacity(0.06),
+              blurRadius: isSelected ? 16 : 8,
+              offset: Offset(0, isSelected ? 6 : 2),
             ),
           ],
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
+            // Иконка с градиентом
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 32),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                gradient: LinearGradient(
+                  colors: isSelected
+                      ? gradient
+                      : [Colors.grey.shade200, Colors.grey.shade300],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: gradient[0].withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey.shade500,
+                size: 36,
               ),
             ),
-            if (isSelected)
-              Icon(Icons.check_circle, color: color, size: 28),
+            const SizedBox(width: 20),
+
+            // Текст
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? gradient[0] : Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: isSelected ? gradient[0].withOpacity(0.7) : Colors.grey.shade400,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isSelected ? gradient[0].withOpacity(0.7) : Colors.grey.shade500,
+                          fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Чекбокс
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? LinearGradient(colors: gradient)
+                    : null,
+                color: isSelected ? null : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected ? Colors.transparent : Colors.grey.shade300,
+                  width: 2,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: gradient[0].withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: isSelected
+                  ? const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 18,
+                    )
+                  : null,
+            ),
           ],
         ),
       ),
@@ -635,137 +959,170 @@ class _EnvelopeFormPageState extends State<EnvelopeFormPage> {
     required Function(File) onPick,
     String? referencePhotoUrl,
   }) {
+    final hasPhoto = photo != null || photoUrl != null;
+    final typeColor = isOoo ? const Color(0xFF1976D2) : const Color(0xFFE65100);
+    final hasReference = referencePhotoUrl != null && referencePhotoUrl.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-
-        // Подсказка о распознавании
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.auto_awesome, color: Colors.green[700], size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'ИИ автоматически распознает данные с фото',
-                  style: TextStyle(fontSize: 13, color: Colors.green[700]),
+        // Компактный заголовок
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: typeColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isOoo ? 'ООО' : 'ИП',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Эталонное фото (если есть)
-        if (referencePhotoUrl != null && referencePhotoUrl.isNotEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue[200]!),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Образец фото:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[700],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    referencePhotoUrl,
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stack) {
-                      return Container(
-                        height: 80,
-                        color: Colors.grey[200],
-                        child: Center(
-                          child: Text(
-                            'Не удалось загрузить образец',
-                            style: TextStyle(color: Colors.grey[600]),
+            const SizedBox(width: 10),
+            Text(
+              'Z-отчёт',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C853).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome, color: Color(0xFF00C853), size: 12),
+                  SizedBox(width: 3),
+                  Text('ИИ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00C853))),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Область фото - фиксированная высота 420
+        GestureDetector(
+          onTap: () => _pickAndRecognizeZReport(isOoo: isOoo, onPhotoPicked: onPick),
+          child: Container(
+            height: 420,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: hasPhoto ? Colors.green.shade400 : typeColor.withOpacity(0.3),
+                width: hasPhoto ? 2 : 1,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: hasPhoto
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        photo != null
+                            ? Image.file(photo, fit: BoxFit.cover)
+                            : Image.network(photoUrl!, fit: BoxFit.cover),
+                        // Бейдж
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check, color: Colors.white, size: 12),
+                                SizedBox(width: 4),
+                                Text('Готово', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ],
+                    )
+                  : hasReference
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.network(
+                              referencePhotoUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stack) => Center(
+                                child: Icon(Icons.broken_image, size: 48, color: Colors.grey[400]),
+                              ),
+                            ),
+                            // Бейдж образец
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade600,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.photo_library, color: Colors.white, size: 12),
+                                    SizedBox(width: 4),
+                                    Text('Образец', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo_rounded, size: 56, color: typeColor.withOpacity(0.6)),
+                            const SizedBox(height: 12),
+                            Text('Нажмите для фото', style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+                          ],
+                        ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Кнопка
+        GestureDetector(
+          onTap: () => _pickAndRecognizeZReport(isOoo: isOoo, onPhotoPicked: onPick),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [typeColor, typeColor.withOpacity(0.85)]),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(hasPhoto ? Icons.refresh : Icons.camera_alt, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  hasPhoto ? 'Переснять' : 'Сфотографировать',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        // Ваше фото
-        if (photo != null || photoUrl != null) ...[
-          Text(
-            'Ваше фото:',
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-
-        if (photo != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.file(photo, height: 300, fit: BoxFit.cover),
-          )
-        else if (photoUrl != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(photoUrl, height: 300, fit: BoxFit.cover),
-          )
-        else
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Icon(Icons.camera_alt, size: 64, color: Colors.grey),
-            ),
-          ),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: () => _pickAndRecognizeZReport(
-            isOoo: isOoo,
-            onPhotoPicked: onPick,
-          ),
-          icon: const Icon(Icons.camera_alt),
-          label: Text(photo != null ? 'Переснять и распознать' : 'Сфотографировать'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primaryColor,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
       ],

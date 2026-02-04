@@ -106,12 +106,14 @@ class AttendanceService {
 
       Logger.debug('Создание отметки прихода: $employeeName, время: ${finalTimestamp.toIso8601String()}');
 
-      final result = await BaseHttpService.postRaw(
+      // Используем postRawWithError чтобы получить сообщение об ошибке от сервера
+      final httpResult = await BaseHttpService.postRawWithError(
         endpoint: _baseEndpoint,
         body: record.toJson(),
       );
 
-      if (result != null) {
+      if (httpResult.success && httpResult.data != null) {
+        final result = httpResult.data!;
         // Проверяем, нужен ли выбор смены
         final needsShiftSelection = result['needsShiftSelection'] == true;
         final recordId = result['recordId'] as String?;
@@ -136,9 +138,10 @@ class AttendanceService {
           recordId: recordId,
         );
       } else {
+        // Возвращаем ошибку от сервера (например "Сейчас не время для отметки")
         return AttendanceResult(
           success: false,
-          error: 'Не удалось отправить отметку',
+          error: httpResult.error ?? 'Не удалось отправить отметку',
         );
       }
     } catch (e) {

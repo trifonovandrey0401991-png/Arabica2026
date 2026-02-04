@@ -895,9 +895,28 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     return 'записей';
   }
 
+  /// Все категории эффективности для отображения
+  static const List<_CategoryInfo> _allCategories = [
+    _CategoryInfo(EfficiencyCategory.shiftHandover, 'Сдать смену', 'Оценка пересменки 1-10'),
+    _CategoryInfo(EfficiencyCategory.shift, 'Пересменка', 'Оценка смены 1-10'),
+    _CategoryInfo(EfficiencyCategory.recount, 'Пересчёт', 'Оценка пересчёта 1-10'),
+    _CategoryInfo(EfficiencyCategory.attendance, 'Посещаемость', '"Я на работе" вовремя'),
+    _CategoryInfo(EfficiencyCategory.rko, 'РКО', 'Расходный кассовый ордер'),
+    _CategoryInfo(EfficiencyCategory.orders, 'Заказы', 'Обработка заказов клиентов'),
+    _CategoryInfo(EfficiencyCategory.reviews, 'Отзывы', 'Отзывы клиентов'),
+    _CategoryInfo(EfficiencyCategory.productSearch, 'Поиск товара', 'Ответы на вопросы клиентов'),
+    _CategoryInfo(EfficiencyCategory.tasks, 'Задачи', 'Выполнение задач'),
+    _CategoryInfo(EfficiencyCategory.test, 'Тестирование', 'Прохождение тестов'),
+  ];
+
   Widget _buildCategoriesCard() {
-    // Категории уже отсортированы в categorySummaries
-    final categories = _summary!.categorySummaries;
+    // Собираем данные по категориям из summary
+    final Map<String, double> pointsByCategory = {};
+    if (_summary != null) {
+      for (final cat in _summary!.categorySummaries) {
+        pointsByCategory[cat.name] = cat.points;
+      }
+    }
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -907,28 +926,85 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'По категориям',
+              'Критерии оценки',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF004D40),
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'По этим показателям оценивается ваша эффективность',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
             const SizedBox(height: 12),
-            if (categories.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Нет данных',
-                    style: TextStyle(color: Colors.grey[500]),
-                  ),
-                ),
-              )
-            else
-              ...categories.map((cat) => _buildCategoryRow(cat)),
+            // Сначала показываем категории с данными (из summary)
+            if (_summary != null)
+              ..._summary!.categorySummaries.map((cat) => _buildCategoryRow(cat)),
+            // Затем показываем остальные категории с 0 баллов
+            ..._allCategories
+                .where((info) => !pointsByCategory.containsKey(info.name) &&
+                    !_summary!.categorySummaries.any((c) => c.baseCategory == info.category))
+                .map((info) => _buildEmptyCategoryRow(info)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyCategoryRow(_CategoryInfo info) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getCategoryIcon(info.category),
+              size: 20,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  info.name,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                Text(
+                  info.description,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[400],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '0.00',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[400],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1247,4 +1323,13 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       ),
     );
   }
+}
+
+/// Информация о категории эффективности
+class _CategoryInfo {
+  final EfficiencyCategory category;
+  final String name;
+  final String description;
+
+  const _CategoryInfo(this.category, this.name, this.description);
 }

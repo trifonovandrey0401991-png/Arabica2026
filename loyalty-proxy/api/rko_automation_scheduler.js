@@ -620,15 +620,25 @@ async function runScheduledChecks() {
     console.log(`[RkoScheduler] ${failed} RKOs marked as failed`);
   }
 
-  // Cleanup at 23:59 Moscow time
+  // Cleanup: проверяем что уже новый день и cleanup не был сделан сегодня
+  // Срабатывает после полуночи (00:00-06:00) если cleanup не был сделан
   const moscowHours = moscow.getUTCHours();
-  const moscowMinutes = moscow.getUTCMinutes();
-  if (moscowHours === 23 && moscowMinutes >= 59) {
-    const lastCleanup = state.lastCleanup;
-    if (!lastCleanup || !isSameDay(new Date(lastCleanup), now)) {
-      cleanupFailedReports();
-      state.lastCleanup = now.toISOString();
-    }
+  const lastCleanup = state.lastCleanup;
+  const lastCleanupDate = lastCleanup ? new Date(lastCleanup) : null;
+  const todayMoscow = getMoscowDateString();
+  const lastCleanupMoscow = lastCleanupDate
+    ? new Date(lastCleanupDate.getTime() + MOSCOW_OFFSET_HOURS * 60 * 60 * 1000).toISOString().split('T')[0]
+    : null;
+
+  // Cleanup если: новый день И (нет lastCleanup ИЛИ lastCleanup был в прошлом дне) И время 00:00-06:00
+  if (moscowHours >= 0 && moscowHours < 6 && lastCleanupMoscow !== todayMoscow) {
+    console.log(`[RkoScheduler] Running daily cleanup (last cleanup: ${lastCleanupMoscow}, today: ${todayMoscow})`);
+    cleanupFailedReports();
+    // cleanupFailedReports сбрасывает state, перезагружаем его
+    const newState = loadState();
+    saveState(newState);
+    console.log(`[RkoScheduler] Checks completed\n`);
+    return; // Выходим чтобы не перезаписать state
   }
 
   saveState(state);

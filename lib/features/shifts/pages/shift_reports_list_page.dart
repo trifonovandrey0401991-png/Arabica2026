@@ -500,8 +500,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       if (r.status == 'pending' || r.status == 'failed') return false;
       // Показываем отчёты со статусом "review" или null (старые отчёты без статуса)
       // status == null или status == 'review' - это реальные отчёты на проверке
-      // Показываем только отчёты, которые ожидают менее 5 часов
-      final hours = now.difference(r.createdAt).inHours;
+      // Показываем только отчёты, которые ожидают менее 5 часов (с момента submittedAt)
+      final submissionTime = r.submittedAt ?? r.createdAt;
+      final hours = now.difference(submissionTime).inHours;
       return hours < 5;
     }).toList();
     return _applyFilters(pending);
@@ -516,7 +517,9 @@ class _ShiftReportsListPageState extends State<ShiftReportsListPage>
       if (r.status == 'pending' || r.status == 'failed') return false;
       // Исключаем отчёты с пустым именем сотрудника
       if (r.employeeName.isEmpty) return false;
-      final hours = now.difference(r.createdAt).inHours;
+      // Используем submittedAt для подсчёта времени ожидания
+      final submissionTime = r.submittedAt ?? r.createdAt;
+      final hours = now.difference(submissionTime).inHours;
       return hours >= 5;
     }).toList();
   }

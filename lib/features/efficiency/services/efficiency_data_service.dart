@@ -269,7 +269,12 @@ class EfficiencyDataService {
 
     for (final record in records) {
       if (record.employeeName.isEmpty) continue;
-      if (record.shopAddress.isEmpty || !validAddresses.contains(record.shopAddress)) continue;
+
+      // Для записей без shopAddress (задачи, штрафы за задачи) - включаем
+      // Для записей с shopAddress - проверяем что это реальный магазин
+      if (record.shopAddress.isNotEmpty && !validAddresses.contains(record.shopAddress)) {
+        continue;
+      }
 
       byEmployee.putIfAbsent(record.employeeName, () => []);
       byEmployee[record.employeeName]!.add(record);

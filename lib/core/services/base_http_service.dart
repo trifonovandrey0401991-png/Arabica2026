@@ -402,6 +402,52 @@ class BaseHttpService {
     }
   }
 
+  /// POST-запрос с возвратом сырого Map включая ошибки от сервера.
+  ///
+  /// В отличие от postRaw, этот метод возвращает ответ даже при 400 ошибках,
+  /// чтобы можно было получить сообщение об ошибке от сервера.
+  static Future<HttpResult> postRawWithError({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 POST $endpoint');
+
+      final response = await http
+          .post(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      final result = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (result['success'] == true) {
+          return HttpResult(success: true, data: result);
+        }
+        return HttpResult(
+          success: false,
+          error: result['error'] as String? ?? 'Неизвестная ошибка',
+          data: result,
+        );
+      }
+
+      // Для 400 и других ошибок - возвращаем сообщение от сервера
+      Logger.debug('❌ HTTP ${response.statusCode} on $endpoint: ${result['error']}');
+      return HttpResult(
+        success: false,
+        error: result['error'] as String? ?? 'HTTP ${response.statusCode}',
+        data: result,
+      );
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return HttpResult(success: false, error: e.toString());
+    }
+  }
+
   /// Частичное обновление элемента (PATCH).
   ///
   /// [endpoint] - путь API с ID
@@ -531,4 +577,17 @@ class BaseHttpService {
       return false;
     }
   }
+}
+
+/// Результат HTTP-запроса с поддержкой ошибок от сервера.
+class HttpResult {
+  final bool success;
+  final String? error;
+  final Map<String, dynamic>? data;
+
+  HttpResult({
+    required this.success,
+    this.error,
+    this.data,
+  });
 }
