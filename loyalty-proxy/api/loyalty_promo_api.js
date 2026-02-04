@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
 

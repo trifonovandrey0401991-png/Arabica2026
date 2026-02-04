@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
 const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;

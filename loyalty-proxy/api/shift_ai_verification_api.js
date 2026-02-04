@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Директории
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHIFT_AI_SETTINGS_DIR = `${DATA_DIR}/shift-ai-settings`;
 const SHIFT_AI_ANNOTATIONS_DIR = `${DATA_DIR}/shift-ai-annotations`;

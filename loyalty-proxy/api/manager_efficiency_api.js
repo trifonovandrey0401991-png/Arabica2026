@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHOPS_DIR = `${DATA_DIR}/shops`;
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;

@@ -25,7 +25,7 @@ try {
 }
 
 // Directories
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
 const SHIFT_HANDOVER_PENDING_DIR = `${DATA_DIR}/shift-handover-pending`;

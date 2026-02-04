@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const CHAT_MEDIA_DIR = `${DATA_DIR}/chat-media`;
 const TASK_MEDIA_DIR = `${DATA_DIR}/task-media`;

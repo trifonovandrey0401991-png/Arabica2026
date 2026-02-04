@@ -3,7 +3,7 @@ const path = require('path');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 const { getTaskPointsConfig } = require('./api/task_points_settings_api');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const TASKS_DIR = `${DATA_DIR}/tasks`;
 const TASK_ASSIGNMENTS_DIR = `${DATA_DIR}/task-assignments`;

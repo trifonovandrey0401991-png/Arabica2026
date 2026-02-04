@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECOUNT_POINTS_DIR = `${DATA_DIR}/recount-points`;
 const RECOUNT_SETTINGS_FILE = `${DATA_DIR}/recount-settings/settings.json`;

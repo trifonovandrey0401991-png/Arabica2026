@@ -25,7 +25,7 @@ try {
 }
 
 // Directories
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
 const ATTENDANCE_PENDING_DIR = `${DATA_DIR}/attendance-pending`;

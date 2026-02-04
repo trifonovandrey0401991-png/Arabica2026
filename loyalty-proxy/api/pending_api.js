@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const PENDING_RECOUNT_DIR = `${DATA_DIR}/pending-recount-reports`;
 const PENDING_SHIFT_DIR = `${DATA_DIR}/pending-shift-reports`;

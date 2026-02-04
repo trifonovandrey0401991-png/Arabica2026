@@ -11,7 +11,7 @@ const { addPendingCode, isCodeInMasterCatalog, getMasterNameByBarcode } = requir
 const { notifyAdminsAboutNewCodes } = require('./master_catalog_notifications');
 
 // Директория для хранения товаров магазинов
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHOP_PRODUCTS_DIR = `${DATA_DIR}/shop-products`;
 

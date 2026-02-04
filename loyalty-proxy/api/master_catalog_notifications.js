@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Константы
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;

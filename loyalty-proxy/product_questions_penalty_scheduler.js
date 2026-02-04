@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Directories
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const PRODUCT_QUESTIONS_DIR = `${DATA_DIR}/product-questions`;
 const PRODUCT_QUESTION_DIALOGS_DIR = `${DATA_DIR}/product-question-dialogs`;

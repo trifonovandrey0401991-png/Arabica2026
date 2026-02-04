@@ -7,7 +7,7 @@ const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
 const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('./efficiency_calc');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RATINGS_DIR = `${DATA_DIR}/employee-ratings`;
 const FORTUNE_WHEEL_DIR = `${DATA_DIR}/fortune-wheel`;

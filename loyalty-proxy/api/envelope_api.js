@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;

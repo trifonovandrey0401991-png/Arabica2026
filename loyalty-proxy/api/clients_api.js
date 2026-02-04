@@ -4,7 +4,7 @@ const { sendPushNotification, sendPushToPhone } = require('../report_notificatio
 const { isAdminPhone } = require('../utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
 const CLIENT_DIALOGS_DIR = `${DATA_DIR}/client-dialogs`;

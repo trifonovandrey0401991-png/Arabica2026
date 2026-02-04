@@ -9,7 +9,7 @@ const { getTaskPointsConfig } = require('./api/task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 
 // Директории хранения
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECURRING_TASKS_DIR = `${DATA_DIR}/recurring-tasks`;
 const RECURRING_INSTANCES_DIR = `${DATA_DIR}/recurring-task-instances`;

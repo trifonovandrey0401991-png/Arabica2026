@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
 const LOYALTY_TRANSACTIONS_DIR = `${DATA_DIR}/loyalty-transactions`;

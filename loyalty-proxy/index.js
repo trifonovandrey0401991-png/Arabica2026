@@ -12,7 +12,7 @@ const ordersModule = require('./modules/orders');
 const execPromise = util.promisify(exec);
 const { preloadAdminCache, invalidateCache } = require('./utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('./utils/pagination');
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 
 // ============================================

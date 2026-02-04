@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Директории хранения данных
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const GEOFENCE_SETTINGS_FILE = `${DATA_DIR}/geofence-settings.json`;
 const GEOFENCE_NOTIFICATIONS_DIR = `${DATA_DIR}/geofence-notifications`;

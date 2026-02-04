@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { isAdminPhone } = require('../utils/admin_cache');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const SHIFT_TRANSFERS_FILE = `${DATA_DIR}/shift-transfers.json`;
 const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;

@@ -13,7 +13,7 @@ const path = require('path');
 const cigaretteVision = require('../modules/cigarette-vision');
 
 // Директория для мастер-каталога
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const MASTER_CATALOG_DIR = `${DATA_DIR}/master-catalog`;
 const PRODUCTS_FILE = path.join(MASTER_CATALOG_DIR, 'products.json');

@@ -14,7 +14,7 @@ const path = require('path');
 const { admin, firebaseInitialized } = require('./firebase-admin-config');
 
 // Директория хранения уведомлений
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const NOTIFICATIONS_DIR = `${DATA_DIR}/report-notifications`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;

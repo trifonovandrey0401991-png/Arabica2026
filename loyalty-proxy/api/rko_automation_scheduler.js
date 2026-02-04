@@ -25,7 +25,7 @@ try {
 }
 
 // Directories
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RKO_REPORTS_DIR = `${DATA_DIR}/rko-reports`;
 const RKO_PENDING_DIR = `${DATA_DIR}/rko-pending`;

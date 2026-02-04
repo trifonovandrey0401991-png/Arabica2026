@@ -9,7 +9,7 @@ const path = require('path');
 const cigaretteVision = require('../modules/cigarette-vision');
 
 // Директория с вопросами пересчёта (та же что в index.js)
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 

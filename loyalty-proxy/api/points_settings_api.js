@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const TEST_POINTS_FILE = path.join(POINTS_SETTINGS_DIR, 'test_points_settings.json');

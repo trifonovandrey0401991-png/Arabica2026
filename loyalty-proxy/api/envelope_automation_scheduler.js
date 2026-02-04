@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Директории
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const ENVELOPE_PENDING_DIR = `${DATA_DIR}/envelope-pending`;
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;

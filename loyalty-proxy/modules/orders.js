@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
 const { sendPushNotification } = require('../report_notifications_api');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const ORDERS_DIR = `${DATA_DIR}/orders`;
 const COUNTER_FILE = path.join(ORDERS_DIR, 'order-counter.json');

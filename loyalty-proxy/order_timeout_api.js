@@ -7,7 +7,7 @@ const path = require('path');
 const { sendPushNotification } = require('./report_notifications_api');
 
 // Директории
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const POINTS_SETTINGS_DIR = `${DATA_DIR}/points-settings`;
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;

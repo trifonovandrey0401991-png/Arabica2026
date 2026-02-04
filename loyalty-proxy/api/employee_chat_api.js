@@ -11,7 +11,7 @@ try {
   console.log('⚠️ WebSocket модуль не загружен, real-time уведомления отключены');
 }
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const EMPLOYEE_CHATS_DIR = `${DATA_DIR}/employee-chats`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;

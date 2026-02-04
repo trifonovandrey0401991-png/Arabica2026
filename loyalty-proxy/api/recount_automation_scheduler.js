@@ -26,7 +26,7 @@ try {
 }
 
 // Directories
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECOUNT_REPORTS_DIR = `${DATA_DIR}/recount-reports`;
 const SHOPS_DIR = `${DATA_DIR}/shops`;

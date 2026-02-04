@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECIPES_DIR = `${DATA_DIR}/recipes`;
 const RECIPE_PHOTOS_DIR = `${DATA_DIR}/recipe-photos`;

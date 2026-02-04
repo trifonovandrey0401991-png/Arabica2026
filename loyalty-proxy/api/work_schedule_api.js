@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 const WORK_SCHEDULE_TEMPLATES_DIR = `${DATA_DIR}/work-schedule-templates`;
