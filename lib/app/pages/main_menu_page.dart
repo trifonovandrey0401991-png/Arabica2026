@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'dart:async';
-import 'dart:ui';
-import 'package:flutter/services.dart' show rootBundle;
 import '../../features/menu/pages/menu_groups_page.dart';
 import '../../features/orders/pages/cart_page.dart';
 import '../../features/orders/pages/orders_page.dart';
@@ -21,11 +18,9 @@ import '../../features/product_questions/pages/product_search_shop_selection_pag
 import '../../features/employees/pages/employee_panel_page.dart';
 import '../../features/shops/pages/shops_on_map_page.dart';
 import '../../features/job_application/pages/job_application_welcome_page.dart';
-import '../../features/rating/widgets/rating_badge_widget.dart';
 import '../../features/rating/services/rating_service.dart';
 import '../../features/rating/models/employee_rating_model.dart';
 import '../../core/utils/logger.dart';
-import '../../core/widgets/shop_icon.dart';
 import '../../core/services/report_notification_service.dart';
 import '../../core/services/firebase_service.dart';
 import '../../features/main_cash/services/withdrawal_service.dart';
@@ -64,9 +59,9 @@ import '../../features/employees/services/employee_service.dart';
 import '../../features/ai_training/pages/ai_training_page.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
-import '../../features/attendance/models/attendance_model.dart';
 import '../../core/services/app_update_service.dart';
 import '../../features/efficiency/services/efficiency_data_service.dart';
+import '../../features/network_management/pages/network_management_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -232,7 +227,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
       final employeeId = await EmployeesPage.getCurrentEmployeeId();
       if (employeeId != null) {
         final spins = await FortuneWheelService.getAvailableSpins(employeeId);
-        if (mounted) setState(() => _availableSpins = spins?.availableSpins ?? 0);
+        if (mounted) setState(() => _availableSpins = spins.availableSpins);
       }
     } catch (e) {
       Logger.error('Ошибка загрузки прокруток', e);
@@ -450,8 +445,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
         return _buildClientMenu();
       case UserRole.employee:
         return _buildEmployeeMenu();
+      case UserRole.manager:
+        return _buildEmployeeMenu(); // Manager видит меню сотрудника
       case UserRole.admin:
         return _buildAdminMenu();
+      case UserRole.developer:
+        return _buildDeveloperMenu(); // Developer - расширенное меню
     }
   }
 
@@ -521,6 +520,74 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
           return Column(
             children: [
+              _buildAdminRow(
+                Icons.tune_rounded,
+                'Управление',
+                'Настройки системы и данные',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage())),
+              ),
+              const SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.analytics_outlined,
+                'Отчёты',
+                'Аналитика и статистика',
+                buttonHeight,
+                () async {
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
+                  _loadReportCounts();
+                  _loadUnconfirmedWithdrawalsCount();
+                },
+                badge: _totalUnviewedReports + _unconfirmedWithdrawalsCount,
+              ),
+              const SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.grid_view_rounded,
+                'Панель сотрудника',
+                'Функции сотрудника',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeePanelPage())),
+              ),
+              const SizedBox(height: spacing),
+              _buildAdminRow(
+                Icons.person_outline,
+                'Клиент',
+                'Клиентские функции',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientFunctionsPage())),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Меню для разработчиков - админ меню + "Управление сетью"
+  Widget _buildDeveloperMenu() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+
+          // 5 кнопок + 4 отступа между ними
+          const buttonCount = 5;
+          const spacing = 12.0;
+          final totalSpacing = spacing * (buttonCount - 1);
+          final buttonHeight = (availableHeight - totalSpacing) / buttonCount;
+
+          return Column(
+            children: [
+              // Специальная кнопка "Управление сетью" для разработчика
+              _buildAdminRow(
+                Icons.hub_outlined,
+                'Управление сетью',
+                'Разработчики, управляющие, магазины',
+                buttonHeight,
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NetworkManagementPage())),
+              ),
+              const SizedBox(height: spacing),
               _buildAdminRow(
                 Icons.tune_rounded,
                 'Управление',

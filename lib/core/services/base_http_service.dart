@@ -577,6 +577,68 @@ class BaseHttpService {
       return false;
     }
   }
+
+  /// PUT-запрос с возвратом сырого Map.
+  ///
+  /// Используется когда нужен доступ к нескольким полям ответа.
+  static Future<Map<String, dynamic>?> putRaw({
+    required String endpoint,
+    required Map<String, dynamic> body,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('📤 PUT $endpoint');
+
+      final response = await http
+          .put(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+            body: jsonEncode(body),
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    }
+  }
+
+  /// DELETE-запрос с возвратом сырого Map.
+  ///
+  /// Используется когда нужен доступ к полям ответа после удаления.
+  static Future<Map<String, dynamic>?> deleteRaw({
+    required String endpoint,
+    Duration? timeout,
+  }) async {
+    try {
+      Logger.debug('🗑️ DELETE $endpoint');
+
+      final response = await http
+          .delete(
+            Uri.parse('${ApiConstants.serverUrl}$endpoint'),
+            headers: ApiConstants.headersWithApiKey,
+          )
+          .timeout(timeout ?? ApiConstants.defaultTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return result as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('❌ Request failed for $endpoint', e);
+      return null;
+    }
+  }
 }
 
 /// Результат HTTP-запроса с поддержкой ошибок от сервера.

@@ -94,6 +94,7 @@ const { setupGeofenceAPI } = require("./api/geofence_api");
 const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 const { setupMediaAPI } = require("./api/media_api");
+const { setupShopManagersAPI } = require("./api/shop_managers_api");
 
 // ============================================
 // SECURITY: API Key Authentication
@@ -8381,6 +8382,7 @@ setupMasterCatalogAPI(app);
 setupGeofenceAPI(app, sendPushToPhone);
 setupEmployeeChatAPI(app);
 setupMediaAPI(app, uploadChatMedia);
+setupShopManagersAPI(app);
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();

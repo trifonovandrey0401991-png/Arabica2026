@@ -7,6 +7,64 @@ import 'employee_registration_service.dart';
 
 /// Сервис для работы с ролями пользователей
 class UserRoleService {
+  /// Кэш мультитенантной роли (чтобы не делать запрос каждый раз)
+  static Map<String, dynamic>? _cachedMultitenantRole;
+  static DateTime? _cacheTime;
+  static const Duration _cacheDuration = Duration(minutes: 5);
+
+  /// Получить мультитенантную роль пользователя (developer/admin/manager)
+  static Future<Map<String, dynamic>?> getMultitenantRole(String phone) async {
+    try {
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+
+      // Проверяем кэш
+      if (_cachedMultitenantRole != null &&
+          _cacheTime != null &&
+          DateTime.now().difference(_cacheTime!) < _cacheDuration) {
+        Logger.debug('📦 Используем кэшированную мультитенантную роль');
+        return _cachedMultitenantRole;
+      }
+
+      Logger.debug('🔍 Проверка мультитенантной роли для: $normalizedPhone');
+
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/shop-managers/role/$normalizedPhone',
+        timeout: ApiConstants.shortTimeout,
+      );
+
+      if (result == null || result['success'] != true) {
+        Logger.debug('⚠️ Мультитенантная роль не определена');
+        return null;
+      }
+
+      // Кэшируем результат
+      _cachedMultitenantRole = result['role'] as Map<String, dynamic>?;
+      _cacheTime = DateTime.now();
+
+      if (_cachedMultitenantRole != null) {
+        Logger.debug('✅ Мультитенантная роль: ${_cachedMultitenantRole!['role']}');
+        if (_cachedMultitenantRole!['managedShopIds'] != null) {
+          Logger.debug('   Магазины: ${(_cachedMultitenantRole!['managedShopIds'] as List).length}');
+        }
+        if (_cachedMultitenantRole!['managedEmployees'] != null) {
+          Logger.debug('   Сотрудники: ${(_cachedMultitenantRole!['managedEmployees'] as List).length}');
+        }
+      }
+
+      return _cachedMultitenantRole;
+    } catch (e) {
+      Logger.debug('⚠️ Ошибка получения мультитенантной роли: $e');
+      return null;
+    }
+  }
+
+  /// Очистить кэш мультитенантной роли
+  static void clearMultitenantCache() {
+    _cachedMultitenantRole = null;
+    _cacheTime = null;
+    Logger.debug('🧹 Кэш мультитенантной роли очищен');
+  }
+
   /// Проверить, является ли пользователь сотрудником через API
   static Future<UserRoleData?> checkEmployeeViaAPI(String phone) async {
     try {
@@ -62,11 +120,53 @@ class UserRoleService {
               Logger.debug('💾 Сохранен employeeId: ${emp['id']}');
             }
 
+            // Получаем мультитенантную роль
+            final multitenantRole = await getMultitenantRole(normalizedPhone);
+
+            // Определяем финальную роль с учётом мультитенантности
+            UserRole finalRole;
+            List<String> managedShopIds = [];
+            List<String> managedEmployees = [];
+            String? primaryShopId;
+            bool canSeeAllManagerShops = false;
+
+            if (multitenantRole != null) {
+              final mtRole = multitenantRole['role'] as String?;
+              if (mtRole == 'developer') {
+                finalRole = UserRole.developer;
+                Logger.debug('🔧 Пользователь - DEVELOPER');
+              } else if (mtRole == 'admin') {
+                finalRole = UserRole.admin;
+                managedShopIds = (multitenantRole['managedShopIds'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ?? [];
+                managedEmployees = (multitenantRole['managedEmployees'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ?? [];
+                Logger.debug('👔 Пользователь - ADMIN (управляющий)');
+              } else if (mtRole == 'manager') {
+                finalRole = UserRole.manager;
+                primaryShopId = multitenantRole['primaryShopId'] as String?;
+                canSeeAllManagerShops = multitenantRole['canSeeAllManagerShops'] == true;
+                Logger.debug('🏪 Пользователь - MANAGER (заведующая)');
+              } else {
+                // Используем роль из employees API
+                finalRole = isAdmin ? UserRole.admin : UserRole.employee;
+              }
+            } else {
+              // Мультитенантная роль не определена - используем стандартную
+              finalRole = isAdmin ? UserRole.admin : UserRole.employee;
+            }
+
             return UserRoleData(
-              role: isAdmin ? UserRole.admin : UserRole.employee,
+              role: finalRole,
               displayName: employeeName,
               phone: normalizedPhone,
               employeeName: employeeName,
+              managedShopIds: managedShopIds,
+              managedEmployees: managedEmployees,
+              primaryShopId: primaryShopId,
+              canSeeAllManagerShops: canSeeAllManagerShops,
             );
           }
         }
@@ -87,6 +187,9 @@ class UserRoleService {
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
 
       Logger.debug('🔍 Проверка роли пользователя с номером: $normalizedPhone');
+
+      // Очищаем кэш мультитенантной роли при новом запросе
+      clearMultitenantCache();
 
       // СНАЧАЛА проверяем через API сотрудников (для сотрудников, созданных через API)
       final apiRole = await checkEmployeeViaAPI(phone);
@@ -175,12 +278,32 @@ class UserRoleService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', roleData.role.name);
       await prefs.setString('user_display_name', roleData.displayName);
+
       if (roleData.employeeName != null) {
         await prefs.setString('user_employee_name', roleData.employeeName!);
       } else {
         await prefs.remove('user_employee_name');
       }
+
+      // Сохраняем мультитенантные данные
+      await prefs.setStringList('user_managed_shop_ids', roleData.managedShopIds);
+      await prefs.setStringList('user_managed_employees', roleData.managedEmployees);
+
+      if (roleData.primaryShopId != null) {
+        await prefs.setString('user_primary_shop_id', roleData.primaryShopId!);
+      } else {
+        await prefs.remove('user_primary_shop_id');
+      }
+
+      await prefs.setBool('user_can_see_all_manager_shops', roleData.canSeeAllManagerShops);
+
       Logger.debug('✅ Роль сохранена: ${roleData.role.name}');
+      if (roleData.managedShopIds.isNotEmpty) {
+        Logger.debug('   Магазины: ${roleData.managedShopIds.length}');
+      }
+      if (roleData.managedEmployees.isNotEmpty) {
+        Logger.debug('   Сотрудники: ${roleData.managedEmployees.length}');
+      }
     } catch (e) {
       Logger.debug('❌ Ошибка сохранения роли: $e');
     }
@@ -195,14 +318,26 @@ class UserRoleService {
       final phone = prefs.getString('user_phone') ?? '';
       final employeeName = prefs.getString('user_employee_name');
 
+      // Загружаем мультитенантные данные
+      final managedShopIds = prefs.getStringList('user_managed_shop_ids') ?? [];
+      final managedEmployees = prefs.getStringList('user_managed_employees') ?? [];
+      final primaryShopId = prefs.getString('user_primary_shop_id');
+      final canSeeAllManagerShops = prefs.getBool('user_can_see_all_manager_shops') ?? false;
+
       if (roleStr == null) {
         return null;
       }
 
       UserRole role;
       switch (roleStr) {
+        case 'developer':
+          role = UserRole.developer;
+          break;
         case 'admin':
           role = UserRole.admin;
+          break;
+        case 'manager':
+          role = UserRole.manager;
           break;
         case 'employee':
           role = UserRole.employee;
@@ -216,6 +351,10 @@ class UserRoleService {
         displayName: displayName,
         phone: phone,
         employeeName: employeeName,
+        managedShopIds: managedShopIds,
+        managedEmployees: managedEmployees,
+        primaryShopId: primaryShopId,
+        canSeeAllManagerShops: canSeeAllManagerShops,
       );
     } catch (e) {
       Logger.debug('❌ Ошибка загрузки роли: $e');
@@ -230,6 +369,14 @@ class UserRoleService {
       await prefs.remove('user_role');
       await prefs.remove('user_display_name');
       await prefs.remove('user_employee_name');
+      await prefs.remove('user_managed_shop_ids');
+      await prefs.remove('user_managed_employees');
+      await prefs.remove('user_primary_shop_id');
+      await prefs.remove('user_can_see_all_manager_shops');
+
+      // Очищаем кэш мультитенантной роли
+      clearMultitenantCache();
+
       Logger.debug('✅ Роль очищена');
     } catch (e) {
       Logger.debug('❌ Ошибка очистки роли: $e');
