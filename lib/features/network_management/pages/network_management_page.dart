@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/network_management_service.dart';
 import '../../shops/services/shop_service.dart';
 import '../../shops/models/shop_model.dart';
+import '../../employees/services/employee_service.dart';
+import '../../employees/pages/employees_page.dart';
 import '../../../core/utils/logger.dart';
 
 /// Страница управления сетью магазинов
@@ -20,11 +22,18 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   String? _currentUserPhone;
   bool _isLoading = true;
 
+  // Цветовая схема
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _accent = Color(0xFF2DD4BF);
+
   // Данные для вкладок
   List<String> _developers = [];
   List<Map<String, dynamic>> _managers = [];
   List<Map<String, dynamic>> _storeManagers = [];
   List<Shop> _allShops = [];
+  List<Employee> _allEmployees = [];
 
   @override
   void initState() {
@@ -69,6 +78,9 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       // Загружаем все магазины
       _allShops = await ShopService.getShops();
 
+      // Загружаем всех сотрудников
+      _allEmployees = await EmployeeService.getEmployees();
+
     } catch (e) {
       Logger.debug('❌ Ошибка загрузки данных: $e');
     }
@@ -79,32 +91,95 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Управление сетью'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: const [
-            Tab(icon: Icon(Icons.code), text: 'Разработчики'),
-            Tab(icon: Icon(Icons.business_center), text: 'Управляющие'),
-            Tab(icon: Icon(Icons.store), text: 'Магазины'),
-            Tab(icon: Icon(Icons.people), text: 'Сотрудники'),
-            Tab(icon: Icon(Icons.supervisor_account), text: 'Заведующие'),
-          ],
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              _buildTabBar(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: _accent))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildDevelopersTab(),
+                          _buildManagersTab(),
+                          _buildShopsTab(),
+                          _buildEmployeesTab(),
+                          _buildStoreManagersTab(),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildDevelopersTab(),
-                _buildManagersTab(),
-                _buildShopsTab(),
-                _buildEmployeesTab(),
-                _buildStoreManagersTab(),
-              ],
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Expanded(
+            child: Text(
+              'Управление сетью',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadAllData,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        indicatorColor: _accent,
+        indicatorWeight: 3,
+        labelColor: _accent,
+        unselectedLabelColor: Colors.white60,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontSize: 12),
+        tabs: const [
+          Tab(icon: Icon(Icons.code, size: 20), text: 'Разработчики'),
+          Tab(icon: Icon(Icons.business_center, size: 20), text: 'Управляющие'),
+          Tab(icon: Icon(Icons.store, size: 20), text: 'Магазины'),
+          Tab(icon: Icon(Icons.people, size: 20), text: 'Сотрудники'),
+          Tab(icon: Icon(Icons.supervisor_account, size: 20), text: 'Заведующие'),
+        ],
+      ),
     );
   }
 
@@ -113,177 +188,33 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildDevelopersTab() {
     return Column(
       children: [
-        // Кнопка добавления
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: _showAddDeveloperDialog,
-            icon: const Icon(Icons.add),
-            label: const Text('Добавить разработчика'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-            ),
-          ),
-        ),
-
-        // Список разработчиков
+        const SizedBox(height: 16),
+        _buildAddButton('Добавить разработчика', Icons.code, _showAddDeveloperDialog),
         Expanded(
           child: _developers.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Нет разработчиков',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
+              ? _buildEmptyState('Нет разработчиков', Icons.code)
               : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: _developers.length,
                   itemBuilder: (context, index) {
                     final phone = _developers[index];
                     final isCurrentUser = phone == _currentUserPhone?.replaceAll(RegExp(r'[\s\+]'), '');
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isCurrentUser ? Colors.green : Colors.blue,
-                          child: const Icon(Icons.code, color: Colors.white),
-                        ),
-                        title: Text(_formatPhone(phone)),
-                        subtitle: isCurrentUser ? const Text('Это вы') : null,
-                        trailing: isCurrentUser
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _confirmRemoveDeveloper(phone),
-                              ),
-                      ),
+                    return _buildPersonCard(
+                      phone: phone,
+                      title: _formatPhone(phone),
+                      subtitle: isCurrentUser ? 'Это вы' : null,
+                      color: isCurrentUser ? _accent : Colors.blue,
+                      icon: Icons.code,
+                      onDelete: isCurrentUser ? null : () => _confirmRemoveDeveloper(phone),
                     );
                   },
                 ),
         ),
-
-        // Информация
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.blue.withOpacity(0.1),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Разработчики видят ВСЕ магазины, сотрудников и данные системы',
-                  style: TextStyle(color: Colors.blue),
-                ),
-              ),
-            ],
-          ),
+        _buildInfoPanel(
+          'Разработчики видят ВСЕ магазины, сотрудников и данные системы',
+          Colors.blue,
         ),
       ],
-    );
-  }
-
-  void _showAddDeveloperDialog() {
-    final controller = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Добавить разработчика'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(
-            labelText: 'Номер телефона',
-            hintText: '79001234567',
-            prefixIcon: Icon(Icons.phone),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final phone = controller.text.trim();
-              if (phone.isEmpty) return;
-
-              Navigator.pop(context);
-
-              final success = await NetworkManagementService.addDeveloper(
-                _currentUserPhone!,
-                phone,
-              );
-
-              if (success) {
-                _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Разработчик добавлен')),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ошибка добавления разработчика'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Добавить'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmRemoveDeveloper(String phone) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить разработчика?'),
-        content: Text('Удалить ${_formatPhone(phone)} из списка разработчиков?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              final success = await NetworkManagementService.removeDeveloper(
-                _currentUserPhone!,
-                phone,
-              );
-
-              if (success) {
-                _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Разработчик удалён')),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ошибка удаления разработчика'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -292,114 +223,624 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   Widget _buildManagersTab() {
     return Column(
       children: [
-        // Кнопка добавления
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: _showAddManagerDialog,
-            icon: const Icon(Icons.add),
-            label: const Text('Добавить управляющего'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-            ),
-          ),
-        ),
-
-        // Список управляющих
+        const SizedBox(height: 16),
+        _buildAddButton('Добавить управляющего', Icons.business_center, _showAddManagerDialog),
         Expanded(
           child: _managers.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Нет управляющих',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
+              ? _buildEmptyState('Нет управляющих', Icons.business_center)
               : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: _managers.length,
                   itemBuilder: (context, index) {
                     final manager = _managers[index];
                     final shopCount = (manager['managedShops'] as List?)?.length ?? 0;
                     final employeeCount = (manager['employees'] as List?)?.length ?? 0;
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ExpansionTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.orange,
-                          child: Icon(Icons.business_center, color: Colors.white),
-                        ),
-                        title: Text(manager['name']?.toString() ?? 'Без имени'),
-                        subtitle: Text(_formatPhone(manager['phone']?.toString() ?? '')),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Chip(label: Text('$shopCount маг.')),
-                            const SizedBox(width: 4),
-                            Chip(label: Text('$employeeCount сотр.')),
-                          ],
-                        ),
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.store),
-                            title: const Text('Магазины'),
-                            subtitle: Text(
-                              shopCount > 0
-                                  ? (manager['managedShops'] as List).join(', ')
-                                  : 'Не назначены',
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _showEditManagerShopsDialog(manager),
-                            ),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.people),
-                            title: const Text('Сотрудники'),
-                            subtitle: Text(
-                              employeeCount > 0
-                                  ? '$employeeCount сотрудников'
-                                  : 'Не назначены',
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _showEditManagerEmployeesDialog(manager),
-                            ),
-                          ),
-                          OverflowBar(
-                            alignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton.icon(
-                                onPressed: () => _confirmRemoveManager(manager['phone']?.toString() ?? ''),
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                label: const Text('Удалить', style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
+                    return _buildManagerCard(manager, shopCount, employeeCount);
                   },
                 ),
         ),
-
-        // Информация
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.orange.withOpacity(0.1),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.orange),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Управляющие видят ТОЛЬКО свои магазины и назначенных сотрудников',
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ),
-            ],
-          ),
+        _buildInfoPanel(
+          'Управляющие видят ТОЛЬКО свои магазины и назначенных сотрудников',
+          Colors.orange,
         ),
       ],
+    );
+  }
+
+  Widget _buildManagerCard(Map<String, dynamic> manager, int shopCount, int employeeCount) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.business_center, color: Colors.orange),
+          ),
+          title: Text(
+            manager['name']?.toString() ?? 'Без имени',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            _formatPhone(manager['phone']?.toString() ?? ''),
+            style: TextStyle(color: Colors.white.withOpacity(0.6)),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildBadge('$shopCount маг.', Colors.purple),
+              const SizedBox(width: 8),
+              _buildBadge('$employeeCount сотр.', Colors.teal),
+            ],
+          ),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildManagerOption(
+                    icon: Icons.store,
+                    title: 'Магазины',
+                    value: shopCount > 0
+                        ? (manager['managedShops'] as List).map((id) {
+                            final shop = _allShops.where((s) => s.id == id).firstOrNull;
+                            return shop?.name ?? id;
+                          }).join(', ')
+                        : 'Не назначены',
+                    onEdit: () => _showEditManagerShopsDialog(manager),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildManagerOption(
+                    icon: Icons.people,
+                    title: 'Сотрудники',
+                    value: employeeCount > 0 ? '$employeeCount сотрудников' : 'Не назначены',
+                    onEdit: () => _showEditManagerEmployeesDialog(manager),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _confirmRemoveManager(manager['phone']?.toString() ?? ''),
+                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                        label: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildManagerOption({
+    required IconData icon,
+    required String title,
+    required String value,
+    required VoidCallback onEdit,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white60, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit, color: _accent, size: 20),
+            onPressed: onEdit,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== ВКЛАДКА МАГАЗИНЫ ====================
+
+  Widget _buildShopsTab() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Назначение магазинов управляющим',
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _allShops.isEmpty
+              ? _buildEmptyState('Нет магазинов', Icons.store)
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _allShops.length,
+                  itemBuilder: (context, index) {
+                    final shop = _allShops[index];
+                    String? assignedManager;
+                    for (final manager in _managers) {
+                      final shops = manager['managedShops'] as List?;
+                      if (shops?.contains(shop.id) == true) {
+                        assignedManager = manager['name']?.toString() ?? manager['phone']?.toString();
+                        break;
+                      }
+                    }
+                    return _buildShopCard(shop, assignedManager);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShopCard(Shop shop, String? assignedManager) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.purple.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.store, color: Colors.purple),
+        ),
+        title: Text(shop.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          assignedManager != null ? 'Управляющий: $assignedManager' : 'Не назначен',
+          style: TextStyle(
+            color: assignedManager != null ? _accent : Colors.white.withOpacity(0.5),
+            fontSize: 12,
+          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit, color: _accent),
+          onPressed: () => _showAssignShopDialog(shop.id, shop.name, assignedManager),
+        ),
+      ),
+    );
+  }
+
+  // ==================== ВКЛАДКА СОТРУДНИКИ ====================
+
+  Widget _buildEmployeesTab() {
+    // Собрать всех привязанных сотрудников
+    final assignedEmployees = <Map<String, dynamic>>[];
+    for (final manager in _managers) {
+      final employees = (manager['employees'] as List?) ?? [];
+      for (final empPhone in employees) {
+        assignedEmployees.add({
+          'phone': empPhone.toString(),
+          'managerName': manager['name']?.toString() ?? 'Без имени',
+          'managerPhone': manager['phone']?.toString() ?? '',
+        });
+      }
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Привязка сотрудников к управляющим',
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: assignedEmployees.isEmpty
+              ? _buildEmptyState('Нет привязанных сотрудников\n\nДобавьте через вкладку "Управляющие"', Icons.people)
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: assignedEmployees.length,
+                  itemBuilder: (context, index) {
+                    final emp = assignedEmployees[index];
+                    final employee = _allEmployees.where(
+                      (e) => e.phone?.replaceAll(RegExp(r'[\s\+]'), '') == emp['phone'],
+                    ).firstOrNull;
+                    return _buildEmployeeCard(emp, employee);
+                  },
+                ),
+        ),
+        _buildInfoPanel(
+          'Сотрудник привязывается к управляющему и может работать в любом его магазине',
+          Colors.teal,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmployeeCard(Map<String, dynamic> emp, Employee? employee) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.teal.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.person, color: Colors.teal),
+        ),
+        title: Text(
+          employee?.employeeName ?? employee?.name ?? _formatPhone(emp['phone'] ?? ''),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (employee?.employeeName != null || employee?.name != null)
+              Text(
+                _formatPhone(emp['phone'] ?? ''),
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+              ),
+            Row(
+              children: [
+                const Icon(Icons.business_center, size: 12, color: Colors.orange),
+                const SizedBox(width: 4),
+                Text(
+                  emp['managerName'] ?? '',
+                  style: const TextStyle(color: Colors.orange, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.swap_horiz, color: _accent),
+          onPressed: () => _showTransferEmployeeDialog(emp['phone'] ?? '', emp['managerPhone'] ?? ''),
+        ),
+      ),
+    );
+  }
+
+  // ==================== ВКЛАДКА ЗАВЕДУЮЩИЕ ====================
+
+  Widget _buildStoreManagersTab() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        _buildAddButton('Добавить заведующую', Icons.supervisor_account, _showAddStoreManagerDialog),
+        Expanded(
+          child: _storeManagers.isEmpty
+              ? _buildEmptyState('Нет заведующих\n\nЗаведующая — сотрудник с расширенными правами', Icons.supervisor_account)
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _storeManagers.length,
+                  itemBuilder: (context, index) {
+                    final sm = _storeManagers[index];
+                    return _buildStoreManagerCard(sm);
+                  },
+                ),
+        ),
+        _buildInfoPanel(
+          'Заведующая может видеть только свой магазин или все магазины управляющего',
+          Colors.amber,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStoreManagerCard(Map<String, dynamic> sm) {
+    final phone = sm['phone']?.toString() ?? '';
+    final shopId = sm['shopId']?.toString() ?? '';
+    final canSeeAll = sm['canSeeAllManagerShops'] == true;
+    final shop = _allShops.where((s) => s.id == shopId).firstOrNull;
+    final shopName = shop?.name ?? shopId;
+
+    String? managerName;
+    for (final manager in _managers) {
+      final shops = manager['managedShops'] as List?;
+      if (shops?.contains(shopId) == true) {
+        managerName = manager['name']?.toString() ?? 'Без имени';
+        break;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: canSeeAll ? Colors.green.withOpacity(0.3) : Colors.amber.withOpacity(0.3)),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: (canSeeAll ? Colors.green : Colors.amber).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.supervisor_account, color: canSeeAll ? Colors.green : Colors.amber),
+          ),
+          title: Text(
+            _formatPhone(phone),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            'Магазин: $shopName',
+            style: TextStyle(color: Colors.white.withOpacity(0.6)),
+          ),
+          trailing: _buildBadge(
+            canSeeAll ? 'Все магазины' : 'Только свой',
+            canSeeAll ? Colors.green : Colors.amber,
+          ),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildStoreManagerInfo(Icons.store, 'Магазин', shopName),
+                  if (managerName != null) ...[
+                    const SizedBox(height: 8),
+                    _buildStoreManagerInfo(Icons.business_center, 'Управляющий', managerName),
+                  ],
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          canSeeAll ? Icons.visibility : Icons.visibility_off,
+                          color: canSeeAll ? Colors.green : Colors.amber,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            canSeeAll
+                                ? 'Видит ВСЕ магазины управляющего'
+                                : 'Видит ТОЛЬКО свой магазин',
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                        Switch(
+                          value: canSeeAll,
+                          activeColor: Colors.green,
+                          onChanged: (value) => _toggleStoreManagerVisibility(phone, value),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _showEditStoreManagerDialog(sm),
+                        icon: const Icon(Icons.edit, color: _accent, size: 20),
+                        label: const Text('Изменить', style: TextStyle(color: _accent)),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _confirmRemoveStoreManager(phone),
+                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                        label: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreManagerInfo(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white60, size: 18),
+        const SizedBox(width: 8),
+        Text('$label: ', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
+        Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13))),
+      ],
+    );
+  }
+
+  // ==================== ОБЩИЕ ВИДЖЕТЫ ====================
+
+  Widget _buildAddButton(String text, IconData icon, VoidCallback onPressed) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Material(
+        color: _accent.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: _accent, size: 20),
+                const SizedBox(width: 8),
+                Text(text, style: const TextStyle(color: _accent, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String text, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Colors.white.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoPanel(String text, Color color) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(text, style: TextStyle(color: color, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonCard({
+    required String phone,
+    required String title,
+    String? subtitle,
+    required Color color,
+    required IconData icon,
+    VoidCallback? onDelete,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color),
+        ),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        subtitle: subtitle != null
+            ? Text(subtitle, style: TextStyle(color: _accent, fontSize: 12))
+            : null,
+        trailing: onDelete != null
+            ? IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: onDelete,
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  // ==================== ДИАЛОГИ ====================
+
+  void _showAddDeveloperDialog() {
+    final controller = TextEditingController();
+    _showInputDialog(
+      title: 'Добавить разработчика',
+      hint: '79001234567',
+      label: 'Номер телефона',
+      icon: Icons.phone,
+      controller: controller,
+      onConfirm: () async {
+        final phone = controller.text.trim();
+        if (phone.isEmpty) return;
+        Navigator.pop(context);
+        final success = await NetworkManagementService.addDeveloper(_currentUserPhone!, phone);
+        if (success) {
+          _loadAllData();
+          _showSnackBar('Разработчик добавлен');
+        } else {
+          _showSnackBar('Ошибка добавления', isError: true);
+        }
+      },
+    );
+  }
+
+  void _confirmRemoveDeveloper(String phone) {
+    _showConfirmDialog(
+      title: 'Удалить разработчика?',
+      content: 'Удалить ${_formatPhone(phone)} из списка разработчиков?',
+      onConfirm: () async {
+        Navigator.pop(context);
+        final success = await NetworkManagementService.removeDeveloper(_currentUserPhone!, phone);
+        if (success) {
+          _loadAllData();
+          _showSnackBar('Разработчик удалён');
+        }
+      },
     );
   }
 
@@ -410,68 +851,36 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Добавить управляющего'),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Добавить управляющего', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Имя',
-                prefixIcon: Icon(Icons.person),
-              ),
-            ),
+            _buildTextField(nameController, 'Имя', Icons.person),
             const SizedBox(height: 16),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Номер телефона',
-                hintText: '79001234567',
-                prefixIcon: Icon(Icons.phone),
-              ),
-            ),
+            _buildTextField(phoneController, 'Телефон', Icons.phone, hint: '79001234567'),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _accent),
             onPressed: () async {
               final phone = phoneController.text.trim();
               final name = nameController.text.trim();
               if (phone.isEmpty) return;
-
               Navigator.pop(context);
-
               final success = await NetworkManagementService.saveManager(
                 _currentUserPhone!,
-                {
-                  'phone': phone,
-                  'name': name,
-                  'managedShops': <String>[],
-                  'employees': <String>[],
-                },
+                {'phone': phone, 'name': name, 'managedShops': <String>[], 'employees': <String>[]},
               );
-
               if (success) {
                 _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Управляющий добавлен')),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ошибка добавления'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                _showSnackBar('Управляющий добавлен');
               }
             },
             child: const Text('Добавить'),
@@ -490,29 +899,30 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Магазины: ${manager['name']}'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Магазины: ${manager['name']}', style: const TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
             child: _allShops.isEmpty
-                ? const Center(child: Text('Нет магазинов'))
+                ? const Center(child: Text('Нет магазинов', style: TextStyle(color: Colors.white60)))
                 : ListView.builder(
                     itemCount: _allShops.length,
                     itemBuilder: (context, index) {
                       final shop = _allShops[index];
-                      final shopId = shop.id;
-                      final shopName = shop.name;
-
                       return CheckboxListTile(
-                        title: Text(shopName),
-                        subtitle: Text(shop.address),
-                        value: selectedShops.contains(shopId),
+                        title: Text(shop.name, style: const TextStyle(color: Colors.white)),
+                        subtitle: Text(shop.address, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                        value: selectedShops.contains(shop.id),
+                        activeColor: _accent,
+                        checkColor: _night,
                         onChanged: (value) {
                           setDialogState(() {
                             if (value == true) {
-                              selectedShops.add(shopId);
+                              selectedShops.add(shop.id);
                             } else {
-                              selectedShops.remove(shopId);
+                              selectedShops.remove(shop.id);
                             }
                           });
                         },
@@ -523,26 +933,19 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
               onPressed: () async {
                 Navigator.pop(context);
-
-                final success = await NetworkManagementService.updateManagerShops(
+                await NetworkManagementService.updateManagerShops(
                   _currentUserPhone!,
                   manager['phone']?.toString() ?? '',
                   selectedShops.toList(),
                 );
-
-                if (success) {
-                  _loadAllData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Магазины обновлены')),
-                    );
-                  }
-                }
+                _loadAllData();
+                _showSnackBar('Магазины обновлены');
               },
               child: const Text('Сохранить'),
             ),
@@ -553,64 +956,136 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   }
 
   void _showEditManagerEmployeesDialog(Map<String, dynamic> manager) {
-    final phoneController = TextEditingController();
-    final employees = List<String>.from(
+    final selectedEmployees = Set<String>.from(
       (manager['employees'] as List?)?.map((e) => e.toString()) ?? [],
     );
+
+    // Создаём Map для быстрого поиска управляющего по телефону сотрудника
+    final employeeToManager = <String, String>{};
+    for (final m in _managers) {
+      final mName = m['name']?.toString() ?? 'Без имени';
+      for (final empPhone in (m['employees'] as List?) ?? []) {
+        employeeToManager[empPhone.toString()] = mName;
+      }
+    }
+
+    // Сортируем сотрудников: сначала свободные, потом привязанные
+    final sortedEmployees = List<Employee>.from(_allEmployees);
+    sortedEmployees.sort((a, b) {
+      final aPhone = a.phone?.replaceAll(RegExp(r'[\s\+]'), '') ?? '';
+      final bPhone = b.phone?.replaceAll(RegExp(r'[\s\+]'), '') ?? '';
+      final aHasManager = employeeToManager.containsKey(aPhone);
+      final bHasManager = employeeToManager.containsKey(bPhone);
+      if (aHasManager && !bHasManager) return 1;
+      if (!aHasManager && bHasManager) return -1;
+      return 0;
+    });
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Сотрудники: ${manager['name']}'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Сотрудники: ${manager['name']}', style: const TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
-            height: 400,
+            height: 500,
             child: Column(
               children: [
-                // Поле добавления
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          hintText: '79001234567',
-                          prefixIcon: Icon(Icons.phone),
-                        ),
+                // Счётчик
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _accent.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.people, color: _accent, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Выбрано: ${selectedEmployees.length}',
+                        style: const TextStyle(color: _accent, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: () {
-                        final phone = phoneController.text.trim();
-                        if (phone.isNotEmpty && !employees.contains(phone)) {
-                          setDialogState(() {
-                            employees.add(phone.replaceAll(RegExp(r'[\s\+]'), ''));
-                            phoneController.clear();
-                          });
-                        }
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Divider(),
-
+                const SizedBox(height: 12),
                 // Список сотрудников
                 Expanded(
-                  child: employees.isEmpty
-                      ? const Center(child: Text('Нет сотрудников'))
+                  child: sortedEmployees.isEmpty
+                      ? const Center(child: Text('Нет сотрудников', style: TextStyle(color: Colors.white60)))
                       : ListView.builder(
-                          itemCount: employees.length,
+                          itemCount: sortedEmployees.length,
                           itemBuilder: (context, index) {
-                            return ListTile(
-                              title: Text(_formatPhone(employees[index])),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                onPressed: () {
+                            final emp = sortedEmployees[index];
+                            final empPhone = emp.phone?.replaceAll(RegExp(r'[\s\+]'), '') ?? '';
+                            final empName = emp.employeeName ?? emp.name;
+                            final assignedTo = employeeToManager[empPhone];
+                            final isSelected = selectedEmployees.contains(empPhone);
+                            final isAssignedToOther = assignedTo != null && assignedTo != manager['name'];
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? _accent.withOpacity(0.15)
+                                    : isAssignedToOther
+                                        ? Colors.orange.withOpacity(0.1)
+                                        : Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: isSelected
+                                    ? Border.all(color: _accent.withOpacity(0.5))
+                                    : null,
+                              ),
+                              child: CheckboxListTile(
+                                title: Text(
+                                  empName,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _formatPhone(empPhone),
+                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                                    ),
+                                    if (assignedTo != null)
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.business_center,
+                                            size: 12,
+                                            color: isAssignedToOther ? Colors.orange : _accent,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            assignedTo,
+                                            style: TextStyle(
+                                              color: isAssignedToOther ? Colors.orange : _accent,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                                value: isSelected,
+                                activeColor: _accent,
+                                checkColor: _night,
+                                onChanged: (value) {
                                   setDialogState(() {
-                                    employees.removeAt(index);
+                                    if (value == true) {
+                                      selectedEmployees.add(empPhone);
+                                    } else {
+                                      selectedEmployees.remove(empPhone);
+                                    }
                                   });
                                 },
                               ),
@@ -624,26 +1099,43 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
               onPressed: () async {
                 Navigator.pop(context);
 
-                final success = await NetworkManagementService.updateManagerEmployees(
-                  _currentUserPhone!,
-                  manager['phone']?.toString() ?? '',
-                  employees,
-                );
-
-                if (success) {
-                  _loadAllData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Сотрудники обновлены')),
+                // Удалить выбранных сотрудников у других управляющих
+                for (final m in _managers) {
+                  if (m['phone'] == manager['phone']) continue;
+                  final mEmployees = List<String>.from(
+                    (m['employees'] as List?)?.map((e) => e.toString()) ?? [],
+                  );
+                  bool changed = false;
+                  for (final emp in selectedEmployees) {
+                    if (mEmployees.contains(emp)) {
+                      mEmployees.remove(emp);
+                      changed = true;
+                    }
+                  }
+                  if (changed) {
+                    await NetworkManagementService.updateManagerEmployees(
+                      _currentUserPhone!,
+                      m['phone']?.toString() ?? '',
+                      mEmployees,
                     );
                   }
                 }
+
+                // Обновить сотрудников текущего управляющего
+                await NetworkManagementService.updateManagerEmployees(
+                  _currentUserPhone!,
+                  manager['phone']?.toString() ?? '',
+                  selectedEmployees.toList(),
+                );
+                _loadAllData();
+                _showSnackBar('Сотрудники обновлены');
               },
               child: const Text('Сохранить'),
             ),
@@ -654,110 +1146,22 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   }
 
   void _confirmRemoveManager(String phone) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить управляющего?'),
-        content: Text('Удалить ${_formatPhone(phone)} из списка управляющих?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-
-              final success = await NetworkManagementService.removeManager(
-                _currentUserPhone!,
-                phone,
-              );
-
-              if (success) {
-                _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Управляющий удалён')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==================== ВКЛАДКА МАГАЗИНЫ ====================
-
-  Widget _buildShopsTab() {
-    return Column(
-      children: [
-        // Заголовок
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: const Text(
-            'Назначение магазинов управляющим',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-
-        // Список магазинов
-        Expanded(
-          child: _allShops.isEmpty
-              ? const Center(child: Text('Нет магазинов'))
-              : ListView.builder(
-                  itemCount: _allShops.length,
-                  itemBuilder: (context, index) {
-                    final shop = _allShops[index];
-                    final shopId = shop.id;
-                    final shopName = shop.name;
-
-                    // Найти управляющего для этого магазина
-                    String? assignedManager;
-                    for (final manager in _managers) {
-                      final shops = manager['managedShops'] as List?;
-                      if (shops?.contains(shopId) == true) {
-                        assignedManager = manager['name']?.toString() ?? manager['phone']?.toString();
-                        break;
-                      }
-                    }
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.purple,
-                          child: Icon(Icons.store, color: Colors.white),
-                        ),
-                        title: Text(shopName),
-                        subtitle: Text(
-                          assignedManager != null
-                              ? 'Управляющий: $assignedManager'
-                              : 'Не назначен',
-                          style: TextStyle(
-                            color: assignedManager != null ? Colors.green : Colors.grey,
-                          ),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _showAssignShopDialog(shopId, shopName, assignedManager),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
+    _showConfirmDialog(
+      title: 'Удалить управляющего?',
+      content: 'Удалить ${_formatPhone(phone)} из списка управляющих?',
+      onConfirm: () async {
+        Navigator.pop(context);
+        final success = await NetworkManagementService.removeManager(_currentUserPhone!, phone);
+        if (success) {
+          _loadAllData();
+          _showSnackBar('Управляющий удалён');
+        }
+      },
     );
   }
 
   void _showAssignShopDialog(String shopId, String shopName, String? currentManager) {
     String? selectedManagerPhone;
-
-    // Найти текущего управляющего
     for (final manager in _managers) {
       final shops = manager['managedShops'] as List?;
       if (shops?.contains(shopId) == true) {
@@ -770,32 +1174,30 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Назначить: $shopName'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Назначить: $shopName', style: const TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Без управляющего
               RadioListTile<String?>(
-                title: const Text('Без управляющего'),
+                title: const Text('Без управляющего', style: TextStyle(color: Colors.white)),
                 value: null,
                 groupValue: selectedManagerPhone,
-                onChanged: (value) {
-                  setDialogState(() => selectedManagerPhone = value);
-                },
+                activeColor: _accent,
+                onChanged: (value) => setDialogState(() => selectedManagerPhone = value),
               ),
-              const Divider(),
-              // Список управляющих
+              const Divider(color: Colors.white24),
               ..._managers.map((manager) {
                 final phone = manager['phone']?.toString() ?? '';
                 final name = manager['name']?.toString() ?? phone;
                 return RadioListTile<String?>(
-                  title: Text(name),
-                  subtitle: Text(_formatPhone(phone)),
+                  title: Text(name, style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(_formatPhone(phone), style: TextStyle(color: Colors.white.withOpacity(0.5))),
                   value: phone,
                   groupValue: selectedManagerPhone,
-                  onChanged: (value) {
-                    setDialogState(() => selectedManagerPhone = value);
-                  },
+                  activeColor: _accent,
+                  onChanged: (value) => setDialogState(() => selectedManagerPhone = value),
                 );
               }),
             ],
@@ -803,12 +1205,12 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
               onPressed: () async {
                 Navigator.pop(context);
-
                 // Удалить магазин у всех управляющих
                 for (final manager in _managers) {
                   final shops = List<String>.from(
@@ -823,7 +1225,6 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                     );
                   }
                 }
-
                 // Добавить магазин новому управляющему
                 if (selectedManagerPhone != null) {
                   final targetManager = _managers.firstWhere(
@@ -842,104 +1243,14 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                     );
                   }
                 }
-
                 _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Магазин назначен')),
-                  );
-                }
+                _showSnackBar('Магазин назначен');
               },
               child: const Text('Сохранить'),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  // ==================== ВКЛАДКА СОТРУДНИКИ ====================
-
-  Widget _buildEmployeesTab() {
-    // Собрать всех сотрудников со всех управляющих
-    final allEmployeesList = <Map<String, dynamic>>[];
-    for (final manager in _managers) {
-      final employees = (manager['employees'] as List?) ?? [];
-      for (final empPhone in employees) {
-        allEmployeesList.add({
-          'phone': empPhone.toString(),
-          'managerName': manager['name']?.toString() ?? 'Без имени',
-          'managerPhone': manager['phone']?.toString() ?? '',
-        });
-      }
-    }
-
-    return Column(
-      children: [
-        // Заголовок
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: const Text(
-            'Привязка сотрудников к управляющим',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-
-        // Список сотрудников
-        Expanded(
-          child: allEmployeesList.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Нет привязанных сотрудников\n\nДобавьте сотрудников через вкладку "Управляющие"',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: allEmployeesList.length,
-                  itemBuilder: (context, index) {
-                    final emp = allEmployeesList[index];
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.teal,
-                          child: Icon(Icons.person, color: Colors.white),
-                        ),
-                        title: Text(_formatPhone(emp['phone'] ?? '')),
-                        subtitle: Text('Управляющий: ${emp['managerName']}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.swap_horiz),
-                          onPressed: () => _showTransferEmployeeDialog(
-                            emp['phone'] ?? '',
-                            emp['managerPhone'] ?? '',
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-
-        // Информация
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.teal.withOpacity(0.1),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.teal),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Сотрудник привязывается к управляющему и может работать в любом его магазине',
-                  style: TextStyle(color: Colors.teal),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -950,35 +1261,35 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Перевести: ${_formatPhone(employeePhone)}'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Перевести: ${_formatPhone(employeePhone)}', style: const TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: _managers.map((manager) {
               final phone = manager['phone']?.toString() ?? '';
               final name = manager['name']?.toString() ?? phone;
               return RadioListTile<String?>(
-                title: Text(name),
-                subtitle: Text(_formatPhone(phone)),
+                title: Text(name, style: const TextStyle(color: Colors.white)),
+                subtitle: Text(_formatPhone(phone), style: TextStyle(color: Colors.white.withOpacity(0.5))),
                 value: phone,
                 groupValue: selectedManagerPhone,
-                onChanged: (value) {
-                  setDialogState(() => selectedManagerPhone = value);
-                },
+                activeColor: _accent,
+                onChanged: (value) => setDialogState(() => selectedManagerPhone = value),
               );
             }).toList(),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
               onPressed: () async {
                 Navigator.pop(context);
-
                 if (selectedManagerPhone == currentManagerPhone) return;
-
-                // Удалить у старого управляющего
+                // Удалить у старого
                 final oldManager = _managers.firstWhere(
                   (m) => m['phone']?.toString() == currentManagerPhone,
                   orElse: () => {},
@@ -994,8 +1305,7 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                     employees,
                   );
                 }
-
-                // Добавить новому управляющему
+                // Добавить новому
                 if (selectedManagerPhone != null) {
                   final newManager = _managers.firstWhere(
                     (m) => m['phone']?.toString() == selectedManagerPhone,
@@ -1013,156 +1323,14 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                     );
                   }
                 }
-
                 _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Сотрудник переведён')),
-                  );
-                }
+                _showSnackBar('Сотрудник переведён');
               },
               child: const Text('Перевести'),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  // ==================== ВКЛАДКА ЗАВЕДУЮЩИЕ ====================
-
-  Widget _buildStoreManagersTab() {
-    return Column(
-      children: [
-        // Кнопка добавления
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: _showAddStoreManagerDialog,
-            icon: const Icon(Icons.add),
-            label: const Text('Добавить заведующую'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
-            ),
-          ),
-        ),
-
-        // Список заведующих
-        Expanded(
-          child: _storeManagers.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Нет заведующих\n\nЗаведующая — это сотрудник магазина с расширенными правами',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: _storeManagers.length,
-                  itemBuilder: (context, index) {
-                    final sm = _storeManagers[index];
-                    final phone = sm['phone']?.toString() ?? '';
-                    final shopId = sm['shopId']?.toString() ?? '';
-                    final canSeeAll = sm['canSeeAllManagerShops'] == true;
-
-                    // Найти название магазина
-                    final shop = _allShops.where((s) => s.id == shopId).firstOrNull;
-                    final shopName = shop?.name ?? shopId;
-
-                    // Найти управляющего этого магазина
-                    String? managerName;
-                    for (final manager in _managers) {
-                      final shops = manager['managedShops'] as List?;
-                      if (shops?.contains(shopId) == true) {
-                        managerName = manager['name']?.toString() ?? 'Без имени';
-                        break;
-                      }
-                    }
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ExpansionTile(
-                        leading: CircleAvatar(
-                          backgroundColor: canSeeAll ? Colors.green : Colors.amber,
-                          child: const Icon(Icons.supervisor_account, color: Colors.white),
-                        ),
-                        title: Text(_formatPhone(phone)),
-                        subtitle: Text('Магазин: $shopName'),
-                        trailing: Chip(
-                          label: Text(
-                            canSeeAll ? 'Все магазины' : 'Только свой',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          backgroundColor: canSeeAll ? Colors.green.shade100 : Colors.amber.shade100,
-                        ),
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.store),
-                            title: const Text('Основной магазин'),
-                            subtitle: Text(shopName),
-                          ),
-                          if (managerName != null)
-                            ListTile(
-                              leading: const Icon(Icons.business_center),
-                              title: const Text('Управляющий'),
-                              subtitle: Text(managerName),
-                            ),
-                          ListTile(
-                            leading: Icon(
-                              canSeeAll ? Icons.visibility : Icons.visibility_off,
-                              color: canSeeAll ? Colors.green : Colors.amber,
-                            ),
-                            title: const Text('Видимость магазинов'),
-                            subtitle: Text(
-                              canSeeAll
-                                  ? 'Видит ВСЕ магазины своего управляющего'
-                                  : 'Видит ТОЛЬКО свой магазин',
-                            ),
-                            trailing: Switch(
-                              value: canSeeAll,
-                              onChanged: (value) => _toggleStoreManagerVisibility(phone, value),
-                            ),
-                          ),
-                          OverflowBar(
-                            alignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              TextButton.icon(
-                                onPressed: () => _showEditStoreManagerDialog(sm),
-                                icon: const Icon(Icons.edit),
-                                label: const Text('Изменить'),
-                              ),
-                              TextButton.icon(
-                                onPressed: () => _confirmRemoveStoreManager(phone),
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                label: const Text('Удалить', style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ),
-
-        // Информация
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.amber.withOpacity(0.1),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.amber),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Заведующая может видеть только свой магазин или все магазины своего управляющего (настраивается)',
-                  style: TextStyle(color: Colors.amber),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -1175,56 +1343,57 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Добавить заведующую'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Добавить заведующую', style: TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Номер телефона',
-                    hintText: '79001234567',
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                ),
+                _buildTextField(phoneController, 'Телефон', Icons.phone, hint: '79001234567'),
                 const SizedBox(height: 16),
-                const Text('Магазин:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Магазин:', style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedShopId,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.store),
-                    border: OutlineInputBorder(),
+                  dropdownColor: _emeraldDark,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.store, color: Colors.white60),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    ),
                   ),
-                  hint: const Text('Выберите магазин'),
+                  hint: Text('Выберите магазин', style: TextStyle(color: Colors.white.withOpacity(0.5))),
                   items: _allShops.map((shop) {
                     return DropdownMenuItem(
                       value: shop.id,
                       child: Text(shop.name, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
-                  onChanged: (value) {
-                    setDialogState(() => selectedShopId = value);
-                  },
+                  onChanged: (value) => setDialogState(() => selectedShopId = value),
                 ),
                 const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Видеть все магазины управляющего'),
-                  subtitle: Text(
-                    canSeeAll
-                        ? 'Заведующая увидит ВСЕ магазины'
-                        : 'Заведующая увидит ТОЛЬКО свой магазин',
-                    style: TextStyle(color: canSeeAll ? Colors.green : Colors.grey),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  value: canSeeAll,
-                  onChanged: (value) {
-                    setDialogState(() => canSeeAll = value);
-                  },
+                  child: SwitchListTile(
+                    title: const Text('Видеть все магазины', style: TextStyle(color: Colors.white)),
+                    subtitle: Text(
+                      canSeeAll ? 'Все магазины управляющего' : 'Только свой магазин',
+                      style: TextStyle(color: canSeeAll ? Colors.green : Colors.white60),
+                    ),
+                    value: canSeeAll,
+                    activeColor: Colors.green,
+                    onChanged: (value) => setDialogState(() => canSeeAll = value),
+                  ),
                 ),
               ],
             ),
@@ -1232,48 +1401,26 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
               onPressed: () async {
                 final phone = phoneController.text.trim().replaceAll(RegExp(r'[\s\+]'), '');
                 if (phone.isEmpty || selectedShopId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Заполните все поля'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
+                  _showSnackBar('Заполните все поля', isError: true);
                   return;
                 }
-
                 Navigator.pop(context);
-
                 final success = await NetworkManagementService.saveStoreManager(
                   _currentUserPhone!,
-                  {
-                    'phone': phone,
-                    'shopId': selectedShopId,
-                    'canSeeAllManagerShops': canSeeAll,
-                  },
+                  {'phone': phone, 'shopId': selectedShopId, 'canSeeAllManagerShops': canSeeAll},
                 );
-
                 if (success) {
                   _loadAllData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Заведующая добавлена')),
-                    );
-                  }
+                  _showSnackBar('Заведующая добавлена');
                 } else {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Ошибка добавления'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                  _showSnackBar('Ошибка добавления', isError: true);
                 }
               },
               child: const Text('Добавить'),
@@ -1293,21 +1440,29 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Редактировать: ${_formatPhone(phone)}'),
+          backgroundColor: _emeraldDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Редактировать: ${_formatPhone(phone)}', style: const TextStyle(color: Colors.white)),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Магазин:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Магазин:', style: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedShopId,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.store),
-                    border: OutlineInputBorder(),
+                  dropdownColor: _emeraldDark,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.store, color: Colors.white60),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    ),
                   ),
                   items: _allShops.map((shop) {
                     return DropdownMenuItem(
@@ -1315,23 +1470,24 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
                       child: Text(shop.name, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
-                  onChanged: (value) {
-                    setDialogState(() => selectedShopId = value);
-                  },
+                  onChanged: (value) => setDialogState(() => selectedShopId = value),
                 ),
                 const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Видеть все магазины управляющего'),
-                  subtitle: Text(
-                    canSeeAll
-                        ? 'Заведующая увидит ВСЕ магазины'
-                        : 'Заведующая увидит ТОЛЬКО свой магазин',
-                    style: TextStyle(color: canSeeAll ? Colors.green : Colors.grey),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  value: canSeeAll,
-                  onChanged: (value) {
-                    setDialogState(() => canSeeAll = value);
-                  },
+                  child: SwitchListTile(
+                    title: const Text('Видеть все магазины', style: TextStyle(color: Colors.white)),
+                    subtitle: Text(
+                      canSeeAll ? 'Все магазины управляющего' : 'Только свой магазин',
+                      style: TextStyle(color: canSeeAll ? Colors.green : Colors.white60),
+                    ),
+                    value: canSeeAll,
+                    activeColor: Colors.green,
+                    onChanged: (value) => setDialogState(() => canSeeAll = value),
+                  ),
                 ),
               ],
             ),
@@ -1339,30 +1495,20 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
+              child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
               onPressed: () async {
                 if (selectedShopId == null) return;
-
                 Navigator.pop(context);
-
                 final success = await NetworkManagementService.saveStoreManager(
                   _currentUserPhone!,
-                  {
-                    'phone': phone,
-                    'shopId': selectedShopId,
-                    'canSeeAllManagerShops': canSeeAll,
-                  },
+                  {'phone': phone, 'shopId': selectedShopId, 'canSeeAllManagerShops': canSeeAll},
                 );
-
                 if (success) {
                   _loadAllData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Заведующая обновлена')),
-                    );
-                  }
+                  _showSnackBar('Заведующая обновлена');
                 }
               },
               child: const Text('Сохранить'),
@@ -1374,77 +1520,113 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
   }
 
   Future<void> _toggleStoreManagerVisibility(String phone, bool canSeeAll) async {
-    // Найти текущие данные заведующей
     final sm = _storeManagers.firstWhere(
       (s) => s['phone']?.toString() == phone,
       orElse: () => {},
     );
     if (sm.isEmpty) return;
-
     final success = await NetworkManagementService.saveStoreManager(
       _currentUserPhone!,
-      {
-        'phone': phone,
-        'shopId': sm['shopId'],
-        'canSeeAllManagerShops': canSeeAll,
-      },
+      {'phone': phone, 'shopId': sm['shopId'], 'canSeeAllManagerShops': canSeeAll},
     );
-
     if (success) {
       _loadAllData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              canSeeAll
-                  ? 'Заведующая теперь видит все магазины'
-                  : 'Заведующая теперь видит только свой магазин',
-            ),
-          ),
-        );
-      }
+      _showSnackBar(canSeeAll ? 'Видит все магазины' : 'Видит только свой магазин');
     }
   }
 
   void _confirmRemoveStoreManager(String phone) {
+    _showConfirmDialog(
+      title: 'Удалить заведующую?',
+      content: 'Удалить ${_formatPhone(phone)} из списка заведующих?',
+      onConfirm: () async {
+        Navigator.pop(context);
+        final success = await NetworkManagementService.removeStoreManager(_currentUserPhone!, phone);
+        if (success) {
+          _loadAllData();
+          _showSnackBar('Заведующая удалена');
+        } else {
+          _showSnackBar('Ошибка удаления', isError: true);
+        }
+      },
+    );
+  }
+
+  // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {String? hint}) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+        prefixIcon: Icon(icon, color: Colors.white60),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _accent),
+        ),
+      ),
+    );
+  }
+
+  void _showInputDialog({
+    required String title,
+    required String hint,
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    required VoidCallback onConfirm,
+  }) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Удалить заведующую?'),
-        content: Text('Удалить ${_formatPhone(phone)} из списка заведующих?'),
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: _buildTextField(controller, label, icon, hint: hint),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
+            style: ElevatedButton.styleFrom(backgroundColor: _accent),
+            onPressed: onConfirm,
+            child: const Text('Добавить'),
+          ),
+        ],
+      ),
+    );
+  }
 
-              final success = await NetworkManagementService.removeStoreManager(
-                _currentUserPhone!,
-                phone,
-              );
-
-              if (success) {
-                _loadAllData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Заведующая удалена')),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ошибка удаления'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
+  void _showConfirmDialog({
+    required String title,
+    required String content,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _emeraldDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text(content, style: TextStyle(color: Colors.white.withOpacity(0.8))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: onConfirm,
             child: const Text('Удалить'),
           ),
         ],
@@ -1452,7 +1634,17 @@ class _NetworkManagementPageState extends State<NetworkManagementPage>
     );
   }
 
-  // ==================== УТИЛИТЫ ====================
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : _accent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
 
   String _formatPhone(String phone) {
     if (phone.length == 11) {
