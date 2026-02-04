@@ -281,6 +281,11 @@ function calculateManagerEfficiency(phone, month) {
   // Create efficiency records from all sources
   const allRecords = [];
 
+  // Helper: check if status means "approved/confirmed"
+  const isApproved = (status) => status === 'confirmed' || status === 'approved';
+  // Helper: check if status means "rejected/failed"
+  const isRejected = (status) => status === 'failed' || status === 'rejected';
+
   // 1. Load shift reports
   const shiftReports = loadReportsForMonth(SHIFT_REPORTS_DIR, month, 'handoverDate');
   console.log(`Loaded ${shiftReports.length} shift reports`);
@@ -290,9 +295,9 @@ function calculateManagerEfficiency(phone, month) {
     let points = 0;
     // Note: report uses 'rating' field, not 'adminRating'
     const rating = report.adminRating || report.rating;
-    if (report.status === 'confirmed' && rating) {
+    if (isApproved(report.status) && rating) {
       points = calculateRatingPoints(rating, settings.shift);
-    } else if (report.status === 'failed' || report.status === 'rejected') {
+    } else if (isRejected(report.status)) {
       points = settings.shift?.minPoints || -5;
     }
 
@@ -313,9 +318,9 @@ function calculateManagerEfficiency(phone, month) {
 
     let points = 0;
     const rating = report.adminRating || report.rating;
-    if (report.status === 'confirmed' && rating) {
+    if (isApproved(report.status) && rating) {
       points = calculateRatingPoints(rating, settings.recount);
-    } else if (report.status === 'failed' || report.status === 'rejected') {
+    } else if (isRejected(report.status)) {
       points = settings.recount?.minPoints || -5;
     }
 
@@ -336,9 +341,9 @@ function calculateManagerEfficiency(phone, month) {
 
     let points = 0;
     const rating = report.adminRating || report.rating;
-    if (report.status === 'confirmed' && rating) {
+    if (isApproved(report.status) && rating) {
       points = calculateRatingPoints(rating, settings.handover);
-    } else if (report.status === 'failed' || report.status === 'rejected') {
+    } else if (isRejected(report.status)) {
       points = settings.handover?.minPoints || -5;
     }
 
