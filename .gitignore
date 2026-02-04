@@ -50,3 +50,25 @@ nul
 
 # Файл с паролями (НЕ КОММИТИТЬ!)
 START.md
+
+# Node modules (не нужны в репозитории)
+loyalty-proxy/node_modules/
+dbf-sync-agent/node_modules/
+
+# Конфигурации с секретами
+dbf-sync-agent/config.json
+
+# Локальные файлы данных
+TOV.DBF
+*.DBF
+
+# Временные изображения в корне (логотипы, иконки)
+/Arabika_logo_done*.png
+/Arabika_logo_done*.jpg
+/Arabika_logo_done*.eps
+/Arabika_logo_done*.pdf
+/coffee_bean*.png
+/splash_*.png
+
+# Прочие временные файлы
+TEST_PROGRESS.md
