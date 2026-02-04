@@ -7411,6 +7411,74 @@ app.post('/api/shift-handover-reports', async (req, res) => {
   }
 });
 
+// PUT /api/shift-handover-reports/:id - обновить отчет (подтвердить/отклонить)
+app.put('/api/shift-handover-reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedData = req.body;
+    console.log('PUT /api/shift-handover-reports/:id', id, 'status:', updatedData.status);
+
+    const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
+
+    if (!fs.existsSync(reportFile)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Отчет не найден'
+      });
+    }
+
+    // Загружаем существующий отчёт
+    const existingData = fs.readFileSync(reportFile, 'utf8');
+    const existingReport = JSON.parse(existingData);
+    const previousStatus = existingReport.status;
+
+    // Объединяем данные
+    const updatedReport = {
+      ...existingReport,
+      ...updatedData,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Сохраняем обновлённый отчёт
+    fs.writeFileSync(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+    console.log('Отчет сдачи смены обновлен:', id, 'статус:', updatedReport.status);
+
+    // Отправляем push-уведомление сотруднику при изменении статуса на approved/rejected
+    if (previousStatus !== updatedReport.status &&
+        (updatedReport.status === 'approved' || updatedReport.status === 'rejected')) {
+
+      const employeePhone = updatedReport.employeePhone;
+      if (employeePhone && sendPushToPhone) {
+        try {
+          const isApproved = updatedReport.status === 'approved';
+          const title = isApproved ? 'Смена подтверждена' : 'Смена отклонена';
+          const rating = updatedReport.rating || '';
+          const body = isApproved
+            ? `Ваша сдача смены подтверждена${rating ? ` с оценкой ${rating}/10` : ''}`
+            : `Ваша сдача смены отклонена. Свяжитесь с администратором`;
+
+          await sendPushToPhone(employeePhone, title, body, {
+            type: 'shift_handover_status',
+            status: updatedReport.status,
+            rating: rating ? String(rating) : '',
+            reportId: id
+          });
+          console.log(`[ShiftHandover] Push отправлен сотруднику ${employeePhone}: ${body}`);
+        } catch (pushError) {
+          console.error('[ShiftHandover] Ошибка отправки push:', pushError.message);
+        }
+      } else {
+        console.log('[ShiftHandover] Push не отправлен: нет телефона или sendPushToPhone недоступен');
+      }
+    }
+
+    res.json({ success: true, message: 'Отчет обновлен', report: updatedReport });
+  } catch (error) {
+    console.error('Ошибка обновления отчета сдачи смены:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // DELETE /api/shift-handover-reports/:id - удалить отчет
 app.delete('/api/shift-handover-reports/:id', async (req, res) => {
   try {
@@ -8235,6 +8303,50 @@ app.get('/api/efficiency/reports-batch', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/efficiency-penalties
+ * Получить штрафы эффективности за месяц
+ * Query params: month (YYYY-MM)
+ */
+app.get('/api/efficiency-penalties', async (req, res) => {
+  try {
+    const { month } = req.query;
+
+    // Валидация формата месяца
+    if (!month || !month.match(/^\d{4}-\d{2}$/)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Неверный формат месяца. Используйте YYYY-MM (например 2026-02)'
+      });
+    }
+
+    console.log(`📊 GET /api/efficiency-penalties?month=${month}`);
+
+    const penaltiesDir = '/var/www/efficiency-penalties';
+    const penaltiesFile = path.join(penaltiesDir, `${month}.json`);
+
+    let penalties = [];
+    if (fs.existsSync(penaltiesFile)) {
+      const content = fs.readFileSync(penaltiesFile, 'utf8');
+      penalties = JSON.parse(content);
+    }
+
+    console.log(`  ✅ Загружено ${penalties.length} штрафов за ${month}`);
+
+    res.json({
+      success: true,
+      month,
+      penalties
+    });
+  } catch (error) {
+    console.error('❌ Ошибка загрузки штрафов:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Initialize Job Applications API
 setupJobApplicationsAPI(app);
 
@@ -8335,3 +8447,127 @@ const gracefulShutdown = (signal) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// ═══════════════════════════════════════════════════════════════════
+// LOYALTY PROMO API
+// ═══════════════════════════════════════════════════════════════════
+const LOYALTY_PROMO_FILE = '/var/www/loyalty-promo.json';
+
+// GET /api/loyalty-promo - получить настройки акции
+app.get('/api/loyalty-promo', (req, res) => {
+  try {
+    let settings = {
+      promoText: 'При покупке 9 напитков 10-й бесплатно',
+      pointsRequired: 9,
+      drinksToGive: 1,
+      success: true
+    };
+
+    if (fs.existsSync(LOYALTY_PROMO_FILE)) {
+      const data = JSON.parse(fs.readFileSync(LOYALTY_PROMO_FILE, 'utf8'));
+      settings = { ...settings, ...data, success: true };
+    }
+
+    console.log('GET /api/loyalty-promo:', settings.pointsRequired + '+' + settings.drinksToGive);
+    res.json(settings);
+  } catch (e) {
+    console.error('Error getting loyalty-promo:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// POST /api/loyalty-promo - сохранить настройки акции (только админ)
+app.post('/api/loyalty-promo', async (req, res) => {
+  try {
+    const { promoText, pointsRequired, drinksToGive, employeePhone } = req.body;
+
+    // Проверка на админа
+    const normalizedPhone = (employeePhone || '').replace(/[\s\+]/g, '');
+    const employees = loadAllEmployeesForWithdrawals();
+    const employee = employees.find(e => e.phone && e.phone.replace(/[\s\+]/g, '') === normalizedPhone);
+    const isAdmin = employee && employee.isAdmin === true;
+    if (!isAdmin) {
+      console.log('POST /api/loyalty-promo: denied for non-admin', normalizedPhone);
+      return res.status(403).json({ success: false, error: 'Доступ запрещён' });
+    }
+
+    const settings = {
+      promoText: promoText || '',
+      pointsRequired: parseInt(pointsRequired) || 9,
+      drinksToGive: parseInt(drinksToGive) || 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: normalizedPhone
+    };
+
+    fs.writeFileSync(LOYALTY_PROMO_FILE, JSON.stringify(settings, null, 2), 'utf8');
+    console.log('POST /api/loyalty-promo:', settings.pointsRequired + '+' + settings.drinksToGive, 'by', normalizedPhone);
+    res.json({ success: true, ...settings });
+  } catch (e) {
+    console.error('Error saving loyalty-promo:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ==================== APP VERSION ====================
+const APP_VERSION_FILE = "/var/www/app-version.json";
+
+// GET /api/app-version - получить информацию о версии приложения
+app.get("/api/app-version", (req, res) => {
+  try {
+    if (fs.existsSync(APP_VERSION_FILE)) {
+      const data = JSON.parse(fs.readFileSync(APP_VERSION_FILE, "utf8"));
+      return res.json(data);
+    }
+    
+    // Дефолтные значения
+    return res.json({
+      latestVersion: "1.0.0",
+      latestVersionCode: 1,
+      minVersion: "1.0.0",
+      minVersionCode: 1,
+      forceUpdate: false,
+      updateMessage: "Доступна новая версия приложения",
+      playStoreUrl: "https://play.google.com/store/apps/details?id=com.arabica.app"
+    });
+  } catch (e) {
+    console.error("Ошибка чтения версии:", e);
+    return res.status(500).json({ error: "Ошибка получения версии" });
+  }
+});
+
+// POST /api/app-version - обновить информацию о версии (только админ)
+app.post("/api/app-version", (req, res) => {
+  try {
+    const { employeePhone, ...versionData } = req.body;
+    
+    // Проверка админа
+    if (!employeePhone) {
+      return res.status(403).json({ error: "Требуется авторизация" });
+    }
+    
+    const normalizedPhone = employeePhone.replace(/[\s\+]/g, "");
+    let isAdmin = false;
+    
+    const employeeFiles = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith(".json"));
+    for (const file of employeeFiles) {
+      try {
+        const emp = JSON.parse(fs.readFileSync(path.join(EMPLOYEES_DIR, file), "utf8"));
+        if (emp.phone && emp.phone.replace(/[\s\+]/g, "") === normalizedPhone && emp.isAdmin) {
+          isAdmin = true;
+          break;
+        }
+      } catch (e) {}
+    }
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Доступ только для администраторов" });
+    }
+    
+    // Сохраняем версию
+    fs.writeFileSync(APP_VERSION_FILE, JSON.stringify(versionData, null, 2));
+    return res.json({ success: true });
+  } catch (e) {
+    console.error("Ошибка сохранения версии:", e);
+    return res.status(500).json({ error: "Ошибка сохранения версии" });
+  }
+});

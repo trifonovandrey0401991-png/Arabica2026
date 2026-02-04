@@ -3,6 +3,8 @@ import 'z_report_training_page.dart';
 import 'cigarette_training_page.dart';
 import 'shift_training_page.dart';
 import 'training_settings_page.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 
 /// Главная страница обучения ИИ - Премиум версия
 class AITrainingPage extends StatefulWidget {
@@ -16,6 +18,7 @@ class _AITrainingPageState extends State<AITrainingPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _pulseAnimation;
+  bool _isAdmin = false;
 
   // Цвета
   static const _primaryColor = Color(0xFF004D40);
@@ -24,6 +27,7 @@ class _AITrainingPageState extends State<AITrainingPage>
   @override
   void initState() {
     super.initState();
+    _checkAdminRole();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -32,6 +36,15 @@ class _AITrainingPageState extends State<AITrainingPage>
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+  }
+
+  Future<void> _checkAdminRole() async {
+    final roleData = await UserRoleService.loadUserRole();
+    if (mounted) {
+      setState(() {
+        _isAdmin = roleData?.role == UserRole.admin;
+      });
+    }
   }
 
   @override
@@ -107,23 +120,26 @@ class _AITrainingPageState extends State<AITrainingPage>
                         },
                       ),
 
-                      const SizedBox(height: 16),
+                      // Пересменка - только для админов
+                      if (_isAdmin) ...[
+                        const SizedBox(height: 16),
 
-                      _buildTrainingCard(
-                        title: 'Пересменка',
-                        description: 'ИИ проверка наличия товаров на полках при пересменке',
-                        icon: Icons.swap_horiz_rounded,
-                        gradient: const [Color(0xFFF59E0B), Color(0xFFFBBF24)],
-                        stats: 'Товары',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ShiftTrainingPage(),
-                            ),
-                          );
-                        },
-                      ),
+                        _buildTrainingCard(
+                          title: 'Пересменка',
+                          description: 'ИИ проверка наличия товаров на полках при пересменке',
+                          icon: Icons.swap_horiz_rounded,
+                          gradient: const [Color(0xFFF59E0B), Color(0xFFFBBF24)],
+                          stats: 'Товары',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ShiftTrainingPage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
 
                       const SizedBox(height: 32),
 
@@ -132,8 +148,8 @@ class _AITrainingPageState extends State<AITrainingPage>
 
                       const SizedBox(height: 24),
 
-                      // Кнопка настроек
-                      _buildSettingsButton(),
+                      // Кнопка настроек - только для админов
+                      if (_isAdmin) _buildSettingsButton(),
                     ],
                   ),
                 ),

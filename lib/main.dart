@@ -14,6 +14,7 @@ import 'core/services/firebase_wrapper.dart';
 import 'features/employees/services/user_role_service.dart';
 import 'core/utils/logger.dart';
 import 'features/clients/services/registration_service.dart';
+import 'core/services/app_update_service.dart';
 
 // Условный импорт Firebase (для веб используется заглушка)
 import 'core/services/firebase_service.dart' if (dart.library.html) 'core/services/firebase_service_stub.dart';
@@ -341,6 +342,11 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
               NotificationRequiredDialog.show(context, showBackButton: false);
             });
           }
+
+          // Проверка обновлений приложения (после загрузки UI)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            AppUpdateService.checkForUpdate(context);
+          });
 
           return const MainMenuPage();
         },
