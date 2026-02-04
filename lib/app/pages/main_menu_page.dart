@@ -65,6 +65,7 @@ import '../../features/ai_training/pages/ai_training_page.dart';
 import '../../features/work_schedule/services/work_schedule_service.dart';
 import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/attendance/models/attendance_model.dart';
+import '../../core/services/app_update_service.dart';
 
 class MainMenuPage extends StatefulWidget {
   const MainMenuPage({super.key});
@@ -91,6 +92,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
   int _shiftTransferUnreadCount = 0;
   int? _referralCode;
 
+  // Флаг доступности обновления
+  bool _isUpdateAvailable = false;
+
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА - только изумруд и белый
   // ═══════════════════════════════════════════════════════════════
@@ -112,6 +116,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _loadEmployeeRating();
     // Загрузка счётчиков для сотрудников
     _loadEmployeeCounters();
+    // Проверка обновлений
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    final hasUpdate = await AppUpdateService.checkUpdateAvailability();
+    if (mounted) {
+      setState(() => _isUpdateAvailable = hasUpdate);
+    }
   }
 
   Future<void> _loadReportCounts() async {
@@ -821,7 +834,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     child: Center(child: _buildRatingBadge()),
                   ),
 
-                // Кнопка поиска товара + Кнопка выхода справа
+                // Кнопка обновления + Кнопка поиска товара + Кнопка выхода справа
                 Positioned(
                   right: 0,
                   top: 0,
@@ -830,6 +843,92 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Кнопка обновления (только для сотрудников и админов)
+                        if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
+                          GestureDetector(
+                            onTap: () async {
+                              if (_isUpdateAvailable) {
+                                await AppUpdateService.performUpdate(context);
+                              } else {
+                                // Повторная проверка
+                                final hasUpdate = await AppUpdateService.checkUpdateAvailability();
+                                if (mounted) {
+                                  setState(() => _isUpdateAvailable = hasUpdate);
+                                  if (hasUpdate) {
+                                    await AppUpdateService.performUpdate(context);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Установлена актуальная версия'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: isEmployee ? 32 : 40,
+                                  height: isEmployee ? 32 : 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _isUpdateAvailable
+                                        ? const Color(0xFF4CAF50) // Зелёный если есть обновление
+                                        : Colors.white.withOpacity(0.1),
+                                    border: Border.all(
+                                      color: _isUpdateAvailable
+                                          ? const Color(0xFF81C784)
+                                          : Colors.white.withOpacity(0.3),
+                                      width: 2,
+                                    ),
+                                    boxShadow: _isUpdateAvailable
+                                        ? [
+                                            BoxShadow(
+                                              color: const Color(0xFF4CAF50).withOpacity(0.4),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Icon(
+                                    Icons.system_update_rounded,
+                                    color: _isUpdateAvailable ? Colors.white : Colors.white.withOpacity(0.7),
+                                    size: isEmployee ? 16 : 20,
+                                  ),
+                                ),
+                                // Badge с индикатором
+                                if (_isUpdateAvailable)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      width: isEmployee ? 12 : 14,
+                                      height: isEmployee ? 12 : 14,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red,
+                                        border: Border.all(color: _emerald, width: 2),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '1',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: isEmployee ? 7 : 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
+                          const SizedBox(width: 8),
                         // Жёлтая кнопка поиска товара
                         GestureDetector(
                           onTap: () {

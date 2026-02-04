@@ -44,6 +44,92 @@ class AppVersionInfo {
 /// Сервис для проверки и установки обновлений приложения
 class AppUpdateService {
   static AppUpdateInfo? _updateInfo;
+  static bool _isUpdateAvailable = false;
+  static AppVersionInfo? _serverVersionInfo;
+
+  /// Проверить, доступно ли обновление (для badge в UI)
+  static bool get isUpdateAvailable => _isUpdateAvailable;
+
+  /// Получить информацию о версии с сервера
+  static AppVersionInfo? get serverVersionInfo => _serverVersionInfo;
+
+  /// Проверить наличие обновлений (без показа диалогов) и вернуть результат
+  static Future<bool> checkUpdateAvailability() async {
+    if (!Platform.isAndroid) {
+      return false;
+    }
+
+    try {
+      // Получаем текущую версию
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersionCode = int.tryParse(packageInfo.buildNumber) ?? 1;
+
+      // Проверяем версию на сервере
+      _serverVersionInfo = await _fetchServerVersionInfo();
+
+      if (_serverVersionInfo != null) {
+        // Есть обновление на сервере?
+        if (currentVersionCode < _serverVersionInfo!.latestVersionCode) {
+          _isUpdateAvailable = true;
+          return true;
+        }
+      }
+
+      // Проверяем Play Store
+      try {
+        _updateInfo = await InAppUpdate.checkForUpdate();
+        if (_updateInfo?.updateAvailability == UpdateAvailability.updateAvailable) {
+          _isUpdateAvailable = true;
+          return true;
+        }
+      } catch (e) {
+        Logger.debug('Play Store check failed: $e');
+      }
+
+      _isUpdateAvailable = false;
+      return false;
+    } catch (e) {
+      Logger.warning('Ошибка проверки обновлений: $e');
+      return false;
+    }
+  }
+
+  /// Запустить обновление вручную (для кнопки в UI)
+  static Future<void> performUpdate(BuildContext context) async {
+    if (!Platform.isAndroid) return;
+
+    try {
+      // Если есть принудительное обновление
+      if (_serverVersionInfo != null && _serverVersionInfo!.forceUpdate) {
+        if (context.mounted) {
+          await _showForceUpdateDialog(context, _serverVersionInfo!);
+        }
+        return;
+      }
+
+      // Пробуем Immediate Update
+      if (_updateInfo?.immediateUpdateAllowed ?? false) {
+        await _performImmediateUpdate();
+        return;
+      }
+
+      // Пробуем Flexible Update
+      if (_updateInfo?.flexibleUpdateAllowed ?? false) {
+        await _performFlexibleUpdate(context);
+        return;
+      }
+
+      // Если ничего не сработало, открываем Play Store
+      if (_serverVersionInfo?.playStoreUrl.isNotEmpty ?? false) {
+        final uri = Uri.parse(_serverVersionInfo!.playStoreUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      Logger.error('Ошибка установки обновления', e);
+    }
+  }
 
   /// Проверить наличие обновлений при запуске приложения
   static Future<void> checkForUpdate(BuildContext context) async {
@@ -62,16 +148,21 @@ class AppUpdateService {
       Logger.debug('Текущая версия: ${packageInfo.version} (code: $currentVersionCode)');
 
       // 2. Проверяем минимальную версию на сервере
-      final serverVersionInfo = await _fetchServerVersionInfo();
+      _serverVersionInfo = await _fetchServerVersionInfo();
 
-      if (serverVersionInfo != null) {
-        Logger.debug('Версия с сервера: min=${serverVersionInfo.minVersionCode}, force=${serverVersionInfo.forceUpdate}');
+      if (_serverVersionInfo != null) {
+        Logger.debug('Версия с сервера: min=${_serverVersionInfo!.minVersionCode}, force=${_serverVersionInfo!.forceUpdate}');
+
+        // Обновляем флаг доступности
+        if (currentVersionCode < _serverVersionInfo!.latestVersionCode) {
+          _isUpdateAvailable = true;
+        }
 
         // Если текущая версия < минимальной или forceUpdate = true
-        if (currentVersionCode < serverVersionInfo.minVersionCode || serverVersionInfo.forceUpdate) {
+        if (currentVersionCode < _serverVersionInfo!.minVersionCode || _serverVersionInfo!.forceUpdate) {
           Logger.warning('⚠️ Требуется обязательное обновление!');
           if (context.mounted) {
-            await _showForceUpdateDialog(context, serverVersionInfo);
+            await _showForceUpdateDialog(context, _serverVersionInfo!);
           }
           return;
         }
