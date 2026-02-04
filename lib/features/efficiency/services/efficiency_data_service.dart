@@ -132,7 +132,7 @@ class EfficiencyDataService {
         loadProductSearchRecords(start, end),                     // [5] поиск товара
         loadOrderRecords(start, end),                             // [6] заказы
         loadRkoRecords(start, end),                               // [7] РКО
-        ShopService.getShops(),                                   // [8] магазины (один раз!)
+        ShopService.getShopsForCurrentUser(),                     // [8] магазины с фильтрацией по роли
       ]);
 
       final result = parallelResults[1] as Map<String, dynamic>?;
@@ -216,9 +216,9 @@ class EfficiencyDataService {
   }
 
   /// Агрегировать записи по магазинам
-  /// Фильтрует только по реальным магазинам из списка
+  /// Фильтрует только по реальным магазинам из списка (с учётом роли пользователя)
   static Future<List<EfficiencySummary>> _aggregateByShop(List<EfficiencyRecord> records) async {
-    final shops = await ShopService.getShops();
+    final shops = await ShopService.getShopsForCurrentUser();
     final validAddresses = shops.map((s) => s.address).toSet();
     return _aggregateByShopWithAddresses(records, validAddresses);
   }
@@ -253,9 +253,9 @@ class EfficiencyDataService {
   }
 
   /// Агрегировать записи по сотрудникам
-  /// Фильтрует только записи с реальными магазинами из списка
+  /// Фильтрует только записи с реальными магазинами из списка (с учётом роли пользователя)
   static Future<List<EfficiencySummary>> _aggregateByEmployee(List<EfficiencyRecord> records) async {
-    final shops = await ShopService.getShops();
+    final shops = await ShopService.getShopsForCurrentUser();
     final validAddresses = shops.map((s) => s.address).toSet();
     return _aggregateByEmployeeWithAddresses(records, validAddresses);
   }

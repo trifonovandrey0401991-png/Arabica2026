@@ -3,6 +3,8 @@ import '../models/shop_settings_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
+import '../../employees/services/user_role_service.dart';
+import '../../employees/models/user_role_model.dart';
 
 class ShopService {
   /// Получить все магазины
@@ -131,6 +133,102 @@ class ShopService {
     );
 
     return result != null;
+  }
+
+  // ============================================
+  // Multitenancy Filtering
+  // ============================================
+
+  /// Получить магазины с учётом мультитенантности
+  /// Developer - все магазины
+  /// Admin - только managedShopIds
+  /// Manager - зависит от canSeeAllManagerShops
+  /// Employee - только primaryShopId
+  /// Client - все магазины
+  static Future<List<Shop>> getShopsForCurrentUser() async {
+    final allShops = await getShops();
+    final roleData = await UserRoleService.loadUserRole();
+
+    if (roleData == null) {
+      Logger.debug('⚠️ Роль не загружена, возвращаем все магазины');
+      return allShops;
+    }
+
+    Logger.debug('🏪 Фильтрация магазинов для роли: ${roleData.role.name}');
+
+    switch (roleData.role) {
+      case UserRole.developer:
+        Logger.debug('   Developer - все ${allShops.length} магазинов');
+        return allShops;
+
+      case UserRole.admin:
+        if (roleData.managedShopIds.isEmpty) {
+          Logger.debug('   Admin без привязанных магазинов - все магазины');
+          return allShops;
+        }
+        final filtered = allShops.where((shop) =>
+          roleData.managedShopIds.contains(shop.id) ||
+          roleData.managedShopIds.contains(shop.address)
+        ).toList();
+        Logger.debug('   Admin - ${filtered.length} из ${allShops.length} магазинов');
+        return filtered;
+
+      case UserRole.manager:
+        if (roleData.canSeeAllManagerShops) {
+          Logger.debug('   Manager с доступом ко всем магазинам управляющего');
+          return allShops;
+        }
+        if (roleData.primaryShopId != null) {
+          final filtered = allShops.where((shop) =>
+            shop.id == roleData.primaryShopId ||
+            shop.address == roleData.primaryShopId
+          ).toList();
+          Logger.debug('   Manager - ${filtered.length} магазин(ов)');
+          return filtered;
+        }
+        return allShops;
+
+      case UserRole.employee:
+        if (roleData.primaryShopId != null) {
+          final filtered = allShops.where((shop) =>
+            shop.id == roleData.primaryShopId ||
+            shop.address == roleData.primaryShopId
+          ).toList();
+          Logger.debug('   Employee - ${filtered.length} магазин(ов)');
+          return filtered;
+        }
+        return allShops;
+
+      case UserRole.client:
+        Logger.debug('   Client - все ${allShops.length} магазинов');
+        return allShops;
+    }
+  }
+
+  /// Проверить, имеет ли текущий пользователь доступ к магазину
+  static Future<bool> hasAccessToShop(String shopIdOrAddress) async {
+    final roleData = await UserRoleService.loadUserRole();
+
+    if (roleData == null) return true;
+
+    switch (roleData.role) {
+      case UserRole.developer:
+      case UserRole.client:
+        return true;
+
+      case UserRole.admin:
+        if (roleData.managedShopIds.isEmpty) return true;
+        return roleData.managedShopIds.contains(shopIdOrAddress);
+
+      case UserRole.manager:
+        if (roleData.canSeeAllManagerShops) return true;
+        if (roleData.primaryShopId == null) return true;
+        return roleData.primaryShopId == shopIdOrAddress;
+
+      case UserRole.employee:
+        if (roleData.primaryShopId == null) return true;
+        return roleData.primaryShopId == shopIdOrAddress;
+    }
   }
 }
 

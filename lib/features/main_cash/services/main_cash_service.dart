@@ -10,8 +10,8 @@ class MainCashService {
     try {
       Logger.debug('Загрузка балансов всех магазинов...');
 
-      // Загружаем список магазинов
-      final shops = await ShopService.getShops();
+      // Загружаем список магазинов (с фильтрацией по роли пользователя)
+      final shops = await ShopService.getShopsForCurrentUser();
       if (shops.isEmpty) {
         Logger.debug('Магазины не найдены');
         return [];

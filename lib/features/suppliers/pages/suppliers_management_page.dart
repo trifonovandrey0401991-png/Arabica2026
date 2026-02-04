@@ -44,7 +44,7 @@ class _SuppliersManagementPageState extends State<SuppliersManagementPage> {
     try {
       final results = await Future.wait([
         SupplierService.getSuppliers(),
-        ShopService.getShops(),
+        ShopService.getShopsForCurrentUser(),  // Фильтрация по роли
         EmployeeService.getEmployees(),
       ]);
       setState(() {

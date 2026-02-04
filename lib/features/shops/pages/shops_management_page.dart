@@ -49,7 +49,8 @@ class _ShopsManagementPageState extends State<ShopsManagementPage> with SingleTi
       // Очищаем кэш магазинов перед загрузкой
       CacheManager.remove('shops_list');
 
-      final shops = await ShopService.getShops();
+      // Используем фильтрацию по роли пользователя
+      final shops = await ShopService.getShopsForCurrentUser();
 
       // Фильтруем магазины с пустым ID (битые записи)
       final validShops = shops.where((shop) => shop.id.isNotEmpty).toList();
