@@ -327,8 +327,8 @@ router.post('/request-otp', async (req, res) => {
     // Реальный OTP будет отправлен через Telegram-бота
     res.json({
       success: true,
-      message: 'Откройте Telegram-бота @ArabicaAuthBot и нажмите "Получить код"',
-      telegramBotUrl: 'https://t.me/ArabicaAuthBot',
+      message: 'Откройте Telegram-бота @ArabicaAuthBot26_bot и нажмите "Получить код"',
+      telegramBotUrl: 'https://t.me/ArabicaAuthBot26_bot',
       phone: normalizedPhone
     });
 
