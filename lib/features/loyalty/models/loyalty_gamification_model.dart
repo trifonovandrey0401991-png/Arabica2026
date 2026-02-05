@@ -1,0 +1,362 @@
+import 'package:flutter/material.dart';
+
+/// Значок уровня - может быть иконкой или картинкой
+class LevelBadge {
+  final String type; // 'icon' или 'image'
+  final String value; // название иконки или URL картинки
+
+  const LevelBadge({
+    required this.type,
+    required this.value,
+  });
+
+  factory LevelBadge.fromJson(Map<String, dynamic> json) {
+    return LevelBadge(
+      type: json['type'] ?? 'icon',
+      value: json['value'] ?? 'coffee',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'type': type,
+    'value': value,
+  };
+
+  /// Получить иконку Material Icons по названию
+  IconData? getIcon() {
+    if (type != 'icon') return null;
+    return _iconMap[value] ?? Icons.emoji_events;
+  }
+
+  static const Map<String, IconData> _iconMap = {
+    'coffee': Icons.coffee,
+    'favorite': Icons.favorite,
+    'star': Icons.star,
+    'workspace_premium': Icons.workspace_premium,
+    'military_tech': Icons.military_tech,
+    'emoji_events': Icons.emoji_events,
+    'diamond': Icons.diamond,
+    'verified': Icons.verified,
+    'grade': Icons.grade,
+    'auto_awesome': Icons.auto_awesome,
+    'local_cafe': Icons.local_cafe,
+    'celebration': Icons.celebration,
+    'rocket_launch': Icons.rocket_launch,
+    'whatshot': Icons.whatshot,
+    'bolt': Icons.bolt,
+  };
+
+  /// Список доступных иконок для выбора
+  static List<String> get availableIcons => _iconMap.keys.toList();
+}
+
+/// Уровень лояльности
+class LoyaltyLevel {
+  final int id;
+  final String name;
+  final int minFreeDrinks;
+  final LevelBadge badge;
+  final String colorHex;
+
+  const LoyaltyLevel({
+    required this.id,
+    required this.name,
+    required this.minFreeDrinks,
+    required this.badge,
+    required this.colorHex,
+  });
+
+  Color get color {
+    try {
+      return Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
+  factory LoyaltyLevel.fromJson(Map<String, dynamic> json) {
+    return LoyaltyLevel(
+      id: json['id'] ?? 1,
+      name: json['name'] ?? 'Новичок',
+      minFreeDrinks: json['minFreeDrinks'] ?? 0,
+      badge: LevelBadge.fromJson(json['badge'] ?? {}),
+      colorHex: json['colorHex'] ?? '#78909C',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'minFreeDrinks': minFreeDrinks,
+    'badge': badge.toJson(),
+    'colorHex': colorHex,
+  };
+
+  LoyaltyLevel copyWith({
+    int? id,
+    String? name,
+    int? minFreeDrinks,
+    LevelBadge? badge,
+    String? colorHex,
+  }) {
+    return LoyaltyLevel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      minFreeDrinks: minFreeDrinks ?? this.minFreeDrinks,
+      badge: badge ?? this.badge,
+      colorHex: colorHex ?? this.colorHex,
+    );
+  }
+}
+
+/// Сектор колеса удачи
+class WheelSector {
+  final int index;
+  final String text;
+  final double probability;
+  final String colorHex;
+  final String prizeType; // 'bonus_points', 'discount', 'free_drink', 'merch'
+  final int prizeValue;
+
+  const WheelSector({
+    required this.index,
+    required this.text,
+    required this.probability,
+    required this.colorHex,
+    required this.prizeType,
+    required this.prizeValue,
+  });
+
+  Color get color {
+    try {
+      return Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
+  factory WheelSector.fromJson(Map<String, dynamic> json) {
+    return WheelSector(
+      index: json['index'] ?? 0,
+      text: json['text'] ?? '',
+      probability: (json['probability'] ?? 0.1).toDouble(),
+      colorHex: json['colorHex'] ?? '#4CAF50',
+      prizeType: json['prizeType'] ?? 'bonus_points',
+      prizeValue: json['prizeValue'] ?? 1,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'index': index,
+    'text': text,
+    'probability': probability,
+    'colorHex': colorHex,
+    'prizeType': prizeType,
+    'prizeValue': prizeValue,
+  };
+
+  WheelSector copyWith({
+    int? index,
+    String? text,
+    double? probability,
+    String? colorHex,
+    String? prizeType,
+    int? prizeValue,
+  }) {
+    return WheelSector(
+      index: index ?? this.index,
+      text: text ?? this.text,
+      probability: probability ?? this.probability,
+      colorHex: colorHex ?? this.colorHex,
+      prizeType: prizeType ?? this.prizeType,
+      prizeValue: prizeValue ?? this.prizeValue,
+    );
+  }
+}
+
+/// Настройки колеса удачи
+class WheelSettings {
+  final bool enabled;
+  final int freeDrinksPerSpin;
+  final List<WheelSector> sectors;
+
+  const WheelSettings({
+    required this.enabled,
+    required this.freeDrinksPerSpin,
+    required this.sectors,
+  });
+
+  factory WheelSettings.fromJson(Map<String, dynamic> json) {
+    return WheelSettings(
+      enabled: json['enabled'] ?? true,
+      freeDrinksPerSpin: json['freeDrinksPerSpin'] ?? 5,
+      sectors: (json['sectors'] as List<dynamic>?)
+          ?.map((s) => WheelSector.fromJson(s))
+          .toList() ?? [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'enabled': enabled,
+    'freeDrinksPerSpin': freeDrinksPerSpin,
+    'sectors': sectors.map((s) => s.toJson()).toList(),
+  };
+
+  WheelSettings copyWith({
+    bool? enabled,
+    int? freeDrinksPerSpin,
+    List<WheelSector>? sectors,
+  }) {
+    return WheelSettings(
+      enabled: enabled ?? this.enabled,
+      freeDrinksPerSpin: freeDrinksPerSpin ?? this.freeDrinksPerSpin,
+      sectors: sectors ?? this.sectors,
+    );
+  }
+}
+
+/// Все настройки геймификации
+class GamificationSettings {
+  final List<LoyaltyLevel> levels;
+  final WheelSettings wheel;
+  final String? updatedAt;
+
+  const GamificationSettings({
+    required this.levels,
+    required this.wheel,
+    this.updatedAt,
+  });
+
+  factory GamificationSettings.fromJson(Map<String, dynamic> json) {
+    return GamificationSettings(
+      levels: (json['levels'] as List<dynamic>?)
+          ?.map((l) => LoyaltyLevel.fromJson(l))
+          .toList() ?? [],
+      wheel: WheelSettings.fromJson(json['wheel'] ?? {}),
+      updatedAt: json['updatedAt'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'levels': levels.map((l) => l.toJson()).toList(),
+    'wheel': wheel.toJson(),
+    'updatedAt': updatedAt,
+  };
+
+  /// Получить уровень по количеству бесплатных напитков
+  LoyaltyLevel getLevelForFreeDrinks(int freeDrinks) {
+    LoyaltyLevel result = levels.first;
+    for (final level in levels) {
+      if (freeDrinks >= level.minFreeDrinks) {
+        result = level;
+      }
+    }
+    return result;
+  }
+
+  /// Получить следующий уровень
+  LoyaltyLevel? getNextLevel(int currentLevelId) {
+    final index = levels.indexWhere((l) => l.id == currentLevelId);
+    if (index >= 0 && index < levels.length - 1) {
+      return levels[index + 1];
+    }
+    return null;
+  }
+
+  /// Сколько напитков до следующего уровня
+  int? drinksToNextLevel(int freeDrinks) {
+    for (final level in levels) {
+      if (level.minFreeDrinks > freeDrinks) {
+        return level.minFreeDrinks - freeDrinks;
+      }
+    }
+    return null; // Максимальный уровень достигнут
+  }
+}
+
+/// Данные геймификации клиента
+class ClientGamificationData {
+  final String phone;
+  final String? name;
+  final int freeDrinksGiven;
+  final LoyaltyLevel currentLevel;
+  final List<int> earnedBadges;
+  final int wheelSpinsAvailable;
+  final int wheelSpinsUsed;
+  final int drinksToNextSpin;
+  final LoyaltyLevel? nextLevel;
+  final int? drinksToNextLevel;
+
+  const ClientGamificationData({
+    required this.phone,
+    this.name,
+    required this.freeDrinksGiven,
+    required this.currentLevel,
+    required this.earnedBadges,
+    required this.wheelSpinsAvailable,
+    required this.wheelSpinsUsed,
+    required this.drinksToNextSpin,
+    this.nextLevel,
+    this.drinksToNextLevel,
+  });
+
+  factory ClientGamificationData.fromJson(Map<String, dynamic> json, GamificationSettings settings) {
+    final freeDrinksGiven = json['freeDrinksGiven'] ?? 0;
+
+    return ClientGamificationData(
+      phone: json['phone'] ?? '',
+      name: json['name'],
+      freeDrinksGiven: freeDrinksGiven,
+      currentLevel: json['currentLevel'] != null
+          ? LoyaltyLevel.fromJson(json['currentLevel'])
+          : settings.getLevelForFreeDrinks(freeDrinksGiven),
+      earnedBadges: (json['earnedBadges'] as List<dynamic>?)?.cast<int>() ?? [1],
+      wheelSpinsAvailable: json['wheelSpinsAvailable'] ?? 0,
+      wheelSpinsUsed: json['wheelSpinsUsed'] ?? 0,
+      drinksToNextSpin: json['drinksToNextSpin'] ?? settings.wheel.freeDrinksPerSpin,
+      nextLevel: json['nextLevel'] != null
+          ? LoyaltyLevel.fromJson(json['nextLevel'])
+          : null,
+      drinksToNextLevel: json['drinksToNextLevel'],
+    );
+  }
+}
+
+/// Результат прокрутки колеса
+class WheelSpinResult {
+  final String id;
+  final String phone;
+  final String? clientName;
+  final int sectorIndex;
+  final String prize;
+  final String prizeType;
+  final int prizeValue;
+  final DateTime spunAt;
+  final bool isProcessed;
+
+  const WheelSpinResult({
+    required this.id,
+    required this.phone,
+    this.clientName,
+    required this.sectorIndex,
+    required this.prize,
+    required this.prizeType,
+    required this.prizeValue,
+    required this.spunAt,
+    required this.isProcessed,
+  });
+
+  factory WheelSpinResult.fromJson(Map<String, dynamic> json) {
+    return WheelSpinResult(
+      id: json['id'] ?? '',
+      phone: json['phone'] ?? '',
+      clientName: json['clientName'],
+      sectorIndex: json['sectorIndex'] ?? 0,
+      prize: json['prize'] ?? '',
+      prizeType: json['prizeType'] ?? '',
+      prizeValue: json['prizeValue'] ?? 0,
+      spunAt: DateTime.tryParse(json['spunAt'] ?? '') ?? DateTime.now(),
+      isProcessed: json['isProcessed'] ?? false,
+    );
+  }
+}

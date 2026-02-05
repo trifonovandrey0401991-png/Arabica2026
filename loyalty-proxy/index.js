@@ -117,6 +117,7 @@ const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 const { setupMediaAPI } = require("./api/media_api");
 const { setupShopManagersAPI } = require("./api/shop_managers_api");
+const { setupLoyaltyGamificationAPI } = require("./api/loyalty_gamification_api");
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
 
@@ -8449,6 +8450,7 @@ setupGeofenceAPI(app, sendPushToPhone);
 setupEmployeeChatAPI(app);
 setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
+setupLoyaltyGamificationAPI(app);
 
 // Auth API (регистрация, вход, сброс PIN)
 app.use('/api/auth', authApiRouter);

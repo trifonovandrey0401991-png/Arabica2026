@@ -13,6 +13,7 @@ import 'settings_tabs/task_points_settings_page.dart';
 import 'settings_tabs/envelope_points_settings_page.dart';
 import 'settings_tabs/manager_points_settings_page.dart';
 import '../../referrals/pages/referrals_points_settings_page.dart';
+import '../../loyalty/pages/loyalty_gamification_settings_page.dart';
 
 /// Page for configuring efficiency points settings
 class PointsSettingsPage extends StatefulWidget {
@@ -119,6 +120,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       gradientColors: [const Color(0xFF9C27B0), const Color(0xFF673AB7)],
     ),
     _PointsCategory(
+      id: 'loyalty_program',
+      title: 'Программа лояльности',
+      icon: Icons.loyalty_outlined,
+      description: 'Уровни и колесо удачи для клиентов',
+      gradientColors: [const Color(0xFFFF6B6B), const Color(0xFFFFE66D)],
+    ),
+    _PointsCategory(
       id: 'fortune_wheel',
       title: 'Колесо Удачи',
       icon: Icons.casino_outlined,
@@ -217,6 +225,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
         context,
         MaterialPageRoute(
           builder: (context) => const ManagerPointsSettingsPage(),
+        ),
+      );
+    } else if (categoryId == 'loyalty_program') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LoyaltyGamificationSettingsPage(),
         ),
       );
     } else if (categoryId == 'fortune_wheel') {

@@ -5,7 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/utils/logger.dart';
 import '../services/loyalty_service.dart';
 import '../services/loyalty_storage.dart';
+import '../services/loyalty_gamification_service.dart';
+import '../models/loyalty_gamification_model.dart';
+import '../widgets/qr_badges_widget.dart';
 import 'loyalty_promo_management_page.dart';
+import 'client_wheel_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 
@@ -21,6 +25,10 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   bool _loading = true;
   String? _error;
   bool _isAdmin = false;
+
+  // Данные геймификации
+  ClientGamificationData? _gamificationData;
+  GamificationSettings? _gamificationSettings;
 
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА
@@ -41,7 +49,9 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       final roleData = await UserRoleService.loadUserRole();
       if (mounted) {
         setState(() {
-          _isAdmin = roleData?.role == UserRole.admin;
+          // Admin и Developer имеют доступ к настройкам
+          _isAdmin = roleData?.role == UserRole.admin ||
+                     roleData?.role == UserRole.developer;
         });
       }
     } catch (e) {
@@ -100,9 +110,15 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       final info = await LoyaltyService.fetchByPhone(phone);
       await LoyaltyStorage.save(info);
 
+      // Загружаем данные геймификации
+      final gamificationSettings = await LoyaltyGamificationService.fetchSettings();
+      final gamificationData = await LoyaltyGamificationService.fetchClientData(phone);
+
       if (mounted) {
         setState(() {
           _info = info;
+          _gamificationSettings = gamificationSettings;
+          _gamificationData = gamificationData;
           _error = null;
           _loading = false;
         });
@@ -172,6 +188,11 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   _qrCard(info),
+                                  // Уровень клиента
+                                  if (_gamificationData != null) ...[
+                                    const SizedBox(height: 16),
+                                    _levelCard(),
+                                  ],
                                   const SizedBox(height: 16),
                                   _pointsCard(info),
                                   const SizedBox(height: 16),
@@ -179,6 +200,13 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                   if (info.promoText.isNotEmpty) ...[
                                     const SizedBox(height: 16),
                                     _promoCard(info.promoText),
+                                  ],
+                                  // Колесо удачи
+                                  if (_gamificationSettings != null &&
+                                      _gamificationSettings!.wheel.enabled &&
+                                      _gamificationData != null) ...[
+                                    const SizedBox(height: 16),
+                                    _wheelCard(),
                                   ],
                                 ],
                               ),
@@ -304,6 +332,26 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   }
 
   Widget _qrCard(LoyaltyInfo info) {
+    // Получаем заработанные уровни для значков
+    final earnedLevels = _gamificationData != null && _gamificationSettings != null
+        ? _gamificationSettings!.levels
+            .where((l) => _gamificationData!.earnedBadges.contains(l.id))
+            .toList()
+        : <LoyaltyLevel>[];
+
+    final qrWidget = Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: QrImageView(
+        data: info.qr,
+        version: QrVersions.auto,
+        size: 180,
+      ),
+    );
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -321,18 +369,15 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: QrImageView(
-              data: info.qr,
-              version: QrVersions.auto,
-              size: 180,
-            ),
-          ),
+          // QR с значками вокруг
+          if (earnedLevels.length > 1)
+            QrBadgesWidget(
+              qrWidget: qrWidget,
+              earnedLevels: earnedLevels,
+              qrSize: 204, // 180 + 2*12 padding
+            )
+          else
+            qrWidget,
           const SizedBox(height: 16),
           Text(
             info.name,
@@ -585,5 +630,261 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
         ],
       ),
     );
+  }
+
+  Widget _levelCard() {
+    final data = _gamificationData!;
+    final level = data.currentLevel;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: level.color.withOpacity(0.4)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            level.color.withOpacity(0.15),
+            level.color.withOpacity(0.05),
+          ],
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: level.color,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: level.badge.type == 'icon'
+                  ? Icon(
+                      level.badge.getIcon() ?? Icons.workspace_premium,
+                      color: Colors.white,
+                      size: 28,
+                    )
+                  : const Icon(
+                      Icons.emoji_events,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Уровень: ${level.name}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (data.drinksToNextLevel != null && data.nextLevel != null)
+                  Text(
+                    'До "${data.nextLevel!.name}": ${data.drinksToNextLevel} напитков',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  )
+                else
+                  Text(
+                    'Максимальный уровень!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.amber.withOpacity(0.9),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _wheelCard() {
+    final data = _gamificationData!;
+    final settings = _gamificationSettings!;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF8E2DE2).withOpacity(0.4)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF8E2DE2).withOpacity(0.15),
+            const Color(0xFF4A00E0).withOpacity(0.05),
+          ],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.casino,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Колесо удачи',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+              ),
+              if (data.wheelSpinsAvailable > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, color: Colors.white, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${data.wheelSpinsAvailable}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Прогресс
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                data.wheelSpinsAvailable > 0
+                    ? 'Прокрутки доступны!'
+                    : 'До прокрутки: ${data.drinksToNextSpin} напитков',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: data.wheelSpinsAvailable > 0
+                      ? const Color(0xFF4CAF50)
+                      : Colors.white.withOpacity(0.7),
+                  fontWeight: data.wheelSpinsAvailable > 0
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                ),
+              ),
+              Text(
+                '${settings.wheel.freeDrinksPerSpin - data.drinksToNextSpin}/${settings.wheel.freeDrinksPerSpin}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Progress bar
+          Container(
+            height: 6,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(3),
+              color: Colors.white.withOpacity(0.1),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: settings.wheel.freeDrinksPerSpin > 0
+                  ? (settings.wheel.freeDrinksPerSpin - data.drinksToNextSpin) /
+                      settings.wheel.freeDrinksPerSpin
+                  : 0.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Кнопка прокрутки
+          if (data.wheelSpinsAvailable > 0) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _openWheelPage,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8E2DE2),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.casino, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'КРУТИТЬ КОЛЕСО',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _openWheelPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClientWheelPage(
+          phone: _info!.phone,
+          clientName: _info!.name,
+          wheelSettings: _gamificationSettings!.wheel,
+          spinsAvailable: _gamificationData!.wheelSpinsAvailable,
+        ),
+      ),
+    ).then((_) => _refresh());
   }
 }
