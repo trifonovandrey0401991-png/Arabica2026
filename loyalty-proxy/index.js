@@ -117,6 +117,8 @@ const { setupEmployeeChatAPI } = require("./api/employee_chat_api");
 const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 const { setupMediaAPI } = require("./api/media_api");
 const { setupShopManagersAPI } = require("./api/shop_managers_api");
+const authApiRouter = require("./api/auth_api");
+const telegramBotService = require("./services/telegram_bot_service");
 
 // ============================================
 // SECURITY: API Key Authentication
@@ -130,6 +132,7 @@ const PUBLIC_ENDPOINTS = [
   '/health',
   '/',           // Proxy для Google Apps Script (регистрация, лояльность)
   '/upload-photo', // Загрузка фото (временно публичный)
+  '/api/auth',   // Авторизация (регистрация, вход, сброс PIN)
 ];
 
 const apiKeyMiddleware = (req, res, next) => {
@@ -8446,6 +8449,14 @@ setupGeofenceAPI(app, sendPushToPhone);
 setupEmployeeChatAPI(app);
 setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
+
+// Auth API (регистрация, вход, сброс PIN)
+app.use('/api/auth', authApiRouter);
+
+// Initialize Telegram Bot for OTP
+telegramBotService.initBot().catch(err => {
+  console.error('❌ Failed to initialize Telegram bot:', err.message);
+});
 
 // Start product questions penalty scheduler
 setupProductQuestionsPenaltyScheduler();
