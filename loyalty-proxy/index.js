@@ -8557,12 +8557,12 @@ app.post('/api/loyalty-promo', async (req, res) => {
   try {
     const { promoText, pointsRequired, drinksToGive, employeePhone } = req.body;
 
-    // Проверка на админа
+    // Проверка на админа или разработчика
     const normalizedPhone = (employeePhone || '').replace(/[\s\+]/g, '');
     const employees = await loadAllEmployeesForWithdrawals();
     const employee = employees.find(e => e.phone && e.phone.replace(/[\s\+]/g, '') === normalizedPhone);
-    const isAdmin = employee && employee.isAdmin === true;
-    if (!isAdmin) {
+    const isAdminOrDev = employee && (employee.isAdmin === true || employee.role === 'developer');
+    if (!isAdminOrDev) {
       console.log('POST /api/loyalty-promo: denied for non-admin', normalizedPhone);
       return res.status(403).json({ success: false, error: 'Доступ запрещён' });
     }
