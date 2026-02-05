@@ -33,7 +33,7 @@ class _ProductQuestionsManagementPageState extends State<ProductQuestionsManagem
 
   // Роль пользователя
   String _userRole = 'employee';
-  bool get _isAdmin => _userRole == 'admin';
+  bool get _isAdmin => _userRole == 'admin' || _userRole == 'developer';
 
   // Таймаут для "Не отвеченные" - 30 минут
   static const int _expiredMinutes = 30;

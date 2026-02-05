@@ -8622,20 +8622,20 @@ app.post("/api/app-version", async (req, res) => {
     }
     
     const normalizedPhone = employeePhone.replace(/[\s\+]/g, "");
-    let isAdmin = false;
-    
+    let isAdminOrDev = false;
+
     const employeeFiles = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith(".json"));
     for (const file of employeeFiles) {
       try {
         const emp = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR, file), "utf8"));
-        if (emp.phone && emp.phone.replace(/[\s\+]/g, "") === normalizedPhone && emp.isAdmin) {
-          isAdmin = true;
+        if (emp.phone && emp.phone.replace(/[\s\+]/g, "") === normalizedPhone && (emp.isAdmin || emp.role === 'developer')) {
+          isAdminOrDev = true;
           break;
         }
       } catch (e) {}
     }
-    
-    if (!isAdmin) {
+
+    if (!isAdminOrDev) {
       return res.status(403).json({ error: "Доступ только для администраторов" });
     }
     

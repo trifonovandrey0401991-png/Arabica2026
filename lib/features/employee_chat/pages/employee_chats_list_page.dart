@@ -49,7 +49,7 @@ class _EmployeeChatsListPageState extends State<EmployeeChatsListPage>
     final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
     final fallbackName = prefs.getString('user_display_name') ?? prefs.getString('user_name') ?? '';
     final userRole = prefs.getString('user_role') ?? '';
-    final isAdmin = userRole == 'admin';
+    final isAdmin = userRole == 'admin' || userRole == 'developer';
 
     setState(() {
       _userPhone = phone;

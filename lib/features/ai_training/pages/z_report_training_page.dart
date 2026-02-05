@@ -43,7 +43,7 @@ class _ZReportTrainingPageState extends State<ZReportTrainingPage>
 
     if (mounted) {
       setState(() {
-        _isAdmin = role == 'admin';
+        _isAdmin = role == 'admin' || role == 'developer';
         _tabController = TabController(length: _tabCount, vsync: this);
         _isInitialized = true;
       });

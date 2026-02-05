@@ -89,7 +89,7 @@ class _CigaretteTrainingPageState extends State<CigaretteTrainingPage>
 
     if (mounted) {
       setState(() {
-        _isAdmin = role == 'admin';
+        _isAdmin = role == 'admin' || role == 'developer';
         _selectedShopAddress = shopAddress;
         _shops = shops;
         _tabController = TabController(length: _tabCount, vsync: this);

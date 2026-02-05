@@ -21,14 +21,13 @@ import '../../features/job_application/pages/job_application_welcome_page.dart';
 import '../../features/rating/services/rating_service.dart';
 import '../../features/rating/models/employee_rating_model.dart';
 import '../../core/utils/logger.dart';
-import '../../core/services/report_notification_service.dart';
 import '../../core/services/firebase_service.dart';
-import '../../features/main_cash/services/withdrawal_service.dart';
 import '../../shared/dialogs/notification_required_dialog.dart';
 import 'my_dialogs_page.dart';
 import 'data_management_page.dart';
 import 'reports_page.dart';
 import '../services/my_dialogs_counter_service.dart';
+import '../services/reports_counter_service.dart';
 // Импорты для функций сотрудника
 import 'client_functions_page.dart';
 import '../../features/training/pages/training_page.dart';
@@ -75,8 +74,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   UserRoleData? _userRole;
   String? _employeeId;
   bool _isLoadingRole = false;
-  int _totalUnviewedReports = 0;
-  int _unconfirmedWithdrawalsCount = 0;
+  int _totalReportsCount = 0; // Общий счётчик для бейджа "Отчёты" (все дочерние счётчики)
   int _myDialogsUnreadCount = 0;
   EmployeeRating? _employeeRating;
 
@@ -109,8 +107,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     _loadUserData();
     _syncReports();
     _loadEmployeeId();
-    _loadReportCounts();
-    _loadUnconfirmedWithdrawalsCount();
+    _loadTotalReportsCount();
     _loadMyDialogsCount();
     _loadEmployeeRating();
     // Загрузка счётчиков для сотрудников
@@ -152,18 +149,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
     }
   }
 
-  Future<void> _loadReportCounts() async {
-    final counts = await ReportNotificationService.getUnviewedCounts();
-    if (mounted) setState(() => _totalUnviewedReports = counts.total);
-  }
-
-  Future<void> _loadUnconfirmedWithdrawalsCount() async {
+  /// Загрузка общего счётчика для бейджа "Отчёты" (сумма всех дочерних)
+  Future<void> _loadTotalReportsCount() async {
     try {
-      final withdrawals = await WithdrawalService.getWithdrawals();
-      final count = withdrawals.where((w) => !w.confirmed).length;
-      if (mounted) setState(() => _unconfirmedWithdrawalsCount = count);
+      final count = await ReportsCounterService.getTotalUnreadCount();
+      if (mounted) setState(() => _totalReportsCount = count);
     } catch (e) {
-      Logger.error('Ошибка загрузки счетчика выемок', e);
+      Logger.error('Ошибка загрузки счётчика отчётов', e);
     }
   }
 
@@ -535,10 +527,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 buttonHeight,
                 () async {
                   await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
-                  _loadReportCounts();
-                  _loadUnconfirmedWithdrawalsCount();
+                  _loadTotalReportsCount();
                 },
-                badge: _totalUnviewedReports + _unconfirmedWithdrawalsCount,
+                badge: _totalReportsCount,
               ),
               const SizedBox(height: spacing),
               _buildAdminRow(
@@ -603,10 +594,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 buttonHeight,
                 () async {
                   await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
-                  _loadReportCounts();
-                  _loadUnconfirmedWithdrawalsCount();
+                  _loadTotalReportsCount();
                 },
-                badge: _totalUnviewedReports + _unconfirmedWithdrawalsCount,
+                badge: _totalReportsCount,
               ),
               const SizedBox(height: spacing),
               _buildAdminRow(
@@ -900,10 +890,10 @@ class _MainMenuPageState extends State<MainMenuPage> {
   Widget _buildHeader() {
     final showRating = _employeeRating != null &&
         _employeeRating!.position > 0 &&
-        (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin);
+        (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer);
 
     final showEfficiency = _efficiencyPoints != null &&
-        (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin);
+        (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer);
 
     final isEmployee = _userRole?.role == UserRole.employee;
 
@@ -946,8 +936,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Кнопка обновления (только для сотрудников и админов)
-                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
+                      // Кнопка обновления (для сотрудников, админов и разработчиков)
+                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
                         GestureDetector(
                           onTap: () async {
                             if (_isUpdateAvailable) {
@@ -1030,35 +1020,36 @@ class _MainMenuPageState extends State<MainMenuPage> {
                             ],
                           ),
                         ),
-                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin)
+                      if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
                         const SizedBox(width: 8),
-                      // Жёлтая кнопка поиска товара
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchPage()));
-                        },
-                        child: Container(
-                          width: isEmployee ? 32 : 40,
-                          height: isEmployee ? 32 : 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFFFC107), // Жёлтый цвет
-                            border: Border.all(color: const Color(0xFFFFD54F), width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFFC107).withOpacity(0.4),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.search_rounded,
-                            color: Colors.black87,
-                            size: isEmployee ? 16 : 20,
+                      // Жёлтая кнопка поиска товара (скрыта для клиентов)
+                      if (_userRole?.role != UserRole.client)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductSearchPage()));
+                          },
+                          child: Container(
+                            width: isEmployee ? 32 : 40,
+                            height: isEmployee ? 32 : 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFFFC107), // Жёлтый цвет
+                              border: Border.all(color: const Color(0xFFFFD54F), width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFC107).withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.search_rounded,
+                              color: Colors.black87,
+                              size: isEmployee ? 16 : 20,
+                            ),
                           ),
                         ),
-                      ),
                       const SizedBox(width: 8),
                       // Кнопка выхода
                       GestureDetector(
@@ -1839,8 +1830,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     final role = _userRole?.role ?? UserRole.client;
     final items = <Widget>[];
 
-    // Для админа - только административные функции + Клиент
-    if (role == UserRole.admin) {
+    // Для админа и разработчика - административные функции + Клиент
+    if (role == UserRole.admin || role == UserRole.developer) {
       items.add(_buildTile(Icons.tune_rounded, 'Управление', () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const DataManagementPage()));
       }));
@@ -1848,10 +1839,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
       items.add(_buildTile(
         Icons.analytics_outlined, 'Отчёты', () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()));
-          _loadReportCounts();
-          _loadUnconfirmedWithdrawalsCount();
+          _loadTotalReportsCount();
         },
-        badge: _totalUnviewedReports + _unconfirmedWithdrawalsCount,
+        badge: _totalReportsCount,
       ));
 
       items.add(_buildTile(Icons.grid_view_rounded, 'Панель', () {

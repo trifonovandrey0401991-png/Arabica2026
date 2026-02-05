@@ -1,10 +1,12 @@
 /**
  * Admin Cache Utility
- * Кэширование проверки isAdmin для предотвращения повторного чтения файлов
+ * Кэширование проверки isAdmin/developer для предотвращения повторного чтения файлов
  *
  * SCALABILITY: Без кэша каждый запрос сканирует ВСЕ файлы сотрудников.
  * При 5000 сотрудниках и 100 запросах/сек = 500,000 file reads/sec
  * С кэшем = 0 file reads (после первой загрузки)
+ *
+ * NOTE: Developer role имеет те же права что и admin
  */
 
 const fs = require('fs');
@@ -72,7 +74,8 @@ async function isAdminPhoneAsync(phone) {
 }
 
 /**
- * Проверка админа через чтение файла с диска
+ * Проверка админа/разработчика через чтение файла с диска
+ * Developer role имеет те же права что и admin
  */
 function checkAdminFromDisk(normalizedPhone) {
   try {
@@ -87,7 +90,8 @@ function checkAdminFromDisk(normalizedPhone) {
         const empPhone = normalizePhone(employee.phone);
 
         if (empPhone === normalizedPhone) {
-          return employee.isAdmin === true;
+          // Developer role имеет те же права что и admin
+          return employee.isAdmin === true || employee.role === 'developer';
         }
       } catch (e) { /* skip invalid files */ }
     }
@@ -124,12 +128,14 @@ function preloadAdminCache() {
         const empPhone = normalizePhone(employee.phone);
 
         if (empPhone) {
+          // Developer role имеет те же права что и admin
+          const hasAdminRights = employee.isAdmin === true || employee.role === 'developer';
           adminCache.set(empPhone, {
-            isAdmin: employee.isAdmin === true,
+            isAdmin: hasAdminRights,
             cachedAt: now
           });
           totalCount++;
-          if (employee.isAdmin) adminCount++;
+          if (hasAdminRights) adminCount++;
         }
       } catch (e) { /* skip */ }
     }

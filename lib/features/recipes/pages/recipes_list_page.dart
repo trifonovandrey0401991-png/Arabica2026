@@ -48,7 +48,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
           _userRole = roleData?.role;
           _isLoadingRole = false;
           // Создаем TabController в зависимости от роли
-          if (_userRole == UserRole.admin) {
+          if (_userRole == UserRole.admin || _userRole == UserRole.developer) {
             _tabController = TabController(length: 2, vsync: this);
             _tabController!.addListener(() {
               if (_tabController!.index == 0 && !_tabController!.indexIsChanging) {
@@ -90,7 +90,7 @@ class _RecipesListPageState extends State<RecipesListPage> with TickerProviderSt
       );
     }
 
-    final isAdmin = _userRole == UserRole.admin;
+    final isAdmin = _userRole == UserRole.admin || _userRole == UserRole.developer;
 
     return Scaffold(
       appBar: AppBar(

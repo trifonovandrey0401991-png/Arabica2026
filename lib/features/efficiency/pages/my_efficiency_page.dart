@@ -16,6 +16,7 @@ import '../../referrals/models/referral_stats_model.dart';
 import '../../referrals/services/referral_service.dart';
 import '../../rating/pages/my_rating_page.dart';
 import '../../tests/services/test_result_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Страница "Моя эффективность" для сотрудника
 class MyEfficiencyPage extends StatefulWidget {
@@ -93,19 +94,55 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     try {
       // Получаем имя текущего сотрудника и роль
       final systemEmployeeName = await EmployeesPage.getCurrentEmployeeName();
-      final roleData = await UserRoleService.loadUserRole();
+      var roleData = await UserRoleService.loadUserRole();
       final employeeName = systemEmployeeName ?? roleData?.displayName;
+
+      // Если phone пустой, пробуем получить из SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      if (roleData != null && roleData.phone.isEmpty) {
+        final savedPhone = prefs.getString('user_phone') ?? prefs.getString('phone') ?? '';
+        if (savedPhone.isNotEmpty) {
+          Logger.debug('📱 Phone был пустой, восстановлен из prefs: $savedPhone');
+          roleData = roleData.copyWith(phone: savedPhone);
+        }
+      }
+
+      // Если роль admin/developer, но нет managedShopIds - перезагружаем с сервера
+      if ((roleData?.role == UserRole.admin || roleData?.role == UserRole.developer) &&
+          (roleData?.managedShopIds.isEmpty ?? true) &&
+          roleData?.phone != null &&
+          roleData!.phone.isNotEmpty) {
+        Logger.debug('🔄 Admin без managedShopIds - обновляем роль с сервера...');
+        try {
+          final freshRole = await UserRoleService.getUserRole(roleData.phone);
+          await UserRoleService.saveUserRole(freshRole);
+          roleData = freshRole;
+          Logger.debug('✅ Роль обновлена: managedShopIds = ${freshRole.managedShopIds}');
+        } catch (e) {
+          Logger.debug('⚠️ Не удалось обновить роль: $e');
+        }
+      }
 
       _userRole = roleData;
 
-      // Проверяем, является ли пользователь admin с managedShopIds
-      final isAdmin = roleData?.role == UserRole.admin;
+      // DEBUG: Логируем данные роли для отладки
+      Logger.debug('📊 MyEfficiencyPage: roleData = $roleData');
+      Logger.debug('   role: ${roleData?.role}');
+      Logger.debug('   phone: "${roleData?.phone}"');
+      Logger.debug('   managedShopIds: ${roleData?.managedShopIds}');
+
+      // Проверяем, является ли пользователь admin/developer с managedShopIds
+      final isAdmin = roleData?.role == UserRole.admin || roleData?.role == UserRole.developer;
       final hasManagedShops = roleData?.managedShopIds?.isNotEmpty ?? false;
       _isManagerWithShops = isAdmin && hasManagedShops;
 
-      if (_isManagerWithShops && roleData?.phone != null) {
+      Logger.debug('   isAdmin: $isAdmin, hasManagedShops: $hasManagedShops');
+      Logger.debug('   _isManagerWithShops: $_isManagerWithShops');
+
+      if (_isManagerWithShops && roleData?.phone != null && roleData!.phone.isNotEmpty) {
         // Загружаем данные эффективности управляющего
-        await _loadManagerEfficiency(roleData!.phone!);
+        Logger.debug('✅ Загружаем данные эффективности управляющего...');
+        await _loadManagerEfficiency(roleData.phone);
         return;
       }
 
@@ -120,7 +157,6 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       _employeeName = employeeName;
 
       // Получаем ID сотрудника для загрузки премий/штрафов и рефералов
-      final prefs = await SharedPreferences.getInstance();
       _employeeId = prefs.getString('currentEmployeeId');
 
       // Вычисляем предыдущий месяц для сравнения
@@ -1373,7 +1409,7 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
 
   // ============= MANAGER EFFICIENCY UI =============
 
-  /// UI для управляющего (admin с managedShopIds)
+  /// UI для управляющего (admin с managedShopIds) - КОМПАКТНЫЙ ДИЗАЙН
   Widget _buildManagerEfficiencyBody() {
     final efficiency = _managerEfficiency!;
 
@@ -1381,107 +1417,178 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
       onRefresh: () => _loadData(forceRefresh: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Главная карточка с общим %
-            _buildManagerTotalCard(efficiency),
-            const SizedBox(height: 16),
-            // Две карточки: Магазины и Отчёты
-            _buildManagerEfficiencyCards(efficiency),
-            const SizedBox(height: 16),
-            // Список магазинов
-            if (efficiency.shopBreakdown.isNotEmpty) ...[
-              _buildManagerShopsCard(efficiency),
-              const SizedBox(height: 16),
-            ],
-            // Категории отчётов
-            _buildManagerCategoriesCard(efficiency),
+            // Хедер с общим % и двумя компонентами
+            _buildManagerHeaderCard(efficiency),
+            const SizedBox(height: 10),
+            // Компактные категории
+            _buildManagerCategoriesCompact(efficiency),
+            const SizedBox(height: 10),
+            // Магазины в виде сетки
+            _buildManagerShopsGrid(efficiency),
           ],
         ),
       ),
     );
   }
 
-  /// Главная карточка с общим % эффективности управляющего
-  Widget _buildManagerTotalCard(ManagerEfficiencyData efficiency) {
+  /// Компактная карточка-хедер с общим процентом и статистикой
+  Widget _buildManagerHeaderCard(ManagerEfficiencyData efficiency) {
     final totalPercent = efficiency.totalPercentage;
-    final change = efficiency.comparison?.totalChange;
+    final color = totalPercent >= 70
+        ? const Color(0xFF00897B)
+        : totalPercent >= 40
+            ? Colors.orange
+            : Colors.red;
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF9C27B0),
-              const Color(0xFF673AB7),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Общий процент
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.analytics,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Общая эффективность',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      '${totalPercent.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Сравнение с прошлым месяцем
+              if (efficiency.comparison != null)
+                _buildCompactComparisonBadge(efficiency.comparison!.totalChange),
             ],
           ),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Text(
-              EfficiencyUtils.getMonthName(_selectedMonth, _selectedYear),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
+          const SizedBox(height: 16),
+          // Магазины и Отчёты - компактная строка
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${totalPercent.toStringAsFixed(1)}%',
-              style: const TextStyle(
-                fontSize: 56,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildCompactEfficiencyItem(
+                    icon: Icons.store,
+                    label: 'Магазины',
+                    value: efficiency.shopEfficiencyPercentage,
+                    change: efficiency.comparison?.shopEfficiencyChange,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.white.withOpacity(0.3),
+                ),
+                Expanded(
+                  child: _buildCompactEfficiencyItem(
+                    icon: Icons.assignment_turned_in,
+                    label: 'Отчёты',
+                    value: efficiency.reviewEfficiencyPercentage,
+                    change: efficiency.comparison?.reviewEfficiencyChange,
+                  ),
+                ),
+              ],
             ),
-            const Text(
-              'Моя эффективность',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
+          ),
+          const SizedBox(height: 12),
+          // Баллы: Заработано / Потеряно / Итого
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildCompactStatItem(
+                '+${efficiency.totalEarned.toStringAsFixed(0)}',
+                'Заработано',
+                Colors.greenAccent,
               ),
-            ),
-            if (change != null) ...[
-              const SizedBox(height: 12),
-              _buildManagerComparisonBadge(change),
+              _buildCompactStatItem(
+                '-${efficiency.totalLost.toStringAsFixed(0)}',
+                'Потеряно',
+                Colors.redAccent,
+              ),
+              _buildCompactStatItem(
+                efficiency.totalPoints.toStringAsFixed(0),
+                'Итого',
+                Colors.white,
+              ),
             ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildManagerComparisonBadge(double change) {
+  Widget _buildCompactComparisonBadge(double change) {
     final isPositive = change >= 0;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             isPositive ? Icons.trending_up : Icons.trending_down,
-            size: 18,
+            size: 16,
             color: Colors.white,
           ),
           const SizedBox(width: 4),
           Text(
-            '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}% к прошлому месяцу',
+            '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}%',
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
           ),
@@ -1490,354 +1597,350 @@ class _MyEfficiencyPageState extends State<MyEfficiencyPage> with SingleTickerPr
     );
   }
 
-  /// Две карточки: Эффективность магазинов и Эффективность отчётов
-  Widget _buildManagerEfficiencyCards(ManagerEfficiencyData efficiency) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildEfficiencyMiniCard(
-            title: 'Магазины',
-            percentage: efficiency.shopEfficiencyPercentage,
-            change: efficiency.comparison?.shopEfficiencyChange,
-            icon: Icons.store,
-            color: Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildEfficiencyMiniCard(
-            title: 'Отчёты',
-            percentage: efficiency.reviewEfficiencyPercentage,
-            change: efficiency.comparison?.reviewEfficiencyChange,
-            icon: Icons.assignment_turned_in,
-            color: Colors.teal,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEfficiencyMiniCard({
-    required String title,
-    required double percentage,
-    double? change,
+  Widget _buildCompactEfficiencyItem({
     required IconData icon,
-    required Color color,
+    required String label,
+    required double value,
+    double? change,
   }) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: Colors.white70, size: 18),
+        const SizedBox(width: 6),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, size: 20, color: color),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             Text(
-              '${percentage.toStringAsFixed(1)}%',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: color,
+              label,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 11,
               ),
             ),
-            if (change != null) ...[
-              const SizedBox(height: 4),
-              _buildSmallChange(change),
-            ],
+            Row(
+              children: [
+                Text(
+                  '${value.toStringAsFixed(1)}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (change != null && change != 0) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    change >= 0 ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildSmallChange(double change) {
-    final isPositive = change >= 0;
-    return Row(
+  Widget _buildCompactStatItem(String value, String label, Color color) {
+    return Column(
       children: [
-        Icon(
-          isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-          size: 14,
-          color: isPositive ? Colors.green : Colors.red,
-        ),
-        const SizedBox(width: 2),
         Text(
-          '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}',
+          value,
           style: TextStyle(
-            fontSize: 12,
-            color: isPositive ? Colors.green : Colors.red,
-            fontWeight: FontWeight.w500,
+            color: color,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white60,
+            fontSize: 11,
           ),
         ),
       ],
     );
   }
 
-  /// Карточка со списком магазинов
-  Widget _buildManagerShopsCard(ManagerEfficiencyData efficiency) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.store, color: Color(0xFF9C27B0)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Магазины',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF9C27B0),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${efficiency.shopBreakdown.length} шт.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...efficiency.shopBreakdown.map((shop) => _buildShopItem(shop)),
-          ],
-        ),
-      ),
-    );
-  }
+  /// Магазины в виде сетки (2 в ряд)
+  Widget _buildManagerShopsGrid(ManagerEfficiencyData efficiency) {
+    if (efficiency.shopBreakdown.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  Widget _buildShopItem(ShopEfficiencyItem shop) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3E5F5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.storefront,
-              size: 22,
-              color: Color(0xFF9C27B0),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  shop.shopName,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            children: [
+              const Icon(Icons.store, size: 16, color: Color(0xFF00897B)),
+              const SizedBox(width: 6),
+              const Text(
+                'Магазины',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF00897B),
                 ),
-                Text(
-                  '${shop.totalPoints.toStringAsFixed(1)} баллов',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
+              ),
+              const Spacer(),
+              Text(
+                '${efficiency.shopBreakdown.length} шт.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (shop.previousMonthChange != null) ...[
-            const SizedBox(width: 8),
-            _buildChangeIndicator(shop.previousMonthChange!),
-          ],
+          const SizedBox(height: 12),
+          // Сетка магазинов 2 в ряд
+          _buildShopsGridRows(efficiency.shopBreakdown),
         ],
       ),
     );
   }
 
-  Widget _buildChangeIndicator(double change) {
-    if (change == 0) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Text(
-          '→ 0',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
+  Widget _buildShopsGridRows(List<ShopEfficiencyItem> shops) {
+    final List<Widget> rows = [];
+
+    for (int i = 0; i < shops.length; i += 2) {
+      final hasSecond = i + 1 < shops.length;
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: i + 2 < shops.length ? 8 : 0),
+          child: Row(
+            children: [
+              Expanded(child: _buildGridShopCard(shops[i])),
+              const SizedBox(width: 8),
+              Expanded(
+                child: hasSecond
+                    ? _buildGridShopCard(shops[i + 1])
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    final isPositive = change > 0;
+    return Column(children: rows);
+  }
+
+  Widget _buildGridShopCard(ShopEfficiencyItem shop) {
+    final isPositive = shop.totalPoints >= 0;
+    final color = isPositive ? const Color(0xFF00897B) : Colors.red;
+
+    // Извлекаем короткое название магазина
+    String shortName = shop.shopName;
+    if (shortName.contains(',')) {
+      shortName = shortName.split(',').first;
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: (isPositive ? Colors.green : Colors.red).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-            size: 14,
-            color: isPositive ? Colors.green : Colors.red,
-          ),
           Text(
-            '${isPositive ? '+' : ''}${change.toStringAsFixed(1)}',
-            style: TextStyle(
+            shortName,
+            style: const TextStyle(
               fontSize: 12,
-              color: isPositive ? Colors.green : Colors.red,
               fontWeight: FontWeight.w500,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                shop.totalPoints.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '+${shop.earnedPoints.toStringAsFixed(0)}',
+                        style: TextStyle(fontSize: 10, color: Colors.green[600]),
+                      ),
+                      Text(
+                        '/',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                      ),
+                      Text(
+                        '-${shop.lostPoints.toStringAsFixed(0)}',
+                        style: TextStyle(fontSize: 10, color: Colors.red[400]),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${shop.recordsCount} зап.',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  /// Карточка с категориями отчётов
-  Widget _buildManagerCategoriesCard(ManagerEfficiencyData efficiency) {
+  /// Компактные категории в одной карточке
+  Widget _buildManagerCategoriesCompact(ManagerEfficiencyData efficiency) {
     final categories = efficiency.categoryBreakdown;
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.category, color: Color(0xFF9C27B0)),
-                SizedBox(width: 8),
-                Text(
-                  'Категории оценки',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF9C27B0),
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.category, size: 16, color: Color(0xFF00897B)),
+              SizedBox(width: 6),
+              Text(
+                'Категории оценки',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF00897B),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildCategoryItem(
-              icon: Icons.swap_horiz,
-              name: 'Пересменка',
-              points: categories.shiftPoints,
-              change: categories.shiftChange,
-              color: const Color(0xFFf093fb),
-            ),
-            _buildCategoryItem(
-              icon: Icons.inventory_2,
-              name: 'Пересчёт',
-              points: categories.recountPoints,
-              change: categories.recountChange,
-              color: const Color(0xFF4facfe),
-            ),
-            _buildCategoryItem(
-              icon: Icons.assignment_turned_in,
-              name: 'Сдать смену',
-              points: categories.shiftHandoverPoints,
-              change: categories.shiftHandoverChange,
-              color: const Color(0xFF30cfd0),
-            ),
-            _buildCategoryItem(
-              icon: Icons.assignment,
-              name: 'Задачи',
-              points: categories.tasksPoints,
-              change: categories.tasksChange,
-              color: Colors.deepPurple,
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildCompactCategoryItem(
+                  Icons.swap_horiz,
+                  'Пересменка',
+                  categories.shiftPoints,
+                  const Color(0xFFf093fb),
+                ),
+              ),
+              Expanded(
+                child: _buildCompactCategoryItem(
+                  Icons.inventory_2,
+                  'Пересчёт',
+                  categories.recountPoints,
+                  const Color(0xFF4facfe),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildCompactCategoryItem(
+                  Icons.assignment_turned_in,
+                  'Сдать смену',
+                  categories.shiftHandoverPoints,
+                  const Color(0xFF30cfd0),
+                ),
+              ),
+              Expanded(
+                child: _buildCompactCategoryItem(
+                  Icons.assignment,
+                  'Задачи',
+                  categories.tasksPoints,
+                  Colors.deepPurple,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCategoryItem({
-    required IconData icon,
-    required String name,
-    required double points,
-    double? change,
-    required Color color,
-  }) {
+  Widget _buildCompactCategoryItem(
+    IconData icon,
+    String name,
+    double points,
+    Color color,
+  ) {
     final isPositive = points >= 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 22, color: color),
-          ),
-          const SizedBox(width: 12),
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              name,
-              style: const TextStyle(fontSize: 15),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${isPositive ? '+' : ''}${points.toStringAsFixed(1)}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isPositive ? Colors.green[700] : Colors.red[700],
-                ),
-              ),
-              if (change != null && change != 0)
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)}',
+                  name,
                   style: TextStyle(
                     fontSize: 11,
-                    color: change >= 0 ? Colors.green : Colors.red,
+                    color: Colors.grey[600],
                   ),
                 ),
-            ],
+                Text(
+                  '${isPositive && points > 0 ? '+' : ''}${points.toStringAsFixed(1)}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green[700] : Colors.red[700],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

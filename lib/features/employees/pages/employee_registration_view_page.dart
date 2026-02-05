@@ -71,7 +71,7 @@ class _EmployeeRegistrationViewPageState extends State<EmployeeRegistrationViewP
         return;
       }
       final roleData = await UserRoleService.getUserRole(phone);
-      final isAdmin = roleData.role == UserRole.admin;
+      final isAdmin = roleData.role == UserRole.admin || roleData.role == UserRole.developer;
       Logger.debug('Роль пользователя: ${roleData.role}, isAdmin: $isAdmin');
       if (mounted) {
         setState(() {

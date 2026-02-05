@@ -42,7 +42,7 @@ class _AITrainingPageState extends State<AITrainingPage>
     final roleData = await UserRoleService.loadUserRole();
     if (mounted) {
       setState(() {
-        _isAdmin = roleData?.role == UserRole.admin;
+        _isAdmin = roleData?.role == UserRole.admin || roleData?.role == UserRole.developer;
       });
     }
   }

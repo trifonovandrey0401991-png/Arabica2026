@@ -73,8 +73,8 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
           _userRole = roleData?.role;
           _isLoadingRole = false;
 
-          // TabController: 2 вкладки для админа, 1 для остальных
-          if (_userRole == UserRole.admin) {
+          // TabController: 2 вкладки для админа/разработчика, 1 для остальных
+          if (_userRole == UserRole.admin || _userRole == UserRole.developer) {
             _tabController = TabController(length: 2, vsync: this);
             _loadGeofenceSettings();
           } else {
@@ -425,7 +425,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
       );
     }
 
-    final isAdmin = _userRole == UserRole.admin;
+    final isAdmin = _userRole == UserRole.admin || _userRole == UserRole.developer;
 
     return Scaffold(
       body: Container(
