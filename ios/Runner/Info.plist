@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Arabica App</string>
+	<string>Arabica</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -47,5 +47,13 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Камера нужна для сканирования QR-кодов программы лояльности.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Геолокация нужна для определения ближайших кофеен и автоматической фиксации присутствия на работе.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Фоновая геолокация нужна для автоматической фиксации прихода и ухода с работы.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Доступ к фото нужен для загрузки изображений в отчёты и чаты.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID используется для быстрого и безопасного входа в приложение.</string>
 </dict>
 </plist>
