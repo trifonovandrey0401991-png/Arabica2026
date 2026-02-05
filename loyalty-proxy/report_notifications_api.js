@@ -507,6 +507,136 @@ function setupReportNotificationsAPI(app) {
     }
   });
 
+  // ==================== PUSH ДЛЯ СОТРУДНИКОВ ====================
+
+  // POST /api/push/report-status - Отправить push сотруднику о статусе отчёта
+  // Используется при одобрении/отклонении отчётов админом
+  app.post('/api/push/report-status', async (req, res) => {
+    try {
+      const {
+        employeePhone,   // Телефон сотрудника
+        reportType,      // Тип отчёта: shift_handover, recount, rko, envelope
+        status,          // Статус: approved, rejected, confirmed
+        reportDate,      // Дата отчёта (опционально)
+        rating,          // Оценка (опционально)
+        comment,         // Комментарий (опционально)
+      } = req.body;
+
+      if (!employeePhone || !reportType || !status) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: employeePhone, reportType, status'
+        });
+      }
+
+      const typeName = REPORT_TYPE_NAMES[reportType] || reportType;
+      let title, body;
+
+      if (status === 'approved' || status === 'confirmed') {
+        title = `${typeName} одобрена ✓`;
+        body = rating ? `Оценка: ${rating}/5` : 'Ваш отчёт принят';
+        if (reportDate) body = `${reportDate} - ${body}`;
+      } else if (status === 'rejected') {
+        title = `${typeName} отклонена`;
+        body = comment || 'Требуется повторная отправка';
+        if (reportDate) body = `${reportDate} - ${body}`;
+      } else {
+        title = `${typeName}: статус изменён`;
+        body = `Новый статус: ${status}`;
+      }
+
+      const pushData = {
+        type: 'report_status_changed',
+        reportType: reportType,
+        status: status,
+      };
+
+      const sent = await sendPushToPhone(employeePhone, title, body, pushData);
+
+      console.log(`Push статуса отчёта ${reportType} → ${employeePhone}: ${sent ? 'отправлен' : 'не отправлен'}`);
+
+      res.json({ success: true, sent });
+    } catch (e) {
+      console.error('Error sending report status push:', e);
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // POST /api/push/test-assigned - Отправить push о назначении теста
+  app.post('/api/push/test-assigned', async (req, res) => {
+    try {
+      const {
+        employeePhone,   // Телефон сотрудника
+        testTitle,       // Название теста
+        testId,          // ID теста
+        deadline,        // Дедлайн (опционально)
+      } = req.body;
+
+      if (!employeePhone || !testTitle) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: employeePhone, testTitle'
+        });
+      }
+
+      const title = 'Новый тест назначен';
+      let body = testTitle;
+      if (deadline) body += ` (до ${deadline})`;
+
+      const pushData = {
+        type: 'test_assigned',
+        testId: testId || '',
+      };
+
+      const sent = await sendPushToPhone(employeePhone, title, body, pushData);
+
+      console.log(`Push о тесте → ${employeePhone}: ${sent ? 'отправлен' : 'не отправлен'}`);
+
+      res.json({ success: true, sent });
+    } catch (e) {
+      console.error('Error sending test assigned push:', e);
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  // POST /api/push/schedule-updated - Отправить push об изменении графика
+  app.post('/api/push/schedule-updated', async (req, res) => {
+    try {
+      const {
+        employeePhone,   // Телефон сотрудника
+        month,           // Месяц (YYYY-MM)
+        shopName,        // Название магазина
+        changes,         // Описание изменений (опционально)
+      } = req.body;
+
+      if (!employeePhone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required field: employeePhone'
+        });
+      }
+
+      const title = 'График работы обновлён';
+      let body = shopName || 'Проверьте ваш график';
+      if (month) body = `${month}: ${body}`;
+      if (changes) body = changes;
+
+      const pushData = {
+        type: 'schedule_updated',
+        month: month || '',
+      };
+
+      const sent = await sendPushToPhone(employeePhone, title, body, pushData);
+
+      console.log(`Push о графике → ${employeePhone}: ${sent ? 'отправлен' : 'не отправлен'}`);
+
+      res.json({ success: true, sent });
+    } catch (e) {
+      console.error('Error sending schedule push:', e);
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   console.log('Report Notifications API setup complete');
 }
 

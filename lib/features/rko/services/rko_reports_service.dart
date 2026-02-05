@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import '../../../core/services/employee_push_service.dart';
 
 // http и dart:convert оставлены для multipart загрузки файлов и binary скачивания
 
@@ -233,5 +234,111 @@ class RKOReportsService {
       rkos.map((item) => item as Map<String, dynamic>).toList(),
       (rko) => rko['shopAddress']?.toString() ?? '',
     );
+  }
+
+  /// Подтвердить РКО с push уведомлением сотруднику
+  ///
+  /// [reportId] - ID отчёта
+  /// [rating] - оценка (1-5)
+  /// [adminName] - имя админа, подтвердившего отчёт
+  /// [employeePhone] - телефон сотрудника для push
+  /// [reportDate] - дата отчёта для отображения в push
+  static Future<bool> confirmReportWithPush({
+    required String reportId,
+    required int rating,
+    required String adminName,
+    required String employeePhone,
+    String? reportDate,
+  }) async {
+    try {
+      final url = '${ApiConstants.serverUrl}$baseEndpoint-reports/$reportId';
+      Logger.debug('Подтверждение РКО: $reportId');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'status': 'confirmed',
+          'rating': rating,
+          'confirmedBy': adminName,
+          'confirmedAt': DateTime.now().toIso8601String(),
+        }),
+      ).timeout(ApiConstants.shortTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('РКО подтверждён, отправка push сотруднику');
+
+          // Отправляем push уведомление сотруднику
+          await EmployeePushService.sendReportStatusPush(
+            employeePhone: employeePhone,
+            reportType: 'rko',
+            status: 'confirmed',
+            reportDate: reportDate,
+            rating: rating,
+          );
+
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка подтверждения РКО', e);
+      return false;
+    }
+  }
+
+  /// Отклонить РКО с push уведомлением сотруднику
+  ///
+  /// [reportId] - ID отчёта
+  /// [adminName] - имя админа, отклонившего отчёт
+  /// [employeePhone] - телефон сотрудника для push
+  /// [comment] - причина отклонения
+  /// [reportDate] - дата отчёта для отображения в push
+  static Future<bool> rejectReportWithPush({
+    required String reportId,
+    required String adminName,
+    required String employeePhone,
+    String? comment,
+    String? reportDate,
+  }) async {
+    try {
+      final url = '${ApiConstants.serverUrl}$baseEndpoint-reports/$reportId';
+      Logger.debug('Отклонение РКО: $reportId');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'status': 'rejected',
+          'rejectedBy': adminName,
+          'rejectedAt': DateTime.now().toIso8601String(),
+          'rejectReason': comment,
+        }),
+      ).timeout(ApiConstants.shortTimeout);
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          Logger.debug('РКО отклонён, отправка push сотруднику');
+
+          // Отправляем push уведомление сотруднику
+          await EmployeePushService.sendReportStatusPush(
+            employeePhone: employeePhone,
+            reportType: 'rko',
+            status: 'rejected',
+            reportDate: reportDate,
+            comment: comment,
+          );
+
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      Logger.error('Ошибка отклонения РКО', e);
+      return false;
+    }
   }
 }

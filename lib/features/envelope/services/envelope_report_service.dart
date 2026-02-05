@@ -4,6 +4,7 @@ import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
+import '../../../core/services/employee_push_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -115,6 +116,82 @@ class EnvelopeReportService {
       fromJson: (json) => EnvelopeReport.fromJson(json),
       itemKey: 'report',
     );
+  }
+
+  /// Подтвердить отчет конверта с push уведомлением сотруднику
+  ///
+  /// [id] - ID отчёта
+  /// [adminName] - имя админа, подтвердившего отчёт
+  /// [rating] - оценка (1-5)
+  /// [employeePhone] - телефон сотрудника для push
+  /// [reportDate] - дата отчёта для отображения в push
+  static Future<EnvelopeReport?> confirmReportWithPush({
+    required String id,
+    required String adminName,
+    required int rating,
+    required String employeePhone,
+    String? reportDate,
+  }) async {
+    final report = await confirmReport(id, adminName, rating);
+
+    if (report != null) {
+      Logger.debug('Конверт подтверждён, отправка push сотруднику');
+
+      // Отправляем push уведомление сотруднику
+      await EmployeePushService.sendReportStatusPush(
+        employeePhone: employeePhone,
+        reportType: 'envelope',
+        status: 'confirmed',
+        reportDate: reportDate,
+        rating: rating,
+      );
+    }
+
+    return report;
+  }
+
+  /// Отклонить отчет конверта с push уведомлением сотруднику
+  ///
+  /// [id] - ID отчёта
+  /// [adminName] - имя админа, отклонившего отчёт
+  /// [employeePhone] - телефон сотрудника для push
+  /// [comment] - причина отклонения
+  /// [reportDate] - дата отчёта для отображения в push
+  static Future<bool> rejectReportWithPush({
+    required String id,
+    required String adminName,
+    required String employeePhone,
+    String? comment,
+    String? reportDate,
+  }) async {
+    Logger.debug('Отклонение отчета конверта: $id');
+
+    final result = await BaseHttpService.put<EnvelopeReport>(
+      endpoint: '$baseEndpoint/$id/reject',
+      body: {
+        'rejectedByAdmin': adminName,
+        'rejectReason': comment,
+      },
+      fromJson: (json) => EnvelopeReport.fromJson(json),
+      itemKey: 'report',
+    );
+
+    if (result != null) {
+      Logger.debug('Конверт отклонён, отправка push сотруднику');
+
+      // Отправляем push уведомление сотруднику
+      await EmployeePushService.sendReportStatusPush(
+        employeePhone: employeePhone,
+        reportType: 'envelope',
+        status: 'rejected',
+        reportDate: reportDate,
+        comment: comment,
+      );
+
+      return true;
+    }
+
+    return false;
   }
 
   /// Получить pending отчеты (ожидающие сдачи)

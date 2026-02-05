@@ -3,6 +3,7 @@ import '../models/work_schedule_model.dart';
 import '../../shops/models/shop_settings_model.dart';
 import '../../rko/services/rko_service.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/employee_push_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
@@ -300,6 +301,125 @@ class WorkScheduleService {
     }
 
     return result;
+  }
+
+  /// Сохранить смену с push уведомлением сотруднику
+  ///
+  /// [entry] - запись графика
+  /// [employeePhone] - телефон сотрудника для push
+  static Future<bool> saveShiftWithPush(WorkScheduleEntry entry, String employeePhone) async {
+    final success = await saveShift(entry);
+
+    if (success && employeePhone.isNotEmpty) {
+      Logger.debug('Смена сохранена, отправка push сотруднику: ${entry.employeeName}');
+
+      final monthStr = '${entry.date.month}.${entry.date.year}';
+      final dateStr = '${entry.date.day}.${entry.date.month}';
+      final changes = '${entry.shiftType.label} на $dateStr';
+
+      await EmployeePushService.sendScheduleUpdatedPush(
+        employeePhone: employeePhone,
+        month: monthStr,
+        shopName: entry.shopAddress,
+        changes: changes,
+      );
+    }
+
+    return success;
+  }
+
+  /// Массовое создание смен с push уведомлениями
+  ///
+  /// [entries] - записи графика
+  /// [employeePhones] - Map<employeeId, phone> для отправки push
+  static Future<bool> bulkCreateShiftsWithPush(
+    List<WorkScheduleEntry> entries, {
+    Map<String, String>? employeePhones,
+    String? replaceMode,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final success = await bulkCreateShifts(
+      entries,
+      replaceMode: replaceMode,
+      startDate: startDate,
+      endDate: endDate,
+    );
+
+    if (success && employeePhones != null && employeePhones.isNotEmpty) {
+      Logger.debug('Массовое создание смен завершено, отправка push уведомлений');
+
+      // Группируем изменения по сотрудникам
+      final employeeChanges = <String, List<WorkScheduleEntry>>{};
+      for (final entry in entries) {
+        employeeChanges.putIfAbsent(entry.employeeId, () => []);
+        employeeChanges[entry.employeeId]!.add(entry);
+      }
+
+      // Отправляем push каждому сотруднику
+      for (final employeeId in employeeChanges.keys) {
+        final phone = employeePhones[employeeId];
+        if (phone == null || phone.isEmpty) continue;
+
+        final changes = employeeChanges[employeeId]!;
+        if (changes.isEmpty) continue;
+
+        final firstEntry = changes.first;
+        final monthStr = '${firstEntry.date.month}.${firstEntry.date.year}';
+
+        // Формируем краткое описание изменений
+        String changesDescription;
+        if (changes.length == 1) {
+          final entry = changes.first;
+          changesDescription = '${entry.shiftType.label} на ${entry.date.day}.${entry.date.month}';
+        } else {
+          changesDescription = 'Обновлено ${changes.length} смен';
+        }
+
+        await EmployeePushService.sendScheduleUpdatedPush(
+          employeePhone: phone,
+          month: monthStr,
+          shopName: firstEntry.shopAddress,
+          changes: changesDescription,
+        );
+      }
+    }
+
+    return success;
+  }
+
+  /// Удалить смену с push уведомлением сотруднику
+  ///
+  /// [entryId] - ID записи
+  /// [entryDate] - дата для определения месяца
+  /// [employeePhone] - телефон сотрудника для push
+  /// [employeeName] - имя сотрудника для лога
+  /// [shopAddress] - адрес магазина
+  static Future<bool> deleteShiftWithPush({
+    required String entryId,
+    required DateTime entryDate,
+    required String employeePhone,
+    String? employeeName,
+    String? shopAddress,
+  }) async {
+    final success = await deleteShift(entryId, entryDate);
+
+    if (success && employeePhone.isNotEmpty) {
+      Logger.debug('Смена удалена, отправка push сотруднику: ${employeeName ?? 'unknown'}');
+
+      final monthStr = '${entryDate.month}.${entryDate.year}';
+      final dateStr = '${entryDate.day}.${entryDate.month}';
+      final changes = 'Смена на $dateStr отменена';
+
+      await EmployeePushService.sendScheduleUpdatedPush(
+        employeePhone: employeePhone,
+        month: monthStr,
+        shopName: shopAddress,
+        changes: changes,
+      );
+    }
+
+    return success;
   }
 }
 

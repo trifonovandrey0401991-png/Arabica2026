@@ -1,5 +1,6 @@
 import '../models/shift_handover_report_model.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/employee_push_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
@@ -23,6 +24,59 @@ class ShiftHandoverReportService {
       endpoint: '$baseEndpoint/${Uri.encodeComponent(report.id)}',
       body: report.toJson(),
     );
+  }
+
+  /// Подтвердить отчет сдачи смены и отправить push сотруднику
+  ///
+  /// [report] - отчёт для подтверждения (уже с обновлённым статусом)
+  /// [employeePhone] - телефон сотрудника для push уведомления
+  /// [rating] - оценка отчёта (1-5)
+  static Future<bool> confirmReport(
+    ShiftHandoverReport report, {
+    required String employeePhone,
+    int? rating,
+  }) async {
+    final success = await updateReport(report);
+    if (success) {
+      // Отправляем push уведомление сотруднику
+      final reportDate =
+          '${report.date.day.toString().padLeft(2, '0')}.${report.date.month.toString().padLeft(2, '0')}';
+      await EmployeePushService.sendReportStatusPush(
+        employeePhone: employeePhone,
+        reportType: 'shift_handover',
+        status: 'confirmed',
+        reportDate: reportDate,
+        rating: rating,
+      );
+      Logger.debug('✅ Пересменка подтверждена и push отправлен');
+    }
+    return success;
+  }
+
+  /// Отклонить отчет сдачи смены и отправить push сотруднику
+  ///
+  /// [report] - отчёт для отклонения
+  /// [employeePhone] - телефон сотрудника для push уведомления
+  /// [comment] - причина отклонения
+  static Future<bool> rejectReport(
+    ShiftHandoverReport report, {
+    required String employeePhone,
+    String? comment,
+  }) async {
+    final success = await updateReport(report);
+    if (success) {
+      final reportDate =
+          '${report.date.day.toString().padLeft(2, '0')}.${report.date.month.toString().padLeft(2, '0')}';
+      await EmployeePushService.sendReportStatusPush(
+        employeePhone: employeePhone,
+        reportType: 'shift_handover',
+        status: 'rejected',
+        reportDate: reportDate,
+        comment: comment,
+      );
+      Logger.debug('✅ Пересменка отклонена и push отправлен');
+    }
+    return success;
   }
 
   /// Получить отчеты сдачи смены с сервера

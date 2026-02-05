@@ -7,6 +7,7 @@ import '../models/recount_answer_model.dart';
 import '../models/recount_pivot_model.dart';
 import '../../../core/services/photo_upload_service.dart';
 import '../../../core/services/base_http_service.dart';
+import '../../../core/services/employee_push_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/services/multitenancy_filter_service.dart';
@@ -351,6 +352,64 @@ class RecountService {
       Logger.error('❌ Ошибка постановки оценки', e);
       return false;
     }
+  }
+
+  /// Подтвердить отчет пересчёта с оценкой и отправить push сотруднику
+  ///
+  /// [reportId] - ID отчёта
+  /// [rating] - оценка (1-5)
+  /// [adminName] - имя админа
+  /// [employeePhone] - телефон сотрудника для push
+  /// [reportDate] - дата отчёта для отображения в push
+  static Future<bool> confirmReportWithPush({
+    required String reportId,
+    required int rating,
+    required String adminName,
+    required String employeePhone,
+    String? reportDate,
+  }) async {
+    final success = await rateReport(reportId, rating, adminName);
+    if (success) {
+      // Отправляем push уведомление сотруднику
+      await EmployeePushService.sendReportStatusPush(
+        employeePhone: employeePhone,
+        reportType: 'recount',
+        status: 'confirmed',
+        reportDate: reportDate,
+        rating: rating,
+      );
+      Logger.debug('✅ Пересчёт подтверждён и push отправлен');
+    }
+    return success;
+  }
+
+  /// Отклонить отчет пересчёта и отправить push сотруднику
+  ///
+  /// [reportId] - ID отчёта
+  /// [adminName] - имя админа
+  /// [employeePhone] - телефон сотрудника для push
+  /// [comment] - причина отклонения
+  /// [reportDate] - дата отчёта для отображения в push
+  static Future<bool> rejectReportWithPush({
+    required String reportId,
+    required String adminName,
+    required String employeePhone,
+    String? comment,
+    String? reportDate,
+  }) async {
+    // Для отклонения используем тот же endpoint с rating=0 или отдельный
+    final success = await rateReport(reportId, 0, adminName);
+    if (success) {
+      await EmployeePushService.sendReportStatusPush(
+        employeePhone: employeePhone,
+        reportType: 'recount',
+        status: 'rejected',
+        reportDate: reportDate,
+        comment: comment,
+      );
+      Logger.debug('✅ Пересчёт отклонён и push отправлен');
+    }
+    return success;
   }
 
   /// Отправить push-уведомление о новом отчете
