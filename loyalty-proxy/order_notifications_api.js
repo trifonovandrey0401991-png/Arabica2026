@@ -1,8 +1,10 @@
 // =====================================================
 // ORDER NOTIFICATIONS API - Push-уведомления для заказов
+//
+// REFACTORED: Converted from sync to async I/O (2026-02-05)
 // =====================================================
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -11,6 +13,16 @@ const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
 const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Получить Firebase Admin
 function getFirebaseAdmin() {
@@ -28,11 +40,12 @@ function getFirebaseAdmin() {
 }
 
 // Получить телефон сотрудника по его ID
-function getEmployeePhone(employeeId) {
+async function getEmployeePhone(employeeId) {
   try {
     const employeeFile = path.join(EMPLOYEES_DIR, `${employeeId}.json`);
-    if (fs.existsSync(employeeFile)) {
-      const employee = JSON.parse(fs.readFileSync(employeeFile, 'utf8'));
+    if (await fileExists(employeeFile)) {
+      const content = await fsp.readFile(employeeFile, 'utf8');
+      const employee = JSON.parse(content);
       return employee.phone || null;
     }
   } catch (e) {
@@ -50,12 +63,13 @@ async function sendPushByPhone(phone, title, body, data = {}) {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!(await fileExists(tokenFile))) {
       console.log(`FCM токен не найден для ${normalizedPhone}`);
       return false;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const content = await fsp.readFile(tokenFile, 'utf8');
+    const tokenData = JSON.parse(content);
     if (!tokenData.token) {
       console.log(`Пустой FCM токен для ${normalizedPhone}`);
       return false;
@@ -93,19 +107,20 @@ function getShiftTypeByTime(date) {
 }
 
 // Получить сотрудников на смене по attendance
-function getEmployeesFromAttendance(shopAddress, date) {
+async function getEmployeesFromAttendance(shopAddress, date) {
   const employees = [];
   const dateStr = date.toISOString().split('T')[0];
 
-  if (!fs.existsSync(ATTENDANCE_DIR)) return employees;
+  if (!(await fileExists(ATTENDANCE_DIR))) return employees;
 
-  const files = fs.readdirSync(ATTENDANCE_DIR);
+  const files = await fsp.readdir(ATTENDANCE_DIR);
   for (const file of files) {
     if (!file.endsWith('.json')) continue;
 
     try {
       const filePath = path.join(ATTENDANCE_DIR, file);
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const content = await fsp.readFile(filePath, 'utf8');
+      const data = JSON.parse(content);
 
       if (!data || data.date !== dateStr) continue;
       if (!data.records || !Array.isArray(data.records)) continue;
@@ -115,7 +130,7 @@ function getEmployeesFromAttendance(shopAddress, date) {
           const checkInTime = new Date(record.timestamp);
           if (checkInTime <= date) {
             const employeeId = record.employeeId || data.identifier;
-            const phone = getEmployeePhone(employeeId);
+            const phone = await getEmployeePhone(employeeId);
             if (phone) {
               employees.push({
                 id: employeeId,
@@ -135,17 +150,18 @@ function getEmployeesFromAttendance(shopAddress, date) {
 }
 
 // Получить сотрудников на смене по графику
-function getEmployeesFromSchedule(shopAddress, date) {
+async function getEmployeesFromSchedule(shopAddress, date) {
   const employees = [];
   const monthKey = date.toISOString().slice(0, 7);
   const dateStr = date.toISOString().split('T')[0];
 
   const scheduleFile = path.join(WORK_SCHEDULES_DIR, `${monthKey}.json`);
 
-  if (!fs.existsSync(scheduleFile)) return employees;
+  if (!(await fileExists(scheduleFile))) return employees;
 
   try {
-    const schedule = JSON.parse(fs.readFileSync(scheduleFile, 'utf8'));
+    const content = await fsp.readFile(scheduleFile, 'utf8');
+    const schedule = JSON.parse(content);
     if (!schedule || !schedule.entries) return employees;
 
     const shiftTypes = getShiftTypeByTime(date);
@@ -155,7 +171,7 @@ function getEmployeesFromSchedule(shopAddress, date) {
       if (entry.date !== dateStr) continue;
       if (!shiftTypes.includes(entry.shiftType)) continue;
 
-      const phone = getEmployeePhone(entry.employeeId);
+      const phone = await getEmployeePhone(entry.employeeId);
       if (phone) {
         employees.push({
           id: entry.employeeId,
@@ -172,15 +188,15 @@ function getEmployeesFromSchedule(shopAddress, date) {
 }
 
 // Найти всех сотрудников на смене в магазине
-function findEmployeesOnShift(shopAddress) {
+async function findEmployeesOnShift(shopAddress) {
   const now = new Date();
 
   // 1. Сначала проверяем attendance
-  let employees = getEmployeesFromAttendance(shopAddress, now);
+  let employees = await getEmployeesFromAttendance(shopAddress, now);
 
   // 2. Если никто не отметился - проверяем график
   if (employees.length === 0) {
-    employees = getEmployeesFromSchedule(shopAddress, now);
+    employees = await getEmployeesFromSchedule(shopAddress, now);
   }
 
   // Убираем дубликаты по ID
@@ -200,7 +216,7 @@ function findEmployeesOnShift(shopAddress) {
 async function notifyEmployeesAboutNewOrder(order) {
   console.log(`Уведомление сотрудникам о заказе #${order.orderNumber}`);
 
-  const employees = findEmployeesOnShift(order.shopAddress);
+  const employees = await findEmployeesOnShift(order.shopAddress);
   console.log(`Найдено сотрудников на смене: ${employees.length}`);
 
   if (employees.length === 0) {
@@ -214,7 +230,7 @@ async function notifyEmployeesAboutNewOrder(order) {
     const success = await sendPushByPhone(
       emp.phone,
       'Новый заказ!',
-      `Заказ #${order.orderNumber} на сумму ${order.totalPrice} руб`,
+      `Заказ ${order.orderNumber} на сумму ${order.totalPrice} руб`,
       {
         type: 'new_order',
         orderId: order.id,
@@ -236,10 +252,10 @@ async function notifyClientAboutOrderStatus(order) {
 
   if (order.status === 'accepted') {
     title = 'Заказ принят!';
-    body = `Ваш заказ #${order.orderNumber} принят${order.acceptedBy ? ` сотрудником ${order.acceptedBy}` : ''}`;
+    body = `Ваш заказ ${order.orderNumber} принят${order.acceptedBy ? ` сотрудником ${order.acceptedBy}` : ''}`;
   } else if (order.status === 'rejected') {
     title = 'Заказ отклонен';
-    body = `Ваш заказ #${order.orderNumber} отклонен${order.rejectionReason ? `: ${order.rejectionReason}` : ''}`;
+    body = `Ваш заказ ${order.orderNumber} отклонен${order.rejectionReason ? `: ${order.rejectionReason}` : ''}`;
   } else {
     return false;
   }

@@ -1,5 +1,10 @@
+/**
+ * Orders Module
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
 const fs = require('fs').promises;
-const fsSync = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
@@ -30,31 +35,32 @@ async function fileExists(filePath) {
 // ФУНКЦИИ ДЛЯ ОТСЛЕЖИВАНИЯ ПРОСМОТРОВ ЗАКАЗОВ
 // =====================================================
 
-// Получить дату последнего просмотра
-function getLastViewedAt(type) {
+// Получить дату последнего просмотра (async)
+async function getLastViewedAt(type) {
   try {
     const file = type === 'rejected' ? ORDERS_VIEWED_REJECTED_FILE : ORDERS_VIEWED_UNCONFIRMED_FILE;
-    if (fsSync.existsSync(file)) {
-      const data = JSON.parse(fsSync.readFileSync(file, 'utf8'));
+    if (await fileExists(file)) {
+      const content = await fs.readFile(file, 'utf8');
+      const data = JSON.parse(content);
       return data.lastViewedAt ? new Date(data.lastViewedAt) : null;
     }
     return null;
   } catch (error) {
-    console.error('Ошибка чтения lastViewedAt для ' + type + ':', error);
+    console.error('Error reading lastViewedAt for ' + type + ':', error);
     return null;
   }
 }
 
-// Сохранить дату последнего просмотра
-function saveLastViewedAt(type, date) {
+// Сохранить дату последнего просмотра (async)
+async function saveLastViewedAt(type, date) {
   try {
     const file = type === 'rejected' ? ORDERS_VIEWED_REJECTED_FILE : ORDERS_VIEWED_UNCONFIRMED_FILE;
-    fsSync.writeFileSync(file, JSON.stringify({
+    await fs.writeFile(file, JSON.stringify({
       lastViewedAt: date.toISOString()
     }, null, 2), 'utf8');
     return true;
   } catch (error) {
-    console.error('Ошибка записи lastViewedAt для ' + type + ':', error);
+    console.error('Error writing lastViewedAt for ' + type + ':', error);
     return false;
   }
 }
@@ -102,8 +108,8 @@ async function countUnviewedOrders(status, lastViewedAt) {
 
 // Получить количество непросмотренных заказов
 async function getUnviewedOrdersCounts() {
-  const rejectedLastViewed = getLastViewedAt('rejected');
-  const unconfirmedLastViewed = getLastViewedAt('unconfirmed');
+  const rejectedLastViewed = await getLastViewedAt('rejected');
+  const unconfirmedLastViewed = await getLastViewedAt('unconfirmed');
 
   const rejectedCount = await countUnviewedOrders('rejected', rejectedLastViewed);
   const unconfirmedCount = await countUnviewedOrders('unconfirmed', unconfirmedLastViewed);
@@ -269,10 +275,10 @@ async function sendOrderNotification(order, type) {
 
     let title, body;
     if (type === 'accepted') {
-      title = 'Заказ #' + order.orderNumber + ' принят';
+      title = 'Заказ ' + order.orderNumber + ' принят';
       body = 'Ваш заказ принят в работу сотрудником ' + order.acceptedBy;
     } else {
-      title = 'Заказ #' + order.orderNumber + ' не принят';
+      title = 'Заказ ' + order.orderNumber + ' не принят';
       body = 'Причина: ' + order.rejectionReason;
     }
 
@@ -330,7 +336,7 @@ async function sendNewOrderNotificationToAdmins(order) {
         const { token } = JSON.parse(tokenContent);
 
         // Формируем уведомление
-        const title = 'Новый заказ #' + order.orderNumber;
+        const title = 'Новый заказ ' + order.orderNumber;
         const body = order.clientName + ' - ' + order.shopAddress;
 
         await admin.messaging().send({
@@ -415,10 +421,10 @@ async function addResponseToDialog(order, responseType) {
 
   let text, employeeName;
   if (responseType === 'accepted') {
-    text = 'Ваш заказ #' + order.orderNumber + ' принят в работу';
+    text = 'Ваш заказ ' + order.orderNumber + ' принят в работу';
     employeeName = order.acceptedBy || 'Сотрудник';
   } else {
-    text = 'Отказ по заказу #' + order.orderNumber + ': ' + order.rejectionReason;
+    text = 'Отказ по заказу ' + order.orderNumber + ': ' + order.rejectionReason;
     employeeName = order.rejectedBy || 'Сотрудник';
   }
 
