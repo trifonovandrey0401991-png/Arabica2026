@@ -202,9 +202,20 @@ router.post('/register', async (req, res) => {
 
     res.json({
       success: true,
-      sessionToken,
-      expiresAt: session.expiresAt,
-      message: 'Регистрация успешна'
+      message: 'Регистрация успешна',
+      // Данные для локального хранения на клиенте
+      pinHash,
+      salt,
+      session: {
+        sessionToken,
+        phone: normalizedPhone,
+        name,
+        deviceId: deviceId || 'unknown',
+        deviceName: deviceName || 'Unknown Device',
+        createdAt: session.createdAt,
+        expiresAt: session.expiresAt,
+        isVerified: true
+      }
     });
 
   } catch (error) {
