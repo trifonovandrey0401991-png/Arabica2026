@@ -4,7 +4,18 @@
  */
 
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
+
+// Async helper for file existence check
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const { getTaskPointsConfig } = require('./api/task_points_settings_api');
 const { sendPushToPhone, sendPushNotification } = require('./report_notifications_api');
 
@@ -16,11 +27,13 @@ const RECURRING_INSTANCES_DIR = `${DATA_DIR}/recurring-task-instances`;
 const EFFICIENCY_DIR = `${DATA_DIR}/efficiency-penalties`;
 
 // Создаем директории если не существуют
-[RECURRING_TASKS_DIR, RECURRING_INSTANCES_DIR, EFFICIENCY_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+(async () => {
+  for (const dir of [RECURRING_TASKS_DIR, RECURRING_INSTANCES_DIR, EFFICIENCY_DIR]) {
+    if (!await fileExists(dir)) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
   }
-});
+})();
 
 // ==================== УТИЛИТЫ ====================
 
@@ -41,10 +54,11 @@ function getYearMonth(date) {
   return date.substring(0, 7); // YYYY-MM
 }
 
-function loadJsonFile(filePath, defaultValue = []) {
+async function loadJsonFile(filePath, defaultValue = []) {
   try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     }
   } catch (e) {
     console.error('Error loading file:', filePath, e);
@@ -52,8 +66,8 @@ function loadJsonFile(filePath, defaultValue = []) {
   return defaultValue;
 }
 
-function saveJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+async function saveJsonFile(filePath, data) {
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // ==================== ШАБЛОНЫ ЗАДАЧ ====================
@@ -62,35 +76,35 @@ const TEMPLATES_FILE = path.join(RECURRING_TASKS_DIR, 'all.json');
 const SCHEDULER_STATE_FILE = path.join(RECURRING_TASKS_DIR, 'scheduler-state.json');
 const REMINDERS_SENT_FILE = path.join(RECURRING_TASKS_DIR, 'reminders-sent.json');
 
-function loadTemplates() {
-  return loadJsonFile(TEMPLATES_FILE, []);
+async function loadTemplates() {
+  return await loadJsonFile(TEMPLATES_FILE, []);
 }
 
-function saveTemplates(templates) {
-  saveJsonFile(TEMPLATES_FILE, templates);
+async function saveTemplates(templates) {
+  await saveJsonFile(TEMPLATES_FILE, templates);
 }
 
-function loadSchedulerState() {
-  return loadJsonFile(SCHEDULER_STATE_FILE, {
+async function loadSchedulerState() {
+  return await loadJsonFile(SCHEDULER_STATE_FILE, {
     lastGenerationDate: null,
     lastExpiredCheck: null
   });
 }
 
-function saveSchedulerState(state) {
-  saveJsonFile(SCHEDULER_STATE_FILE, state);
+async function saveSchedulerState(state) {
+  await saveJsonFile(SCHEDULER_STATE_FILE, state);
 }
 
 // ==================== ЭКЗЕМПЛЯРЫ ЗАДАЧ ====================
 
-function loadInstances(yearMonth) {
+async function loadInstances(yearMonth) {
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
-  return loadJsonFile(filePath, []);
+  return await loadJsonFile(filePath, []);
 }
 
-function saveInstances(yearMonth, instances) {
+async function saveInstances(yearMonth, instances) {
   const filePath = path.join(RECURRING_INSTANCES_DIR, yearMonth + '.json');
-  saveJsonFile(filePath, instances);
+  await saveJsonFile(filePath, instances);
 }
 
 // ==================== ГЕНЕРАЦИЯ ЗАДАЧ ====================
@@ -98,7 +112,7 @@ function saveInstances(yearMonth, instances) {
 // Генерация экземпляров для одного шаблона (при создании)
 async function generateInstancesForTemplate(template, date) {
   const yearMonth = getYearMonth(date);
-  let instances = loadInstances(yearMonth);
+  let instances = await loadInstances(yearMonth);
   let generatedCount = 0;
   const newInstances = []; // Для отправки push после сохранения
 
@@ -139,7 +153,7 @@ async function generateInstancesForTemplate(template, date) {
   }
 
   if (generatedCount > 0) {
-    saveInstances(yearMonth, instances);
+    await saveInstances(yearMonth, instances);
     console.log('Generated', generatedCount, 'instances for new template:', template.id);
 
     // Отправляем push-уведомления о новой задаче
@@ -166,10 +180,10 @@ async function generateInstancesForTemplate(template, date) {
 async function generateDailyTasks(date) {
   console.log('Generating recurring tasks for date:', date);
 
-  const templates = loadTemplates();
+  const templates = await loadTemplates();
   const dayOfWeek = new Date(date + 'T00:00:00').getDay(); // 0-6 (Вс-Сб)
   const yearMonth = getYearMonth(date);
-  let instances = loadInstances(yearMonth);
+  let instances = await loadInstances(yearMonth);
 
   let generatedCount = 0;
   const newInstances = []; // Для отправки push после сохранения
@@ -219,7 +233,7 @@ async function generateDailyTasks(date) {
     }
   }
 
-  saveInstances(yearMonth, instances);
+  await saveInstances(yearMonth, instances);
   console.log('Generated', generatedCount, 'recurring task instances for', date);
 
   // Отправляем push-уведомления для новых задач
@@ -242,14 +256,14 @@ async function checkExpiredTasks() {
   const now = new Date();
   const today = getToday();
   const yearMonth = getYearMonth(today);
-  let instances = loadInstances(yearMonth);
+  let instances = await loadInstances(yearMonth);
 
   let expiredCount = 0;
   const penalties = [];
   const expiredInstances = []; // Для отправки push после сохранения
 
   // Получаем настройки баллов
-  const config = getTaskPointsConfig();
+  const config = await getTaskPointsConfig();
   const penaltyPoints = config.recurringTasks.penaltyPoints;
 
   for (const instance of instances) {
@@ -280,13 +294,13 @@ async function checkExpiredTasks() {
   }
 
   if (expiredCount > 0) {
-    saveInstances(yearMonth, instances);
+    await saveInstances(yearMonth, instances);
 
     // Сохраняем штрафы
     const penaltiesFile = path.join(EFFICIENCY_DIR, yearMonth + '.json');
-    let existingPenalties = loadJsonFile(penaltiesFile, []);
+    let existingPenalties = await loadJsonFile(penaltiesFile, []);
     existingPenalties = existingPenalties.concat(penalties);
-    saveJsonFile(penaltiesFile, existingPenalties);
+    await saveJsonFile(penaltiesFile, existingPenalties);
 
     console.log('Expired', expiredCount, 'recurring task instances, created', penalties.length, 'penalties');
 
@@ -317,12 +331,12 @@ async function checkExpiredTasks() {
 
 // ==================== НАПОМИНАНИЯ ====================
 
-function loadRemindersSent() {
-  return loadJsonFile(REMINDERS_SENT_FILE, {});
+async function loadRemindersSent() {
+  return await loadJsonFile(REMINDERS_SENT_FILE, {});
 }
 
-function saveRemindersSent(data) {
-  saveJsonFile(REMINDERS_SENT_FILE, data);
+async function saveRemindersSent(data) {
+  await saveJsonFile(REMINDERS_SENT_FILE, data);
 }
 
 // Получить текущее время в формате HH:MM
@@ -355,7 +369,7 @@ async function sendScheduledReminders() {
   const yearMonth = getYearMonth(today);
 
   // Загружаем задачи за сегодня
-  const instances = loadInstances(yearMonth);
+  const instances = await loadInstances(yearMonth);
   const todayInstances = instances.filter(i => i.date === today && i.status === 'pending');
 
   // Ранний выход если нет активных задач - без логирования
@@ -367,7 +381,7 @@ async function sendScheduledReminders() {
   console.log(`Checking ${todayInstances.length} pending tasks for reminders at ${currentTime} Moscow...`);
 
   // Загружаем отправленные напоминания
-  let remindersSent = loadRemindersSent();
+  let remindersSent = await loadRemindersSent();
 
   // Очищаем старые записи (старше 2 дней)
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -418,7 +432,7 @@ async function sendScheduledReminders() {
   }
 
   // Сохраняем состояние
-  saveRemindersSent(remindersSent);
+  await saveRemindersSent(remindersSent);
 
   if (sentCount > 0) {
     console.log(`Sent ${sentCount} reminders`);
@@ -436,19 +450,19 @@ function startScheduler() {
   setInterval(async () => {
     try {
       const today = getToday();
-      const state = loadSchedulerState();
+      const state = await loadSchedulerState();
 
       // Генерация задач в новый день
       if (state.lastGenerationDate !== today) {
         await generateDailyTasks(today);
         state.lastGenerationDate = today;
-        saveSchedulerState(state);
+        await saveSchedulerState(state);
       }
 
       // Проверка expired каждые 5 минут
       await checkExpiredTasks();
       state.lastExpiredCheck = new Date().toISOString();
-      saveSchedulerState(state);
+      await saveSchedulerState(state);
 
       // Отправка напоминаний по расписанию
       await sendScheduledReminders();
@@ -462,12 +476,12 @@ function startScheduler() {
   setTimeout(async () => {
     try {
       const today = getToday();
-      const state = loadSchedulerState();
+      const state = await loadSchedulerState();
 
       if (state.lastGenerationDate !== today) {
         await generateDailyTasks(today);
         state.lastGenerationDate = today;
-        saveSchedulerState(state);
+        await saveSchedulerState(state);
       }
       await checkExpiredTasks();
       await sendScheduledReminders();
@@ -483,9 +497,9 @@ function setupRecurringTasksAPI(app) {
   console.log('Setting up Recurring Tasks API...');
 
   // GET /api/recurring-tasks - Список всех шаблонов
-  app.get('/api/recurring-tasks', (req, res) => {
+  app.get('/api/recurring-tasks', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       res.json({ success: true, tasks: templates });
     } catch (e) {
       console.error('Error getting recurring tasks:', e);
@@ -494,13 +508,13 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/instances/list - Список экземпляров
-  app.get('/api/recurring-tasks/instances/list', (req, res) => {
+  app.get('/api/recurring-tasks/instances/list', async (req, res) => {
     try {
       const { assigneeId, assigneePhone, date, status, yearMonth } = req.query;
 
       // Определяем месяц для загрузки
       const month = yearMonth || getYearMonth(date || getToday());
-      let instances = loadInstances(month);
+      let instances = await loadInstances(month);
 
       // Фильтрация
       if (assigneeId) {
@@ -524,7 +538,7 @@ function setupRecurringTasksAPI(app) {
   });
 
   // POST /api/recurring-tasks/instances/:id/complete - Выполнить задачу
-  app.post('/api/recurring-tasks/instances/:id/complete', (req, res) => {
+  app.post('/api/recurring-tasks/instances/:id/complete', async (req, res) => {
     try {
       const { responseText, responsePhotos } = req.body;
       const instanceId = req.params.id;
@@ -539,7 +553,7 @@ function setupRecurringTasksAPI(app) {
       let index = -1;
 
       for (const month of [currentMonth, prevMonth]) {
-        instances = loadInstances(month);
+        instances = await loadInstances(month);
         index = instances.findIndex(i => i.id === instanceId);
         if (index !== -1) {
           foundMonth = month;
@@ -560,7 +574,7 @@ function setupRecurringTasksAPI(app) {
       instances[index].responsePhotos = responsePhotos || [];
       instances[index].completedAt = new Date().toISOString();
 
-      saveInstances(foundMonth, instances);
+      await saveInstances(foundMonth, instances);
       console.log('Completed recurring task instance:', instanceId);
       res.json({ success: true, instance: instances[index] });
     } catch (e) {
@@ -570,9 +584,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // GET /api/recurring-tasks/:id - Шаблон по ID (должен быть после instances/list!)
-  app.get('/api/recurring-tasks/:id', (req, res) => {
+  app.get('/api/recurring-tasks/:id', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const task = templates.find(t => t.id === req.params.id);
       if (!task) {
         return res.status(404).json({ success: false, error: 'Task not found' });
@@ -607,7 +621,7 @@ function setupRecurringTasksAPI(app) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
 
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const now = new Date().toISOString();
 
       const newTask = {
@@ -632,7 +646,7 @@ function setupRecurringTasksAPI(app) {
       if (supplierName) newTask.supplierName = supplierName;
 
       templates.push(newTask);
-      saveTemplates(templates);
+      await saveTemplates(templates);
 
       console.log('Created recurring task:', newTask.id);
 
@@ -651,9 +665,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id - Обновить шаблон
-  app.put('/api/recurring-tasks/:id', (req, res) => {
+  app.put('/api/recurring-tasks/:id', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
       if (index === -1) {
@@ -691,7 +705,7 @@ function setupRecurringTasksAPI(app) {
         updatedAt: new Date().toISOString()
       };
 
-      saveTemplates(templates);
+      await saveTemplates(templates);
       console.log('Updated recurring task:', req.params.id);
       res.json({ success: true, task: templates[index] });
     } catch (e) {
@@ -701,9 +715,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // PUT /api/recurring-tasks/:id/toggle-pause - Пауза/возобновить
-  app.put('/api/recurring-tasks/:id/toggle-pause', (req, res) => {
+  app.put('/api/recurring-tasks/:id/toggle-pause', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
       if (index === -1) {
@@ -713,7 +727,7 @@ function setupRecurringTasksAPI(app) {
       templates[index].isPaused = !templates[index].isPaused;
       templates[index].updatedAt = new Date().toISOString();
 
-      saveTemplates(templates);
+      await saveTemplates(templates);
       console.log('Toggled pause for recurring task:', req.params.id, 'isPaused:', templates[index].isPaused);
       res.json({ success: true, task: templates[index] });
     } catch (e) {
@@ -723,9 +737,9 @@ function setupRecurringTasksAPI(app) {
   });
 
   // DELETE /api/recurring-tasks/:id - Удалить шаблон
-  app.delete('/api/recurring-tasks/:id', (req, res) => {
+  app.delete('/api/recurring-tasks/:id', async (req, res) => {
     try {
-      const templates = loadTemplates();
+      const templates = await loadTemplates();
       const index = templates.findIndex(t => t.id === req.params.id);
 
       if (index === -1) {
@@ -733,7 +747,7 @@ function setupRecurringTasksAPI(app) {
       }
 
       templates.splice(index, 1);
-      saveTemplates(templates);
+      await saveTemplates(templates);
 
       console.log('Deleted recurring task:', req.params.id);
       res.json({ success: true });

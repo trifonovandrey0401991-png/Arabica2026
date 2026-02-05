@@ -7,9 +7,11 @@
  * - shift_report (Сдать смену)
  * - attendance (Я на работе)
  * - rko (РКО)
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
  */
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const { admin, firebaseInitialized } = require('./firebase-admin-config');
 
@@ -20,17 +22,34 @@ const NOTIFICATIONS_DIR = `${DATA_DIR}/report-notifications`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
-// Создаём директорию если не существует
-if (!fs.existsSync(NOTIFICATIONS_DIR)) {
-  fs.mkdirSync(NOTIFICATIONS_DIR, { recursive: true });
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+// Создаём директорию если не существует
+(async () => {
+  try {
+    if (!(await fileExists(NOTIFICATIONS_DIR))) {
+      await fsp.mkdir(NOTIFICATIONS_DIR, { recursive: true });
+    }
+  } catch (e) {
+    console.error('Error creating notifications directory:', e.message);
+  }
+})();
 
 // ==================== УТИЛИТЫ ====================
 
-function loadJsonFile(filePath, defaultValue = []) {
+async function loadJsonFile(filePath, defaultValue = []) {
   try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
     }
   } catch (e) {
     console.error('Error loading file:', filePath, e);
@@ -38,8 +57,8 @@ function loadJsonFile(filePath, defaultValue = []) {
   return defaultValue;
 }
 
-function saveJsonFile(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+async function saveJsonFile(filePath, data) {
+  await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 function generateId() {
@@ -47,50 +66,52 @@ function generateId() {
 }
 
 // Получить все уведомления
-function loadNotifications() {
+async function loadNotifications() {
   const filePath = path.join(NOTIFICATIONS_DIR, 'all.json');
-  return loadJsonFile(filePath, []);
+  return await loadJsonFile(filePath, []);
 }
 
 // Сохранить все уведомления
-function saveNotifications(notifications) {
+async function saveNotifications(notifications) {
   const filePath = path.join(NOTIFICATIONS_DIR, 'all.json');
-  saveJsonFile(filePath, notifications);
+  await saveJsonFile(filePath, notifications);
 }
 
 // Получить FCM токены админов
-function getAdminFcmTokens() {
+async function getAdminFcmTokens() {
   const tokens = [];
   try {
     // Сначала получаем телефоны админов из списка сотрудников
     const adminPhones = [];
-    const employeeFiles = fs.readdirSync(EMPLOYEES_DIR);
-    for (const file of employeeFiles) {
-      if (!file.endsWith('.json')) continue;
-      const filePath = path.join(EMPLOYEES_DIR, file);
-      const employee = loadJsonFile(filePath, null);
-      if (employee && employee.isAdmin === true && employee.phone) {
-        // Нормализуем телефон (убираем + и пробелы)
-        const normalizedPhone = employee.phone.replace(/[\s\+]/g, '');
-        adminPhones.push(normalizedPhone);
+    if (await fileExists(EMPLOYEES_DIR)) {
+      const employeeFiles = await fsp.readdir(EMPLOYEES_DIR);
+      for (const file of employeeFiles) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = path.join(EMPLOYEES_DIR, file);
+        const employee = await loadJsonFile(filePath, null);
+        if (employee && employee.isAdmin === true && employee.phone) {
+          // Нормализуем телефон (убираем + и пробелы)
+          const normalizedPhone = employee.phone.replace(/[\s\+]/g, '');
+          adminPhones.push(normalizedPhone);
+        }
       }
     }
 
     console.log(`Найдено ${adminPhones.length} админов с телефонами:`, adminPhones);
 
     // Теперь ищем FCM токены для этих телефонов
-    if (!fs.existsSync(FCM_TOKENS_DIR)) {
+    if (!(await fileExists(FCM_TOKENS_DIR))) {
       console.log('Папка FCM токенов не существует');
       return tokens;
     }
 
-    const tokenFiles = fs.readdirSync(FCM_TOKENS_DIR);
+    const tokenFiles = await fsp.readdir(FCM_TOKENS_DIR);
     for (const file of tokenFiles) {
       if (!file.endsWith('.json')) continue;
       const phone = file.replace('.json', '');
       if (adminPhones.includes(phone)) {
         const filePath = path.join(FCM_TOKENS_DIR, file);
-        const tokenData = loadJsonFile(filePath, null);
+        const tokenData = await loadJsonFile(filePath, null);
         if (tokenData && tokenData.token) {
           tokens.push(tokenData.token);
           console.log(`Найден FCM токен для админа ${phone}`);
@@ -110,7 +131,7 @@ async function sendPushNotification(title, body, data = {}) {
     return;
   }
 
-  const tokens = getAdminFcmTokens();
+  const tokens = await getAdminFcmTokens();
   if (tokens.length === 0) {
     console.log('Нет FCM токенов админов для отправки уведомления');
     return;
@@ -120,6 +141,11 @@ async function sendPushNotification(title, body, data = {}) {
 
   for (const token of tokens) {
     try {
+      // Convert all data values to strings (Firebase requirement)
+      const stringData = Object.fromEntries(
+        Object.entries(data).map(([k, v]) => [k, String(v)])
+      );
+
       await admin.messaging().send({
         token: token,
         notification: {
@@ -127,7 +153,7 @@ async function sendPushNotification(title, body, data = {}) {
           body: body,
         },
         data: {
-          ...data,
+          ...stringData,
           click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
         android: {
@@ -154,14 +180,14 @@ async function sendPushNotification(title, body, data = {}) {
       if (isInvalidToken) {
         // Ищем и удаляем файл с этим токеном
         try {
-          if (fs.existsSync(FCM_TOKENS_DIR)) {
-            const files = fs.readdirSync(FCM_TOKENS_DIR);
+          if (await fileExists(FCM_TOKENS_DIR)) {
+            const files = await fsp.readdir(FCM_TOKENS_DIR);
             for (const file of files) {
               if (!file.endsWith('.json')) continue;
               const filePath = path.join(FCM_TOKENS_DIR, file);
-              const tokenData = loadJsonFile(filePath, null);
+              const tokenData = await loadJsonFile(filePath, null);
               if (tokenData && tokenData.token === token) {
-                fs.unlinkSync(filePath);
+                await fsp.unlink(filePath);
                 console.log(`🗑️ Невалидный FCM токен удалён: ${file}`);
                 break;
               }
@@ -187,18 +213,23 @@ async function sendPushToPhone(phone, title, body, data = {}) {
     const normalizedPhone = phone.replace(/[\s\+]/g, '');
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!(await fileExists(tokenFile))) {
       console.log(`Нет FCM токена для телефона: ${phone}`);
       return false;
     }
 
-    const tokenData = loadJsonFile(tokenFile, null);
+    const tokenData = await loadJsonFile(tokenFile, null);
     if (!tokenData || !tokenData.token) {
       console.log(`Некорректный FCM токен для телефона: ${phone}`);
       return false;
     }
 
     console.log(`Отправка push-уведомления на ${phone}: ${title}`);
+
+    // Convert all data values to strings (Firebase requirement)
+    const stringData = Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [k, String(v)])
+    );
 
     await admin.messaging().send({
       token: tokenData.token,
@@ -207,7 +238,7 @@ async function sendPushToPhone(phone, title, body, data = {}) {
         body: body,
       },
       data: {
-        ...data,
+        ...stringData,
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
       },
       android: {
@@ -238,8 +269,8 @@ async function sendPushToPhone(phone, title, body, data = {}) {
       try {
         const normalizedPhone = phone.replace(/[\s\+]/g, '');
         const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
-        if (fs.existsSync(tokenFile)) {
-          fs.unlinkSync(tokenFile);
+        if (await fileExists(tokenFile)) {
+          await fsp.unlink(tokenFile);
           console.log(`🗑️ Невалидный FCM токен удалён для: ${phone}`);
         }
       } catch (deleteError) {
@@ -267,9 +298,9 @@ function setupReportNotificationsAPI(app) {
   console.log('Setting up Report Notifications API...');
 
   // GET /api/report-notifications - Получить все уведомления
-  app.get('/api/report-notifications', (req, res) => {
+  app.get('/api/report-notifications', async (req, res) => {
     try {
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       res.json({ success: true, notifications });
     } catch (e) {
       console.error('Error getting notifications:', e);
@@ -278,9 +309,9 @@ function setupReportNotificationsAPI(app) {
   });
 
   // GET /api/report-notifications/unviewed-counts - Получить количество непросмотренных по типам
-  app.get('/api/report-notifications/unviewed-counts', (req, res) => {
+  app.get('/api/report-notifications/unviewed-counts', async (req, res) => {
     try {
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       const counts = {
         shift_handover: 0,
         recount: 0,
@@ -322,7 +353,7 @@ function setupReportNotificationsAPI(app) {
         return res.status(400).json({ success: false, error: 'Missing required fields: reportType, reportId' });
       }
 
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       const now = new Date().toISOString();
 
       const newNotification = {
@@ -338,7 +369,7 @@ function setupReportNotificationsAPI(app) {
       };
 
       notifications.push(newNotification);
-      saveNotifications(notifications);
+      await saveNotifications(notifications);
 
       console.log(`Создано уведомление о ${REPORT_TYPE_NAMES[reportType] || reportType}: ${employeeName}`);
 
@@ -364,12 +395,12 @@ function setupReportNotificationsAPI(app) {
   });
 
   // PATCH /api/report-notifications/:id/view - Отметить уведомление как просмотренное
-  app.patch('/api/report-notifications/:id/view', (req, res) => {
+  app.patch('/api/report-notifications/:id/view', async (req, res) => {
     try {
       const { id } = req.params;
       const { adminName } = req.body;
 
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       const index = notifications.findIndex(n => n.id === id);
 
       if (index === -1) {
@@ -379,7 +410,7 @@ function setupReportNotificationsAPI(app) {
       if (!notifications[index].viewedAt) {
         notifications[index].viewedAt = new Date().toISOString();
         notifications[index].viewedBy = adminName || 'admin';
-        saveNotifications(notifications);
+        await saveNotifications(notifications);
         console.log(`Уведомление ${id} отмечено как просмотренное`);
       }
 
@@ -391,7 +422,7 @@ function setupReportNotificationsAPI(app) {
   });
 
   // PATCH /api/report-notifications/view-by-report - Отметить просмотренным по ID отчёта
-  app.patch('/api/report-notifications/view-by-report', (req, res) => {
+  app.patch('/api/report-notifications/view-by-report', async (req, res) => {
     try {
       const { reportType, reportId, adminName } = req.body;
 
@@ -399,7 +430,7 @@ function setupReportNotificationsAPI(app) {
         return res.status(400).json({ success: false, error: 'Missing reportType or reportId' });
       }
 
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       let updated = false;
 
       for (const notif of notifications) {
@@ -411,7 +442,7 @@ function setupReportNotificationsAPI(app) {
       }
 
       if (updated) {
-        saveNotifications(notifications);
+        await saveNotifications(notifications);
         console.log(`Уведомления для ${reportType}/${reportId} отмечены как просмотренные`);
       }
 
@@ -423,11 +454,11 @@ function setupReportNotificationsAPI(app) {
   });
 
   // POST /api/report-notifications/mark-all-viewed - Отметить все уведомления типа как просмотренные
-  app.post('/api/report-notifications/mark-all-viewed', (req, res) => {
+  app.post('/api/report-notifications/mark-all-viewed', async (req, res) => {
     try {
       const { reportType, adminName } = req.body;
 
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       const now = new Date().toISOString();
       let count = 0;
 
@@ -441,7 +472,7 @@ function setupReportNotificationsAPI(app) {
       }
 
       if (count > 0) {
-        saveNotifications(notifications);
+        await saveNotifications(notifications);
         console.log(`Отмечено ${count} уведомлений как просмотренные (тип: ${reportType || 'все'})`);
       }
 
@@ -453,9 +484,9 @@ function setupReportNotificationsAPI(app) {
   });
 
   // DELETE /api/report-notifications/cleanup - Удалить старые просмотренные уведомления (старше 30 дней)
-  app.delete('/api/report-notifications/cleanup', (req, res) => {
+  app.delete('/api/report-notifications/cleanup', async (req, res) => {
     try {
-      const notifications = loadNotifications();
+      const notifications = await loadNotifications();
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
       const filtered = notifications.filter(n => {
@@ -465,7 +496,7 @@ function setupReportNotificationsAPI(app) {
 
       const removedCount = notifications.length - filtered.length;
       if (removedCount > 0) {
-        saveNotifications(filtered);
+        await saveNotifications(filtered);
         console.log(`Удалено ${removedCount} старых уведомлений`);
       }
 

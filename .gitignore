@@ -87,3 +87,7 @@ android/*.jks
 android/*.keystore
 *.jks
 *.keystore
+
+# Firebase config с API ключами (НЕ КОММИТИТЬ!)
+android/app/google-services.json
+**/google-services.json

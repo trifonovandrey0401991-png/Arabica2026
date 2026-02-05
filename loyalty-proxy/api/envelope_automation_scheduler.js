@@ -1,4 +1,10 @@
-const fs = require('fs');
+/**
+ * Envelope Automation Scheduler
+ *
+ * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ */
+
+const fsp = require('fs').promises;
 const path = require('path');
 
 // Директории
@@ -14,6 +20,25 @@ const POINTS_SETTINGS_FILE = `${DATA_DIR}/points-settings/envelope_points_settin
 // Интервал проверки: 5 минут
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
+// Async helper
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Ensure directories exist (async IIFE)
+(async () => {
+  for (const dir of [ENVELOPE_PENDING_DIR, ENVELOPE_REPORTS_DIR, ENVELOPE_STATE_DIR]) {
+    if (!(await fileExists(dir))) {
+      await fsp.mkdir(dir, { recursive: true });
+    }
+  }
+})();
+
 // ============================================
 // OPTIMIZATION: Batch loading for scalability
 // ============================================
@@ -23,21 +48,21 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000;
  * @param {string} date - Дата в формате YYYY-MM-DD
  * @returns {Map<string, object>} Map ключ: "shopAddress|shiftType|date"
  */
-function loadAllPendingReportsForDate(date) {
+async function loadAllPendingReportsForDate(date) {
   const pendingMap = new Map();
 
-  if (!fs.existsSync(ENVELOPE_PENDING_DIR)) {
+  if (!(await fileExists(ENVELOPE_PENDING_DIR))) {
     return pendingMap;
   }
 
-  const files = fs.readdirSync(ENVELOPE_PENDING_DIR);
+  const files = await fsp.readdir(ENVELOPE_PENDING_DIR);
 
   for (const file of files) {
     if (!file.startsWith('pending_env_') || !file.endsWith('.json')) continue;
 
     try {
       const filePath = path.join(ENVELOPE_PENDING_DIR, file);
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const data = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
       if (data.date === date) {
         const key = `${data.shopAddress}|${data.shiftType}|${data.date}`;
@@ -58,21 +83,21 @@ function loadAllPendingReportsForDate(date) {
  * @param {string} date - Дата в формате YYYY-MM-DD
  * @returns {Set<string>} Set ключей: "shopAddress|shiftType|date"
  */
-function loadAllSubmittedReportsForDate(date) {
+async function loadAllSubmittedReportsForDate(date) {
   const submittedSet = new Set();
 
-  if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+  if (!(await fileExists(ENVELOPE_REPORTS_DIR))) {
     return submittedSet;
   }
 
-  const files = fs.readdirSync(ENVELOPE_REPORTS_DIR);
+  const files = await fsp.readdir(ENVELOPE_REPORTS_DIR);
 
   for (const file of files) {
     if (!file.endsWith('.json')) continue;
 
     try {
       const filePath = path.join(ENVELOPE_REPORTS_DIR, file);
-      const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
       const reportDate = report.createdAt ? report.createdAt.split('T')[0] : null;
 
@@ -101,8 +126,8 @@ function getMoscowTime() {
 /**
  * Загрузка настроек конвертов
  */
-function getEnvelopeSettings() {
-  if (!fs.existsSync(POINTS_SETTINGS_FILE)) {
+async function getEnvelopeSettings() {
+  if (!(await fileExists(POINTS_SETTINGS_FILE))) {
     return {
       morningStartTime: '07:00',
       morningEndTime: '09:00',
@@ -115,53 +140,53 @@ function getEnvelopeSettings() {
       adminReviewTimeout: 0
     };
   }
-  return JSON.parse(fs.readFileSync(POINTS_SETTINGS_FILE, 'utf8'));
+  return JSON.parse(await fsp.readFile(POINTS_SETTINGS_FILE, 'utf8'));
 }
 
 /**
  * Загрузка состояния автоматизации
  */
-function loadState() {
-  if (!fs.existsSync(STATE_FILE)) {
+async function loadState() {
+  if (!(await fileExists(STATE_FILE))) {
     const defaultState = {
       lastMorningGeneration: null,
       lastEveningGeneration: null,
       lastCleanup: null,
       lastCheck: null
     };
-    fs.writeFileSync(STATE_FILE, JSON.stringify(defaultState, null, 2));
+    await fsp.writeFile(STATE_FILE, JSON.stringify(defaultState, null, 2));
     return defaultState;
   }
-  return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+  return JSON.parse(await fsp.readFile(STATE_FILE, 'utf8'));
 }
 
 /**
  * Сохранение состояния
  */
-function saveState(state) {
+async function saveState(state) {
   state.lastCheck = new Date().toISOString();
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
 /**
  * Загрузка pending отчетов за сегодня
  */
-function loadTodayPendingReports() {
+async function loadTodayPendingReports() {
   const moscow = getMoscowTime();
   const today = moscow.toISOString().split('T')[0];
   const reports = [];
 
-  if (!fs.existsSync(ENVELOPE_PENDING_DIR)) {
+  if (!(await fileExists(ENVELOPE_PENDING_DIR))) {
     return reports;
   }
 
-  const files = fs.readdirSync(ENVELOPE_PENDING_DIR);
+  const files = await fsp.readdir(ENVELOPE_PENDING_DIR);
 
   for (const file of files) {
     if (file.startsWith('pending_env_')) {
       const filePath = path.join(ENVELOPE_PENDING_DIR, file);
       try {
-        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const data = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         if (data.date === today) {
           data._filePath = filePath;
           reports.push(data);
@@ -178,18 +203,18 @@ function loadTodayPendingReports() {
 /**
  * Поиск существующего pending отчета
  */
-function findPendingReport(shopAddress, shiftType, date) {
-  if (!fs.existsSync(ENVELOPE_PENDING_DIR)) {
+async function findPendingReport(shopAddress, shiftType, date) {
+  if (!(await fileExists(ENVELOPE_PENDING_DIR))) {
     return null;
   }
 
-  const files = fs.readdirSync(ENVELOPE_PENDING_DIR);
+  const files = await fsp.readdir(ENVELOPE_PENDING_DIR);
 
   for (const file of files) {
     if (file.startsWith('pending_env_')) {
       const filePath = path.join(ENVELOPE_PENDING_DIR, file);
       try {
-        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const data = JSON.parse(await fsp.readFile(filePath, 'utf8'));
         if (
           data.shopAddress === shopAddress &&
           data.shiftType === shiftType &&
@@ -209,18 +234,18 @@ function findPendingReport(shopAddress, shiftType, date) {
 /**
  * Проверка: был ли сдан отчет по конверту
  */
-function checkIfEnvelopeSubmitted(shopAddress, shiftType, date) {
-  if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+async function checkIfEnvelopeSubmitted(shopAddress, shiftType, date) {
+  if (!(await fileExists(ENVELOPE_REPORTS_DIR))) {
     return false;
   }
 
-  const files = fs.readdirSync(ENVELOPE_REPORTS_DIR);
+  const files = await fsp.readdir(ENVELOPE_REPORTS_DIR);
 
   for (const file of files) {
     if (file.endsWith('.json')) {
       const filePath = path.join(ENVELOPE_REPORTS_DIR, file);
       try {
-        const report = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
         // Проверяем совпадение магазина, смены и даты
         const reportDate = report.createdAt ? report.createdAt.split('T')[0] : null;
@@ -250,15 +275,21 @@ async function generatePendingReports(shiftType) {
   console.log(`[Envelope Automation] Создание pending отчетов для ${shiftType}`);
 
   // 1. Загрузить все магазины
-  if (!fs.existsSync(SHOPS_FILE)) {
+  if (!(await fileExists(SHOPS_FILE))) {
     console.log('[Envelope] Файл магазинов не найден');
     return 0;
   }
 
-  const shops = JSON.parse(fs.readFileSync(SHOPS_FILE, 'utf8'));
+  const shopsData = JSON.parse(await fsp.readFile(SHOPS_FILE, 'utf8'));
+  const shops = shopsData.shops || shopsData || [];
+
+  if (!Array.isArray(shops)) {
+    console.error('[Envelope] Ошибка: shops не является массивом, получено:', typeof shops);
+    return 0;
+  }
 
   // 2. Получить настройки
-  const settings = getEnvelopeSettings();
+  const settings = await getEnvelopeSettings();
   const deadline = shiftType === 'morning' ? settings.morningDeadline : settings.eveningDeadline;
 
   // 3. Текущая дата
@@ -266,8 +297,8 @@ async function generatePendingReports(shiftType) {
   const today = moscow.toISOString().split('T')[0]; // YYYY-MM-DD
 
   // OPTIMIZATION: Загрузить ВСЕ pending и submitted отчёты ОДИН раз
-  const pendingMap = loadAllPendingReportsForDate(today);
-  const submittedSet = loadAllSubmittedReportsForDate(today);
+  const pendingMap = await loadAllPendingReportsForDate(today);
+  const submittedSet = await loadAllSubmittedReportsForDate(today);
 
   let created = 0;
   let skippedPending = 0;
@@ -303,7 +334,7 @@ async function generatePendingReports(shiftType) {
 
     // Сохранить
     const filePath = path.join(ENVELOPE_PENDING_DIR, `${report.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(report, null, 2));
+    await fsp.writeFile(filePath, JSON.stringify(report, null, 2));
     created++;
   }
 
@@ -320,10 +351,10 @@ async function checkPendingDeadlines() {
   const startTime = Date.now();
   const moscow = getMoscowTime();
   const today = moscow.toISOString().split('T')[0];
-  const settings = getEnvelopeSettings();
+  const settings = await getEnvelopeSettings();
 
   // OPTIMIZATION: Загрузить ВСЕ pending отчёты за сегодня через batch функцию
-  const pendingMap = loadAllPendingReportsForDate(today);
+  const pendingMap = await loadAllPendingReportsForDate(today);
   const reports = Array.from(pendingMap.values());
 
   if (reports.length === 0) {
@@ -331,7 +362,7 @@ async function checkPendingDeadlines() {
   }
 
   // OPTIMIZATION: Загрузить ВСЕ submitted отчёты ОДИН раз
-  const submittedSet = loadAllSubmittedReportsForDate(today);
+  const submittedSet = await loadAllSubmittedReportsForDate(today);
 
   const failedReports = [];
   let removedCount = 0;
@@ -345,7 +376,7 @@ async function checkPendingDeadlines() {
     if (submittedSet.has(lookupKey)) {
       // Удалить pending файл
       try {
-        fs.unlinkSync(report._filePath);
+        await fsp.unlink(report._filePath);
         removedCount++;
       } catch (e) {
         console.error(`[Envelope] Ошибка удаления pending: ${e.message}`);
@@ -364,7 +395,7 @@ async function checkPendingDeadlines() {
       report.failedAt = moscow.toISOString();
 
       // Сохранить изменения
-      fs.writeFileSync(report._filePath, JSON.stringify(report, null, 2));
+      await fsp.writeFile(report._filePath, JSON.stringify(report, null, 2));
 
       // Назначить штраф
       await assignPenaltyFromSchedule(report, settings);
@@ -396,12 +427,12 @@ async function assignPenaltyFromSchedule(report, settings) {
   const [year, month] = date.split('-');
   const scheduleFile = `${DATA_DIR}/work-schedules/${year}-${month}.json`;
 
-  if (!fs.existsSync(scheduleFile)) {
+  if (!(await fileExists(scheduleFile))) {
     console.log(`[Envelope] График не найден: ${scheduleFile}`);
     return;
   }
 
-  const schedule = JSON.parse(fs.readFileSync(scheduleFile, 'utf8'));
+  const schedule = JSON.parse(await fsp.readFile(scheduleFile, 'utf8'));
 
   // 2. Найти сотрудника
   const entry = schedule.entries.find(e =>
@@ -437,15 +468,15 @@ async function assignPenaltyFromSchedule(report, settings) {
 
   // 4. Сохранить в efficiency-penalties
   const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
-  if (!fs.existsSync(penaltiesDir)) {
-    fs.mkdirSync(penaltiesDir, { recursive: true });
+  if (!(await fileExists(penaltiesDir))) {
+    await fsp.mkdir(penaltiesDir, { recursive: true });
   }
 
   const penaltiesFile = path.join(penaltiesDir, `${year}-${month}.json`);
   let penalties = { penalties: [] };
 
-  if (fs.existsSync(penaltiesFile)) {
-    penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+  if (await fileExists(penaltiesFile)) {
+    penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
   }
 
   // Проверка дубликатов
@@ -456,7 +487,7 @@ async function assignPenaltyFromSchedule(report, settings) {
   }
 
   penalties.penalties.push(penalty);
-  fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2));
+  await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2));
 
   console.log(`[Envelope] Штраф назначен: ${entry.employeeName} (${penalty.points} баллов)`);
 
@@ -478,7 +509,7 @@ async function sendAdminFailedNotification(count) {
 
     await sendPushNotification(title, body, {
       type: 'envelope_failed',
-      count: count
+      count: String(count)
     });
 
     console.log(`[Envelope] Push админу: ${body}`);
@@ -500,7 +531,7 @@ async function sendEmployeePenaltyNotification(phone, employeeName, points, shif
 
     await sendPushToPhone(phone, title, body, {
       type: 'envelope_penalty',
-      points: points
+      points: String(points)
     });
 
     console.log(`[Envelope] Push сотруднику ${employeeName}: ${body}`);
@@ -512,20 +543,20 @@ async function sendEmployeePenaltyNotification(phone, employeeName, points, shif
 /**
  * Очистка failed отчетов в конце дня
  */
-function cleanupFailedReports() {
+async function cleanupFailedReports() {
   console.log('[Envelope] Очистка pending/failed отчетов (23:59)');
 
-  if (!fs.existsSync(ENVELOPE_PENDING_DIR)) {
+  if (!(await fileExists(ENVELOPE_PENDING_DIR))) {
     console.log('[Envelope] Директория pending не существует');
     return;
   }
 
-  const files = fs.readdirSync(ENVELOPE_PENDING_DIR);
+  const files = await fsp.readdir(ENVELOPE_PENDING_DIR);
   let deleted = 0;
 
   for (const file of files) {
     if (file.startsWith('pending_env_')) {
-      fs.unlinkSync(path.join(ENVELOPE_PENDING_DIR, file));
+      await fsp.unlink(path.join(ENVELOPE_PENDING_DIR, file));
       deleted++;
     }
   }
@@ -540,22 +571,22 @@ function cleanupFailedReports() {
     lastCheck: new Date().toISOString()
   };
 
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  await fsp.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
 /**
  * Главный цикл проверки
  */
-function startScheduler() {
+async function startScheduler() {
   console.log('[Envelope Automation] Запуск scheduler...');
 
   // Создать директории если их нет
-  if (!fs.existsSync(ENVELOPE_PENDING_DIR)) {
-    fs.mkdirSync(ENVELOPE_PENDING_DIR, { recursive: true });
+  if (!(await fileExists(ENVELOPE_PENDING_DIR))) {
+    await fsp.mkdir(ENVELOPE_PENDING_DIR, { recursive: true });
     console.log(`[Envelope] Создана директория: ${ENVELOPE_PENDING_DIR}`);
   }
-  if (!fs.existsSync(ENVELOPE_STATE_DIR)) {
-    fs.mkdirSync(ENVELOPE_STATE_DIR, { recursive: true });
+  if (!(await fileExists(ENVELOPE_STATE_DIR))) {
+    await fsp.mkdir(ENVELOPE_STATE_DIR, { recursive: true });
     console.log(`[Envelope] Создана директория: ${ENVELOPE_STATE_DIR}`);
   }
 
@@ -563,8 +594,8 @@ function startScheduler() {
   setInterval(async () => {
     try {
       const moscow = getMoscowTime();
-      const settings = getEnvelopeSettings();
-      const state = loadState();
+      const settings = await getEnvelopeSettings();
+      const state = await loadState();
 
       const currentHour = moscow.getUTCHours();
       const currentMinute = moscow.getUTCMinutes();
@@ -580,7 +611,7 @@ function startScheduler() {
       ) {
         await generatePendingReports('morning');
         state.lastMorningGeneration = today;
-        saveState(state);
+        await saveState(state);
       }
 
       // Проверка 2: Создание вечерних pending (19:00)
@@ -593,7 +624,7 @@ function startScheduler() {
       ) {
         await generatePendingReports('evening');
         state.lastEveningGeneration = today;
-        saveState(state);
+        await saveState(state);
       }
 
       // Проверка 3: Дедлайны
@@ -602,7 +633,7 @@ function startScheduler() {
       // Проверка 4: Очистка в 23:59
       if (currentHour === 23 && currentMinute >= 59) {
         if (state.lastCleanup !== today) {
-          cleanupFailedReports();
+          await cleanupFailedReports();
         }
       }
 

@@ -5,7 +5,26 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
+
+// ============================================
+// ASYNC HELPERS (for sync->async refactoring)
+// ============================================
+async function fileExists(filePath) {
+  try {
+    await fsp.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureDir(dirPath) {
+  if (!(await fileExists(dirPath))) {
+    await fsp.mkdir(dirPath, { recursive: true });
+  }
+}
 const { exec, spawn } = require('child_process');
 const util = require('util');
 const ordersModule = require('./modules/orders');
@@ -326,11 +345,11 @@ function isPathSafe(baseDir, filePath) {
 
 // Настройка multer для загрузки фото
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: async function (req, file, cb) {
     const uploadDir = `${DATA_DIR}/shift-photos`;
     // Создаем директорию, если её нет
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -353,11 +372,11 @@ const upload = multer({
 
 // Настройка multer для загрузки эталонных фото сдачи смены
 const shiftHandoverPhotoStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: async function (req, file, cb) {
     const uploadDir = `${DATA_DIR}/shift-handover-question-photos`;
     // Создаем директорию, если её нет
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -378,11 +397,11 @@ const uploadShiftHandoverPhoto = multer({
 
 // Настройка multer для загрузки фото вопросов о товарах
 const productQuestionPhotoStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: async function (req, file, cb) {
     const uploadDir = `${DATA_DIR}/product-question-photos`;
     // Создаем директорию, если её нет
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -403,10 +422,10 @@ const uploadProductQuestionPhoto = multer({
 
 // Настройка multer для загрузки медиа в чате
 const chatMediaStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: async (req, file, cb) => {
     const uploadDir = `${DATA_DIR}/chat-media`;
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -532,9 +551,9 @@ app.post('/api/recount-reports', async (req, res) => {
         eveningEndTime: '23:00'
       };
 
-      if (fs.existsSync(settingsFile)) {
+      if (await fileExists(settingsFile)) {
         try {
-          const settingsData = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+          const settingsData = JSON.parse(await fsp.readFile(settingsFile, 'utf8'));
           recountSettings = { ...recountSettings, ...settingsData };
         } catch (e) {
           console.log('Ошибка чтения настроек пересчёта, используем дефолтные');
@@ -575,8 +594,8 @@ app.post('/api/recount-reports', async (req, res) => {
     // Сохранение отчёта
     // ============================================
     const reportsDir = `${DATA_DIR}/recount-reports`;
-    if (!fs.existsSync(reportsDir)) {
-      fs.mkdirSync(reportsDir, { recursive: true });
+    if (!await fileExists(reportsDir)) {
+      await fsp.mkdir(reportsDir, { recursive: true });
     }
 
     const reportId = req.body.id || `report_${Date.now()}`;
@@ -587,9 +606,9 @@ app.post('/api/recount-reports', async (req, res) => {
     // Загружаем настройки для вычисления reviewDeadline
     let adminReviewTimeout = 2; // часы по умолчанию
     const settingsFile = `${DATA_DIR}/points-settings/recount_points_settings.json`;
-    if (fs.existsSync(settingsFile)) {
+    if (await fileExists(settingsFile)) {
       try {
-        const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+        const settings = JSON.parse(await fsp.readFile(settingsFile, 'utf8'));
         adminReviewTimeout = settings.adminReviewTimeout || 2;
       } catch (e) {}
     }
@@ -608,7 +627,7 @@ app.post('/api/recount-reports', async (req, res) => {
     };
 
     try {
-      fs.writeFileSync(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
+      await fsp.writeFile(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
       console.log('✅ Отчет пересчёта сохранен:', reportFile);
     } catch (writeError) {
       console.error('Ошибка записи файла:', writeError);
@@ -661,13 +680,13 @@ app.get('/api/recount-reports', async (req, res) => {
     const reports = [];
     
     // Читаем отчеты из локальной директории
-    if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+    if (await fileExists(reportsDir)) {
+      const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
       
       for (const file of files) {
         try {
           const filePath = path.join(reportsDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const report = JSON.parse(content);
           reports.push(report);
         } catch (e) {
@@ -721,13 +740,13 @@ app.get('/api/recount-reports/expired', async (req, res) => {
     const reportsDir = `${DATA_DIR}/recount-reports`;
     const reports = [];
 
-    if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+    if (await fileExists(reportsDir)) {
+      const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
 
       for (const file of files) {
         try {
           const filePath = path.join(reportsDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const report = JSON.parse(content);
 
           // Фильтруем только просроченные статусы: expired, failed, rejected
@@ -766,13 +785,13 @@ app.get('/api/pending-recount-reports', async (req, res) => {
     const reportsDir = `${DATA_DIR}/recount-reports`;
     const reports = [];
 
-    if (fs.existsSync(reportsDir)) {
-      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+    if (await fileExists(reportsDir)) {
+      const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
 
       for (const file of files) {
         try {
           const filePath = path.join(reportsDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const report = JSON.parse(content);
 
           // Фильтруем только pending отчёты
@@ -818,10 +837,10 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     let reportFile = path.join(reportsDir, `${sanitizedId}.json`);
     let actualFile = reportFile;
 
-    if (!fs.existsSync(reportFile)) {
+    if (!await fileExists(reportFile)) {
       console.error(`Файл не найден: ${reportFile}`);
       // Попробуем найти файл по частичному совпадению
-      const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+      const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
       const matchingFile = files.find(f => f.includes(sanitizedId.substring(0, 20)));
       if (matchingFile) {
         console.log(`Найден файл по частичному совпадению: ${matchingFile}`);
@@ -832,7 +851,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     }
 
     // Читаем отчет
-    const content = fs.readFileSync(actualFile, 'utf8');
+    const content = await fsp.readFile(actualFile, 'utf8');
     const report = JSON.parse(content);
 
     // Обновляем оценку и статус
@@ -842,7 +861,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     report.status = 'confirmed';
 
     // Сохраняем обновленный отчет
-    fs.writeFileSync(actualFile, JSON.stringify(report, null, 2), 'utf8');
+    await fsp.writeFile(actualFile, JSON.stringify(report, null, 2), 'utf8');
     console.log('✅ Оценка сохранена для отчета:', reportId);
 
     // Загружаем настройки баллов пересчёта
@@ -854,8 +873,8 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
       minRating: 1,
       maxRating: 10
     };
-    if (fs.existsSync(settingsFile)) {
-      const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+    if (await fileExists(settingsFile)) {
+      const settingsContent = await fsp.readFile(settingsFile, 'utf8');
       settings = { ...settings, ...JSON.parse(settingsContent) };
     }
 
@@ -869,14 +888,14 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     const today = now.toISOString().split('T')[0];
     const efficiencyDir = `${DATA_DIR}/efficiency-penalties`;
 
-    if (!fs.existsSync(efficiencyDir)) {
-      fs.mkdirSync(efficiencyDir, { recursive: true });
+    if (!await fileExists(efficiencyDir)) {
+      await fsp.mkdir(efficiencyDir, { recursive: true });
     }
 
     const penaltiesFile = path.join(efficiencyDir, `${monthKey}.json`);
     let penalties = [];
-    if (fs.existsSync(penaltiesFile)) {
-      penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+    if (await fileExists(penaltiesFile)) {
+      penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
     }
 
     // Проверяем дубликат
@@ -898,7 +917,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
       };
 
       penalties.push(penalty);
-      fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+      await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
       console.log(`✅ Баллы эффективности сохранены: ${efficiencyPoints} для ${report.employeeName}`);
     }
 
@@ -954,18 +973,18 @@ app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question
 // ============================================
 
 // Загрузить настройки магазина
-function loadShopSettings(shopAddress) {
+async function loadShopSettings(shopAddress) {
   try {
     const settingsDir = `${DATA_DIR}/shop-settings`;
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
 
-    if (!fs.existsSync(settingsFile)) {
+    if (!await fileExists(settingsFile)) {
       console.log(`Настройки магазина не найдены: ${shopAddress}`);
       return null;
     }
 
-    const content = fs.readFileSync(settingsFile, 'utf8');
+    const content = await fsp.readFile(settingsFile, 'utf8');
     return JSON.parse(content);
   } catch (error) {
     console.error('Ошибка загрузки настроек магазина:', error);
@@ -974,16 +993,16 @@ function loadShopSettings(shopAddress) {
 }
 
 // Загрузить настройки баллов за attendance
-function loadAttendancePointsSettings() {
+async function loadAttendancePointsSettings() {
   try {
     const settingsFile = `${DATA_DIR}/points-settings/attendance.json`;
 
-    if (!fs.existsSync(settingsFile)) {
+    if (!await fileExists(settingsFile)) {
       console.log('Настройки баллов attendance не найдены, используются значения по умолчанию');
       return { onTimePoints: 0.5, latePoints: -1 };
     }
 
-    const content = fs.readFileSync(settingsFile, 'utf8');
+    const content = await fsp.readFile(settingsFile, 'utf8');
     return JSON.parse(content);
   } catch (error) {
     console.error('Ошибка загрузки настроек баллов attendance:', error);
@@ -1003,7 +1022,7 @@ function parseTimeToMinutes(timeStr) {
 }
 
 // Проверить попадает ли время в интервал смены
-function checkShiftTime(timestamp, shopSettings) {
+async function checkShiftTime(timestamp, shopSettings) {
   const time = new Date(timestamp);
   const hour = time.getHours();
   const minute = time.getMinutes();
@@ -1060,7 +1079,7 @@ function checkShiftTime(timestamp, shopSettings) {
 }
 
 // Вычислить опоздание в минутах
-function calculateLateMinutes(timestamp, shiftType, shopSettings) {
+async function calculateLateMinutes(timestamp, shiftType, shopSettings) {
   if (!shopSettings || !shiftType) return 0;
 
   const time = new Date(timestamp);
@@ -1085,7 +1104,7 @@ function calculateLateMinutes(timestamp, shiftType, shopSettings) {
 }
 
 // Создать штраф за опоздание
-function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
+async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
   try {
     const now = new Date();
     const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
@@ -1114,20 +1133,20 @@ function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
 
     // Сохраняем в файл штрафов
     const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
-    if (!fs.existsSync(penaltiesDir)) {
-      fs.mkdirSync(penaltiesDir, { recursive: true });
+    if (!await fileExists(penaltiesDir)) {
+      await fsp.mkdir(penaltiesDir, { recursive: true });
     }
 
     const penaltiesFile = path.join(penaltiesDir, `${monthKey}.json`);
     let penalties = [];
 
-    if (fs.existsSync(penaltiesFile)) {
-      const content = fs.readFileSync(penaltiesFile, 'utf8');
+    if (await fileExists(penaltiesFile)) {
+      const content = await fsp.readFile(penaltiesFile, 'utf8');
       penalties = JSON.parse(content);
     }
 
     penalties.push(penaltyRecord);
-    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
 
     console.log(`Штраф создан: ${penalty} баллов за опоздание ${lateMinutes} мин для ${employeeName}`);
     return penaltyRecord;
@@ -1138,7 +1157,7 @@ function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
 }
 
 // Создать бонус за своевременный приход
-function createOnTimeBonus(employeeName, shopAddress, shiftType) {
+async function createOnTimeBonus(employeeName, shopAddress, shiftType) {
   try {
     const now = new Date();
     const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
@@ -1171,20 +1190,20 @@ function createOnTimeBonus(employeeName, shopAddress, shiftType) {
 
     // Сохраняем в файл бонусов
     const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
-    if (!fs.existsSync(penaltiesDir)) {
-      fs.mkdirSync(penaltiesDir, { recursive: true });
+    if (!await fileExists(penaltiesDir)) {
+      await fsp.mkdir(penaltiesDir, { recursive: true });
     }
 
     const penaltiesFile = path.join(penaltiesDir, `${monthKey}.json`);
     let penalties = [];
 
-    if (fs.existsSync(penaltiesFile)) {
-      const content = fs.readFileSync(penaltiesFile, 'utf8');
+    if (await fileExists(penaltiesFile)) {
+      const content = await fsp.readFile(penaltiesFile, 'utf8');
       penalties = JSON.parse(content);
     }
 
     penalties.push(bonusRecord);
-    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
 
     console.log(`Бонус создан: +${bonus} баллов за своевременный приход для ${employeeName}`);
     return bonusRecord;
@@ -1211,8 +1230,8 @@ app.post('/api/attendance', async (req, res) => {
     }
 
     const attendanceDir = `${DATA_DIR}/attendance`;
-    if (!fs.existsSync(attendanceDir)) {
-      fs.mkdirSync(attendanceDir, { recursive: true });
+    if (!await fileExists(attendanceDir)) {
+      await fsp.mkdir(attendanceDir, { recursive: true });
     }
 
     const recordId = req.body.id || `attendance_${Date.now()}`;
@@ -1233,7 +1252,7 @@ app.post('/api/attendance', async (req, res) => {
       createdAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
+    await fsp.writeFile(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
     console.log('Отметка сохранена:', recordFile);
 
     // Удаляем pending отчёт после успешной отметки
@@ -1296,7 +1315,7 @@ app.post('/api/attendance/confirm-shift', async (req, res) => {
     const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const recordFile = path.join(attendanceDir, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(recordFile)) {
+    if (!await fileExists(recordFile)) {
       return res.status(404).json({
         success: false,
         error: 'Запись отметки не найдена'
@@ -1304,7 +1323,7 @@ app.post('/api/attendance/confirm-shift', async (req, res) => {
     }
 
     // Загружаем существующую запись
-    const content = fs.readFileSync(recordFile, 'utf8');
+    const content = await fsp.readFile(recordFile, 'utf8');
     const record = JSON.parse(content);
 
     // Загружаем настройки магазина
@@ -1319,7 +1338,7 @@ app.post('/api/attendance/confirm-shift', async (req, res) => {
     record.lateMinutes = lateMinutes;
     record.confirmedAt = new Date().toISOString();
 
-    fs.writeFileSync(recordFile, JSON.stringify(record, null, 2), 'utf8');
+    await fsp.writeFile(recordFile, JSON.stringify(record, null, 2), 'utf8');
 
     // Если опоздал - создаём штраф
     let penaltyCreated = false;
@@ -1367,18 +1386,18 @@ app.get('/api/attendance/check', async (req, res) => {
     }
     
     const attendanceDir = `${DATA_DIR}/attendance`;
-    if (!fs.existsSync(attendanceDir)) {
+    if (!await fileExists(attendanceDir)) {
       return res.json({ success: true, hasAttendance: false });
     }
     
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(attendanceDir)).filter(f => f.endsWith('.json'));
     for (const file of files) {
       try {
         const filePath = path.join(attendanceDir, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const record = JSON.parse(content);
         
         if (record.employeeName === employeeName) {
@@ -1409,13 +1428,13 @@ app.get('/api/attendance', async (req, res) => {
     const attendanceDir = `${DATA_DIR}/attendance`;
     const records = [];
     
-    if (fs.existsSync(attendanceDir)) {
-      const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
+    if (await fileExists(attendanceDir)) {
+      const files = (await fsp.readdir(attendanceDir)).filter(f => f.endsWith('.json'));
       
       for (const file of files) {
         try {
           const filePath = path.join(attendanceDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const record = JSON.parse(content);
           records.push(record);
         } catch (e) {
@@ -1462,10 +1481,10 @@ app.get('/api/attendance', async (req, res) => {
 
 // Настройка multer для загрузки фото сотрудников
 const employeePhotoStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: async function (req, file, cb) {
     const uploadDir = `${DATA_DIR}/employee-photos`;
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
@@ -1511,8 +1530,8 @@ app.post('/api/employee-registration', async (req, res) => {
     console.log('POST /api/employee-registration:', JSON.stringify(req.body).substring(0, 200));
     
     const registrationDir = `${DATA_DIR}/employee-registrations`;
-    if (!fs.existsSync(registrationDir)) {
-      fs.mkdirSync(registrationDir, { recursive: true });
+    if (!await fileExists(registrationDir)) {
+      await fsp.mkdir(registrationDir, { recursive: true });
     }
     
     const phone = req.body.phone;
@@ -1531,9 +1550,9 @@ app.post('/api/employee-registration', async (req, res) => {
     };
     
     // Если файл существует, сохраняем createdAt из старого файла
-    if (fs.existsSync(registrationFile)) {
+    if (await fileExists(registrationFile)) {
       try {
-        const oldContent = fs.readFileSync(registrationFile, 'utf8');
+        const oldContent = await fsp.readFile(registrationFile, 'utf8');
         const oldData = JSON.parse(oldContent);
         if (oldData.createdAt) {
           registrationData.createdAt = oldData.createdAt;
@@ -1545,7 +1564,7 @@ app.post('/api/employee-registration', async (req, res) => {
       registrationData.createdAt = new Date().toISOString();
     }
     
-    fs.writeFileSync(registrationFile, JSON.stringify(registrationData, null, 2), 'utf8');
+    await fsp.writeFile(registrationFile, JSON.stringify(registrationData, null, 2), 'utf8');
     console.log('Регистрация сохранена:', registrationFile);
     
     res.json({
@@ -1571,11 +1590,11 @@ app.get('/api/employee-registration/:phone', async (req, res) => {
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
-    if (!fs.existsSync(registrationFile)) {
+    if (!await fileExists(registrationFile)) {
       return res.json({ success: true, registration: null });
     }
     
-    const content = fs.readFileSync(registrationFile, 'utf8');
+    const content = await fsp.readFile(registrationFile, 'utf8');
     const registration = JSON.parse(content);
     
     res.json({ success: true, registration });
@@ -1599,14 +1618,14 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     const sanitizedPhone = phone.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const registrationFile = path.join(registrationDir, `${sanitizedPhone}.json`);
     
-    if (!fs.existsSync(registrationFile)) {
+    if (!await fileExists(registrationFile)) {
       return res.status(404).json({
         success: false,
         error: 'Регистрация не найдена'
       });
     }
     
-    const content = fs.readFileSync(registrationFile, 'utf8');
+    const content = await fsp.readFile(registrationFile, 'utf8');
     const registration = JSON.parse(content);
     
     registration.isVerified = isVerified === true;
@@ -1629,7 +1648,7 @@ app.post('/api/employee-registration/:phone/verify', async (req, res) => {
     }
     registration.updatedAt = new Date().toISOString();
     
-    fs.writeFileSync(registrationFile, JSON.stringify(registration, null, 2), 'utf8');
+    await fsp.writeFile(registrationFile, JSON.stringify(registration, null, 2), 'utf8');
     console.log('Статус верификации обновлен:', registrationFile);
 
     // Если верификация снята - отправляем push уведомление сотруднику
@@ -1670,13 +1689,13 @@ app.get('/api/employee-registrations', async (req, res) => {
     const registrationDir = `${DATA_DIR}/employee-registrations`;
     const registrations = [];
     
-    if (fs.existsSync(registrationDir)) {
-      const files = fs.readdirSync(registrationDir).filter(f => f.endsWith('.json'));
+    if (await fileExists(registrationDir)) {
+      const files = (await fsp.readdir(registrationDir)).filter(f => f.endsWith('.json'));
       
       for (const file of files) {
         try {
           const filePath = path.join(registrationDir, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const registration = JSON.parse(content);
           registrations.push(registration);
         } catch (e) {
@@ -1707,22 +1726,22 @@ app.get('/api/employee-registrations', async (req, res) => {
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
 // GET /api/employees - получить всех сотрудников
-app.get('/api/employees', (req, res) => {
+app.get('/api/employees', async (req, res) => {
   try {
     console.log('GET /api/employees');
 
     let employees = [];
 
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
-      fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
+    if (!await fileExists(EMPLOYEES_DIR)) {
+      await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
     }
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(content);
         employees.push(employee);
       } catch (e) {
@@ -1762,7 +1781,7 @@ app.get('/api/employees', (req, res) => {
 });
 
 // GET /api/employees/:id - получить сотрудника по ID
-app.get('/api/employees/:id', (req, res) => {
+app.get('/api/employees/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log('GET /api/employees:', id);
@@ -1770,14 +1789,14 @@ app.get('/api/employees/:id', (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
     
-    if (!fs.existsSync(employeeFile)) {
+    if (!await fileExists(employeeFile)) {
       return res.status(404).json({
         success: false,
         error: 'Сотрудник не найден'
       });
     }
     
-    const content = fs.readFileSync(employeeFile, 'utf8');
+    const content = await fsp.readFile(employeeFile, 'utf8');
     const employee = JSON.parse(content);
     
     res.json({ success: true, employee });
@@ -1788,16 +1807,16 @@ app.get('/api/employees/:id', (req, res) => {
 });
 
 // Получить следующий свободный referralCode
-function getNextReferralCode() {
+async function getNextReferralCode() {
   try {
-    if (!fs.existsSync(EMPLOYEES_DIR)) return 1;
+    if (!await fileExists(EMPLOYEES_DIR)) return 1;
 
-    const files = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
     const usedCodes = new Set();
 
     for (const file of files) {
       try {
-        const content = fs.readFileSync(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
         const emp = JSON.parse(content);
         if (emp.referralCode) {
           usedCodes.add(emp.referralCode);
@@ -1821,8 +1840,8 @@ app.post('/api/employees', async (req, res) => {
   try {
     console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
     
-    if (!fs.existsSync(EMPLOYEES_DIR)) {
-      fs.mkdirSync(EMPLOYEES_DIR, { recursive: true });
+    if (!await fileExists(EMPLOYEES_DIR)) {
+      await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
     }
     
     // Валидация обязательных полей
@@ -1856,7 +1875,7 @@ app.post('/api/employees', async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
     
-    fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+    await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
     console.log('Сотрудник создан:', employeeFile);
 
     // SCALABILITY: Инвалидируем кэш isAdmin при создании сотрудника
@@ -1880,7 +1899,7 @@ app.put('/api/employees/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
     
-    if (!fs.existsSync(employeeFile)) {
+    if (!await fileExists(employeeFile)) {
       return res.status(404).json({
         success: false,
         error: 'Сотрудник не найден'
@@ -1896,7 +1915,7 @@ app.put('/api/employees/:id', async (req, res) => {
     }
     
     // Читаем существующие данные для сохранения createdAt
-    const oldContent = fs.readFileSync(employeeFile, 'utf8');
+    const oldContent = await fsp.readFile(employeeFile, 'utf8');
     const oldEmployee = JSON.parse(oldContent);
     
     const employee = {
@@ -1917,7 +1936,7 @@ app.put('/api/employees/:id', async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
     
-    fs.writeFileSync(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+    await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
     console.log('Сотрудник обновлен:', employeeFile);
 
     // SCALABILITY: Инвалидируем кэш isAdmin при изменении сотрудника
@@ -1931,7 +1950,7 @@ app.put('/api/employees/:id', async (req, res) => {
 });
 
 // DELETE /api/employees/:id - удалить сотрудника
-app.delete('/api/employees/:id', (req, res) => {
+app.delete('/api/employees/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log('DELETE /api/employees:', id);
@@ -1939,7 +1958,7 @@ app.delete('/api/employees/:id', (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(employeeFile)) {
+    if (!await fileExists(employeeFile)) {
       return res.status(404).json({
         success: false,
         error: 'Сотрудник не найден'
@@ -1949,12 +1968,12 @@ app.delete('/api/employees/:id', (req, res) => {
     // SCALABILITY: Читаем телефон перед удалением для инвалидации кэша
     let employeePhone = null;
     try {
-      const content = fs.readFileSync(employeeFile, 'utf8');
+      const content = await fsp.readFile(employeeFile, 'utf8');
       const employee = JSON.parse(content);
       employeePhone = employee.phone;
     } catch (e) { /* ignore */ }
 
-    fs.unlinkSync(employeeFile);
+    await fsp.unlink(employeeFile);
     console.log('Сотрудник удален:', employeeFile);
 
     // SCALABILITY: Инвалидируем кэш isAdmin при удалении сотрудника
@@ -1986,30 +2005,30 @@ const DEFAULT_SHOPS = [
 ];
 
 // Инициализация директории магазинов
-function initShopsDir() {
-  if (!fs.existsSync(SHOPS_DIR)) {
-    fs.mkdirSync(SHOPS_DIR, { recursive: true });
+async function initShopsDir() {
+  if (!await fileExists(SHOPS_DIR)) {
+    await fsp.mkdir(SHOPS_DIR, { recursive: true });
     // Создаем дефолтные магазины
-    DEFAULT_SHOPS.forEach(shop => {
+    for (const shop of DEFAULT_SHOPS) {
       const shopFile = path.join(SHOPS_DIR, `${shop.id}.json`);
-      fs.writeFileSync(shopFile, JSON.stringify(shop, null, 2));
-    });
+      await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
+    }
     console.log('✅ Директория магазинов создана с дефолтными данными');
   }
 }
 initShopsDir();
 
 // GET /api/shops - получить все магазины
-app.get('/api/shops', (req, res) => {
+app.get('/api/shops', async (req, res) => {
   try {
     console.log('GET /api/shops');
 
     const shops = [];
-    const files = fs.readdirSync(SHOPS_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SHOPS_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
-        const content = fs.readFileSync(path.join(SHOPS_DIR, file), 'utf8');
+        const content = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
         shops.push(JSON.parse(content));
       } catch (e) {
         console.error(`Ошибка чтения файла ${file}:`, e.message);
@@ -2024,17 +2043,17 @@ app.get('/api/shops', (req, res) => {
 });
 
 // GET /api/shops/:id - получить магазин по ID
-app.get('/api/shops/:id', (req, res) => {
+app.get('/api/shops/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log('GET /api/shops/' + id);
 
     const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    if (!fs.existsSync(shopFile)) {
+    if (!await fileExists(shopFile)) {
       return res.status(404).json({ success: false, error: 'Магазин не найден' });
     }
 
-    const shop = JSON.parse(fs.readFileSync(shopFile, 'utf8'));
+    const shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
     res.json({ success: true, shop });
   } catch (error) {
     console.error('Ошибка получения магазина:', error);
@@ -2043,7 +2062,7 @@ app.get('/api/shops/:id', (req, res) => {
 });
 
 // POST /api/shops - создать магазин
-app.post('/api/shops', (req, res) => {
+app.post('/api/shops', async (req, res) => {
   try {
     const { name, address, latitude, longitude, icon } = req.body;
     console.log('POST /api/shops', req.body);
@@ -2060,7 +2079,7 @@ app.post('/api/shops', (req, res) => {
     };
 
     const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    fs.writeFileSync(shopFile, JSON.stringify(shop, null, 2));
+    await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
 
     console.log('✅ Магазин создан:', id);
     res.json({ success: true, shop });
@@ -2071,18 +2090,18 @@ app.post('/api/shops', (req, res) => {
 });
 
 // PUT /api/shops/:id - обновить магазин
-app.put('/api/shops/:id', (req, res) => {
+app.put('/api/shops/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
     console.log('PUT /api/shops/' + id, updates);
 
     const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    if (!fs.existsSync(shopFile)) {
+    if (!await fileExists(shopFile)) {
       return res.status(404).json({ success: false, error: 'Магазин не найден' });
     }
 
-    const shop = JSON.parse(fs.readFileSync(shopFile, 'utf8'));
+    const shop = JSON.parse(await fsp.readFile(shopFile, 'utf8'));
 
     // Обновляем только переданные поля
     if (updates.name !== undefined) shop.name = updates.name;
@@ -2092,7 +2111,7 @@ app.put('/api/shops/:id', (req, res) => {
     if (updates.icon !== undefined) shop.icon = updates.icon;
     shop.updatedAt = new Date().toISOString();
 
-    fs.writeFileSync(shopFile, JSON.stringify(shop, null, 2));
+    await fsp.writeFile(shopFile, JSON.stringify(shop, null, 2));
 
     console.log('✅ Магазин обновлен:', id);
     res.json({ success: true, shop });
@@ -2103,17 +2122,17 @@ app.put('/api/shops/:id', (req, res) => {
 });
 
 // DELETE /api/shops/:id - удалить магазин
-app.delete('/api/shops/:id', (req, res) => {
+app.delete('/api/shops/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log('DELETE /api/shops/' + id);
 
     const shopFile = path.join(SHOPS_DIR, `${id}.json`);
-    if (!fs.existsSync(shopFile)) {
+    if (!await fileExists(shopFile)) {
       return res.status(404).json({ success: false, error: 'Магазин не найден' });
     }
 
-    fs.unlinkSync(shopFile);
+    await fsp.unlink(shopFile);
 
     console.log('✅ Магазин удален:', id);
     res.json({ success: true });
@@ -2132,21 +2151,21 @@ app.get('/api/shop-settings/:shopAddress', async (req, res) => {
     console.log('GET /api/shop-settings:', shopAddress);
     
     const settingsDir = `${DATA_DIR}/shop-settings`;
-    if (!fs.existsSync(settingsDir)) {
-      fs.mkdirSync(settingsDir, { recursive: true });
+    if (!await fileExists(settingsDir)) {
+      await fsp.mkdir(settingsDir, { recursive: true });
     }
     
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
     
-    if (!fs.existsSync(settingsFile)) {
+    if (!await fileExists(settingsFile)) {
       return res.json({ 
         success: true, 
         settings: null 
       });
     }
     
-    const content = fs.readFileSync(settingsFile, 'utf8');
+    const content = await fsp.readFile(settingsFile, 'utf8');
     const settings = JSON.parse(content);
     
     res.json({ success: true, settings });
@@ -2168,9 +2187,9 @@ app.post('/api/shop-settings', async (req, res) => {
     const settingsDir = `${DATA_DIR}/shop-settings`;
     console.log('   Проверка директории:', settingsDir);
     
-    if (!fs.existsSync(settingsDir)) {
+    if (!await fileExists(settingsDir)) {
       console.log('   Создание директории:', settingsDir);
-      fs.mkdirSync(settingsDir, { recursive: true });
+      await fsp.mkdir(settingsDir, { recursive: true });
       console.log('   ✅ Директория создана');
     } else {
       console.log('   ✅ Директория существует');
@@ -2194,10 +2213,10 @@ app.post('/api/shop-settings', async (req, res) => {
     
     // Если файл существует, сохраняем lastDocumentNumber из старого файла
     let lastDocumentNumber = req.body.lastDocumentNumber || 0;
-    if (fs.existsSync(settingsFile)) {
+    if (await fileExists(settingsFile)) {
       try {
         console.log('   Чтение существующего файла...');
-        const oldContent = fs.readFileSync(settingsFile, 'utf8');
+        const oldContent = await fsp.readFile(settingsFile, 'utf8');
         const oldSettings = JSON.parse(oldContent);
         if (oldSettings.lastDocumentNumber !== undefined) {
           lastDocumentNumber = oldSettings.lastDocumentNumber;
@@ -2230,9 +2249,9 @@ app.post('/api/shop-settings', async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
     
-    if (fs.existsSync(settingsFile)) {
+    if (await fileExists(settingsFile)) {
       try {
-        const oldContent = fs.readFileSync(settingsFile, 'utf8');
+        const oldContent = await fsp.readFile(settingsFile, 'utf8');
         const oldSettings = JSON.parse(oldContent);
         if (oldSettings.createdAt) {
           settings.createdAt = oldSettings.createdAt;
@@ -2249,7 +2268,7 @@ app.post('/api/shop-settings', async (req, res) => {
     console.log('   Сохранение настроек:', JSON.stringify(settings, null, 2));
     
     try {
-      fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+      await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
       console.log('   ✅ Настройки магазина сохранены:', settingsFile);
       
       res.json({
@@ -2281,14 +2300,14 @@ app.get('/api/shop-settings/:shopAddress/document-number', async (req, res) => {
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
     
-    if (!fs.existsSync(settingsFile)) {
+    if (!await fileExists(settingsFile)) {
       return res.json({ 
         success: true, 
         documentNumber: 1 
       });
     }
     
-    const content = fs.readFileSync(settingsFile, 'utf8');
+    const content = await fsp.readFile(settingsFile, 'utf8');
     const settings = JSON.parse(content);
     
     let nextNumber = (settings.lastDocumentNumber || 0) + 1;
@@ -2317,16 +2336,16 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
     console.log('POST /api/shop-settings/:shopAddress/document-number:', shopAddress, documentNumber);
     
     const settingsDir = `${DATA_DIR}/shop-settings`;
-    if (!fs.existsSync(settingsDir)) {
-      fs.mkdirSync(settingsDir, { recursive: true });
+    if (!await fileExists(settingsDir)) {
+      await fsp.mkdir(settingsDir, { recursive: true });
     }
     
     const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
     
     let settings = {};
-    if (fs.existsSync(settingsFile)) {
-      const content = fs.readFileSync(settingsFile, 'utf8');
+    if (await fileExists(settingsFile)) {
+      const content = await fsp.readFile(settingsFile, 'utf8');
       settings = JSON.parse(content);
     } else {
       settings.shopAddress = shopAddress;
@@ -2336,7 +2355,7 @@ app.post('/api/shop-settings/:shopAddress/document-number', async (req, res) => 
     settings.lastDocumentNumber = documentNumber || 0;
     settings.updatedAt = new Date().toISOString();
     
-    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
+    await fsp.writeFile(settingsFile, JSON.stringify(settings, null, 2), 'utf8');
     console.log('Номер документа обновлен:', settingsFile);
     
     res.json({
@@ -2358,15 +2377,17 @@ const rkoReportsDir = `${DATA_DIR}/rko-reports`;
 const rkoMetadataFile = path.join(rkoReportsDir, 'rko_metadata.json');
 
 // Инициализация директорий для РКО
-if (!fs.existsSync(rkoReportsDir)) {
-  fs.mkdirSync(rkoReportsDir, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(rkoReportsDir)) {
+    await fsp.mkdir(rkoReportsDir, { recursive: true });
+  }
+})();
 
 // Загрузить метаданные РКО
-function loadRKOMetadata() {
+async function loadRKOMetadata() {
   try {
-    if (fs.existsSync(rkoMetadataFile)) {
-      const content = fs.readFileSync(rkoMetadataFile, 'utf8');
+    if (await fileExists(rkoMetadataFile)) {
+      const content = await fsp.readFile(rkoMetadataFile, 'utf8');
       return JSON.parse(content);
     }
     return { items: [] };
@@ -2377,9 +2398,9 @@ function loadRKOMetadata() {
 }
 
 // Сохранить метаданные РКО
-function saveRKOMetadata(metadata) {
+async function saveRKOMetadata(metadata) {
   try {
-    fs.writeFileSync(rkoMetadataFile, JSON.stringify(metadata, null, 2), 'utf8');
+    await fsp.writeFile(rkoMetadataFile, JSON.stringify(metadata, null, 2), 'utf8');
   } catch (e) {
     console.error('Ошибка сохранения метаданных РКО:', e);
     throw e;
@@ -2387,7 +2408,7 @@ function saveRKOMetadata(metadata) {
 }
 
 // Очистка старых РКО для сотрудника (максимум 150)
-function cleanupEmployeeRKOs(employeeName) {
+async function cleanupEmployeeRKOs(employeeName) {
   const metadata = loadRKOMetadata();
   const employeeRKOs = metadata.items.filter(rko => rko.employeeName === employeeName);
   
@@ -2403,8 +2424,8 @@ function cleanupEmployeeRKOs(employeeName) {
       const monthKey = new Date(rko.date).toISOString().substring(0, 7); // YYYY-MM
       const sanitizedEmployee = employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
       const filePath = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey, rko.fileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (await fileExists(filePath)) {
+        await fsp.unlink(filePath);
         console.log('Удален старый РКО:', filePath);
       }
       
@@ -2419,7 +2440,7 @@ function cleanupEmployeeRKOs(employeeName) {
 }
 
 // Очистка старых РКО для магазина (максимум 6 месяцев)
-function cleanupShopRKOs(shopAddress) {
+async function cleanupShopRKOs(shopAddress) {
   const metadata = loadRKOMetadata();
   const shopRKOs = metadata.items.filter(rko => rko.shopAddress === shopAddress);
   
@@ -2441,8 +2462,8 @@ function cleanupShopRKOs(shopAddress) {
         // Удаляем файл
         const sanitizedEmployee = rko.employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
         const filePath = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey, rko.fileName);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+        if (await fileExists(filePath)) {
+          await fsp.unlink(filePath);
           console.log('Удален старый РКО магазина:', filePath);
         }
         
@@ -2483,8 +2504,8 @@ app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
     const sanitizedEmployee = employeeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const employeeDir = path.join(rkoReportsDir, 'employee', sanitizedEmployee, monthKey);
     
-    if (!fs.existsSync(employeeDir)) {
-      fs.mkdirSync(employeeDir, { recursive: true });
+    if (!await fileExists(employeeDir)) {
+      await fsp.mkdir(employeeDir, { recursive: true });
     }
     
     // Сохраняем файл
@@ -2692,18 +2713,18 @@ app.get('/api/rko/file/:fileName', async (req, res) => {
     
     console.log('Ищем файл по пути:', filePath);
     
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       console.error('Файл не найден по пути:', filePath);
       // Попробуем найти файл в других местах
       const allFiles = [];
-      function findFiles(dir, pattern) {
+      async function findFiles(dir, pattern) {
         try {
-          const files = fs.readdirSync(dir);
+          const files = await fsp.readdir(dir);
           for (const file of files) {
             const filePath = path.join(dir, file);
-            const stat = fs.statSync(filePath);
+            const stat = await fsp.stat(filePath);
             if (stat.isDirectory()) {
-              findFiles(filePath, pattern);
+              await findFiles(filePath, pattern);
             } else if (file.includes(pattern) || file === pattern) {
               allFiles.push(filePath);
             }
@@ -2712,7 +2733,7 @@ app.get('/api/rko/file/:fileName', async (req, res) => {
           // Игнорируем ошибки
         }
       }
-      findFiles(rkoReportsDir, fileName);
+      await findFiles(rkoReportsDir, fileName);
       if (allFiles.length > 0) {
         console.log('Найден файл в альтернативном месте:', allFiles[0]);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -2765,11 +2786,11 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     // Путь к Word шаблону
     let templateDocxPath = path.join(__dirname, '..', '.cursor', 'rko_template_new.docx');
     console.log('🔍 Ищем Word шаблон по пути:', templateDocxPath);
-    if (!fs.existsSync(templateDocxPath)) {
+    if (!await fileExists(templateDocxPath)) {
       console.error('❌ Word шаблон не найден по пути:', templateDocxPath);
       // Пробуем альтернативный путь
       const altPath = '/root/.cursor/rko_template_new.docx';
-      if (fs.existsSync(altPath)) {
+      if (await fileExists(altPath)) {
         console.log('✅ Найден альтернативный путь:', altPath);
         templateDocxPath = altPath;
       } else {
@@ -2782,8 +2803,8 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
     
     // Создаем временную директорию для работы
     const tempDir = '/tmp/rko_generation';
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    if (!await fileExists(tempDir)) {
+      await fsp.mkdir(tempDir, { recursive: true });
     }
     
     const tempDocxPath = path.join(tempDir, `rko_${Date.now()}.docx`);
@@ -2893,12 +2914,12 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
         console.log('✅ DOCX успешно сконвертирован в PDF');
         
         // Читаем PDF файл и отправляем
-        const pdfBuffer = fs.readFileSync(tempPdfPath);
+        const pdfBuffer = await fsp.readFile(tempPdfPath);
         
         // Очищаем временные файлы
         try {
-          if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
-          if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+          if (await fileExists(tempDocxPath)) await fsp.unlink(tempDocxPath);
+          if (await fileExists(tempPdfPath)) await fsp.unlink(tempPdfPath);
         } catch (e) {
           console.error('Ошибка очистки временных файлов:', e);
         }
@@ -2910,10 +2931,10 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
         console.error('Ошибка конвертации в PDF:', convertError);
         // Если конвертация не удалась, отправляем DOCX
         console.log('Отправляем DOCX вместо PDF');
-        const docxBuffer = fs.readFileSync(tempDocxPath);
+        const docxBuffer = await fsp.readFile(tempDocxPath);
         
         try {
-          if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+          if (await fileExists(tempDocxPath)) await fsp.unlink(tempDocxPath);
         } catch (e) {
           console.error('Ошибка очистки временных файлов:', e);
         }
@@ -2927,7 +2948,7 @@ app.post('/api/rko/generate-from-docx', async (req, res) => {
       console.error('Ошибка выполнения Python скрипта:', error);
       // Очищаем временные файлы при ошибке
       try {
-        if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+        if (await fileExists(tempDocxPath)) await fsp.unlink(tempDocxPath);
       } catch (e) {}
       
       return res.status(500).json({
@@ -2992,7 +3013,7 @@ function convertAmountToWords(amount) {
 // ========== API для pending/failed РКО отчетов ==========
 
 // Получить pending РКО отчеты
-app.get('/api/rko/pending', (req, res) => {
+app.get('/api/rko/pending', async (req, res) => {
   try {
     console.log('📋 GET /api/rko/pending');
     const reports = getPendingRkoReports();
@@ -3011,7 +3032,7 @@ app.get('/api/rko/pending', (req, res) => {
 });
 
 // Получить failed РКО отчеты
-app.get('/api/rko/failed', (req, res) => {
+app.get('/api/rko/failed', async (req, res) => {
   try {
     console.log('📋 GET /api/rko/failed');
     const reports = getFailedRkoReports();
@@ -3032,7 +3053,7 @@ app.get('/api/rko/failed', (req, res) => {
 // ========== API для pending/failed Attendance отчетов ==========
 
 // Получить pending Attendance отчеты
-app.get('/api/attendance/pending', (req, res) => {
+app.get('/api/attendance/pending', async (req, res) => {
   try {
     console.log('GET /api/attendance/pending');
     const reports = getPendingAttendanceReports();
@@ -3051,7 +3072,7 @@ app.get('/api/attendance/pending', (req, res) => {
 });
 
 // Получить failed Attendance отчеты
-app.get('/api/attendance/failed', (req, res) => {
+app.get('/api/attendance/failed', async (req, res) => {
   try {
     console.log('GET /api/attendance/failed');
     const reports = getFailedAttendanceReports();
@@ -3070,7 +3091,7 @@ app.get('/api/attendance/failed', (req, res) => {
 });
 
 // Проверить можно ли отмечаться на магазине
-app.get('/api/attendance/can-mark', (req, res) => {
+app.get('/api/attendance/can-mark', async (req, res) => {
   try {
     const { shopAddress } = req.query;
     console.log('GET /api/attendance/can-mark:', shopAddress);
@@ -3130,10 +3151,10 @@ app.post('/api/attendance/gps-check', async (req, res) => {
     // 1. Загружаем список магазинов с координатами из отдельных файлов
     let shops = [];
     try {
-      const shopFiles = fs.readdirSync(SHOPS_DIR).filter(f => f.startsWith('shop_') && f.endsWith('.json'));
+      const shopFiles = (await fsp.readdir(SHOPS_DIR)).filter(f => f.startsWith('shop_') && f.endsWith('.json'));
       for (const file of shopFiles) {
         try {
-          const data = fs.readFileSync(path.join(SHOPS_DIR, file), 'utf8');
+          const data = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
           const shop = JSON.parse(data);
           if (shop.latitude && shop.longitude) {
             shops.push(shop);
@@ -3183,10 +3204,10 @@ app.post('/api/attendance/gps-check', async (req, res) => {
     let employeeId = null;
     const employeesDir = `${DATA_DIR}/employees`;
     try {
-      const empFiles = fs.readdirSync(employeesDir).filter(f => f.endsWith('.json'));
+      const empFiles = (await fsp.readdir(employeesDir)).filter(f => f.endsWith('.json'));
       for (const file of empFiles) {
         try {
-          const empData = JSON.parse(fs.readFileSync(path.join(employeesDir, file), 'utf8'));
+          const empData = JSON.parse(await fsp.readFile(path.join(employeesDir, file), 'utf8'));
           const empPhone = (empData.phone || '').replace(/\D/g, '');
           const checkPhone = phone.replace(/\D/g, '');
           if (empPhone && (empPhone === checkPhone || empPhone.endsWith(checkPhone.slice(-10)) || checkPhone.endsWith(empPhone.slice(-10)))) {
@@ -3201,9 +3222,9 @@ app.post('/api/attendance/gps-check', async (req, res) => {
     }
 
     let hasShiftToday = false;
-    if (fs.existsSync(scheduleFile)) {
+    if (await fileExists(scheduleFile)) {
       try {
-        const data = fs.readFileSync(scheduleFile, 'utf8');
+        const data = await fsp.readFile(scheduleFile, 'utf8');
         const schedule = JSON.parse(data);
         const entries = schedule.entries || [];
 
@@ -3284,39 +3305,39 @@ app.post('/api/attendance/gps-check', async (req, res) => {
 });
 
 // Endpoint для редактора координат
-app.get('/rko_coordinates_editor.html', (req, res) => {
+app.get('/rko_coordinates_editor.html', async (req, res) => {
   res.sendFile(`${DATA_DIR}/html/rko_coordinates_editor.html`);
 });
 
 // Endpoint для координат HTML
-app.get('/coordinates.html', (req, res) => {
+app.get('/coordinates.html', async (req, res) => {
   res.sendFile(`${DATA_DIR}/html/coordinates.html`);
 });
 
 // Endpoint для тестового PDF
-app.get('/test_rko_corrected.pdf', (req, res) => {
+app.get('/test_rko_corrected.pdf', async (req, res) => {
   res.sendFile(`${DATA_DIR}/html/test_rko_corrected.pdf`);
 });
 
 // Endpoint для изображения шаблона
-app.get('/rko_template.jpg', (req, res) => {
+app.get('/rko_template.jpg', async (req, res) => {
   res.sendFile(`${DATA_DIR}/html/rko_template.jpg`);
 });
 
 // Endpoint для финального тестового PDF
-app.get('/test_rko_final.pdf', (req, res) => {
+app.get('/test_rko_final.pdf', async (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.sendFile(`${DATA_DIR}/html/test_rko_final.pdf`);
 });
 
 // Endpoint для нового тестового PDF с исправленными координатами
-app.get('/test_rko_new_coords.pdf', (req, res) => {
+app.get('/test_rko_new_coords.pdf', async (req, res) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.sendFile(`${DATA_DIR}/html/test_rko_new_coords.pdf`);
 });
 
 // Endpoint для тестового РКО КО-2 с фиксированными высотами
-app.get('/test_rko_ko2_fixed.docx', (req, res) => {
+app.get('/test_rko_ko2_fixed.docx', async (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', 'inline; filename="test_rko_ko2_fixed.docx"');
   res.sendFile(`${DATA_DIR}/html/test_rko_ko2_fixed.docx`);
@@ -3328,27 +3349,29 @@ const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
 const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;
 
 // Создаем директории, если их нет
-if (!fs.existsSync(WITHDRAWALS_DIR)) {
-  fs.mkdirSync(WITHDRAWALS_DIR, { recursive: true, mode: 0o755 });
-}
-if (!fs.existsSync(MAIN_CASH_DIR)) {
-  fs.mkdirSync(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
-}
+(async () => {
+  if (!await fileExists(WITHDRAWALS_DIR)) {
+    await fsp.mkdir(WITHDRAWALS_DIR, { recursive: true, mode: 0o755 });
+  }
+  if (!await fileExists(MAIN_CASH_DIR)) {
+    await fsp.mkdir(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
+  }
+})();
 
 // Вспомогательная функция для загрузки всех сотрудников (для уведомлений)
-function loadAllEmployeesForWithdrawals() {
-  if (!fs.existsSync(EMPLOYEES_DIR)) {
+async function loadAllEmployeesForWithdrawals() {
+  if (!await fileExists(EMPLOYEES_DIR)) {
     return [];
   }
 
-  const files = fs.readdirSync(EMPLOYEES_DIR);
+  const files = await fsp.readdir(EMPLOYEES_DIR);
   const employees = [];
 
   for (const file of files) {
     if (file.endsWith('.json')) {
       try {
         const filePath = path.join(EMPLOYEES_DIR, file);
-        const data = fs.readFileSync(filePath, 'utf8');
+        const data = await fsp.readFile(filePath, 'utf8');
         const employee = JSON.parse(data);
         employees.push(employee);
       } catch (err) {
@@ -3362,18 +3385,18 @@ function loadAllEmployeesForWithdrawals() {
 
 // Получить FCM токены пользователей для уведомлений о выемках
 // Получить FCM токен по телефону
-function getFCMTokenByPhoneForWithdrawals(phone) {
+async function getFCMTokenByPhoneForWithdrawals(phone) {
   try {
     const normalizedPhone = phone.replace(/[\s+]/g, "");
     const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
     const path = require("path");
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!await fileExists(tokenFile)) {
       return null;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, "utf8"));
+    const tokenData = JSON.parse(await fsp.readFile(tokenFile, "utf8"));
     return tokenData.token || null;
   } catch (err) {
     console.error(`Ошибка получения токена для ${phone}:`, err.message);
@@ -3382,10 +3405,10 @@ function getFCMTokenByPhoneForWithdrawals(phone) {
 }
 
 // Получить FCM токены пользователей для уведомлений о выемках
-function getFCMTokensForWithdrawalNotifications(phones) {
+async function getFCMTokensForWithdrawalNotifications(phones) {
   const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
   
-  if (!fs.existsSync(FCM_TOKENS_DIR)) {
+  if (!await fileExists(FCM_TOKENS_DIR)) {
     console.log("⚠️  Папка FCM токенов не существует");
     return [];
   }
@@ -3503,7 +3526,7 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
 }
 
 // Обновить баланс главной кассы после выемки
-function updateMainCashBalance(shopAddress, type, amount) {
+async function updateMainCashBalance(shopAddress, type, amount) {
   try {
     // Нормализовать адрес для имени файла
     const fileName = shopAddress.replace(/[^a-zA-Z0-9а-яА-Я]/g, '_') + '.json';
@@ -3518,8 +3541,8 @@ function updateMainCashBalance(shopAddress, type, amount) {
     };
 
     // Загрузить существующий баланс если есть
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const data = await fsp.readFile(filePath, 'utf8');
       balance = JSON.parse(data);
     }
 
@@ -3535,10 +3558,10 @@ function updateMainCashBalance(shopAddress, type, amount) {
     balance.lastUpdated = new Date().toISOString();
 
     // Сохранить обновлённый баланс
-    if (!fs.existsSync(MAIN_CASH_DIR)) {
-      fs.mkdirSync(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
+    if (!await fileExists(MAIN_CASH_DIR)) {
+      await fsp.mkdir(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
     }
-    fs.writeFileSync(filePath, JSON.stringify(balance, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(balance, null, 2), 'utf8');
 
     console.log(`Обновлён баланс ${shopAddress}: ${type}Balance -= ${amount}`);
   } catch (err) {
@@ -3548,18 +3571,18 @@ function updateMainCashBalance(shopAddress, type, amount) {
 }
 
 // GET /api/withdrawals - получить все выемки с опциональными фильтрами
-app.get('/api/withdrawals', (req, res) => {
+app.get('/api/withdrawals', async (req, res) => {
   try {
     const { shopAddress, type, fromDate, toDate } = req.query;
 
-    const files = fs.readdirSync(WITHDRAWALS_DIR);
+    const files = await fsp.readdir(WITHDRAWALS_DIR);
     let withdrawals = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
           const filePath = path.join(WITHDRAWALS_DIR, file);
-          const data = fs.readFileSync(filePath, 'utf8');
+          const data = await fsp.readFile(filePath, 'utf8');
           const withdrawal = JSON.parse(data);
           withdrawals.push(withdrawal);
         } catch (err) {
@@ -3664,7 +3687,7 @@ app.post('/api/withdrawals', async (req, res) => {
 
     // Сохранить в файл
     const filePath = path.join(WITHDRAWALS_DIR, `${withdrawal.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
     // Обновить баланс главной кассы
     updateMainCashBalance(shopAddress, type, totalAmount);
@@ -3685,19 +3708,19 @@ app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
     const { id } = req.params;
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Выемка не найдена' });
     }
 
     // Прочитать выемку
-    const withdrawal = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const withdrawal = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
     // Обновить статус
     withdrawal.confirmed = true;
     withdrawal.confirmedAt = new Date().toISOString();
 
     // Сохранить обратно
-    fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
     // Отправить push-уведомления о подтверждении
     await sendWithdrawalConfirmationNotifications(withdrawal);
@@ -3710,16 +3733,16 @@ app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
 });
 
 // DELETE /api/withdrawals/:id - удалить выемку
-app.delete('/api/withdrawals/:id', (req, res) => {
+app.delete('/api/withdrawals/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Выемка не найдена' });
     }
 
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
 
     res.json({ success: true, message: 'Выемка удалена' });
   } catch (err) {
@@ -3737,11 +3760,11 @@ app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
 
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Withdrawal not found' });
     }
 
-    const withdrawal = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const withdrawal = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
     if (withdrawal.status === 'cancelled') {
       return res.status(400).json({
@@ -3755,7 +3778,7 @@ app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
     withdrawal.cancelledBy = cancelledBy || 'unknown';
     withdrawal.cancelReason = cancelReason || 'No reason provided';
 
-    fs.writeFileSync(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
     res.json({ success: true, withdrawal });
   } catch (error) {
@@ -3770,12 +3793,14 @@ const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
 const WORK_SCHEDULE_TEMPLATES_DIR = `${DATA_DIR}/work-schedule-templates`;
 
 // Создаем директории, если их нет
-if (!fs.existsSync(WORK_SCHEDULES_DIR)) {
-  fs.mkdirSync(WORK_SCHEDULES_DIR, { recursive: true });
-}
-if (!fs.existsSync(WORK_SCHEDULE_TEMPLATES_DIR)) {
-  fs.mkdirSync(WORK_SCHEDULE_TEMPLATES_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(WORK_SCHEDULES_DIR)) {
+    await fsp.mkdir(WORK_SCHEDULES_DIR, { recursive: true });
+  }
+  if (!await fileExists(WORK_SCHEDULE_TEMPLATES_DIR)) {
+    await fsp.mkdir(WORK_SCHEDULE_TEMPLATES_DIR, { recursive: true });
+  }
+})();
 
 // Вспомогательная функция для получения файла графика
 function getScheduleFilePath(month) {
@@ -3783,11 +3808,11 @@ function getScheduleFilePath(month) {
 }
 
 // Вспомогательная функция для загрузки графика
-function loadSchedule(month) {
+async function loadSchedule(month) {
   const filePath = getScheduleFilePath(month);
-  if (fs.existsSync(filePath)) {
+  if (await fileExists(filePath)) {
     try {
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = await fsp.readFile(filePath, 'utf8');
       return JSON.parse(data);
     } catch (error) {
       console.error('Ошибка чтения графика:', error);
@@ -3798,10 +3823,10 @@ function loadSchedule(month) {
 }
 
 // Вспомогательная функция для сохранения графика
-function saveSchedule(schedule) {
+async function saveSchedule(schedule) {
   const filePath = getScheduleFilePath(schedule.month);
   try {
-    fs.writeFileSync(filePath, JSON.stringify(schedule, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(schedule, null, 2), 'utf8');
     return true;
   } catch (error) {
     console.error('Ошибка сохранения графика:', error);
@@ -3810,7 +3835,7 @@ function saveSchedule(schedule) {
 }
 
 // GET /api/work-schedule?month=YYYY-MM - получить график на месяц
-app.get('/api/work-schedule', (req, res) => {
+app.get('/api/work-schedule', async (req, res) => {
   try {
     const month = req.query.month;
     if (!month) {
@@ -3827,7 +3852,7 @@ app.get('/api/work-schedule', (req, res) => {
 });
 
 // GET /api/work-schedule/employee/:employeeId?month=YYYY-MM - график сотрудника
-app.get('/api/work-schedule/employee/:employeeId', (req, res) => {
+app.get('/api/work-schedule/employee/:employeeId', async (req, res) => {
   try {
     const employeeId = req.params.employeeId;
     const month = req.query.month;
@@ -3885,8 +3910,8 @@ app.post('/api/work-schedule', async (req, res) => {
       // Отправляем push-уведомление сотруднику об изменении в графике
       try {
         const employeeFile = path.join(EMPLOYEES_DIR, `${entry.employeeId}.json`);
-        if (fs.existsSync(employeeFile)) {
-          const employeeData = JSON.parse(fs.readFileSync(employeeFile, 'utf8'));
+        if (await fileExists(employeeFile)) {
+          const employeeData = JSON.parse(await fsp.readFile(employeeFile, 'utf8'));
           if (employeeData.phone) {
             const shiftLabels = { morning: 'Утренняя', day: 'Дневная', night: 'Ночная' };
             const shiftLabel = shiftLabels[entry.shiftType] || entry.shiftType;
@@ -3917,7 +3942,7 @@ app.post('/api/work-schedule', async (req, res) => {
 });
 
 // DELETE /api/work-schedule/clear - очистить весь месяц
-app.delete('/api/work-schedule/clear', (req, res) => {
+app.delete('/api/work-schedule/clear', async (req, res) => {
   try {
     const month = req.query.month;
 
@@ -3956,7 +3981,7 @@ app.delete('/api/work-schedule/clear', (req, res) => {
 });
 
 // DELETE /api/work-schedule/:entryId - удалить смену
-app.delete('/api/work-schedule/:entryId', (req, res) => {
+app.delete('/api/work-schedule/:entryId', async (req, res) => {
   try {
     const entryId = req.params.entryId;
     const month = req.query.month;
@@ -3985,7 +4010,7 @@ app.delete('/api/work-schedule/:entryId', (req, res) => {
 });
 
 // POST /api/work-schedule/bulk - массовое создание смен
-app.post('/api/work-schedule/bulk', (req, res) => {
+app.post('/api/work-schedule/bulk', async (req, res) => {
   try {
     const entries = req.body.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
@@ -4090,7 +4115,7 @@ app.post('/api/work-schedule/bulk', (req, res) => {
 });
 
 // POST /api/work-schedule/template - сохранить/применить шаблон
-app.post('/api/work-schedule/template', (req, res) => {
+app.post('/api/work-schedule/template', async (req, res) => {
   try {
     const action = req.body.action; // 'save' или 'apply'
     const template = req.body.template;
@@ -4109,7 +4134,7 @@ app.post('/api/work-schedule/template', (req, res) => {
       }
 
       const templateFile = path.join(WORK_SCHEDULE_TEMPLATES_DIR, `${template.id}.json`);
-      fs.writeFileSync(templateFile, JSON.stringify(template, null, 2), 'utf8');
+      await fsp.writeFile(templateFile, JSON.stringify(template, null, 2), 'utf8');
       
       res.json({ success: true, template });
     } else if (action === 'apply') {
@@ -4125,24 +4150,24 @@ app.post('/api/work-schedule/template', (req, res) => {
 });
 
 // GET /api/work-schedule/template - получить список шаблонов
-app.get('/api/work-schedule/template', (req, res) => {
+app.get('/api/work-schedule/template', async (req, res) => {
   try {
     const templates = [];
     
-    if (fs.existsSync(WORK_SCHEDULE_TEMPLATES_DIR)) {
-      const files = fs.readdirSync(WORK_SCHEDULE_TEMPLATES_DIR);
-      files.forEach(file => {
+    if (await fileExists(WORK_SCHEDULE_TEMPLATES_DIR)) {
+      const files = await fsp.readdir(WORK_SCHEDULE_TEMPLATES_DIR);
+      for (const file of files) {
         if (file.endsWith('.json')) {
           try {
             const filePath = path.join(WORK_SCHEDULE_TEMPLATES_DIR, file);
-            const data = fs.readFileSync(filePath, 'utf8');
+            const data = await fsp.readFile(filePath, 'utf8');
             const template = JSON.parse(data);
             templates.push(template);
           } catch (error) {
             console.error(`Ошибка чтения шаблона ${file}:`, error);
           }
         }
-      });
+      }
     }
 
     res.json({ success: true, templates });
@@ -4157,22 +4182,22 @@ app.get('/api/work-schedule/template', (req, res) => {
 const SUPPLIERS_DIR = `${DATA_DIR}/suppliers`;
 
 // GET /api/suppliers - получить всех поставщиков
-app.get('/api/suppliers', (req, res) => {
+app.get('/api/suppliers', async (req, res) => {
   try {
     console.log('GET /api/suppliers');
     
     const suppliers = [];
     
-    if (!fs.existsSync(SUPPLIERS_DIR)) {
-      fs.mkdirSync(SUPPLIERS_DIR, { recursive: true });
+    if (!await fileExists(SUPPLIERS_DIR)) {
+      await fsp.mkdir(SUPPLIERS_DIR, { recursive: true });
     }
     
-    const files = fs.readdirSync(SUPPLIERS_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SUPPLIERS_DIR)).filter(f => f.endsWith('.json'));
     
     for (const file of files) {
       try {
         const filePath = path.join(SUPPLIERS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const supplier = JSON.parse(content);
         suppliers.push(supplier);
       } catch (e) {
@@ -4195,7 +4220,7 @@ app.get('/api/suppliers', (req, res) => {
 });
 
 // GET /api/suppliers/:id - получить поставщика по ID
-app.get('/api/suppliers/:id', (req, res) => {
+app.get('/api/suppliers/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log('GET /api/suppliers:', id);
@@ -4203,14 +4228,14 @@ app.get('/api/suppliers/:id', (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const supplierFile = path.join(SUPPLIERS_DIR, `${sanitizedId}.json`);
     
-    if (!fs.existsSync(supplierFile)) {
+    if (!await fileExists(supplierFile)) {
       return res.status(404).json({
         success: false,
         error: 'Поставщик не найден'
       });
     }
     
-    const content = fs.readFileSync(supplierFile, 'utf8');
+    const content = await fsp.readFile(supplierFile, 'utf8');
     const supplier = JSON.parse(content);
     
     res.json({ success: true, supplier });
@@ -4225,8 +4250,8 @@ app.post('/api/suppliers', async (req, res) => {
   try {
     console.log('POST /api/suppliers:', JSON.stringify(req.body).substring(0, 200));
     
-    if (!fs.existsSync(SUPPLIERS_DIR)) {
-      fs.mkdirSync(SUPPLIERS_DIR, { recursive: true });
+    if (!await fileExists(SUPPLIERS_DIR)) {
+      await fsp.mkdir(SUPPLIERS_DIR, { recursive: true });
     }
     
     // Валидация обязательных полей
@@ -4273,7 +4298,7 @@ app.post('/api/suppliers', async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
+    await fsp.writeFile(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
     console.log('Поставщик создан:', supplierFile);
 
     res.json({ success: true, supplier });
@@ -4292,7 +4317,7 @@ app.put('/api/suppliers/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const supplierFile = path.join(SUPPLIERS_DIR, `${sanitizedId}.json`);
     
-    if (!fs.existsSync(supplierFile)) {
+    if (!await fileExists(supplierFile)) {
       return res.status(404).json({
         success: false,
         error: 'Поставщик не найден'
@@ -4322,7 +4347,7 @@ app.put('/api/suppliers/:id', async (req, res) => {
     }
     
     // Читаем существующие данные для сохранения createdAt
-    const oldContent = fs.readFileSync(supplierFile, 'utf8');
+    const oldContent = await fsp.readFile(supplierFile, 'utf8');
     const oldSupplier = JSON.parse(oldContent);
     
     const supplier = {
@@ -4341,7 +4366,7 @@ app.put('/api/suppliers/:id', async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
     
-    fs.writeFileSync(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
+    await fsp.writeFile(supplierFile, JSON.stringify(supplier, null, 2), 'utf8');
     console.log('Поставщик обновлен:', supplierFile);
     
     res.json({ success: true, supplier });
@@ -4352,7 +4377,7 @@ app.put('/api/suppliers/:id', async (req, res) => {
 });
 
 // DELETE /api/suppliers/:id - удалить поставщика
-app.delete('/api/suppliers/:id', (req, res) => {
+app.delete('/api/suppliers/:id', async (req, res) => {
   try {
     const id = req.params.id;
     console.log('DELETE /api/suppliers:', id);
@@ -4360,14 +4385,14 @@ app.delete('/api/suppliers/:id', (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const supplierFile = path.join(SUPPLIERS_DIR, `${sanitizedId}.json`);
     
-    if (!fs.existsSync(supplierFile)) {
+    if (!await fileExists(supplierFile)) {
       return res.status(404).json({
         success: false,
         error: 'Поставщик не найден'
       });
     }
     
-    fs.unlinkSync(supplierFile);
+    await fsp.unlink(supplierFile);
     console.log('Поставщик удален:', supplierFile);
     
     res.json({ success: true, message: 'Поставщик удален' });
@@ -4383,23 +4408,25 @@ app.delete('/api/suppliers/:id', (req, res) => {
 const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
 // Создаем директорию, если её нет
-if (!fs.existsSync(RECOUNT_QUESTIONS_DIR)) {
-  fs.mkdirSync(RECOUNT_QUESTIONS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(RECOUNT_QUESTIONS_DIR)) {
+    await fsp.mkdir(RECOUNT_QUESTIONS_DIR, { recursive: true });
+  }
+})();
 
 // Получить все вопросы пересчета
 app.get('/api/recount-questions', async (req, res) => {
   try {
     console.log('GET /api/recount-questions:', req.query);
 
-    const files = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    const files = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
     const questions = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
           const filePath = path.join(RECOUNT_QUESTIONS_DIR, file);
-          const data = fs.readFileSync(filePath, 'utf8');
+          const data = await fsp.readFile(filePath, 'utf8');
           const question = JSON.parse(data);
           questions.push(question);
         } catch (error) {
@@ -4439,7 +4466,7 @@ app.post('/api/recount-questions', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(questionData, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(questionData, null, 2), 'utf8');
     console.log('Вопрос пересчета сохранен:', filePath);
 
     res.json({
@@ -4463,14 +4490,14 @@ app.put('/api/recount-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    const existingData = fs.readFileSync(filePath, 'utf8');
+    const existingData = await fsp.readFile(filePath, 'utf8');
     const existingQuestion = JSON.parse(existingData);
 
     const updatedQuestion = {
@@ -4481,7 +4508,7 @@ app.put('/api/recount-questions/:questionId', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
     console.log('Вопрос пересчета обновлен:', filePath);
 
     res.json({
@@ -4524,8 +4551,8 @@ app.post('/api/recount-questions/:questionId/reference-photo', upload.single('ph
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (fs.existsSync(filePath)) {
-      const existingData = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const existingData = await fsp.readFile(filePath, 'utf8');
       const question = JSON.parse(existingData);
 
       if (!question.referencePhotos) {
@@ -4534,7 +4561,7 @@ app.post('/api/recount-questions/:questionId/reference-photo', upload.single('ph
       question.referencePhotos[shopAddress] = photoUrl;
       question.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
       console.log('Эталонное фото добавлено в вопрос пересчета:', questionId);
     }
 
@@ -4559,14 +4586,14 @@ app.delete('/api/recount-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(RECOUNT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
     console.log('Вопрос пересчета удален:', filePath);
 
     res.json({
@@ -4597,10 +4624,10 @@ app.post('/api/recount-questions/bulk-upload', async (req, res) => {
     }
 
     // Удаляем все существующие файлы
-    const existingFiles = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    const existingFiles = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
     for (const file of existingFiles) {
       if (file.endsWith('.json')) {
-        fs.unlinkSync(path.join(RECOUNT_QUESTIONS_DIR, file));
+        await fsp.unlink(path.join(RECOUNT_QUESTIONS_DIR, file));
       }
     }
     console.log(`Удалено ${existingFiles.length} существующих файлов`);
@@ -4625,7 +4652,7 @@ app.post('/api/recount-questions/bulk-upload', async (req, res) => {
         updatedAt: new Date().toISOString()
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(productData, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(productData, null, 2), 'utf8');
       createdProducts.push(productData);
     }
 
@@ -4661,11 +4688,11 @@ app.post('/api/recount-questions/bulk-add-new', async (req, res) => {
 
     // Читаем существующие баркоды
     const existingBarcodes = new Set();
-    const existingFiles = fs.readdirSync(RECOUNT_QUESTIONS_DIR);
+    const existingFiles = await fsp.readdir(RECOUNT_QUESTIONS_DIR);
     for (const file of existingFiles) {
       if (file.endsWith('.json')) {
         try {
-          const data = fs.readFileSync(path.join(RECOUNT_QUESTIONS_DIR, file), 'utf8');
+          const data = await fsp.readFile(path.join(RECOUNT_QUESTIONS_DIR, file), 'utf8');
           const product = JSON.parse(data);
           if (product.barcode) {
             existingBarcodes.add(product.barcode.toString());
@@ -4706,7 +4733,7 @@ app.post('/api/recount-questions/bulk-add-new', async (req, res) => {
         updatedAt: new Date().toISOString()
       };
 
-      fs.writeFileSync(filePath, JSON.stringify(productData, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(productData, null, 2), 'utf8');
       addedProducts.push(productData);
       existingBarcodes.add(barcode);
     }
@@ -4737,23 +4764,25 @@ app.post('/api/recount-questions/bulk-add-new', async (req, res) => {
 const SHIFT_QUESTIONS_DIR = `${DATA_DIR}/shift-questions`;
 
 // Создаем директорию, если её нет
-if (!fs.existsSync(SHIFT_QUESTIONS_DIR)) {
-  fs.mkdirSync(SHIFT_QUESTIONS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(SHIFT_QUESTIONS_DIR)) {
+    await fsp.mkdir(SHIFT_QUESTIONS_DIR, { recursive: true });
+  }
+})();
 
 // Получить все вопросы
 app.get('/api/shift-questions', async (req, res) => {
   try {
     console.log('GET /api/shift-questions:', req.query);
 
-    const files = fs.readdirSync(SHIFT_QUESTIONS_DIR);
+    const files = await fsp.readdir(SHIFT_QUESTIONS_DIR);
     const questions = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
           const filePath = path.join(SHIFT_QUESTIONS_DIR, file);
-          const data = fs.readFileSync(filePath, 'utf8');
+          const data = await fsp.readFile(filePath, 'utf8');
           const question = JSON.parse(data);
           questions.push(question);
         } catch (error) {
@@ -4793,14 +4822,14 @@ app.get('/api/shift-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     const question = JSON.parse(data);
 
     res.json({
@@ -4837,7 +4866,7 @@ app.post('/api/shift-questions', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(questionData, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(questionData, null, 2), 'utf8');
     console.log('Вопрос сохранен:', filePath);
 
     res.json({
@@ -4861,7 +4890,7 @@ app.put('/api/shift-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
@@ -4869,7 +4898,7 @@ app.put('/api/shift-questions/:questionId', async (req, res) => {
     }
 
     // Читаем существующий вопрос
-    const existingData = fs.readFileSync(filePath, 'utf8');
+    const existingData = await fsp.readFile(filePath, 'utf8');
     const existingQuestion = JSON.parse(existingData);
 
     // Обновляем только переданные поля
@@ -4884,7 +4913,7 @@ app.put('/api/shift-questions/:questionId', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(updatedQuestion, null, 2), 'utf8');
     console.log('Вопрос обновлен:', filePath);
 
     res.json({
@@ -4928,8 +4957,8 @@ app.post('/api/shift-questions/:questionId/reference-photo', upload.single('phot
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (fs.existsSync(filePath)) {
-      const existingData = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const existingData = await fsp.readFile(filePath, 'utf8');
       const question = JSON.parse(existingData);
 
       // Добавляем или обновляем эталонное фото для данного магазина
@@ -4939,7 +4968,7 @@ app.post('/api/shift-questions/:questionId/reference-photo', upload.single('phot
       question.referencePhotos[shopAddress] = photoUrl;
       question.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
       console.log('Эталонное фото добавлено в вопрос:', questionId);
     }
 
@@ -4964,14 +4993,14 @@ app.delete('/api/shift-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
     console.log('Вопрос удален:', filePath);
 
     res.json({
@@ -4994,22 +5023,24 @@ app.delete('/api/shift-questions/:questionId', async (req, res) => {
 const SHIFT_HANDOVER_QUESTIONS_DIR = `${DATA_DIR}/shift-handover-questions`;
 
 // Создаем директорию, если её нет
-if (!fs.existsSync(SHIFT_HANDOVER_QUESTIONS_DIR)) {
-  fs.mkdirSync(SHIFT_HANDOVER_QUESTIONS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(SHIFT_HANDOVER_QUESTIONS_DIR)) {
+    await fsp.mkdir(SHIFT_HANDOVER_QUESTIONS_DIR, { recursive: true });
+  }
+})();
 
 // Получить все вопросы
 app.get('/api/shift-handover-questions', async (req, res) => {
   try {
     console.log('GET /api/shift-handover-questions:', req.query);
 
-    const files = fs.readdirSync(SHIFT_HANDOVER_QUESTIONS_DIR);
+    const files = await fsp.readdir(SHIFT_HANDOVER_QUESTIONS_DIR);
     const questions = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, file);
-        const data = fs.readFileSync(filePath, 'utf8');
+        const data = await fsp.readFile(filePath, 'utf8');
         const question = JSON.parse(data);
 
         // Фильтр по магазину, если указан
@@ -5054,14 +5085,14 @@ app.get('/api/shift-handover-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     const question = JSON.parse(data);
 
     res.json({
@@ -5098,7 +5129,7 @@ app.post('/api/shift-handover-questions', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
     console.log('Вопрос сдачи смены создан:', filePath);
 
     res.json({
@@ -5121,14 +5152,14 @@ app.put('/api/shift-handover-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    const existingData = fs.readFileSync(filePath, 'utf8');
+    const existingData = await fsp.readFile(filePath, 'utf8');
     const question = JSON.parse(existingData);
 
     // Обновляем только переданные поля
@@ -5140,7 +5171,7 @@ app.put('/api/shift-handover-questions/:questionId', async (req, res) => {
     if (req.body.targetRole !== undefined) question.targetRole = req.body.targetRole;
     question.updatedAt = new Date().toISOString();
 
-    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
     console.log('Вопрос сдачи смены обновлен:', filePath);
 
     res.json({
@@ -5183,8 +5214,8 @@ app.post('/api/shift-handover-questions/:questionId/reference-photo', uploadShif
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (fs.existsSync(filePath)) {
-      const existingData = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const existingData = await fsp.readFile(filePath, 'utf8');
       const question = JSON.parse(existingData);
 
       // Добавляем или обновляем эталонное фото для данного магазина
@@ -5194,7 +5225,7 @@ app.post('/api/shift-handover-questions/:questionId/reference-photo', uploadShif
       question.referencePhotos[shopAddress] = photoUrl;
       question.updatedAt = new Date().toISOString();
 
-      fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+      await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
       console.log('Эталонное фото добавлено в вопрос:', questionId);
     }
 
@@ -5219,14 +5250,14 @@ app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
     const sanitizedId = questionId.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(SHIFT_HANDOVER_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({
         success: false,
         error: 'Вопрос не найден'
       });
     }
 
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
     console.log('Вопрос сдачи смены удален:', filePath);
 
     res.json({
@@ -5246,9 +5277,11 @@ app.delete('/api/shift-handover-questions/:questionId', async (req, res) => {
 const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;
 
 // Создаем директорию, если её нет
-if (!fs.existsSync(ENVELOPE_QUESTIONS_DIR)) {
-  fs.mkdirSync(ENVELOPE_QUESTIONS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(ENVELOPE_QUESTIONS_DIR)) {
+    await fsp.mkdir(ENVELOPE_QUESTIONS_DIR, { recursive: true });
+  }
+})();
 
 // Дефолтные вопросы конверта для инициализации
 const defaultEnvelopeQuestions = [
@@ -5266,12 +5299,12 @@ const defaultEnvelopeQuestions = [
 // Инициализация дефолтных вопросов при старте
 (async function initEnvelopeQuestions() {
   try {
-    const files = fs.readdirSync(ENVELOPE_QUESTIONS_DIR);
+    const files = await fsp.readdir(ENVELOPE_QUESTIONS_DIR);
     if (files.filter(f => f.endsWith('.json')).length === 0) {
       console.log('Инициализация дефолтных вопросов конверта...');
       for (const q of defaultEnvelopeQuestions) {
         const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${q.id}.json`);
-        fs.writeFileSync(filePath, JSON.stringify({ ...q, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, null, 2));
+        await fsp.writeFile(filePath, JSON.stringify({ ...q, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, null, 2));
       }
       console.log('✅ Дефолтные вопросы конверта созданы');
     }
@@ -5284,13 +5317,13 @@ const defaultEnvelopeQuestions = [
 app.get('/api/envelope-questions', async (req, res) => {
   try {
     console.log('GET /api/envelope-questions');
-    const files = fs.readdirSync(ENVELOPE_QUESTIONS_DIR);
+    const files = await fsp.readdir(ENVELOPE_QUESTIONS_DIR);
     const questions = [];
 
     for (const file of files) {
       if (file.endsWith('.json')) {
         const filePath = path.join(ENVELOPE_QUESTIONS_DIR, file);
-        const data = fs.readFileSync(filePath, 'utf8');
+        const data = await fsp.readFile(filePath, 'utf8');
         const question = JSON.parse(data);
         questions.push(question);
       }
@@ -5313,11 +5346,11 @@ app.get('/api/envelope-questions/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Вопрос не найден' });
     }
 
-    const data = fs.readFileSync(filePath, 'utf8');
+    const data = await fsp.readFile(filePath, 'utf8');
     const question = JSON.parse(data);
 
     res.json({ success: true, question });
@@ -5350,7 +5383,7 @@ app.post('/api/envelope-questions', async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
     console.log('Вопрос конверта создан:', filePath);
 
     res.json({ success: true, question });
@@ -5371,8 +5404,8 @@ app.put('/api/envelope-questions/:id', async (req, res) => {
 
     // Если файл не существует, создаем новый
     let question = {};
-    if (fs.existsSync(filePath)) {
-      const existingData = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const existingData = await fsp.readFile(filePath, 'utf8');
       question = JSON.parse(existingData);
     }
 
@@ -5390,7 +5423,7 @@ app.put('/api/envelope-questions/:id', async (req, res) => {
     question.updatedAt = new Date().toISOString();
     if (!question.createdAt) question.createdAt = new Date().toISOString();
 
-    fs.writeFileSync(filePath, JSON.stringify(question, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(question, null, 2), 'utf8');
     console.log('Вопрос конверта обновлен:', filePath);
 
     res.json({ success: true, question });
@@ -5409,11 +5442,11 @@ app.delete('/api/envelope-questions/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Вопрос не найден' });
     }
 
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
     console.log('Вопрос конверта удален:', filePath);
 
     res.json({ success: true, message: 'Вопрос успешно удален' });
@@ -5425,9 +5458,11 @@ app.delete('/api/envelope-questions/:id', async (req, res) => {
 
 // ========== API для отчётов конвертов ==========
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
-if (!fs.existsSync(ENVELOPE_REPORTS_DIR)) {
-  fs.mkdirSync(ENVELOPE_REPORTS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(ENVELOPE_REPORTS_DIR)) {
+    await fsp.mkdir(ENVELOPE_REPORTS_DIR, { recursive: true });
+  }
+})();
 
 // GET /api/envelope-reports - получить все отчеты
 app.get('/api/envelope-reports', async (req, res) => {
@@ -5452,7 +5487,7 @@ app.get('/api/envelope-reports', async (req, res) => {
     }
 
     const reports = [];
-    if (fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+    if (await fileExists(ENVELOPE_REPORTS_DIR)) {
       const files = await fs.promises.readdir(ENVELOPE_REPORTS_DIR);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
       console.log(`  📋 Найдено файлов конвертов: ${jsonFiles.length}`);
@@ -5495,7 +5530,7 @@ app.get('/api/envelope-reports/expired', async (req, res) => {
     console.log('GET /api/envelope-reports/expired');
 
     const reports = [];
-    if (fs.existsSync(ENVELOPE_REPORTS_DIR)) {
+    if (await fileExists(ENVELOPE_REPORTS_DIR)) {
       const files = await fs.promises.readdir(ENVELOPE_REPORTS_DIR);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
 
@@ -5539,7 +5574,7 @@ app.get('/api/envelope-reports/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
 
@@ -5588,7 +5623,7 @@ app.put('/api/envelope-reports/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
 
@@ -5622,7 +5657,7 @@ app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
 
@@ -5653,7 +5688,7 @@ app.delete('/api/envelope-reports/:id', async (req, res) => {
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_REPORTS_DIR, `${sanitizedId}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Отчет не найден' });
     }
 
@@ -5674,7 +5709,7 @@ app.get('/api/envelope-pending', async (req, res) => {
     const pendingDir = `${DATA_DIR}/envelope-pending`;
     const reports = [];
 
-    if (fs.existsSync(pendingDir)) {
+    if (await fileExists(pendingDir)) {
       const files = await fs.promises.readdir(pendingDir);
 
       for (const file of files) {
@@ -5709,7 +5744,7 @@ app.get('/api/envelope-failed', async (req, res) => {
     const pendingDir = `${DATA_DIR}/envelope-pending`;
     const reports = [];
 
-    if (fs.existsSync(pendingDir)) {
+    if (await fileExists(pendingDir)) {
       const files = await fs.promises.readdir(pendingDir);
 
       for (const file of files) {
@@ -5739,14 +5774,16 @@ app.get('/api/envelope-failed', async (req, res) => {
 
 // ========== API для клиентов ==========
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
-if (!fs.existsSync(CLIENTS_DIR)) {
-  fs.mkdirSync(CLIENTS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(CLIENTS_DIR)) {
+    await fsp.mkdir(CLIENTS_DIR, { recursive: true });
+  }
+})();
 
 app.get('/api/clients', async (req, res) => {
   try {
     let clients = [];
-    if (fs.existsSync(CLIENTS_DIR)) {
+    if (await fileExists(CLIENTS_DIR)) {
       const files = await fs.promises.readdir(CLIENTS_DIR);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
       const readPromises = jsonFiles.map(async (file) => {
@@ -5802,8 +5839,8 @@ app.post('/api/clients', async (req, res) => {
 
     // Проверяем, был ли уже referredBy у клиента ранее
     let existingClient = null;
-    if (fs.existsSync(clientFile)) {
-      existingClient = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+    if (await fileExists(clientFile)) {
+      existingClient = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
     }
     const isNewReferral = req.body.referredBy && (!existingClient || !existingClient.referredBy);
 
@@ -5837,7 +5874,7 @@ app.post('/api/clients', async (req, res) => {
       createdAt: existingClient?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
+    await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
 
     // Отправляем push-уведомление админам о новом приглашении
     if (isNewReferral) {
@@ -5845,10 +5882,10 @@ app.post('/api/clients', async (req, res) => {
         // Ищем сотрудника по referralCode
         let employeeName = 'Сотрудник';
         const employeesDir = `${DATA_DIR}/employees`;
-        if (fs.existsSync(employeesDir)) {
-          const empFiles = fs.readdirSync(employeesDir).filter(f => f.endsWith('.json'));
+        if (await fileExists(employeesDir)) {
+          const empFiles = (await fsp.readdir(employeesDir)).filter(f => f.endsWith('.json'));
           for (const empFile of empFiles) {
-            const emp = JSON.parse(fs.readFileSync(path.join(employeesDir, empFile), 'utf8'));
+            const emp = JSON.parse(await fsp.readFile(path.join(employeesDir, empFile), 'utf8'));
             if (emp.referralCode === parseInt(req.body.referredBy, 10)) {
               employeeName = emp.name || 'Сотрудник';
               break;
@@ -5892,15 +5929,15 @@ app.post('/api/clients/:phone/free-drink', async (req, res) => {
     const sanitizedPhone = normalizedPhone.replace(/[^0-9]/g, '_');
     const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
 
-    if (!fs.existsSync(clientFile)) {
+    if (!await fileExists(clientFile)) {
       return res.status(404).json({ success: false, error: 'Клиент не найден' });
     }
 
-    const client = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+    const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
     client.freeDrinksGiven = (client.freeDrinksGiven || 0) + count;
     client.updatedAt = new Date().toISOString();
 
-    fs.writeFileSync(clientFile, JSON.stringify(client, null, 2), 'utf8');
+    await fsp.writeFile(clientFile, JSON.stringify(client, null, 2), 'utf8');
 
     console.log(`🍹 Выдан бесплатный напиток клиенту ${client.name || phone}. Всего: ${client.freeDrinksGiven}`);
     res.json({ success: true, client });
@@ -5912,9 +5949,11 @@ app.post('/api/clients/:phone/free-drink', async (req, res) => {
 
 // ========== API для сообщений клиентам (network messages) ==========
 const NETWORK_MESSAGES_DIR = `${DATA_DIR}/network-messages`;
-if (!fs.existsSync(NETWORK_MESSAGES_DIR)) {
-  fs.mkdirSync(NETWORK_MESSAGES_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(NETWORK_MESSAGES_DIR)) {
+    await fsp.mkdir(NETWORK_MESSAGES_DIR, { recursive: true });
+  }
+})();
 
 // POST /api/clients/:phone/messages - отправить сообщение одному клиенту
 app.post('/api/clients/:phone/messages', async (req, res) => {
@@ -5945,17 +5984,17 @@ app.post('/api/clients/:phone/messages', async (req, res) => {
     // Сохраняем сообщение в файл клиента
     const messagesFile = path.join(NETWORK_MESSAGES_DIR, `${sanitizedPhone}.json`);
     let messages = [];
-    if (fs.existsSync(messagesFile)) {
-      messages = JSON.parse(fs.readFileSync(messagesFile, 'utf8'));
+    if (await fileExists(messagesFile)) {
+      messages = JSON.parse(await fsp.readFile(messagesFile, 'utf8'));
     }
     messages.push(message);
-    fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2), 'utf8');
+    await fsp.writeFile(messagesFile, JSON.stringify(messages, null, 2), 'utf8');
 
     // Отправляем push-уведомление клиенту
     try {
       const clientFile = path.join(CLIENTS_DIR, `${sanitizedPhone}.json`);
-      if (fs.existsSync(clientFile)) {
-        const client = JSON.parse(fs.readFileSync(clientFile, 'utf8'));
+      if (await fileExists(clientFile)) {
+        const client = JSON.parse(await fsp.readFile(clientFile, 'utf8'));
         if (client.fcmToken) {
           await sendPushToPhone(
             normalizedPhone,
@@ -5991,11 +6030,11 @@ app.post('/api/clients/messages/broadcast', async (req, res) => {
 
     // Получаем всех клиентов
     const clients = [];
-    if (fs.existsSync(CLIENTS_DIR)) {
-      const files = fs.readdirSync(CLIENTS_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(CLIENTS_DIR)) {
+      const files = (await fsp.readdir(CLIENTS_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(CLIENTS_DIR, file), 'utf8');
+          const content = await fsp.readFile(path.join(CLIENTS_DIR, file), 'utf8');
           clients.push(JSON.parse(content));
         } catch (e) {
           console.error(`Ошибка чтения ${file}:`, e);
@@ -6028,11 +6067,11 @@ app.post('/api/clients/messages/broadcast', async (req, res) => {
         // Сохраняем сообщение
         const messagesFile = path.join(NETWORK_MESSAGES_DIR, `${sanitizedPhone}.json`);
         let messages = [];
-        if (fs.existsSync(messagesFile)) {
-          messages = JSON.parse(fs.readFileSync(messagesFile, 'utf8'));
+        if (await fileExists(messagesFile)) {
+          messages = JSON.parse(await fsp.readFile(messagesFile, 'utf8'));
         }
         messages.push(message);
-        fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2), 'utf8');
+        await fsp.writeFile(messagesFile, JSON.stringify(messages, null, 2), 'utf8');
 
         // Отправляем push если есть токен
         if (client.fcmToken) {
@@ -6076,8 +6115,8 @@ app.get('/api/clients/:phone/messages', async (req, res) => {
 
     const messagesFile = path.join(NETWORK_MESSAGES_DIR, `${sanitizedPhone}.json`);
     let messages = [];
-    if (fs.existsSync(messagesFile)) {
-      messages = JSON.parse(fs.readFileSync(messagesFile, 'utf8'));
+    if (await fileExists(messagesFile)) {
+      messages = JSON.parse(await fsp.readFile(messagesFile, 'utf8'));
     }
 
     res.json({ success: true, messages });
@@ -6089,9 +6128,11 @@ app.get('/api/clients/:phone/messages', async (req, res) => {
 
 // ========== API для отчетов пересменки ==========
 const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
-if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
-  fs.mkdirSync(SHIFT_REPORTS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(SHIFT_REPORTS_DIR)) {
+    await fsp.mkdir(SHIFT_REPORTS_DIR, { recursive: true });
+  }
+})();
 
 app.get('/api/shift-reports', async (req, res) => {
   try {
@@ -6099,13 +6140,13 @@ app.get('/api/shift-reports', async (req, res) => {
     const reports = [];
 
     // Читаем из daily-файлов (формат scheduler'а: YYYY-MM-DD.json)
-    if (fs.existsSync(SHIFT_REPORTS_DIR)) {
-      const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(SHIFT_REPORTS_DIR)) {
+      const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
       for (const file of files) {
         try {
           const filePath = path.join(SHIFT_REPORTS_DIR, file);
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const data = JSON.parse(content);
 
           // Проверяем формат файла: daily (массив) или individual (объект)
@@ -6274,13 +6315,13 @@ app.put('/api/shift-reports/:id', async (req, res) => {
     let reportIndex = -1;
 
     // 1. Сначала ищем в daily-файлах (формат scheduler'а)
-    if (fs.existsSync(SHIFT_REPORTS_DIR)) {
-      const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
+    if (await fileExists(SHIFT_REPORTS_DIR)) {
+      const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f));
 
       for (const file of files) {
         const filePath = path.join(SHIFT_REPORTS_DIR, file);
         try {
-          const content = fs.readFileSync(filePath, 'utf8');
+          const content = await fsp.readFile(filePath, 'utf8');
           const reports = JSON.parse(content);
           if (Array.isArray(reports)) {
             const idx = reports.findIndex(r => r.id === reportId);
@@ -6300,8 +6341,8 @@ app.put('/api/shift-reports/:id', async (req, res) => {
     // 2. Если не нашли в daily - ищем в individual файлах (старый формат)
     if (!existingReport) {
       const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
-      if (fs.existsSync(reportFile)) {
-        existingReport = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+      if (await fileExists(reportFile)) {
+        existingReport = JSON.parse(await fsp.readFile(reportFile, 'utf8'));
         reportSource = 'individual';
       }
     }
@@ -6328,8 +6369,8 @@ app.put('/api/shift-reports/:id', async (req, res) => {
           minRating: 1,
           maxRating: 10
         };
-        if (fs.existsSync(settingsFile)) {
-          const settingsContent = fs.readFileSync(settingsFile, 'utf8');
+        if (await fileExists(settingsFile)) {
+          const settingsContent = await fsp.readFile(settingsFile, 'utf8');
           settings = { ...settings, ...JSON.parse(settingsContent) };
         }
 
@@ -6343,14 +6384,14 @@ app.put('/api/shift-reports/:id', async (req, res) => {
         const today = now.toISOString().split('T')[0];
         const efficiencyDir = `${DATA_DIR}/efficiency-penalties`;
 
-        if (!fs.existsSync(efficiencyDir)) {
-          fs.mkdirSync(efficiencyDir, { recursive: true });
+        if (!await fileExists(efficiencyDir)) {
+          await fsp.mkdir(efficiencyDir, { recursive: true });
         }
 
         const penaltiesFile = path.join(efficiencyDir, `${monthKey}.json`);
         let penalties = [];
-        if (fs.existsSync(penaltiesFile)) {
-          penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+        if (await fileExists(penaltiesFile)) {
+          penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
         }
 
         // Проверяем дубликат
@@ -6373,7 +6414,7 @@ app.put('/api/shift-reports/:id', async (req, res) => {
           };
 
           penalties.push(penalty);
-          fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+          await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
           console.log(`✅ Баллы эффективности (пересменка) сохранены: ${efficiencyPoints} для ${existingReport.employeeName}`);
         }
       } catch (effError) {
@@ -6396,10 +6437,10 @@ app.put('/api/shift-reports/:id', async (req, res) => {
     // Сохраняем в соответствующий формат
     if (reportSource === 'daily' && dailyReports && reportIndex !== -1) {
       dailyReports[reportIndex] = updatedReport;
-      fs.writeFileSync(dailyFilePath, JSON.stringify(dailyReports, null, 2), 'utf8');
+      await fsp.writeFile(dailyFilePath, JSON.stringify(dailyReports, null, 2), 'utf8');
     } else {
       const reportFile = path.join(SHIFT_REPORTS_DIR, `${reportId}.json`);
-      fs.writeFileSync(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+      await fsp.writeFile(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
     }
 
     console.log(`Отчет пересменки обновлен: ${reportId}, статус: ${updatedReport.status}, оценка: ${updatedReport.rating}`);
@@ -6417,18 +6458,18 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
 
     // Find employee in individual files (employee_*.json)
     const employeesDir = `${DATA_DIR}/employees`;
-    if (!fs.existsSync(employeesDir)) {
+    if (!await fileExists(employeesDir)) {
       console.log('[ShiftNotification] Директория сотрудников не найдена');
       return;
     }
 
-    const files = fs.readdirSync(employeesDir).filter(f => f.startsWith('employee_') && f.endsWith('.json'));
+    const files = (await fsp.readdir(employeesDir)).filter(f => f.startsWith('employee_') && f.endsWith('.json'));
     let foundEmployee = null;
 
     for (const file of files) {
       try {
         const filePath = path.join(employeesDir, file);
-        const employee = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const employee = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
         if (employee.id === employeeIdentifier ||
             employee.name === employeeIdentifier ||
@@ -6455,12 +6496,12 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
     const normalizedPhone = foundEmployee.phone.replace(/[\s+]/g, '');
     const tokenFile = path.join(`${DATA_DIR}/fcm-tokens`, `${normalizedPhone}.json`);
 
-    if (!fs.existsSync(tokenFile)) {
+    if (!await fileExists(tokenFile)) {
       console.log(`[ShiftNotification] FCM токен не найден для телефона ${normalizedPhone}`);
       return;
     }
 
-    const tokenData = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const tokenData = JSON.parse(await fsp.readFile(tokenFile, 'utf8'));
     const fcmToken = tokenData.token;
 
     if (!fcmToken) {
@@ -6490,18 +6531,20 @@ async function sendShiftConfirmationNotification(employeeIdentifier, rating) {
 
 // ========== API для статей обучения ==========
 const TRAINING_ARTICLES_DIR = `${DATA_DIR}/training-articles`;
-if (!fs.existsSync(TRAINING_ARTICLES_DIR)) {
-  fs.mkdirSync(TRAINING_ARTICLES_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(TRAINING_ARTICLES_DIR)) {
+    await fsp.mkdir(TRAINING_ARTICLES_DIR, { recursive: true });
+  }
+})();
 
 app.get('/api/training-articles', async (req, res) => {
   try {
     const articles = [];
-    if (fs.existsSync(TRAINING_ARTICLES_DIR)) {
-      const files = fs.readdirSync(TRAINING_ARTICLES_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(TRAINING_ARTICLES_DIR)) {
+      const files = (await fsp.readdir(TRAINING_ARTICLES_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(TRAINING_ARTICLES_DIR, file), 'utf8');
+          const content = await fsp.readFile(path.join(TRAINING_ARTICLES_DIR, file), 'utf8');
           articles.push(JSON.parse(content));
         } catch (e) {
           console.error(`Ошибка чтения ${file}:`, e);
@@ -6534,7 +6577,7 @@ app.post('/api/training-articles', async (req, res) => {
       article.contentBlocks = req.body.contentBlocks;
     }
     const articleFile = path.join(TRAINING_ARTICLES_DIR, `${article.id}.json`);
-    fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
+    await fsp.writeFile(articleFile, JSON.stringify(article, null, 2), 'utf8');
     res.json({ success: true, article });
   } catch (error) {
     console.error('Ошибка создания статьи обучения:', error);
@@ -6549,10 +6592,10 @@ app.put('/api/training-articles/:id', async (req, res) => {
     if (!isPathSafe(TRAINING_ARTICLES_DIR, articleFile)) {
       return res.status(400).json({ success: false, error: 'Invalid article ID' });
     }
-    if (!fs.existsSync(articleFile)) {
+    if (!await fileExists(articleFile)) {
       return res.status(404).json({ success: false, error: 'Статья не найдена' });
     }
-    const article = JSON.parse(fs.readFileSync(articleFile, 'utf8'));
+    const article = JSON.parse(await fsp.readFile(articleFile, 'utf8'));
     if (req.body.group !== undefined) article.group = req.body.group;
     if (req.body.title !== undefined) article.title = req.body.title;
     if (req.body.content !== undefined) article.content = req.body.content;
@@ -6563,7 +6606,7 @@ app.put('/api/training-articles/:id', async (req, res) => {
       article.contentBlocks = req.body.contentBlocks;
     }
     article.updatedAt = new Date().toISOString();
-    fs.writeFileSync(articleFile, JSON.stringify(article, null, 2), 'utf8');
+    await fsp.writeFile(articleFile, JSON.stringify(article, null, 2), 'utf8');
     res.json({ success: true, article });
   } catch (error) {
     console.error('Ошибка обновления статьи обучения:', error);
@@ -6578,10 +6621,10 @@ app.delete('/api/training-articles/:id', async (req, res) => {
     if (!isPathSafe(TRAINING_ARTICLES_DIR, articleFile)) {
       return res.status(400).json({ success: false, error: 'Invalid article ID' });
     }
-    if (!fs.existsSync(articleFile)) {
+    if (!await fileExists(articleFile)) {
       return res.status(404).json({ success: false, error: 'Статья не найдена' });
     }
-    fs.unlinkSync(articleFile);
+    await fsp.unlink(articleFile);
     res.json({ success: true });
   } catch (error) {
     console.error('Ошибка удаления статьи обучения:', error);
@@ -6591,14 +6634,16 @@ app.delete('/api/training-articles/:id', async (req, res) => {
 
 // Настройка multer для загрузки изображений статей обучения
 const TRAINING_ARTICLES_MEDIA_DIR = `${DATA_DIR}/training-articles-media`;
-if (!fs.existsSync(TRAINING_ARTICLES_MEDIA_DIR)) {
-  fs.mkdirSync(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(TRAINING_ARTICLES_MEDIA_DIR)) {
+    await fsp.mkdir(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
+  }
+})();
 
 const trainingArticleMediaStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    if (!fs.existsSync(TRAINING_ARTICLES_MEDIA_DIR)) {
-      fs.mkdirSync(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
+  destination: async function (req, file, cb) {
+    if (!await fileExists(TRAINING_ARTICLES_MEDIA_DIR)) {
+      await fsp.mkdir(TRAINING_ARTICLES_MEDIA_DIR, { recursive: true });
     }
     cb(null, TRAINING_ARTICLES_MEDIA_DIR);
   },
@@ -6646,16 +6691,16 @@ app.post('/api/training-articles/upload-image', uploadTrainingArticleMedia.singl
 });
 
 // Удаление изображения статьи обучения
-app.delete('/api/training-articles/delete-image/:filename', (req, res) => {
+app.delete('/api/training-articles/delete-image/:filename', async (req, res) => {
   try {
     const filename = req.params.filename;
     const filePath = path.join(TRAINING_ARTICLES_MEDIA_DIR, filename);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Изображение не найдено' });
     }
 
-    fs.unlinkSync(filePath);
+    await fsp.unlink(filePath);
     console.log(`🗑️ Удалено изображение статьи обучения: ${filename}`);
 
     res.json({ success: true });
@@ -6670,18 +6715,20 @@ app.use('/training-articles-media', express.static(TRAINING_ARTICLES_MEDIA_DIR))
 
 // ========== API для вопросов тестирования ==========
 const TEST_QUESTIONS_DIR = `${DATA_DIR}/test-questions`;
-if (!fs.existsSync(TEST_QUESTIONS_DIR)) {
-  fs.mkdirSync(TEST_QUESTIONS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(TEST_QUESTIONS_DIR)) {
+    await fsp.mkdir(TEST_QUESTIONS_DIR, { recursive: true });
+  }
+})();
 
 app.get('/api/test-questions', async (req, res) => {
   try {
     const questions = [];
-    if (fs.existsSync(TEST_QUESTIONS_DIR)) {
-      const files = fs.readdirSync(TEST_QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(TEST_QUESTIONS_DIR)) {
+      const files = (await fsp.readdir(TEST_QUESTIONS_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
+          const content = await fsp.readFile(path.join(TEST_QUESTIONS_DIR, file), 'utf8');
           questions.push(JSON.parse(content));
         } catch (e) {
           console.error(`Ошибка чтения ${file}:`, e);
@@ -6707,7 +6754,7 @@ app.post('/api/test-questions', async (req, res) => {
       createdAt: new Date().toISOString(),
     };
     const questionFile = path.join(TEST_QUESTIONS_DIR, `${question.id}.json`);
-    fs.writeFileSync(questionFile, JSON.stringify(question, null, 2), 'utf8');
+    await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
     res.json({ success: true, question });
   } catch (error) {
     console.error('Ошибка создания вопроса тестирования:', error);
@@ -6722,17 +6769,17 @@ app.put('/api/test-questions/:id', async (req, res) => {
     if (!isPathSafe(TEST_QUESTIONS_DIR, questionFile)) {
       return res.status(400).json({ success: false, error: 'Invalid question ID' });
     }
-    if (!fs.existsSync(questionFile)) {
+    if (!await fileExists(questionFile)) {
       return res.status(404).json({ success: false, error: 'Вопрос не найден' });
     }
-    const question = JSON.parse(fs.readFileSync(questionFile, 'utf8'));
+    const question = JSON.parse(await fsp.readFile(questionFile, 'utf8'));
     if (req.body.question) question.question = req.body.question;
     if (req.body.answerA) question.answerA = req.body.answerA;
     if (req.body.answerB) question.answerB = req.body.answerB;
     if (req.body.answerC) question.answerC = req.body.answerC;
     if (req.body.correctAnswer) question.correctAnswer = req.body.correctAnswer;
     question.updatedAt = new Date().toISOString();
-    fs.writeFileSync(questionFile, JSON.stringify(question, null, 2), 'utf8');
+    await fsp.writeFile(questionFile, JSON.stringify(question, null, 2), 'utf8');
     res.json({ success: true, question });
   } catch (error) {
     console.error('Ошибка обновления вопроса тестирования:', error);
@@ -6747,10 +6794,10 @@ app.delete('/api/test-questions/:id', async (req, res) => {
     if (!isPathSafe(TEST_QUESTIONS_DIR, questionFile)) {
       return res.status(400).json({ success: false, error: 'Invalid question ID' });
     }
-    if (!fs.existsSync(questionFile)) {
+    if (!await fileExists(questionFile)) {
       return res.status(404).json({ success: false, error: 'Вопрос не найден' });
     }
-    fs.unlinkSync(questionFile);
+    await fsp.unlink(questionFile);
     res.json({ success: true });
   } catch (error) {
     console.error('Ошибка удаления вопроса тестирования:', error);
@@ -6760,20 +6807,22 @@ app.delete('/api/test-questions/:id', async (req, res) => {
 
 // ========== API для результатов тестирования ==========
 const TEST_RESULTS_DIR = `${DATA_DIR}/test-results`;
-if (!fs.existsSync(TEST_RESULTS_DIR)) {
-  fs.mkdirSync(TEST_RESULTS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(TEST_RESULTS_DIR)) {
+    await fsp.mkdir(TEST_RESULTS_DIR, { recursive: true });
+  }
+})();
 
 // GET /api/test-results - получить все результаты тестов
 app.get('/api/test-results', async (req, res) => {
   try {
     console.log('GET /api/test-results');
     const results = [];
-    if (fs.existsSync(TEST_RESULTS_DIR)) {
-      const files = fs.readdirSync(TEST_RESULTS_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(TEST_RESULTS_DIR)) {
+      const files = (await fsp.readdir(TEST_RESULTS_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(TEST_RESULTS_DIR, file), 'utf8');
+          const content = await fsp.readFile(path.join(TEST_RESULTS_DIR, file), 'utf8');
           const result = JSON.parse(content);
           results.push(result);
         } catch (e) {
@@ -6809,9 +6858,9 @@ async function assignTestPoints(result) {
       zeroThreshold: 12
     };
 
-    if (fs.existsSync(settingsFile)) {
+    if (await fileExists(settingsFile)) {
       try {
-        const settingsData = fs.readFileSync(settingsFile, 'utf8');
+        const settingsData = await fsp.readFile(settingsFile, 'utf8');
         settings = JSON.parse(settingsData);
       } catch (e) {
         console.error('Error loading test settings:', e);
@@ -6843,16 +6892,16 @@ async function assignTestPoints(result) {
     // Дедупликация
     const sourceId = `test_${result.id}`;
     const PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
-    if (!fs.existsSync(PENALTIES_DIR)) {
-      fs.mkdirSync(PENALTIES_DIR, { recursive: true });
+    if (!await fileExists(PENALTIES_DIR)) {
+      await fsp.mkdir(PENALTIES_DIR, { recursive: true });
     }
 
     const penaltiesFile = path.join(PENALTIES_DIR, `${monthKey}.json`);
     let penalties = [];
 
-    if (fs.existsSync(penaltiesFile)) {
+    if (await fileExists(penaltiesFile)) {
       try {
-        penalties = JSON.parse(fs.readFileSync(penaltiesFile, 'utf8'));
+        penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
       } catch (e) {
         console.error('Error reading penalties file:', e);
       }
@@ -6883,7 +6932,7 @@ async function assignTestPoints(result) {
     };
 
     penalties.push(entry);
-    fs.writeFileSync(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
 
     console.log(`✅ Test points assigned: ${result.employeeName} (${points >= 0 ? '+' : ''}${points} points)`);
     return { success: true, points: points };
@@ -6909,7 +6958,7 @@ app.post('/api/test-results', async (req, res) => {
     };
 
     const resultFile = path.join(TEST_RESULTS_DIR, `${result.id}.json`);
-    fs.writeFileSync(resultFile, JSON.stringify(result, null, 2), 'utf8');
+    await fsp.writeFile(resultFile, JSON.stringify(result, null, 2), 'utf8');
 
     console.log(`✅ Результат теста сохранен: ${result.employeeName} - ${result.score}/${result.totalQuestions}`);
 
@@ -6930,19 +6979,21 @@ app.post('/api/test-results', async (req, res) => {
 
 // ========== API для отзывов ==========
 const REVIEWS_DIR = `${DATA_DIR}/reviews`;
-if (!fs.existsSync(REVIEWS_DIR)) {
-  fs.mkdirSync(REVIEWS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(REVIEWS_DIR)) {
+    await fsp.mkdir(REVIEWS_DIR, { recursive: true });
+  }
+})();
 
 app.get('/api/reviews', async (req, res) => {
   try {
     const { phone } = req.query;
     const reviews = [];
-    if (fs.existsSync(REVIEWS_DIR)) {
-      const files = fs.readdirSync(REVIEWS_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(REVIEWS_DIR)) {
+      const files = (await fsp.readdir(REVIEWS_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(REVIEWS_DIR, file), 'utf8');
+          const content = await fsp.readFile(path.join(REVIEWS_DIR, file), 'utf8');
           const review = JSON.parse(content);
           if (!phone || review.clientPhone === phone) {
             reviews.push(review);
@@ -6974,7 +7025,7 @@ app.post('/api/reviews', async (req, res) => {
       hasUnreadFromAdmin: false,
     };
     const reviewFile = path.join(REVIEWS_DIR, `${review.id}.json`);
-    fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+    await fsp.writeFile(reviewFile, JSON.stringify(review, null, 2), 'utf8');
 
     // Отправить push-уведомление админам
     const reviewEmoji = review.reviewType === 'positive' ? '👍' : '👎';
@@ -7003,10 +7054,10 @@ app.get('/api/reviews/:id', async (req, res) => {
     if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
       return res.status(400).json({ success: false, error: 'Invalid review ID' });
     }
-    if (!fs.existsSync(reviewFile)) {
+    if (!await fileExists(reviewFile)) {
       return res.status(404).json({ success: false, error: 'Отзыв не найден' });
     }
-    const review = JSON.parse(fs.readFileSync(reviewFile, 'utf8'));
+    const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
     res.json({ success: true, review });
   } catch (error) {
     console.error('Ошибка получения отзыва:', error);
@@ -7021,10 +7072,10 @@ app.post('/api/reviews/:id/messages', async (req, res) => {
     if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
       return res.status(400).json({ success: false, error: 'Invalid review ID' });
     }
-    if (!fs.existsSync(reviewFile)) {
+    if (!await fileExists(reviewFile)) {
       return res.status(404).json({ success: false, error: 'Отзыв не найден' });
     }
-    const review = JSON.parse(fs.readFileSync(reviewFile, 'utf8'));
+    const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
     const message = {
       id: `message_${Date.now()}`,
       sender: req.body.sender,
@@ -7066,7 +7117,7 @@ app.post('/api/reviews/:id/messages', async (req, res) => {
       );
     }
 
-    fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+    await fsp.writeFile(reviewFile, JSON.stringify(review, null, 2), 'utf8');
     res.json({ success: true, message });
   } catch (error) {
     console.error('Ошибка добавления сообщения:', error);
@@ -7082,11 +7133,11 @@ app.post('/api/reviews/:id/mark-read', async (req, res) => {
     if (!isPathSafe(REVIEWS_DIR, reviewFile)) {
       return res.status(400).json({ success: false, error: 'Invalid review ID' });
     }
-    if (!fs.existsSync(reviewFile)) {
+    if (!await fileExists(reviewFile)) {
       return res.status(404).json({ success: false, error: 'Отзыв не найден' });
     }
 
-    const review = JSON.parse(fs.readFileSync(reviewFile, 'utf8'));
+    const review = JSON.parse(await fsp.readFile(reviewFile, 'utf8'));
     const { readerType } = req.body; // 'admin' или 'client'
 
     if (!readerType) {
@@ -7116,7 +7167,7 @@ app.post('/api/reviews/:id/mark-read', async (req, res) => {
       }
     }
 
-    fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2), 'utf8');
+    await fsp.writeFile(reviewFile, JSON.stringify(review, null, 2), 'utf8');
     res.json({ success: true });
   } catch (error) {
     console.error('Ошибка отметки диалога как прочитанного:', error);
@@ -7131,12 +7182,14 @@ app.post('/api/reviews/:id/mark-read', async (req, res) => {
 const RECIPES_DIR = `${DATA_DIR}/recipes`;
 const RECIPE_PHOTOS_DIR = `${DATA_DIR}/recipe-photos`;
 
-if (!fs.existsSync(RECIPES_DIR)) {
-  fs.mkdirSync(RECIPES_DIR, { recursive: true });
-}
-if (!fs.existsSync(RECIPE_PHOTOS_DIR)) {
-  fs.mkdirSync(RECIPE_PHOTOS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(RECIPES_DIR)) {
+    await fsp.mkdir(RECIPES_DIR, { recursive: true });
+  }
+  if (!await fileExists(RECIPE_PHOTOS_DIR)) {
+    await fsp.mkdir(RECIPE_PHOTOS_DIR, { recursive: true });
+  }
+})();
 
 // GET /api/recipes - получить все рецепты
 app.get('/api/recipes', async (req, res) => {
@@ -7144,11 +7197,11 @@ app.get('/api/recipes', async (req, res) => {
     console.log('GET /api/recipes');
     const recipes = [];
     
-    if (fs.existsSync(RECIPES_DIR)) {
-      const files = fs.readdirSync(RECIPES_DIR).filter(f => f.endsWith('.json'));
+    if (await fileExists(RECIPES_DIR)) {
+      const files = (await fsp.readdir(RECIPES_DIR)).filter(f => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const content = fs.readFileSync(path.join(RECIPES_DIR, file), 'utf8');
+          const content = await fsp.readFile(path.join(RECIPES_DIR, file), 'utf8');
           const recipe = JSON.parse(content);
           recipes.push(recipe);
         } catch (e) {
@@ -7173,11 +7226,11 @@ app.get('/api/recipes/:id', async (req, res) => {
     if (!isPathSafe(RECIPES_DIR, recipeFile)) {
       return res.status(400).json({ success: false, error: 'Invalid recipe ID' });
     }
-    if (!fs.existsSync(recipeFile)) {
+    if (!await fileExists(recipeFile)) {
       return res.status(404).json({ success: false, error: 'Рецепт не найден' });
     }
     
-    const recipe = JSON.parse(fs.readFileSync(recipeFile, 'utf8'));
+    const recipe = JSON.parse(await fsp.readFile(recipeFile, 'utf8'));
     res.json({ success: true, recipe });
   } catch (error) {
     console.error('Ошибка получения рецепта:', error);
@@ -7193,7 +7246,7 @@ app.get('/api/recipes/photo/:recipeId', async (req, res) => {
     if (!isPathSafe(RECIPE_PHOTOS_DIR, photoPath)) {
       return res.status(400).json({ success: false, error: 'Invalid recipe ID' });
     }
-    if (fs.existsSync(photoPath)) {
+    if (await fileExists(photoPath)) {
       res.sendFile(photoPath);
     } else {
       res.status(404).json({ success: false, error: 'Фото не найдено' });
@@ -7227,7 +7280,7 @@ app.post('/api/recipes', async (req, res) => {
     };
 
     const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
-    fs.writeFileSync(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
+    await fsp.writeFile(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
 
     res.json({ success: true, recipe });
   } catch (error) {
@@ -7245,11 +7298,11 @@ app.put('/api/recipes/:id', async (req, res) => {
 
     const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
 
-    if (!fs.existsSync(recipeFile)) {
+    if (!await fileExists(recipeFile)) {
       return res.status(404).json({ success: false, error: 'Рецепт не найден' });
     }
 
-    const content = fs.readFileSync(recipeFile, 'utf8');
+    const content = await fsp.readFile(recipeFile, 'utf8');
     const recipe = JSON.parse(content);
 
     // Обновляем поля
@@ -7261,7 +7314,7 @@ app.put('/api/recipes/:id', async (req, res) => {
     if (updates.photoUrl !== undefined) recipe.photoUrl = updates.photoUrl;
     recipe.updatedAt = new Date().toISOString();
 
-    fs.writeFileSync(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
+    await fsp.writeFile(recipeFile, JSON.stringify(recipe, null, 2), 'utf8');
 
     res.json({ success: true, recipe });
   } catch (error) {
@@ -7278,17 +7331,17 @@ app.delete('/api/recipes/:id', async (req, res) => {
 
     const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
 
-    if (!fs.existsSync(recipeFile)) {
+    if (!await fileExists(recipeFile)) {
       return res.status(404).json({ success: false, error: 'Рецепт не найден' });
     }
 
     // Удаляем файл рецепта
-    fs.unlinkSync(recipeFile);
+    await fsp.unlink(recipeFile);
 
     // Удаляем фото рецепта, если есть
     const photoPath = path.join(RECIPE_PHOTOS_DIR, `${id}.jpg`);
-    if (fs.existsSync(photoPath)) {
-      fs.unlinkSync(photoPath);
+    if (await fileExists(photoPath)) {
+      await fsp.unlink(photoPath);
     }
 
     res.json({ success: true, message: 'Рецепт успешно удален' });
@@ -7303,9 +7356,11 @@ app.delete('/api/recipes/:id', async (req, res) => {
 // ============================================
 const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
 
-if (!fs.existsSync(SHIFT_HANDOVER_REPORTS_DIR)) {
-  fs.mkdirSync(SHIFT_HANDOVER_REPORTS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
+    await fsp.mkdir(SHIFT_HANDOVER_REPORTS_DIR, { recursive: true });
+  }
+})();
 
 // GET /api/shift-handover-reports - получить все отчеты сдачи смены
 app.get('/api/shift-handover-reports', async (req, res) => {
@@ -7314,16 +7369,16 @@ app.get('/api/shift-handover-reports', async (req, res) => {
 
     const reports = [];
 
-    if (!fs.existsSync(SHIFT_HANDOVER_REPORTS_DIR)) {
+    if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
       return res.json({ success: true, reports: [] });
     }
 
-    const files = fs.readdirSync(SHIFT_HANDOVER_REPORTS_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(SHIFT_HANDOVER_REPORTS_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const report = JSON.parse(content);
 
         // Фильтрация по параметрам запроса
@@ -7371,14 +7426,14 @@ app.get('/api/shift-handover-reports/:id', async (req, res) => {
 
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(reportFile)) {
+    if (!await fileExists(reportFile)) {
       return res.status(404).json({
         success: false,
         error: 'Отчет не найден'
       });
     }
 
-    const content = fs.readFileSync(reportFile, 'utf8');
+    const content = await fsp.readFile(reportFile, 'utf8');
     const report = JSON.parse(content);
 
     res.json({ success: true, report });
@@ -7395,7 +7450,7 @@ app.post('/api/shift-handover-reports', async (req, res) => {
     console.log('POST /api/shift-handover-reports:', report.id);
 
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${report.id}.json`);
-    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2), 'utf8');
+    await fsp.writeFile(reportFile, JSON.stringify(report, null, 2), 'utf8');
 
     // Определяем тип смены по времени создания
     const createdAt = new Date(report.createdAt || Date.now());
@@ -7424,7 +7479,7 @@ app.put('/api/shift-handover-reports/:id', async (req, res) => {
 
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(reportFile)) {
+    if (!await fileExists(reportFile)) {
       return res.status(404).json({
         success: false,
         error: 'Отчет не найден'
@@ -7432,7 +7487,7 @@ app.put('/api/shift-handover-reports/:id', async (req, res) => {
     }
 
     // Загружаем существующий отчёт
-    const existingData = fs.readFileSync(reportFile, 'utf8');
+    const existingData = await fsp.readFile(reportFile, 'utf8');
     const existingReport = JSON.parse(existingData);
     const previousStatus = existingReport.status;
 
@@ -7444,7 +7499,7 @@ app.put('/api/shift-handover-reports/:id', async (req, res) => {
     };
 
     // Сохраняем обновлённый отчёт
-    fs.writeFileSync(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
+    await fsp.writeFile(reportFile, JSON.stringify(updatedReport, null, 2), 'utf8');
     console.log('Отчет сдачи смены обновлен:', id, 'статус:', updatedReport.status);
 
     // Отправляем push-уведомление сотруднику при изменении статуса на approved/rejected
@@ -7491,14 +7546,14 @@ app.delete('/api/shift-handover-reports/:id', async (req, res) => {
 
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(reportFile)) {
+    if (!await fileExists(reportFile)) {
       return res.status(404).json({
         success: false,
         error: 'Отчет не найден'
       });
     }
 
-    fs.unlinkSync(reportFile);
+    await fsp.unlink(reportFile);
 
     res.json({ success: true, message: 'Отчет успешно удален' });
   } catch (error) {
@@ -7508,7 +7563,7 @@ app.delete('/api/shift-handover-reports/:id', async (req, res) => {
 });
 
 // GET /api/shift-handover/pending - получить pending отчёты (не сданные смены)
-app.get('/api/shift-handover/pending', (req, res) => {
+app.get('/api/shift-handover/pending', async (req, res) => {
   try {
     const pending = getPendingShiftHandoverReports();
     console.log(`GET /api/shift-handover/pending: found ${pending.length} pending`);
@@ -7524,7 +7579,7 @@ app.get('/api/shift-handover/pending', (req, res) => {
 });
 
 // GET /api/shift-handover/failed - получить failed отчёты (не в срок)
-app.get('/api/shift-handover/failed', (req, res) => {
+app.get('/api/shift-handover/failed', async (req, res) => {
   try {
     const failed = getFailedShiftHandoverReports();
     console.log(`GET /api/shift-handover/failed: found ${failed.length} failed`);
@@ -7544,9 +7599,11 @@ app.get('/api/shift-handover/failed', (req, res) => {
 // ============================================
 const MENU_DIR = `${DATA_DIR}/menu`;
 
-if (!fs.existsSync(MENU_DIR)) {
-  fs.mkdirSync(MENU_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(MENU_DIR)) {
+    await fsp.mkdir(MENU_DIR, { recursive: true });
+  }
+})();
 
 // GET /api/menu - получить все позиции меню
 app.get('/api/menu', async (req, res) => {
@@ -7555,16 +7612,16 @@ app.get('/api/menu', async (req, res) => {
 
     const items = [];
 
-    if (!fs.existsSync(MENU_DIR)) {
+    if (!await fileExists(MENU_DIR)) {
       return res.json({ success: true, items: [] });
     }
 
-    const files = fs.readdirSync(MENU_DIR).filter(f => f.endsWith('.json'));
+    const files = (await fsp.readdir(MENU_DIR)).filter(f => f.endsWith('.json'));
 
     for (const file of files) {
       try {
         const filePath = path.join(MENU_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fsp.readFile(filePath, 'utf8');
         const item = JSON.parse(content);
         items.push(item);
       } catch (e) {
@@ -7594,14 +7651,14 @@ app.get('/api/menu/:id', async (req, res) => {
 
     const itemFile = path.join(MENU_DIR, `${id}.json`);
 
-    if (!fs.existsSync(itemFile)) {
+    if (!await fileExists(itemFile)) {
       return res.status(404).json({
         success: false,
         error: 'Позиция меню не найдена'
       });
     }
 
-    const content = fs.readFileSync(itemFile, 'utf8');
+    const content = await fsp.readFile(itemFile, 'utf8');
     const item = JSON.parse(content);
 
     res.json({ success: true, item });
@@ -7623,7 +7680,7 @@ app.post('/api/menu', async (req, res) => {
     }
 
     const itemFile = path.join(MENU_DIR, `${item.id}.json`);
-    fs.writeFileSync(itemFile, JSON.stringify(item, null, 2), 'utf8');
+    await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
 
     res.json({ success: true, item });
   } catch (error) {
@@ -7641,21 +7698,21 @@ app.put('/api/menu/:id', async (req, res) => {
 
     const itemFile = path.join(MENU_DIR, `${id}.json`);
 
-    if (!fs.existsSync(itemFile)) {
+    if (!await fileExists(itemFile)) {
       return res.status(404).json({
         success: false,
         error: 'Позиция меню не найдена'
       });
     }
 
-    const content = fs.readFileSync(itemFile, 'utf8');
+    const content = await fsp.readFile(itemFile, 'utf8');
     const item = JSON.parse(content);
 
     // Обновляем поля
     Object.assign(item, updates);
     item.id = id; // Сохраняем оригинальный ID
 
-    fs.writeFileSync(itemFile, JSON.stringify(item, null, 2), 'utf8');
+    await fsp.writeFile(itemFile, JSON.stringify(item, null, 2), 'utf8');
 
     res.json({ success: true, item });
   } catch (error) {
@@ -7672,14 +7729,14 @@ app.delete('/api/menu/:id', async (req, res) => {
 
     const itemFile = path.join(MENU_DIR, `${id}.json`);
 
-    if (!fs.existsSync(itemFile)) {
+    if (!await fileExists(itemFile)) {
       return res.status(404).json({
         success: false,
         error: 'Позиция меню не найдена'
       });
     }
 
-    fs.unlinkSync(itemFile);
+    await fsp.unlink(itemFile);
 
     res.json({ success: true, message: 'Позиция меню удалена' });
   } catch (error) {
@@ -7693,9 +7750,11 @@ app.delete('/api/menu/:id', async (req, res) => {
 // ============================================
 const ORDERS_DIR = `${DATA_DIR}/orders`;
 
-if (!fs.existsSync(ORDERS_DIR)) {
-  fs.mkdirSync(ORDERS_DIR, { recursive: true });
-}
+(async () => {
+  if (!await fileExists(ORDERS_DIR)) {
+    await fsp.mkdir(ORDERS_DIR, { recursive: true });
+  }
+})();
 
 // POST /api/orders - создать заказ
 app.post('/api/orders', async (req, res) => {
@@ -7760,7 +7819,7 @@ app.get('/api/orders/unviewed-count', async (req, res) => {
 
 // POST /api/orders/mark-viewed/:type - отметить заказы как просмотренные
 // ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
-app.post('/api/orders/mark-viewed/:type', (req, res) => {
+app.post('/api/orders/mark-viewed/:type', async (req, res) => {
   try {
     const { type } = req.params;
     console.log('POST /api/orders/mark-viewed/' + type);
@@ -7768,11 +7827,11 @@ app.post('/api/orders/mark-viewed/:type', (req, res) => {
     if (type !== 'rejected' && type !== 'unconfirmed') {
       return res.status(400).json({
         success: false,
-        error: 'Неверный тип: должен быть rejected или unconfirmed'
+        error: 'Incorrect type: should be rejected or unconfirmed'
       });
     }
 
-    const success = ordersModule.saveLastViewedAt(type, new Date());
+    const success = await ordersModule.saveLastViewedAt(type, new Date());
     res.json({ success });
   } catch (error) {
     console.error('Ошибка отметки заказов как просмотренных:', error);
@@ -7788,14 +7847,14 @@ app.get('/api/orders/:id', async (req, res) => {
 
     const orderFile = path.join(ORDERS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(orderFile)) {
+    if (!await fileExists(orderFile)) {
       return res.status(404).json({
         success: false,
         error: 'Заказ не найден'
       });
     }
 
-    const content = fs.readFileSync(orderFile, 'utf8');
+    const content = await fsp.readFile(orderFile, 'utf8');
     const order = JSON.parse(content);
 
     res.json({ success: true, order });
@@ -7833,14 +7892,14 @@ app.delete('/api/orders/:id', async (req, res) => {
 
     const orderFile = path.join(ORDERS_DIR, `${id}.json`);
 
-    if (!fs.existsSync(orderFile)) {
+    if (!await fileExists(orderFile)) {
       return res.status(404).json({
         success: false,
         error: 'Заказ не найден'
       });
     }
 
-    fs.unlinkSync(orderFile);
+    await fsp.unlink(orderFile);
 
     res.json({ success: true, message: 'Заказ удален' });
   } catch (error) {
@@ -7862,12 +7921,12 @@ app.post('/api/fcm-tokens', async (req, res) => {
     const normalizedPhone = phone.replace(/[\s+]/g, '');
 
     const tokenDir = `${DATA_DIR}/fcm-tokens`;
-    if (!fs.existsSync(tokenDir)) {
-      fs.mkdirSync(tokenDir, { recursive: true });
+    if (!await fileExists(tokenDir)) {
+      await fsp.mkdir(tokenDir, { recursive: true });
     }
 
     const tokenFile = path.join(tokenDir, `${normalizedPhone}.json`);
-    fs.writeFileSync(tokenFile, JSON.stringify({
+    await fsp.writeFile(tokenFile, JSON.stringify({
       phone: normalizedPhone,
       token,
       updatedAt: new Date().toISOString()
@@ -7910,17 +7969,17 @@ app.get('/api/bonus-penalties', async (req, res) => {
     console.log(`📥 GET /api/bonus-penalties month=${month}, employeeId=${employeeId || 'all'}`);
 
     // Создаем директорию, если её нет
-    if (!fs.existsSync(BONUS_PENALTIES_DIR)) {
-      fs.mkdirSync(BONUS_PENALTIES_DIR, { recursive: true });
+    if (!await fileExists(BONUS_PENALTIES_DIR)) {
+      await fsp.mkdir(BONUS_PENALTIES_DIR, { recursive: true });
     }
 
     const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.json({ success: true, records: [], total: 0 });
     }
 
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = await fsp.readFile(filePath, 'utf8');
     const data = JSON.parse(content);
     let records = data.records || [];
 
@@ -7976,8 +8035,8 @@ app.post('/api/bonus-penalties', async (req, res) => {
     }
 
     // Создаем директорию, если её нет
-    if (!fs.existsSync(BONUS_PENALTIES_DIR)) {
-      fs.mkdirSync(BONUS_PENALTIES_DIR, { recursive: true });
+    if (!await fileExists(BONUS_PENALTIES_DIR)) {
+      await fsp.mkdir(BONUS_PENALTIES_DIR, { recursive: true });
     }
 
     const month = getCurrentMonth();
@@ -7985,8 +8044,8 @@ app.post('/api/bonus-penalties', async (req, res) => {
 
     // Читаем существующие данные или создаем новый файл
     let data = { records: [] };
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf8');
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
       data = JSON.parse(content);
     }
 
@@ -8006,7 +8065,7 @@ app.post('/api/bonus-penalties', async (req, res) => {
     data.records.push(newRecord);
 
     // Сохраняем
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
     console.log(`✅ Создана запись ${type}: ${amount} для ${employeeName}`);
     res.json({ success: true, record: newRecord });
@@ -8026,11 +8085,11 @@ app.delete('/api/bonus-penalties/:id', async (req, res) => {
 
     const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
 
-    if (!fs.existsSync(filePath)) {
+    if (!await fileExists(filePath)) {
       return res.status(404).json({ success: false, error: 'Записи не найдены' });
     }
 
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = await fsp.readFile(filePath, 'utf8');
     const data = JSON.parse(content);
 
     const index = data.records.findIndex(r => r.id === id);
@@ -8039,7 +8098,7 @@ app.delete('/api/bonus-penalties/:id', async (req, res) => {
     }
 
     data.records.splice(index, 1);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 
     console.log(`✅ Запись ${id} удалена`);
     res.json({ success: true });
@@ -8056,7 +8115,7 @@ app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
 
     console.log(`📊 GET /api/bonus-penalties/summary/${employeeId}`);
 
-    if (!fs.existsSync(BONUS_PENALTIES_DIR)) {
+    if (!await fileExists(BONUS_PENALTIES_DIR)) {
       return res.json({
         success: true,
         currentMonth: { total: 0, records: [] },
@@ -8068,13 +8127,13 @@ app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
     const previousMonth = getPreviousMonth();
 
     // Функция для чтения и суммирования по месяцу
-    const getMonthData = (month) => {
+    const getMonthData = async (month) => {
       const filePath = path.join(BONUS_PENALTIES_DIR, `${month}.json`);
-      if (!fs.existsSync(filePath)) {
+      if (!await fileExists(filePath)) {
         return { total: 0, records: [] };
       }
 
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = await fsp.readFile(filePath, 'utf8');
       const data = JSON.parse(content);
       const records = (data.records || []).filter(r => r.employeeId === employeeId);
 
@@ -8092,8 +8151,8 @@ app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
 
     res.json({
       success: true,
-      currentMonth: getMonthData(currentMonth),
-      previousMonth: getMonthData(previousMonth)
+      currentMonth: await getMonthData(currentMonth),
+      previousMonth: await getMonthData(previousMonth)
     });
   } catch (error) {
     console.error('❌ Ошибка получения сводки:', error);
@@ -8106,18 +8165,18 @@ app.get('/api/bonus-penalties/summary/:employeeId', async (req, res) => {
 /**
  * Helper функция для загрузки отчётов пересменки за период
  */
-function loadShiftReportsForPeriod(startDate, endDate) {
+async function loadShiftReportsForPeriod(startDate, endDate) {
   const reports = [];
 
-  if (!fs.existsSync(SHIFT_REPORTS_DIR)) {
+  if (!await fileExists(SHIFT_REPORTS_DIR)) {
     return reports;
   }
 
-  const files = fs.readdirSync(SHIFT_REPORTS_DIR).filter(f => f.endsWith('.json'));
+  const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
   for (const file of files) {
     try {
-      const content = fs.readFileSync(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+      const content = await fsp.readFile(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
       const report = JSON.parse(content);
 
       // Проверяем период
@@ -8136,19 +8195,19 @@ function loadShiftReportsForPeriod(startDate, endDate) {
 /**
  * Helper функция для загрузки отчётов пересчёта за период
  */
-function loadRecountReportsForPeriod(startDate, endDate) {
+async function loadRecountReportsForPeriod(startDate, endDate) {
   const reports = [];
   const reportsDir = `${DATA_DIR}/recount-reports`;
 
-  if (!fs.existsSync(reportsDir)) {
+  if (!await fileExists(reportsDir)) {
     return reports;
   }
 
-  const files = fs.readdirSync(reportsDir).filter(f => f.endsWith('.json'));
+  const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
 
   for (const file of files) {
     try {
-      const content = fs.readFileSync(path.join(reportsDir, file), 'utf8');
+      const content = await fsp.readFile(path.join(reportsDir, file), 'utf8');
       const report = JSON.parse(content);
 
       // Проверяем период
@@ -8167,18 +8226,18 @@ function loadRecountReportsForPeriod(startDate, endDate) {
 /**
  * Helper функция для загрузки отчётов сдачи смены за период
  */
-function loadShiftHandoverReportsForPeriod(startDate, endDate) {
+async function loadShiftHandoverReportsForPeriod(startDate, endDate) {
   const reports = [];
 
-  if (!fs.existsSync(SHIFT_HANDOVER_REPORTS_DIR)) {
+  if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
     return reports;
   }
 
-  const files = fs.readdirSync(SHIFT_HANDOVER_REPORTS_DIR).filter(f => f.endsWith('.json'));
+  const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
 
   for (const file of files) {
     try {
-      const content = fs.readFileSync(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
+      const content = await fsp.readFile(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
       const report = JSON.parse(content);
 
       // Проверяем период
@@ -8197,19 +8256,19 @@ function loadShiftHandoverReportsForPeriod(startDate, endDate) {
 /**
  * Helper функция для загрузки записей посещаемости за период
  */
-function loadAttendanceForPeriod(startDate, endDate) {
+async function loadAttendanceForPeriod(startDate, endDate) {
   const records = [];
   const attendanceDir = `${DATA_DIR}/attendance`;
 
-  if (!fs.existsSync(attendanceDir)) {
+  if (!await fileExists(attendanceDir)) {
     return records;
   }
 
-  const files = fs.readdirSync(attendanceDir).filter(f => f.endsWith('.json'));
+  const files = (await fsp.readdir(attendanceDir)).filter(f => f.endsWith('.json'));
 
   for (const file of files) {
     try {
-      const content = fs.readFileSync(path.join(attendanceDir, file), 'utf8');
+      const content = await fsp.readFile(path.join(attendanceDir, file), 'utf8');
       const record = JSON.parse(content);
 
       // Проверяем период
@@ -8330,8 +8389,8 @@ app.get('/api/efficiency-penalties', async (req, res) => {
     const penaltiesFile = path.join(penaltiesDir, `${month}.json`);
 
     let penalties = [];
-    if (fs.existsSync(penaltiesFile)) {
-      const content = fs.readFileSync(penaltiesFile, 'utf8');
+    if (await fileExists(penaltiesFile)) {
+      const content = await fsp.readFile(penaltiesFile, 'utf8');
       penalties = JSON.parse(content);
     }
 
@@ -8415,7 +8474,7 @@ setupOrderTimeoutAPI(app);
 // ============================================
 // HEALTH CHECK ENDPOINT
 // ============================================
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -8460,7 +8519,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 const LOYALTY_PROMO_FILE = `${DATA_DIR}/loyalty-promo.json`;
 
 // GET /api/loyalty-promo - получить настройки акции
-app.get('/api/loyalty-promo', (req, res) => {
+app.get('/api/loyalty-promo', async (req, res) => {
   try {
     let settings = {
       promoText: 'При покупке 9 напитков 10-й бесплатно',
@@ -8469,8 +8528,8 @@ app.get('/api/loyalty-promo', (req, res) => {
       success: true
     };
 
-    if (fs.existsSync(LOYALTY_PROMO_FILE)) {
-      const data = JSON.parse(fs.readFileSync(LOYALTY_PROMO_FILE, 'utf8'));
+    if (await fileExists(LOYALTY_PROMO_FILE)) {
+      const data = JSON.parse(await fsp.readFile(LOYALTY_PROMO_FILE, 'utf8'));
       settings = { ...settings, ...data, success: true };
     }
 
@@ -8505,7 +8564,7 @@ app.post('/api/loyalty-promo', async (req, res) => {
       updatedBy: normalizedPhone
     };
 
-    fs.writeFileSync(LOYALTY_PROMO_FILE, JSON.stringify(settings, null, 2), 'utf8');
+    await fsp.writeFile(LOYALTY_PROMO_FILE, JSON.stringify(settings, null, 2), 'utf8');
     console.log('POST /api/loyalty-promo:', settings.pointsRequired + '+' + settings.drinksToGive, 'by', normalizedPhone);
     res.json({ success: true, ...settings });
   } catch (e) {
@@ -8518,10 +8577,10 @@ app.post('/api/loyalty-promo', async (req, res) => {
 const APP_VERSION_FILE = `${DATA_DIR}/app-version.json`;
 
 // GET /api/app-version - получить информацию о версии приложения
-app.get("/api/app-version", (req, res) => {
+app.get("/api/app-version", async (req, res) => {
   try {
-    if (fs.existsSync(APP_VERSION_FILE)) {
-      const data = JSON.parse(fs.readFileSync(APP_VERSION_FILE, "utf8"));
+    if (await fileExists(APP_VERSION_FILE)) {
+      const data = JSON.parse(await fsp.readFile(APP_VERSION_FILE, "utf8"));
       return res.json(data);
     }
     
@@ -8542,7 +8601,7 @@ app.get("/api/app-version", (req, res) => {
 });
 
 // POST /api/app-version - обновить информацию о версии (только админ)
-app.post("/api/app-version", (req, res) => {
+app.post("/api/app-version", async (req, res) => {
   try {
     const { employeePhone, ...versionData } = req.body;
     
@@ -8554,10 +8613,10 @@ app.post("/api/app-version", (req, res) => {
     const normalizedPhone = employeePhone.replace(/[\s\+]/g, "");
     let isAdmin = false;
     
-    const employeeFiles = fs.readdirSync(EMPLOYEES_DIR).filter(f => f.endsWith(".json"));
+    const employeeFiles = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith(".json"));
     for (const file of employeeFiles) {
       try {
-        const emp = JSON.parse(fs.readFileSync(path.join(EMPLOYEES_DIR, file), "utf8"));
+        const emp = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR, file), "utf8"));
         if (emp.phone && emp.phone.replace(/[\s\+]/g, "") === normalizedPhone && emp.isAdmin) {
           isAdmin = true;
           break;
@@ -8570,7 +8629,7 @@ app.post("/api/app-version", (req, res) => {
     }
     
     // Сохраняем версию
-    fs.writeFileSync(APP_VERSION_FILE, JSON.stringify(versionData, null, 2));
+    await fsp.writeFile(APP_VERSION_FILE, JSON.stringify(versionData, null, 2));
     return res.json({ success: true });
   } catch (e) {
     console.error("Ошибка сохранения версии:", e);
