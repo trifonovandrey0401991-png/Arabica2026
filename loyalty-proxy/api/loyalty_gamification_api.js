@@ -1,20 +1,35 @@
 /**
  * Loyalty Gamification API
  *
- * Управление уровнями клиентов, значками и колесом удачи
+ * Управление уровнями клиентов, значками, колесом удачи и призами клиентов
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
+const crypto = require('crypto');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
+const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 const GAMIFICATION_DIR = `${DATA_DIR}/loyalty-gamification`;
 const BADGES_DIR = `${GAMIFICATION_DIR}/badges`;
 const WHEEL_HISTORY_DIR = `${GAMIFICATION_DIR}/wheel-history`;
+const CLIENT_PRIZES_DIR = `${GAMIFICATION_DIR}/client-prizes`;
 const SETTINGS_FILE = `${GAMIFICATION_DIR}/settings.json`;
+
+// Firebase для push-уведомлений
+let admin, firebaseInitialized;
+try {
+  const firebaseConfig = require('../firebase-admin-config');
+  admin = firebaseConfig.admin;
+  firebaseInitialized = firebaseConfig.firebaseInitialized;
+} catch (e) {
+  console.log('Firebase not initialized for gamification API');
+  firebaseInitialized = false;
+}
 
 // Async helper
 async function fileExists(filePath) {
@@ -28,11 +43,173 @@ async function fileExists(filePath) {
 
 // Ensure directories exist
 async function ensureDirectories() {
-  for (const dir of [GAMIFICATION_DIR, BADGES_DIR, WHEEL_HISTORY_DIR]) {
+  for (const dir of [GAMIFICATION_DIR, BADGES_DIR, WHEEL_HISTORY_DIR, CLIENT_PRIZES_DIR]) {
     if (!(await fileExists(dir))) {
       await fsp.mkdir(dir, { recursive: true });
     }
   }
+}
+
+// Generate unique QR token
+function generateQrToken() {
+  return 'qr_' + crypto.randomBytes(16).toString('hex');
+}
+
+// Generate prize ID
+function generatePrizeId() {
+  return 'prize_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
+}
+
+// Get FCM tokens for admins AND developers
+async function getAdminAndDeveloperFcmTokens() {
+  const tokens = [];
+  try {
+    const adminPhones = [];
+    if (await fileExists(EMPLOYEES_DIR)) {
+      const employeeFiles = await fsp.readdir(EMPLOYEES_DIR);
+      for (const file of employeeFiles) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = path.join(EMPLOYEES_DIR, file);
+        const content = await fsp.readFile(filePath, 'utf8');
+        const employee = JSON.parse(content);
+        // isAdmin === true OR role === 'developer'
+        if (employee && (employee.isAdmin === true || employee.role === 'developer') && employee.phone) {
+          const normalizedPhone = employee.phone.replace(/[\s\+]/g, '');
+          adminPhones.push(normalizedPhone);
+        }
+      }
+    }
+
+    console.log(`Найдено ${adminPhones.length} админов/разработчиков для push о призе`);
+
+    if (!(await fileExists(FCM_TOKENS_DIR))) {
+      return tokens;
+    }
+
+    const tokenFiles = await fsp.readdir(FCM_TOKENS_DIR);
+    for (const file of tokenFiles) {
+      if (!file.endsWith('.json')) continue;
+      const phone = file.replace('.json', '');
+      if (adminPhones.includes(phone)) {
+        const filePath = path.join(FCM_TOKENS_DIR, file);
+        const content = await fsp.readFile(filePath, 'utf8');
+        const tokenData = JSON.parse(content);
+        if (tokenData && tokenData.token) {
+          tokens.push(tokenData.token);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Ошибка получения FCM токенов:', e);
+  }
+  return tokens;
+}
+
+// Send push notification to admins/developers
+async function sendPrizePushNotification(title, body, data = {}) {
+  if (!firebaseInitialized || !admin) {
+    console.log('Firebase не инициализирован, push о призе не отправлен');
+    return;
+  }
+
+  const tokens = await getAdminAndDeveloperFcmTokens();
+  if (tokens.length === 0) {
+    console.log('Нет FCM токенов для push о призе');
+    return;
+  }
+
+  console.log(`Отправка push о призе ${tokens.length} получателям: ${title}`);
+
+  for (const token of tokens) {
+    try {
+      const stringData = Object.fromEntries(
+        Object.entries(data).map(([k, v]) => [k, String(v)])
+      );
+
+      await admin.messaging().send({
+        token: token,
+        notification: { title, body },
+        data: {
+          ...stringData,
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            channelId: 'prizes_channel',
+          },
+        },
+      });
+      console.log('Push о призе отправлен:', token.substring(0, 20) + '...');
+    } catch (e) {
+      console.error('❌ Ошибка отправки push о призе:', e.message);
+    }
+  }
+}
+
+// Find pending prize for client
+async function findPendingPrize(phone) {
+  try {
+    if (!(await fileExists(CLIENT_PRIZES_DIR))) {
+      return null;
+    }
+    const files = await fsp.readdir(CLIENT_PRIZES_DIR);
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+      const filePath = path.join(CLIENT_PRIZES_DIR, file);
+      const content = await fsp.readFile(filePath, 'utf8');
+      const prize = JSON.parse(content);
+      if (prize.clientPhone === phone && prize.status === 'pending') {
+        return prize;
+      }
+    }
+  } catch (e) {
+    console.error('Error finding pending prize:', e);
+  }
+  return null;
+}
+
+// Load prize by ID
+async function loadPrize(prizeId) {
+  try {
+    const filePath = path.join(CLIENT_PRIZES_DIR, `${prizeId}.json`);
+    if (await fileExists(filePath)) {
+      const content = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(content);
+    }
+  } catch (e) {
+    console.error('Error loading prize:', e);
+  }
+  return null;
+}
+
+// Save prize
+async function savePrize(prize) {
+  const filePath = path.join(CLIENT_PRIZES_DIR, `${prize.id}.json`);
+  await fsp.writeFile(filePath, JSON.stringify(prize, null, 2), 'utf8');
+}
+
+// Find prize by QR token
+async function findPrizeByToken(qrToken) {
+  try {
+    if (!(await fileExists(CLIENT_PRIZES_DIR))) {
+      return null;
+    }
+    const files = await fsp.readdir(CLIENT_PRIZES_DIR);
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+      const filePath = path.join(CLIENT_PRIZES_DIR, file);
+      const content = await fsp.readFile(filePath, 'utf8');
+      const prize = JSON.parse(content);
+      if (prize.qrToken === qrToken) {
+        return prize;
+      }
+    }
+  } catch (e) {
+    console.error('Error finding prize by token:', e);
+  }
+  return null;
 }
 
 // Default settings with 10 levels
@@ -295,6 +472,20 @@ function setupLoyaltyGamificationAPI(app) {
         return res.status(404).json({ success: false, error: 'Client not found' });
       }
 
+      // Check for pending prize - client can only have ONE pending prize
+      const pendingPrize = await findPendingPrize(normalizedPhone);
+      if (pendingPrize) {
+        return res.status(400).json({
+          success: false,
+          error: 'У вас есть невыданный приз. Получите его перед следующей прокруткой.',
+          hasPendingPrize: true,
+          pendingPrize: {
+            id: pendingPrize.id,
+            prize: pendingPrize.prize
+          }
+        });
+      }
+
       const content = await fsp.readFile(clientPath, 'utf8');
       const client = JSON.parse(content);
 
@@ -326,15 +517,31 @@ function setupLoyaltyGamificationAPI(app) {
       client.lastWheelSpin = new Date().toISOString();
       client.updatedAt = new Date().toISOString();
 
-      // Apply prize
-      if (winSector.prizeType === 'bonus_points') {
-        client.points = (client.points || 0) + winSector.prizeValue;
-      } else if (winSector.prizeType === 'free_drink') {
-        client.freeDrinks = (client.freeDrinks || 0) + winSector.prizeValue;
-      }
-      // discount and merch are saved in history for manual processing
-
       await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
+
+      // Create prize record for client (all prizes now require manual issuance)
+      const prizeId = generatePrizeId();
+      const qrToken = generateQrToken();
+      const now = new Date().toISOString();
+
+      const prizeRecord = {
+        id: prizeId,
+        clientPhone: normalizedPhone,
+        clientName: client.name || 'Клиент',
+        prize: winSector.text,
+        prizeType: winSector.prizeType,
+        prizeValue: winSector.prizeValue,
+        spinDate: now,
+        status: 'pending',
+        qrToken: qrToken,
+        qrUsed: false,
+        issuedBy: null,
+        issuedByName: null,
+        issuedAt: null
+      };
+
+      await savePrize(prizeRecord);
+      console.log(`🎁 Создан приз для клиента ${normalizedPhone}: ${winSector.text}`);
 
       // Save spin to history
       const spinRecord = {
@@ -345,8 +552,9 @@ function setupLoyaltyGamificationAPI(app) {
         prize: winSector.text,
         prizeType: winSector.prizeType,
         prizeValue: winSector.prizeValue,
-        spunAt: new Date().toISOString(),
-        isProcessed: winSector.prizeType === 'bonus_points' || winSector.prizeType === 'free_drink'
+        spunAt: now,
+        prizeId: prizeId, // Link to prize record
+        isProcessed: false // All prizes need manual issuance now
       };
 
       const monthKey = new Date().toISOString().slice(0, 7);
@@ -360,13 +568,27 @@ function setupLoyaltyGamificationAPI(app) {
       history.push(spinRecord);
       await fsp.writeFile(historyPath, JSON.stringify(history, null, 2), 'utf8');
 
+      // Send push notification to admins/developers
+      const pushTitle = 'Клиент выиграл приз!';
+      const pushBody = `${client.name || normalizedPhone}: ${winSector.text}`;
+      await sendPrizePushNotification(pushTitle, pushBody, {
+        type: 'client_wheel_prize',
+        prizeId: prizeId,
+        clientPhone: normalizedPhone,
+        prizeName: winSector.text
+      });
+
       res.json({
         success: true,
         spin: spinRecord,
         remainingSpins: wheelSpinsAvailable - 1,
-        client: {
-          points: client.points,
-          freeDrinks: client.freeDrinks
+        hasPendingPrize: true,
+        prize: {
+          id: prizeId,
+          prize: winSector.text,
+          prizeType: winSector.prizeType,
+          prizeValue: winSector.prizeValue,
+          qrToken: qrToken
         }
       });
     } catch (error) {
@@ -437,7 +659,323 @@ function setupLoyaltyGamificationAPI(app) {
     }
   });
 
-  console.log('✅ Loyalty Gamification API initialized');
+  // ===== CLIENT PRIZES (Призы клиентов) =====
+
+  // GET pending prize for client
+  app.get('/api/loyalty-gamification/client/:phone/pending-prize', async (req, res) => {
+    try {
+      const phone = req.params.phone.replace(/[\s+]/g, '');
+      console.log('GET /api/loyalty-gamification/client/:phone/pending-prize:', phone);
+
+      const prize = await findPendingPrize(phone);
+
+      if (prize) {
+        res.json({
+          success: true,
+          hasPendingPrize: true,
+          prize: {
+            id: prize.id,
+            prize: prize.prize,
+            prizeType: prize.prizeType,
+            prizeValue: prize.prizeValue,
+            spinDate: prize.spinDate,
+            qrToken: prize.qrToken
+          }
+        });
+      } else {
+        res.json({
+          success: true,
+          hasPendingPrize: false,
+          prize: null
+        });
+      }
+    } catch (error) {
+      console.error('Error getting pending prize:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST generate new QR token for prize
+  app.post('/api/loyalty-gamification/generate-qr', async (req, res) => {
+    try {
+      const { prizeId, phone } = req.body;
+      console.log('POST /api/loyalty-gamification/generate-qr:', prizeId || phone);
+
+      let prize;
+      if (prizeId) {
+        prize = await loadPrize(prizeId);
+      } else if (phone) {
+        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        prize = await findPendingPrize(normalizedPhone);
+      }
+
+      if (!prize) {
+        return res.status(404).json({ success: false, error: 'Prize not found' });
+      }
+
+      if (prize.status !== 'pending') {
+        return res.status(400).json({ success: false, error: 'Prize already issued' });
+      }
+
+      // Generate new QR token
+      prize.qrToken = generateQrToken();
+      prize.qrUsed = false;
+      await savePrize(prize);
+
+      console.log(`🔄 Новый QR-токен сгенерирован для приза ${prize.id}`);
+
+      res.json({
+        success: true,
+        qrToken: prize.qrToken,
+        prize: {
+          id: prize.id,
+          prize: prize.prize,
+          prizeType: prize.prizeType,
+          prizeValue: prize.prizeValue
+        }
+      });
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST scan prize QR code (employee action)
+  app.post('/api/loyalty-gamification/scan-prize', async (req, res) => {
+    try {
+      const { qrToken } = req.body;
+      console.log('POST /api/loyalty-gamification/scan-prize:', qrToken);
+
+      if (!qrToken) {
+        return res.status(400).json({ success: false, error: 'QR token required' });
+      }
+
+      const prize = await findPrizeByToken(qrToken);
+
+      if (!prize) {
+        return res.status(404).json({ success: false, error: 'Приз не найден или QR недействителен' });
+      }
+
+      if (prize.status !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          error: 'Этот приз уже выдан',
+          prize: {
+            id: prize.id,
+            prize: prize.prize,
+            status: prize.status,
+            issuedAt: prize.issuedAt,
+            issuedByName: prize.issuedByName
+          }
+        });
+      }
+
+      if (prize.qrUsed) {
+        return res.status(400).json({
+          success: false,
+          error: 'QR-код уже был отсканирован. Попросите клиента показать новый QR.',
+          prizeId: prize.id
+        });
+      }
+
+      // Mark QR as used (prevents double scanning)
+      prize.qrUsed = true;
+      await savePrize(prize);
+
+      console.log(`📱 QR приза отсканирован: ${prize.id} - ${prize.prize}`);
+
+      res.json({
+        success: true,
+        prize: {
+          id: prize.id,
+          clientPhone: prize.clientPhone,
+          clientName: prize.clientName,
+          prize: prize.prize,
+          prizeType: prize.prizeType,
+          prizeValue: prize.prizeValue,
+          spinDate: prize.spinDate,
+          status: prize.status
+        }
+      });
+    } catch (error) {
+      console.error('Error scanning prize:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST issue prize (employee confirms delivery)
+  app.post('/api/loyalty-gamification/issue-prize', async (req, res) => {
+    try {
+      const { prizeId, employeePhone, employeeName } = req.body;
+      console.log('POST /api/loyalty-gamification/issue-prize:', prizeId);
+
+      if (!prizeId) {
+        return res.status(400).json({ success: false, error: 'Prize ID required' });
+      }
+
+      const prize = await loadPrize(prizeId);
+
+      if (!prize) {
+        return res.status(404).json({ success: false, error: 'Prize not found' });
+      }
+
+      if (prize.status !== 'pending') {
+        return res.status(400).json({ success: false, error: 'Prize already issued' });
+      }
+
+      // Update prize status
+      prize.status = 'issued';
+      prize.issuedBy = employeePhone || 'unknown';
+      prize.issuedByName = employeeName || 'Сотрудник';
+      prize.issuedAt = new Date().toISOString();
+
+      await savePrize(prize);
+
+      // Apply prize to client account
+      const clientPath = path.join(CLIENTS_DIR, `${prize.clientPhone}.json`);
+      if (await fileExists(clientPath)) {
+        const content = await fsp.readFile(clientPath, 'utf8');
+        const client = JSON.parse(content);
+
+        if (prize.prizeType === 'bonus_points') {
+          client.points = (client.points || 0) + prize.prizeValue;
+        } else if (prize.prizeType === 'free_drink') {
+          client.freeDrinks = (client.freeDrinks || 0) + prize.prizeValue;
+        }
+        // discount and merch are noted but don't change client fields
+
+        client.updatedAt = new Date().toISOString();
+        await fsp.writeFile(clientPath, JSON.stringify(client, null, 2), 'utf8');
+      }
+
+      // Update spin history
+      if (prize.spinId) {
+        // Find and update in wheel history
+        const files = await fsp.readdir(WHEEL_HISTORY_DIR);
+        for (const file of files) {
+          if (!file.endsWith('.json')) continue;
+          const historyPath = path.join(WHEEL_HISTORY_DIR, file);
+          const content = await fsp.readFile(historyPath, 'utf8');
+          const history = JSON.parse(content);
+          const record = history.find(h => h.prizeId === prizeId);
+          if (record) {
+            record.isProcessed = true;
+            record.processedBy = employeeName || employeePhone;
+            record.processedAt = prize.issuedAt;
+            await fsp.writeFile(historyPath, JSON.stringify(history, null, 2), 'utf8');
+            break;
+          }
+        }
+      }
+
+      console.log(`✅ Приз выдан: ${prize.id} - ${prize.prize} клиенту ${prize.clientPhone}`);
+
+      res.json({
+        success: true,
+        message: 'Приз выдан',
+        prize: {
+          id: prize.id,
+          prize: prize.prize,
+          status: prize.status,
+          issuedAt: prize.issuedAt,
+          issuedByName: prize.issuedByName
+        }
+      });
+    } catch (error) {
+      console.error('Error issuing prize:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST postpone prize (generate new QR, keep pending)
+  app.post('/api/loyalty-gamification/postpone-prize', async (req, res) => {
+    try {
+      const { prizeId } = req.body;
+      console.log('POST /api/loyalty-gamification/postpone-prize:', prizeId);
+
+      if (!prizeId) {
+        return res.status(400).json({ success: false, error: 'Prize ID required' });
+      }
+
+      const prize = await loadPrize(prizeId);
+
+      if (!prize) {
+        return res.status(404).json({ success: false, error: 'Prize not found' });
+      }
+
+      if (prize.status !== 'pending') {
+        return res.status(400).json({ success: false, error: 'Prize already issued' });
+      }
+
+      // Generate new QR token for next time
+      prize.qrToken = generateQrToken();
+      prize.qrUsed = false;
+
+      await savePrize(prize);
+
+      console.log(`⏸️ Приз отложен, новый QR: ${prize.id}`);
+
+      res.json({
+        success: true,
+        message: 'Приз отложен. Клиент может показать новый QR позже.',
+        qrToken: prize.qrToken
+      });
+    } catch (error) {
+      console.error('Error postponing prize:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET client prizes report
+  app.get('/api/loyalty-gamification/client-prizes-report', async (req, res) => {
+    try {
+      const { status, month, limit = 100 } = req.query;
+      console.log('GET /api/loyalty-gamification/client-prizes-report:', { status, month });
+
+      const prizes = [];
+
+      if (!(await fileExists(CLIENT_PRIZES_DIR))) {
+        return res.json({ success: true, prizes: [] });
+      }
+
+      const files = await fsp.readdir(CLIENT_PRIZES_DIR);
+
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = path.join(CLIENT_PRIZES_DIR, file);
+        const content = await fsp.readFile(filePath, 'utf8');
+        const prize = JSON.parse(content);
+
+        // Filter by status if specified
+        if (status && prize.status !== status) continue;
+
+        // Filter by month if specified
+        if (month) {
+          const prizeMonth = prize.spinDate.slice(0, 7);
+          if (prizeMonth !== month) continue;
+        }
+
+        prizes.push(prize);
+      }
+
+      // Sort by date (newest first)
+      prizes.sort((a, b) => new Date(b.spinDate) - new Date(a.spinDate));
+
+      // Apply limit
+      const limitedPrizes = prizes.slice(0, parseInt(limit));
+
+      res.json({
+        success: true,
+        prizes: limitedPrizes,
+        total: prizes.length
+      });
+    } catch (error) {
+      console.error('Error getting client prizes report:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  console.log('✅ Loyalty Gamification API initialized (with client prizes)');
 }
 
 module.exports = { setupLoyaltyGamificationAPI };

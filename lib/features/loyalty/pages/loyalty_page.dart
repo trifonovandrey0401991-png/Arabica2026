@@ -10,6 +10,7 @@ import '../models/loyalty_gamification_model.dart';
 import '../widgets/qr_badges_widget.dart';
 import 'loyalty_promo_management_page.dart';
 import 'client_wheel_page.dart';
+import 'pending_prize_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 
@@ -29,6 +30,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
   // Данные геймификации
   ClientGamificationData? _gamificationData;
   GamificationSettings? _gamificationSettings;
+  ClientPrize? _pendingPrize; // Pending приз клиента
 
   // ═══════════════════════════════════════════════════════════════
   // МИНИМАЛИСТИЧНАЯ ПАЛИТРА
@@ -113,12 +115,15 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
       // Загружаем данные геймификации
       final gamificationSettings = await LoyaltyGamificationService.fetchSettings();
       final gamificationData = await LoyaltyGamificationService.fetchClientData(phone);
+      // Загружаем pending приз
+      final pendingPrize = await LoyaltyGamificationService.fetchPendingPrize(phone);
 
       if (mounted) {
         setState(() {
           _info = info;
           _gamificationSettings = gamificationSettings;
           _gamificationData = gamificationData;
+          _pendingPrize = pendingPrize;
           _error = null;
           _loading = false;
         });
@@ -193,12 +198,16 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                     const SizedBox(height: 16),
                                     _levelCard(),
                                   ],
-                                  // Колесо удачи (сразу после уровня)
+                                  // Карточка приза или Колесо удачи
                                   if (_gamificationSettings != null &&
                                       _gamificationSettings!.wheel.enabled &&
                                       _gamificationData != null) ...[
                                     const SizedBox(height: 16),
-                                    _wheelCard(),
+                                    // Если есть pending приз - показываем карточку приза
+                                    if (_pendingPrize != null)
+                                      _pendingPrizeCard()
+                                    else
+                                      _wheelCard(),
                                   ],
                                   const SizedBox(height: 16),
                                   _pointsCard(info),
@@ -370,7 +379,7 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
           ),
           const SizedBox(height: 16),
           // QR с значками вокруг
-          if (earnedLevels.length > 1)
+          if (earnedLevels.isNotEmpty)
             QrBadgesWidget(
               qrWidget: qrWidget,
               earnedLevels: earnedLevels,
@@ -735,29 +744,29 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
             ],
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.casino,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.casino,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     'Колесо удачи',
                     style: TextStyle(
                       fontSize: 16,
@@ -765,87 +774,28 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                       color: Colors.white.withOpacity(0.95),
                     ),
                   ),
-                ),
-                if (data.wheelSpinsAvailable > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star, color: Colors.white, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${data.wheelSpinsAvailable}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  Text(
+                    data.wheelSpinsAvailable > 0
+                        ? 'Доступно прокруток: ${data.wheelSpinsAvailable}'
+                        : 'До прокрутки: ${data.drinksToNextSpin} напитков ($currentProgress/${settings.wheel.freeDrinksPerSpin})',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: data.wheelSpinsAvailable > 0
+                          ? const Color(0xFF4CAF50)
+                          : Colors.white.withOpacity(0.7),
+                      fontWeight: data.wheelSpinsAvailable > 0
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right,
-                  color: Colors.white.withOpacity(0.5),
-                  size: 24,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Прогресс
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  data.wheelSpinsAvailable > 0
-                      ? 'Прокрутки доступны!'
-                      : 'До прокрутки: ${data.drinksToNextSpin} напитков',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: data.wheelSpinsAvailable > 0
-                        ? const Color(0xFF4CAF50)
-                        : Colors.white.withOpacity(0.7),
-                    fontWeight: data.wheelSpinsAvailable > 0
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
-                Text(
-                  '$currentProgress/${settings.wheel.freeDrinksPerSpin}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Progress bar
-            Container(
-              height: 6,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
-                color: Colors.white.withOpacity(0.1),
+                ],
               ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: settings.wheel.freeDrinksPerSpin > 0
-                    ? currentProgress / settings.wheel.freeDrinksPerSpin
-                    : 0.0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(3),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
-                    ),
-                  ),
-                ),
-              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withOpacity(0.5),
+              size: 24,
             ),
           ],
         ),
@@ -863,6 +813,105 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
           wheelSettings: _gamificationSettings!.wheel,
           spinsAvailable: _gamificationData!.wheelSpinsAvailable,
         ),
+      ),
+    ).then((_) => _refresh());
+  }
+
+  /// Карточка "Получить приз" (вместо колеса, когда есть pending приз)
+  Widget _pendingPrizeCard() {
+    final prize = _pendingPrize!;
+
+    return GestureDetector(
+      onTap: _openPrizePage,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: prize.prizeColor.withOpacity(0.5)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              prize.prizeColor.withOpacity(0.25),
+              prize.prizeColor.withOpacity(0.1),
+            ],
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    prize.prizeColor,
+                    prize.prizeColor.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: prize.prizeColor.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                prize.prizeIcon,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ваш приз!',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    prize.prize,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: prize.prizeColor,
+                    ),
+                  ),
+                  Text(
+                    'Нажмите, чтобы получить',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withOpacity(0.5),
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openPrizePage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PendingPrizePage(prize: _pendingPrize!),
       ),
     ).then((_) => _refresh());
   }

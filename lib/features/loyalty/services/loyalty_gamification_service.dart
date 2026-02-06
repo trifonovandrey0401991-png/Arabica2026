@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
@@ -55,10 +56,13 @@ class LoyaltyGamificationService {
   }) async {
     try {
       final normalizedPhone = employeePhone.replaceAll(RegExp(r'[\s\+]'), '');
+      // Сервер ожидает levels и wheel напрямую, не вложенные в settings
+      final settingsJson = settings.toJson();
       final success = await BaseHttpService.simplePost(
         endpoint: '/api/loyalty-gamification/settings',
         body: {
-          'settings': settings.toJson(),
+          'levels': settingsJson['levels'],
+          'wheel': settingsJson['wheel'],
           'employeePhone': normalizedPhone,
         },
       );
@@ -85,7 +89,8 @@ class LoyaltyGamificationService {
 
       if (result != null && result['success'] == true) {
         final settings = await fetchSettings();
-        return ClientGamificationData.fromJson(result, settings);
+        // Сервер возвращает client вложенным в результат
+        return ClientGamificationData.fromJson(result['client'] ?? result, settings);
       }
       return null;
     } catch (e) {
@@ -104,9 +109,9 @@ class LoyaltyGamificationService {
         timeout: ApiConstants.longTimeout,
       );
 
-      if (result != null && result['success'] == true && result['spinResult'] != null) {
-        Logger.debug('🎡 Колесо прокручено: ${result['spinResult']['prize']}');
-        return WheelSpinResult.fromJson(result['spinResult']);
+      if (result != null && result['success'] == true && result['spin'] != null) {
+        Logger.debug('🎡 Колесо прокручено: ${result['spin']['prize']}');
+        return WheelSpinResult.fromJson(result['spin']);
       }
       return null;
     } catch (e) {
@@ -154,9 +159,20 @@ class LoyaltyGamificationService {
       }
 
       final bytes = await imageFile.readAsBytes();
-      final fileName = 'badge_${levelId}_${DateTime.now().millisecondsSinceEpoch}.${imageFile.path.split('.').last}';
+      final extension = imageFile.path.split('.').last.toLowerCase();
+      final fileName = 'badge_${levelId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
-      Logger.debug('📤 Загружаем значок: $fileName');
+      // Определяем MIME-тип по расширению
+      String mimeType = 'image/jpeg';
+      if (extension == 'png') {
+        mimeType = 'image/png';
+      } else if (extension == 'gif') {
+        mimeType = 'image/gif';
+      } else if (extension == 'webp') {
+        mimeType = 'image/webp';
+      }
+
+      Logger.debug('📤 Загружаем значок: $fileName (тип: $mimeType)');
 
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/loyalty-gamification/upload-badge');
       final request = http.MultipartRequest('POST', uri);
@@ -166,6 +182,7 @@ class LoyaltyGamificationService {
           'badge',
           bytes,
           filename: fileName,
+          contentType: MediaType.parse(mimeType),
         ),
       );
       request.fields['levelId'] = levelId.toString();
@@ -192,6 +209,141 @@ class LoyaltyGamificationService {
     } catch (e) {
       Logger.error('Ошибка загрузки картинки значка', e);
       return null;
+    }
+  }
+
+  // ========== CLIENT PRIZES (Призы клиентов) ==========
+
+  /// Получить pending приз клиента
+  static Future<ClientPrize?> fetchPendingPrize(String phone) async {
+    try {
+      final normalizedPhone = phone.replaceAll(RegExp(r'[\s\+]'), '');
+      final result = await BaseHttpService.getRaw(
+        endpoint: '/api/loyalty-gamification/client/$normalizedPhone/pending-prize',
+        timeout: ApiConstants.defaultTimeout,
+      );
+
+      if (result != null && result['success'] == true && result['hasPendingPrize'] == true) {
+        return ClientPrize.fromJson(result['prize']);
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка загрузки pending приза', e);
+      return null;
+    }
+  }
+
+  /// Сгенерировать новый QR-токен для приза
+  static Future<String?> generateNewQrToken(String prizeId) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '/api/loyalty-gamification/generate-qr',
+        body: {'prizeId': prizeId},
+        timeout: ApiConstants.defaultTimeout,
+      );
+
+      if (result != null && result['success'] == true) {
+        return result['qrToken'];
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка генерации QR', e);
+      return null;
+    }
+  }
+
+  /// Сканировать QR-код приза (для сотрудников)
+  static Future<Map<String, dynamic>?> scanPrizeQr(String qrToken) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '/api/loyalty-gamification/scan-prize',
+        body: {'qrToken': qrToken},
+        timeout: ApiConstants.defaultTimeout,
+      );
+
+      return result;
+    } catch (e) {
+      Logger.error('Ошибка сканирования QR приза', e);
+      return null;
+    }
+  }
+
+  /// Выдать приз клиенту
+  static Future<bool> issuePrize({
+    required String prizeId,
+    required String employeePhone,
+    required String employeeName,
+  }) async {
+    try {
+      final success = await BaseHttpService.simplePost(
+        endpoint: '/api/loyalty-gamification/issue-prize',
+        body: {
+          'prizeId': prizeId,
+          'employeePhone': employeePhone.replaceAll(RegExp(r'[\s\+]'), ''),
+          'employeeName': employeeName,
+        },
+      );
+
+      if (success) {
+        Logger.debug('✅ Приз выдан: $prizeId');
+      }
+      return success;
+    } catch (e) {
+      Logger.error('Ошибка выдачи приза', e);
+      return false;
+    }
+  }
+
+  /// Отложить приз (сгенерировать новый QR)
+  static Future<String?> postponePrize(String prizeId) async {
+    try {
+      final result = await BaseHttpService.postRaw(
+        endpoint: '/api/loyalty-gamification/postpone-prize',
+        body: {'prizeId': prizeId},
+        timeout: ApiConstants.defaultTimeout,
+      );
+
+      if (result != null && result['success'] == true) {
+        Logger.debug('⏸️ Приз отложен: $prizeId');
+        return result['qrToken'];
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Ошибка отложения приза', e);
+      return null;
+    }
+  }
+
+  /// Получить отчёт по призам клиентов
+  static Future<List<ClientPrize>> fetchClientPrizesReport({
+    String? status,
+    String? month,
+    int limit = 100,
+  }) async {
+    try {
+      String endpoint = '/api/loyalty-gamification/client-prizes-report?limit=$limit';
+      if (status != null) {
+        endpoint += '&status=$status';
+      }
+      if (month != null) {
+        endpoint += '&month=$month';
+      }
+
+      final result = await BaseHttpService.getRaw(
+        endpoint: endpoint,
+        timeout: ApiConstants.defaultTimeout,
+      );
+
+      if (result != null && result['success'] == true) {
+        final prizes = (result['prizes'] as List<dynamic>?)
+            ?.map((p) => ClientPrize.fromJson(p))
+            .toList() ?? [];
+        return prizes;
+      }
+      return [];
+    } catch (e) {
+      Logger.error('Ошибка загрузки отчёта по призам клиентов', e);
+      return [];
     }
   }
 

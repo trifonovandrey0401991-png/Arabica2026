@@ -333,6 +333,7 @@ class WheelSpinResult {
   final int prizeValue;
   final DateTime spunAt;
   final bool isProcessed;
+  final String? prizeId; // Ссылка на приз клиента
 
   const WheelSpinResult({
     required this.id,
@@ -344,6 +345,7 @@ class WheelSpinResult {
     required this.prizeValue,
     required this.spunAt,
     required this.isProcessed,
+    this.prizeId,
   });
 
   factory WheelSpinResult.fromJson(Map<String, dynamic> json) {
@@ -357,6 +359,151 @@ class WheelSpinResult {
       prizeValue: json['prizeValue'] ?? 0,
       spunAt: DateTime.tryParse(json['spunAt'] ?? '') ?? DateTime.now(),
       isProcessed: json['isProcessed'] ?? false,
+      prizeId: json['prizeId'],
+    );
+  }
+}
+
+/// Статус приза клиента
+enum ClientPrizeStatus {
+  pending,  // Ожидает выдачи
+  issued,   // Выдан
+}
+
+/// Приз клиента от колеса удачи
+class ClientPrize {
+  final String id;
+  final String clientPhone;
+  final String clientName;
+  final String prize;        // Текст приза
+  final String prizeType;    // bonus_points, discount, free_drink, merch
+  final int prizeValue;
+  final DateTime spinDate;
+  final ClientPrizeStatus status;
+  final String qrToken;
+  final bool qrUsed;
+  final String? issuedBy;
+  final String? issuedByName;
+  final DateTime? issuedAt;
+
+  const ClientPrize({
+    required this.id,
+    required this.clientPhone,
+    required this.clientName,
+    required this.prize,
+    required this.prizeType,
+    required this.prizeValue,
+    required this.spinDate,
+    required this.status,
+    required this.qrToken,
+    required this.qrUsed,
+    this.issuedBy,
+    this.issuedByName,
+    this.issuedAt,
+  });
+
+  factory ClientPrize.fromJson(Map<String, dynamic> json) {
+    return ClientPrize(
+      id: json['id'] ?? '',
+      clientPhone: json['clientPhone'] ?? '',
+      clientName: json['clientName'] ?? 'Клиент',
+      prize: json['prize'] ?? '',
+      prizeType: json['prizeType'] ?? '',
+      prizeValue: json['prizeValue'] ?? 0,
+      spinDate: DateTime.tryParse(json['spinDate'] ?? '') ?? DateTime.now(),
+      status: json['status'] == 'issued'
+          ? ClientPrizeStatus.issued
+          : ClientPrizeStatus.pending,
+      qrToken: json['qrToken'] ?? '',
+      qrUsed: json['qrUsed'] ?? false,
+      issuedBy: json['issuedBy'],
+      issuedByName: json['issuedByName'],
+      issuedAt: json['issuedAt'] != null
+          ? DateTime.tryParse(json['issuedAt'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'clientPhone': clientPhone,
+    'clientName': clientName,
+    'prize': prize,
+    'prizeType': prizeType,
+    'prizeValue': prizeValue,
+    'spinDate': spinDate.toIso8601String(),
+    'status': status == ClientPrizeStatus.issued ? 'issued' : 'pending',
+    'qrToken': qrToken,
+    'qrUsed': qrUsed,
+    'issuedBy': issuedBy,
+    'issuedByName': issuedByName,
+    'issuedAt': issuedAt?.toIso8601String(),
+  };
+
+  /// Является ли приз ожидающим выдачи
+  bool get isPending => status == ClientPrizeStatus.pending;
+
+  /// Получить иконку для типа приза
+  IconData get prizeIcon {
+    switch (prizeType) {
+      case 'bonus_points':
+        return Icons.stars;
+      case 'discount':
+        return Icons.percent;
+      case 'free_drink':
+        return Icons.local_cafe;
+      case 'merch':
+        return Icons.card_giftcard;
+      default:
+        return Icons.emoji_events;
+    }
+  }
+
+  /// Получить цвет для типа приза
+  Color get prizeColor {
+    switch (prizeType) {
+      case 'bonus_points':
+        return const Color(0xFF4CAF50);
+      case 'discount':
+        return const Color(0xFF2196F3);
+      case 'free_drink':
+        return const Color(0xFFFF9800);
+      case 'merch':
+        return const Color(0xFF9C27B0);
+      default:
+        return const Color(0xFF795548);
+    }
+  }
+
+  ClientPrize copyWith({
+    String? id,
+    String? clientPhone,
+    String? clientName,
+    String? prize,
+    String? prizeType,
+    int? prizeValue,
+    DateTime? spinDate,
+    ClientPrizeStatus? status,
+    String? qrToken,
+    bool? qrUsed,
+    String? issuedBy,
+    String? issuedByName,
+    DateTime? issuedAt,
+  }) {
+    return ClientPrize(
+      id: id ?? this.id,
+      clientPhone: clientPhone ?? this.clientPhone,
+      clientName: clientName ?? this.clientName,
+      prize: prize ?? this.prize,
+      prizeType: prizeType ?? this.prizeType,
+      prizeValue: prizeValue ?? this.prizeValue,
+      spinDate: spinDate ?? this.spinDate,
+      status: status ?? this.status,
+      qrToken: qrToken ?? this.qrToken,
+      qrUsed: qrUsed ?? this.qrUsed,
+      issuedBy: issuedBy ?? this.issuedBy,
+      issuedByName: issuedByName ?? this.issuedByName,
+      issuedAt: issuedAt ?? this.issuedAt,
     );
   }
 }

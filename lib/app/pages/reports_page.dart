@@ -23,6 +23,7 @@ import '../../features/referrals/pages/referrals_report_page.dart';
 import '../../features/referrals/services/referral_service.dart';
 import '../../features/employees/models/user_role_model.dart';
 import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
+import '../../features/loyalty/pages/client_wheel_prizes_report_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
 import '../../features/orders/services/order_service.dart';
 import '../../features/work_schedule/pages/shift_transfer_requests_page.dart';
@@ -224,7 +225,7 @@ class _ReportsPageState extends State<ReportsPage> {
       );
     }
 
-    final isAdmin = _userRole == UserRole.admin;
+    final isAdmin = _userRole == UserRole.admin || _userRole == UserRole.developer;
     final canViewReports = isAdmin || (_userRole == UserRole.employee && _isVerified);
 
     if (!canViewReports) {
@@ -524,13 +525,24 @@ class _ReportsPageState extends State<ReportsPage> {
       ));
     }
 
-    // Отчет (Колесо)
+    // Отчет (Колесо) - для сотрудников
     if (isAdmin) {
       items.add(_buildRow(
         icon: Icons.casino_outlined,
-        title: 'Отчёт (Колесо удачи)',
+        title: 'Колесо (Сотрудники)',
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const WheelReportsPage()));
+        },
+      ));
+    }
+
+    // Отчет (Колесо) - для клиентов
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.emoji_events_outlined,
+        title: 'Колесо (Клиенты)',
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ClientWheelPrizesReportPage()));
         },
       ));
     }

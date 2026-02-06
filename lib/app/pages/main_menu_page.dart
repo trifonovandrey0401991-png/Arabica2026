@@ -44,6 +44,7 @@ import '../../features/orders/services/order_service.dart';
 import '../../features/employee_chat/pages/employee_chats_list_page.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
 import '../../features/loyalty/pages/loyalty_scanner_page.dart';
+import '../../features/loyalty/pages/prize_scanner_page.dart';
 import '../../features/work_schedule/pages/my_schedule_page.dart';
 import '../../features/product_questions/pages/product_questions_management_page.dart';
 import '../../features/product_questions/pages/product_search_page.dart';
@@ -931,11 +932,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 ),
 
                 // Правая часть - кнопки (фиксированная ширина)
-                SizedBox(
-                  width: 140,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                       // Кнопка обновления (для сотрудников, админов и разработчиков)
                       if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
                         GestureDetector(
@@ -960,11 +959,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
                               }
                             }
                           },
-                          child: Stack(
-                            children: [
-                              Container(
-                                width: isEmployee ? 32 : 40,
-                                height: isEmployee ? 32 : 40,
+                          child: SizedBox(
+                            width: isEmployee ? 32 : 40,
+                            height: isEmployee ? 32 : 40,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: isEmployee ? 32 : 40,
+                                  height: isEmployee ? 32 : 40,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _isUpdateAvailable
@@ -1017,11 +1020,12 @@ class _MainMenuPageState extends State<MainMenuPage> {
                                     ),
                                   ),
                                 ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       if (_userRole?.role == UserRole.employee || _userRole?.role == UserRole.admin || _userRole?.role == UserRole.developer)
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                       // Жёлтая кнопка поиска товара (скрыта для клиентов)
                       if (_userRole?.role != UserRole.client)
                         GestureDetector(
@@ -1050,7 +1054,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
                             ),
                           ),
                         ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       // Кнопка выхода
                       GestureDetector(
                         onTap: _logout,
@@ -1070,7 +1074,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       ),
                     ],
                   ),
-                ),
               ],
             ),
           ),
@@ -1378,7 +1381,11 @@ class _MainMenuPageState extends State<MainMenuPage> {
       _buildCompactTile(Icons.card_giftcard_outlined, 'Бонусы', () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const LoyaltyScannerPage()));
       }),
-      // 2. Код
+      // 2. Приз (выдать приз клиенту от колеса удачи)
+      _buildCompactTile(Icons.emoji_events_outlined, 'Приз', () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const PrizeScannerPage()));
+      }),
+      // 3. Код
       _buildCompactTile(Icons.person_add_outlined, 'Код', () {
         if (_referralCode != null) {
           _showReferralCodeDialog(_referralCode!);
