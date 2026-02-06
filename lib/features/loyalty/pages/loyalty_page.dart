@@ -193,6 +193,13 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                     const SizedBox(height: 16),
                                     _levelCard(),
                                   ],
+                                  // Колесо удачи (сразу после уровня)
+                                  if (_gamificationSettings != null &&
+                                      _gamificationSettings!.wheel.enabled &&
+                                      _gamificationData != null) ...[
+                                    const SizedBox(height: 16),
+                                    _wheelCard(),
+                                  ],
                                   const SizedBox(height: 16),
                                   _pointsCard(info),
                                   const SizedBox(height: 16),
@@ -200,13 +207,6 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
                                   if (info.promoText.isNotEmpty) ...[
                                     const SizedBox(height: 16),
                                     _promoCard(info.promoText),
-                                  ],
-                                  // Колесо удачи
-                                  if (_gamificationSettings != null &&
-                                      _gamificationSettings!.wheel.enabled &&
-                                      _gamificationData != null) ...[
-                                    const SizedBox(height: 16),
-                                    _wheelCard(),
                                   ],
                                 ],
                               ),
@@ -716,160 +716,139 @@ class _LoyaltyPageState extends State<LoyaltyPage> {
     final data = _gamificationData!;
     final settings = _gamificationSettings!;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF8E2DE2).withOpacity(0.4)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF8E2DE2).withOpacity(0.15),
-            const Color(0xFF4A00E0).withOpacity(0.05),
-          ],
+    // Прогресс: сколько напитков собрано к следующей прокрутке
+    final currentProgress = settings.wheel.freeDrinksPerSpin - data.drinksToNextSpin;
+
+    return GestureDetector(
+      onTap: _openWheelPage,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF8E2DE2).withOpacity(0.4)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF8E2DE2).withOpacity(0.15),
+              const Color(0xFF4A00E0).withOpacity(0.05),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  child: const Icon(
+                    Icons.casino,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.casino,
-                  color: Colors.white,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Колесо удачи',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
+                  ),
+                ),
+                if (data.wheelSpinsAvailable > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${data.wheelSpinsAvailable}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withOpacity(0.5),
                   size: 24,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Колесо удачи',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white.withOpacity(0.95),
-                  ),
-                ),
-              ),
-              if (data.wheelSpinsAvailable > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star, color: Colors.white, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${data.wheelSpinsAvailable}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Прогресс
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                data.wheelSpinsAvailable > 0
-                    ? 'Прокрутки доступны!'
-                    : 'До прокрутки: ${data.drinksToNextSpin} напитков',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: data.wheelSpinsAvailable > 0
-                      ? const Color(0xFF4CAF50)
-                      : Colors.white.withOpacity(0.7),
-                  fontWeight: data.wheelSpinsAvailable > 0
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
-              Text(
-                '${settings.wheel.freeDrinksPerSpin - data.drinksToNextSpin}/${settings.wheel.freeDrinksPerSpin}',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withOpacity(0.6),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Progress bar
-          Container(
-            height: 6,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
-              color: Colors.white.withOpacity(0.1),
+              ],
             ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: settings.wheel.freeDrinksPerSpin > 0
-                  ? (settings.wheel.freeDrinksPerSpin - data.drinksToNextSpin) /
-                      settings.wheel.freeDrinksPerSpin
-                  : 0.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(3),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Кнопка прокрутки
-          if (data.wheelSpinsAvailable > 0) ...[
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _openWheelPage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8E2DE2),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            // Прогресс
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  data.wheelSpinsAvailable > 0
+                      ? 'Прокрутки доступны!'
+                      : 'До прокрутки: ${data.drinksToNextSpin} напитков',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: data.wheelSpinsAvailable > 0
+                        ? const Color(0xFF4CAF50)
+                        : Colors.white.withOpacity(0.7),
+                    fontWeight: data.wheelSpinsAvailable > 0
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.casino, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'КРУТИТЬ КОЛЕСО',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                Text(
+                  '$currentProgress/${settings.wheel.freeDrinksPerSpin}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Progress bar
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                color: Colors.white.withOpacity(0.1),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: settings.wheel.freeDrinksPerSpin > 0
+                    ? currentProgress / settings.wheel.freeDrinksPerSpin
+                    : 0.0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(3),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
