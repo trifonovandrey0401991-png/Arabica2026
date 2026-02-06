@@ -28,8 +28,8 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
   bool _animationStarted = false;
 
   // Размеры
-  static const double _badgeSize = 44.0; // Размер значков
-  static const double _containerPadding = 50.0; // Отступ для значков вокруг QR
+  static const double _badgeSize = 88.0; // Размер значков (увеличен в 2 раза)
+  static const double _containerPadding = 100.0; // Отступ для значков вокруг QR
 
   @override
   void initState() {
