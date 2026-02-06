@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/loyalty_gamification_model.dart';
 import '../../../core/constants/api_constants.dart';
 
@@ -26,23 +25,23 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
-  // Позиции значков (сохраняются для стабильности)
-  Map<int, Offset> _badgePositions = {};
-  final Random _random = Random();
-  bool _positionsLoaded = false;
+  bool _animationStarted = false;
+
+  // Размеры
+  static const double _badgeSize = 44.0; // Размер значков
+  static const double _containerPadding = 50.0; // Отступ для значков вокруг QR
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
     _scaleAnimation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.elasticOut,
     );
-    _loadPositions();
   }
 
   @override
@@ -51,173 +50,136 @@ class _QrBadgesWidgetState extends State<QrBadgesWidget>
     super.dispose();
   }
 
-  Future<void> _loadPositions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedPositions = prefs.getString('badge_positions');
+  /// 8 фиксированных позиций вокруг QR-кода (как показано на скриншоте)
+  /// Позиции: 4 угла карточки + 4 позиции по середине сторон QR
+  List<Offset> _getFixedPositions() {
+    final containerSize = widget.qrSize + _containerPadding * 2;
+    final qrStart = _containerPadding;
+    final qrEnd = _containerPadding + widget.qrSize;
+    final halfBadge = _badgeSize / 2;
 
-    if (storedPositions != null) {
-      // Загружаем сохраненные позиции
-      final parts = storedPositions.split(';');
-      for (final part in parts) {
-        if (part.isEmpty) continue;
-        final kv = part.split(':');
-        if (kv.length == 2) {
-          final id = int.tryParse(kv[0]);
-          final coords = kv[1].split(',');
-          if (id != null && coords.length == 2) {
-            final x = double.tryParse(coords[0]);
-            final y = double.tryParse(coords[1]);
-            if (x != null && y != null) {
-              _badgePositions[id] = Offset(x, y);
-            }
-          }
-        }
-      }
-    }
-
-    // Генерируем позиции для новых значков
-    _generateMissingPositions();
-
-    if (mounted) {
-      setState(() => _positionsLoaded = true);
-      _animationController.forward();
-    }
-  }
-
-  void _generateMissingPositions() {
-    final badgeSize = 36.0;
-    final containerSize = widget.qrSize + 100; // Добавляем место для значков
-    final qrCenter = containerSize / 2;
-    final minRadius = widget.qrSize / 2 + 20; // Минимальное расстояние от центра QR
-    final maxRadius = containerSize / 2 - badgeSize / 2; // Максимальное расстояние
-
-    for (final level in widget.earnedLevels) {
-      if (!_badgePositions.containsKey(level.id)) {
-        // Генерируем случайную позицию вокруг QR
-        bool positionValid = false;
-        Offset newPosition = Offset.zero;
-
-        for (int attempt = 0; attempt < 20; attempt++) {
-          final angle = _random.nextDouble() * 2 * pi;
-          final radius = minRadius + _random.nextDouble() * (maxRadius - minRadius);
-
-          newPosition = Offset(
-            qrCenter + radius * cos(angle) - badgeSize / 2,
-            qrCenter + radius * sin(angle) - badgeSize / 2,
-          );
-
-          // Проверяем, не перекрывается ли с другими значками
-          positionValid = true;
-          for (final existingPos in _badgePositions.values) {
-            if ((newPosition - existingPos).distance < badgeSize + 8) {
-              positionValid = false;
-              break;
-            }
-          }
-
-          if (positionValid) break;
-        }
-
-        _badgePositions[level.id] = newPosition;
-      }
-    }
-
-    // Сохраняем позиции
-    _savePositions();
-  }
-
-  Future<void> _savePositions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final positionsStr = _badgePositions.entries
-        .map((e) => '${e.key}:${e.value.dx},${e.value.dy}')
-        .join(';');
-    await prefs.setString('badge_positions', positionsStr);
+    // 8 позиций: углы внешние и по сторонам QR-кода
+    return [
+      // Верхний левый угол карточки
+      Offset(0, 0),
+      // Верхний правый угол карточки
+      Offset(containerSize - _badgeSize, 0),
+      // Нижний левый угол карточки
+      Offset(0, containerSize - _badgeSize),
+      // Нижний правый угол карточки
+      Offset(containerSize - _badgeSize, containerSize - _badgeSize),
+      // Слева от QR (по центру высоты)
+      Offset(0, (containerSize - _badgeSize) / 2),
+      // Справа от QR (по центру высоты)
+      Offset(containerSize - _badgeSize, (containerSize - _badgeSize) / 2),
+      // Сверху QR слева
+      Offset(qrStart - halfBadge, 0),
+      // Сверху QR справа
+      Offset(qrEnd - halfBadge, 0),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final containerSize = widget.qrSize + 100;
+    final containerSize = widget.qrSize + _containerPadding * 2;
+    final positions = _getFixedPositions();
+
+    // Запускаем анимацию при первом построении
+    if (!_animationStarted && widget.earnedLevels.isNotEmpty) {
+      _animationStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _animationController.forward();
+      });
+    }
 
     return SizedBox(
       width: containerSize,
       height: containerSize,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           // QR-код по центру
           Positioned(
-            left: 50,
-            top: 50,
+            left: _containerPadding,
+            top: _containerPadding,
             child: SizedBox(
               width: widget.qrSize,
               height: widget.qrSize,
               child: widget.qrWidget,
             ),
           ),
-          // Значки вокруг
-          if (_positionsLoaded)
-            ...widget.earnedLevels.map((level) {
-              final position = _badgePositions[level.id];
-              if (position == null) return const SizedBox.shrink();
-
-              return Positioned(
-                left: position.dx,
-                top: position.dy,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: _BadgeItem(level: level),
+          // Значки в фиксированных позициях (до 8 штук)
+          for (int i = 0; i < widget.earnedLevels.length && i < positions.length; i++)
+            Positioned(
+              left: positions[i].dx,
+              top: positions[i].dy,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: _StickerBadge(
+                  level: widget.earnedLevels[i],
+                  size: _badgeSize,
                 ),
-              );
-            }),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _BadgeItem extends StatelessWidget {
+/// Значок в форме "наклейки" с зубчатыми краями
+class _StickerBadge extends StatelessWidget {
   final LoyaltyLevel level;
+  final double size;
 
-  const _BadgeItem({required this.level});
+  const _StickerBadge({
+    required this.level,
+    required this.size,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
       message: level.name,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: level.color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: level.color.withOpacity(0.4),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: level.badge.type == 'icon'
-              ? Icon(
-                  level.badge.getIcon() ?? Icons.emoji_events,
-                  color: Colors.white,
-                  size: 20,
-                )
-              : ClipOval(
-                  child: Image.network(
-                    _getImageUrl(level.badge.value),
-                    width: 30,
-                    height: 30,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.emoji_events,
-                      color: Colors.white,
-                      size: 20,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: level.badge.type == 'icon'
+            ? CustomPaint(
+                painter: _StickerPainter(
+                  color: level.color,
+                  teethCount: 12,
+                ),
+                child: Center(
+                  child: Icon(
+                    level.badge.getIcon() ?? Icons.emoji_events,
+                    color: Colors.white,
+                    size: size * 0.5,
+                  ),
+                ),
+              )
+            : ClipPath(
+                clipper: _StickerClipper(teethCount: 12),
+                child: Image.network(
+                  _getImageUrl(level.badge.value),
+                  width: size,
+                  height: size,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => CustomPaint(
+                    painter: _StickerPainter(
+                      color: level.color,
+                      teethCount: 12,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.emoji_events,
+                        color: Colors.white,
+                        size: size * 0.5,
+                      ),
                     ),
                   ),
                 ),
-        ),
+              ),
       ),
     );
   }
@@ -226,6 +188,186 @@ class _BadgeItem extends StatelessWidget {
     if (value.startsWith('http://') || value.startsWith('https://')) {
       return value;
     }
-    return '${ApiConstants.serverUrl}/media/$value';
+    // Если путь начинается с /, это уже путь от корня сервера
+    if (value.startsWith('/')) {
+      return '${ApiConstants.serverUrl}$value';
+    }
+    // Иначе добавляем путь к значкам
+    return '${ApiConstants.serverUrl}/loyalty-gamification/badges/$value';
+  }
+}
+
+/// Clipper для обрезки изображения по зубчатой форме
+class _StickerClipper extends CustomClipper<Path> {
+  final int teethCount;
+
+  _StickerClipper({this.teethCount = 12});
+
+  @override
+  Path getClip(Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = size.width / 2;
+    final innerRadius = outerRadius * 0.82;
+    final teethAngle = 2 * pi / teethCount;
+
+    final path = Path();
+
+    for (int i = 0; i < teethCount; i++) {
+      final angle1 = i * teethAngle - pi / 2;
+
+      if (i == 0) {
+        path.moveTo(
+          center.dx + outerRadius * cos(angle1),
+          center.dy + outerRadius * sin(angle1),
+        );
+      }
+
+      path.lineTo(
+        center.dx + outerRadius * cos(angle1),
+        center.dy + outerRadius * sin(angle1),
+      );
+
+      final controlAngle = angle1 + teethAngle / 2;
+
+      path.quadraticBezierTo(
+        center.dx + innerRadius * cos(controlAngle),
+        center.dy + innerRadius * sin(controlAngle),
+        center.dx + outerRadius * cos(angle1 + teethAngle),
+        center.dy + outerRadius * sin(angle1 + teethAngle),
+      );
+    }
+
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _StickerClipper oldClipper) {
+    return oldClipper.teethCount != teethCount;
+  }
+}
+
+/// Рисует зубчатую форму "наклейки/медали"
+class _StickerPainter extends CustomPainter {
+  final Color color;
+  final int teethCount;
+
+  _StickerPainter({
+    required this.color,
+    this.teethCount = 12,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = size.width / 2;
+    final innerRadius = outerRadius * 0.82; // Глубина зубцов
+    final teethAngle = 2 * pi / teethCount;
+
+    // Тень
+    final shadowPaint = Paint()
+      ..color = color.withOpacity(0.4)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+    final shadowPath = _createStickerPath(
+      center + const Offset(0, 2),
+      outerRadius,
+      innerRadius,
+      teethAngle,
+    );
+    canvas.drawPath(shadowPath, shadowPaint);
+
+    // Основная форма с градиентом
+    final gradient = RadialGradient(
+      colors: [
+        Color.lerp(color, Colors.white, 0.2)!,
+        color,
+        Color.lerp(color, Colors.black, 0.1)!,
+      ],
+      stops: const [0.0, 0.5, 1.0],
+    );
+
+    final mainPaint = Paint()
+      ..shader = gradient.createShader(
+        Rect.fromCircle(center: center, radius: outerRadius),
+      );
+
+    final mainPath = _createStickerPath(
+      center,
+      outerRadius,
+      innerRadius,
+      teethAngle,
+    );
+    canvas.drawPath(mainPath, mainPaint);
+
+    // Внутренний круг (светлее)
+    final innerCirclePaint = Paint()
+      ..color = Color.lerp(color, Colors.white, 0.15)!;
+
+    canvas.drawCircle(center, innerRadius * 0.85, innerCirclePaint);
+
+    // Блик сверху
+    final highlightPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.center,
+        colors: [
+          Colors.white.withOpacity(0.3),
+          Colors.white.withOpacity(0.0),
+        ],
+      ).createShader(
+        Rect.fromCircle(center: center, radius: innerRadius * 0.8),
+      );
+
+    canvas.drawCircle(
+      center - Offset(0, innerRadius * 0.2),
+      innerRadius * 0.5,
+      highlightPaint,
+    );
+  }
+
+  Path _createStickerPath(
+    Offset center,
+    double outerRadius,
+    double innerRadius,
+    double teethAngle,
+  ) {
+    final path = Path();
+
+    for (int i = 0; i < teethCount; i++) {
+      final angle1 = i * teethAngle - pi / 2;
+      final angle2 = angle1 + teethAngle / 2;
+
+      if (i == 0) {
+        path.moveTo(
+          center.dx + outerRadius * cos(angle1),
+          center.dy + outerRadius * sin(angle1),
+        );
+      }
+
+      // Внешняя точка зубца
+      path.lineTo(
+        center.dx + outerRadius * cos(angle1),
+        center.dy + outerRadius * sin(angle1),
+      );
+
+      // Внутренняя точка между зубцами (плавная кривая)
+      final controlAngle = angle2;
+
+      path.quadraticBezierTo(
+        center.dx + innerRadius * cos(controlAngle),
+        center.dy + innerRadius * sin(controlAngle),
+        center.dx + outerRadius * cos(angle1 + teethAngle),
+        center.dy + outerRadius * sin(angle1 + teethAngle),
+      );
+    }
+
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(covariant _StickerPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.teethCount != teethCount;
   }
 }

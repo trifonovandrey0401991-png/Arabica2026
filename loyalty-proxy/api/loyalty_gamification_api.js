@@ -870,6 +870,17 @@ function setupLoyaltyGamificationAPI(app) {
 
       console.log(`✅ Приз выдан: ${prize.id} - ${prize.prize} клиенту ${prize.clientPhone}`);
 
+      // Send push notification to admins/developers about prize issuance
+      const issuePushTitle = 'Приз выдан';
+      const issuePushBody = `${prize.clientName}: ${prize.prize} (выдал: ${prize.issuedByName})`;
+      await sendPrizePushNotification(issuePushTitle, issuePushBody, {
+        type: 'client_prize_issued',
+        prizeId: prize.id,
+        clientPhone: prize.clientPhone,
+        prizeName: prize.prize,
+        issuedBy: prize.issuedByName
+      });
+
       res.json({
         success: true,
         message: 'Приз выдан',
