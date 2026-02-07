@@ -494,6 +494,47 @@ class PointsSettingsService {
     );
   }
 
+  // ===== COFFEE MACHINE POINTS (Счётчик кофемашин) =====
+
+  /// Get coffee machine points settings
+  static Future<CoffeeMachinePointsSettings> getCoffeeMachinePointsSettings() async {
+    Logger.debug('Fetching coffee machine points settings...');
+
+    final result = await BaseHttpService.get<CoffeeMachinePointsSettings>(
+      endpoint: '$baseEndpoint/coffee-machine',
+      fromJson: (json) => CoffeeMachinePointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+
+    return result ?? CoffeeMachinePointsSettings.defaults();
+  }
+
+  /// Save coffee machine points settings
+  static Future<CoffeeMachinePointsSettings?> saveCoffeeMachinePointsSettings({
+    required double submittedPoints,
+    required double notSubmittedPoints,
+    required String morningStartTime,
+    required String morningEndTime,
+    required String eveningStartTime,
+    required String eveningEndTime,
+  }) async {
+    Logger.debug('Saving coffee machine points settings: submitted=$submittedPoints, notSubmitted=$notSubmittedPoints');
+
+    return await BaseHttpService.post<CoffeeMachinePointsSettings>(
+      endpoint: '$baseEndpoint/coffee-machine',
+      body: {
+        'submittedPoints': submittedPoints,
+        'notSubmittedPoints': notSubmittedPoints,
+        'morningStartTime': morningStartTime,
+        'morningEndTime': morningEndTime,
+        'eveningStartTime': eveningStartTime,
+        'eveningEndTime': eveningEndTime,
+      },
+      fromJson: (json) => CoffeeMachinePointsSettings.fromJson(json),
+      itemKey: 'settings',
+    );
+  }
+
   // ===== MANAGER POINTS (Управляющие) =====
 
   /// Get manager points settings

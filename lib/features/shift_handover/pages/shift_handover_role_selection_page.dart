@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'shift_handover_questions_page.dart';
 import '../../envelope/pages/envelope_form_page.dart';
+import '../../coffee_machine/pages/coffee_machine_form_page.dart';
 import '../services/pending_shift_handover_service.dart';
 import '../models/pending_shift_handover_report_model.dart';
 import '../../../core/utils/logger.dart';
@@ -25,6 +26,12 @@ class ShiftHandoverRoleSelectionPage extends StatefulWidget {
 class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelectionPage> {
   List<PendingShiftHandoverReport> _pendingReports = [];
   bool _isLoading = true;
+
+  // Единая палитра приложения
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
 
   @override
   void initState() {
@@ -75,67 +82,71 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
   void _showNoPendingDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => Dialog(
+        backgroundColor: _emeraldDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Иконка
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                shape: BoxShape.circle,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.schedule,
+                  color: Colors.orange,
+                  size: 44,
+                ),
               ),
-              child: const Icon(
-                Icons.schedule,
-                color: Colors.orange,
-                size: 48,
+              const SizedBox(height: 20),
+              const Text(
+                'Время для сдачи прошло',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 20),
-            // Заголовок
-            const Text(
-              'Время для сдачи прошло',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF004D40),
+              const SizedBox(height: 10),
+              Text(
+                'Ожидайте следующей возможности',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            // Подзаголовок
-            Text(
-              'Ожидайте следующей возможности',
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            // Кнопка
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004D40),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: _gold.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _gold.withOpacity(0.4)),
+                    ),
+                    child: const Text(
+                      'Понятно',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Понятно',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -165,106 +176,165 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Сдача смены'),
-        backgroundColor: const Color(0xFF004D40),
-      ),
+      backgroundColor: _night,
       body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF004D40),
-          image: DecorationImage(
-            image: AssetImage('assets/images/arabica_background.png'),
-            fit: BoxFit.cover,
-            opacity: 0.6,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emerald, _emeraldDark, _night],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      const Text(
-                        'Выберите тип:',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: _gold.withOpacity(0.7),
+                          strokeWidth: 3,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.shopAddress,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 14,
-                        ),
-                      ),
-
-                      // Индикатор наличия pending отчёта
-                      const SizedBox(height: 12),
-                      _buildPendingStatusIndicator(),
-
-                      const SizedBox(height: 24),
-
-                      // Формирование конверта - главная опция (всегда доступна)
-                      _buildOptionCard(
-                        context,
-                        title: 'Формирование конверта',
-                        icon: Icons.mail,
-                        description: 'Выручка, расходы, итог',
-                        color: Colors.green,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EnvelopeFormPage(
-                                employeeName: widget.employeeName,
-                                shopAddress: widget.shopAddress,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Divider
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'Вопросы',
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Заголовок
+                            const Text(
+                              'Выберите тип:',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 14,
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                          Expanded(child: Divider(color: Colors.white.withOpacity(0.3))),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.shopAddress,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 13,
+                              ),
+                            ),
 
-                      // Сдать смену - роль определяется автоматически по флагу isManager
-                      _buildOptionCard(
-                        context,
-                        title: 'Сдать Смену',
-                        icon: Icons.assignment_turned_in,
-                        description: 'Ответить на вопросы по смене',
-                        color: _hasPendingReport() ? Colors.blue : Colors.grey,
-                        onTap: () => _onQuestionsCardTap(widget.isCurrentUserManager ? 'manager' : 'employee'),
-                        isDisabled: !_hasPendingReport(),
+                            // Индикатор наличия pending отчёта
+                            const SizedBox(height: 14),
+                            _buildPendingStatusIndicator(),
+
+                            const SizedBox(height: 24),
+
+                            // Формирование конверта
+                            _buildOptionCard(
+                              title: 'Формирование конверта',
+                              icon: Icons.mail_rounded,
+                              description: 'Выручка, расходы, итог',
+                              accentColor: const Color(0xFF43A047),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EnvelopeFormPage(
+                                      employeeName: widget.employeeName,
+                                      shopAddress: widget.shopAddress,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Divider
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(
+                                    'Вопросы',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.4),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Сдать смену
+                            _buildOptionCard(
+                              title: 'Сдать Смену',
+                              icon: Icons.assignment_turned_in_rounded,
+                              description: 'Ответить на вопросы по смене',
+                              accentColor: _hasPendingReport() ? _gold : Colors.grey,
+                              onTap: () => _onQuestionsCardTap(widget.isCurrentUserManager ? 'manager' : 'employee'),
+                              isDisabled: !_hasPendingReport(),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Счётчик кофемашин
+                            _buildOptionCard(
+                              title: 'Счётчик кофемашин',
+                              icon: Icons.coffee_outlined,
+                              description: 'Показания счётчиков кофемашин',
+                              accentColor: _gold,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CoffeeMachineFormPage(
+                                      employeeName: widget.employeeName,
+                                      shopAddress: widget.shopAddress,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white.withOpacity(0.8), size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Сдача смены',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -275,32 +345,33 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
     final shiftName = currentShift == 'morning' ? 'Утренняя смена' : 'Вечерняя смена';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: hasPending
-            ? Colors.green.withOpacity(0.2)
-            : Colors.orange.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
+            ? const Color(0xFF43A047).withOpacity(0.12)
+            : Colors.orange.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: hasPending ? Colors.green : Colors.orange,
-          width: 1,
+          color: hasPending
+              ? const Color(0xFF43A047).withOpacity(0.3)
+              : Colors.orange.withOpacity(0.3),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            hasPending ? Icons.check_circle : Icons.warning_amber,
-            color: hasPending ? Colors.green : Colors.orange,
+            hasPending ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+            color: hasPending ? const Color(0xFF43A047) : Colors.orange,
             size: 18,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Text(
             hasPending
                 ? '$shiftName: можно сдать'
                 : '$shiftName: время истекло',
             style: TextStyle(
-              color: Colors.white,
+              color: Colors.white.withOpacity(0.8),
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
@@ -310,49 +381,39 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
     );
   }
 
-  Widget _buildOptionCard(
-    BuildContext context, {
+  Widget _buildOptionCard({
     required String title,
     required IconData icon,
     required String description,
-    required Color color,
+    required Color accentColor,
     required VoidCallback onTap,
     bool isDisabled = false,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Opacity(
-        opacity: isDisabled ? 0.6 : 1.0,
+        opacity: isDisabled ? 0.5 : 1.0,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: color,
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: accentColor.withOpacity(0.3)),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  color: accentColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
-                  size: 32,
-                  color: color,
+                  size: 26,
+                  color: accentColor,
                 ),
               ),
               const SizedBox(width: 16),
@@ -362,27 +423,27 @@ class _ShiftHandoverRoleSelectionPageState extends State<ShiftHandoverRoleSelect
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
-                        color: Colors.grey.shade800,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       description,
                       style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.45),
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
               Icon(
-                isDisabled ? Icons.lock : Icons.chevron_right,
-                color: color,
-                size: 28,
+                isDisabled ? Icons.lock_rounded : Icons.chevron_right_rounded,
+                color: isDisabled ? Colors.white.withOpacity(0.2) : accentColor.withOpacity(0.6),
+                size: 24,
               ),
             ],
           ),

@@ -21,6 +21,7 @@ export 'reviews_points_settings.dart';
 export 'product_search_points_settings.dart';
 export 'orders_points_settings.dart';
 export 'envelope_points_settings.dart';
+export 'coffee_machine_points_settings.dart';
 
 // Настройки задач
 export 'task_points_settings.dart';

@@ -26,6 +26,8 @@ import '../../features/fortune_wheel/pages/wheel_reports_page.dart';
 import '../../features/loyalty/pages/client_wheel_prizes_report_page.dart';
 import '../../features/orders/pages/orders_report_page.dart';
 import '../../features/orders/services/order_service.dart';
+import '../../features/coffee_machine/pages/coffee_machine_reports_list_page.dart';
+import '../../features/coffee_machine/services/coffee_machine_report_service.dart';
 import '../../features/work_schedule/pages/shift_transfer_requests_page.dart';
 import '../../features/work_schedule/services/shift_transfer_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,6 +60,7 @@ class _ReportsPageState extends State<ReportsPage> {
   int _ordersUnviewedCount = 0;
   int _shiftTransferRequestsUnreadCount = 0;
   int _envelopeUnconfirmedCount = 0;
+  int _coffeeMachineUnconfirmedCount = 0;
   UnviewedCounts _reportCounts = UnviewedCounts();
 
   // ═══════════════════════════════════════════════════════════════
@@ -82,6 +85,7 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadOrdersUnviewedCount();
     _loadShiftTransferRequestsCount();
     _loadEnvelopeCount();
+    _loadCoffeeMachineCount();
   }
 
   Future<void> _loadUnreadReviewsCount() async {
@@ -177,6 +181,15 @@ class _ReportsPageState extends State<ReportsPage> {
       if (mounted) setState(() => _envelopeUnconfirmedCount = unconfirmedCount);
     } catch (e) {
       Logger.error('Ошибка загрузки количества неподтверждённых конвертов', e);
+    }
+  }
+
+  Future<void> _loadCoffeeMachineCount() async {
+    try {
+      final count = await CoffeeMachineReportService.getUnconfirmedCount();
+      if (mounted) setState(() => _coffeeMachineUnconfirmedCount = count);
+    } catch (e) {
+      Logger.error('Ошибка загрузки количества неподтверждённых отчётов кофемашин', e);
     }
   }
 
@@ -366,6 +379,19 @@ class _ReportsPageState extends State<ReportsPage> {
         onTap: () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const EnvelopeReportsListPage()));
           _loadEnvelopeCount();
+        },
+      ));
+    }
+
+    // Счётчик кофемашин
+    if (isAdmin) {
+      items.add(_buildRow(
+        icon: Icons.coffee_outlined,
+        title: 'Счётчик кофемашин',
+        badge: _coffeeMachineUnconfirmedCount,
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const CoffeeMachineReportsListPage()));
+          _loadCoffeeMachineCount();
         },
       ));
     }

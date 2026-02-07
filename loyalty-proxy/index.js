@@ -118,6 +118,8 @@ const { setupChatWebSocket } = require("./api/employee_chat_websocket");
 const { setupMediaAPI } = require("./api/media_api");
 const { setupShopManagersAPI } = require("./api/shop_managers_api");
 const { setupLoyaltyGamificationAPI } = require("./api/loyalty_gamification_api");
+const { setupCoffeeMachineAPI } = require("./api/coffee_machine_api");
+const { startCoffeeMachineAutomation } = require("./api/coffee_machine_automation_scheduler");
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
 
@@ -971,6 +973,7 @@ app.post('/api/recount-reports/:reportId/notify', async (req, res) => {
 // Статическая раздача фото
 app.use('/shift-photos', express.static(`${DATA_DIR}/shift-photos`));
 app.use('/product-question-photos', express.static(`${DATA_DIR}/product-question-photos`));
+app.use('/coffee-machine-photos', express.static(`${DATA_DIR}/coffee-machine-photos`));
 
 // ============================================
 // Вспомогательные функции для проверки времени смены
@@ -1114,7 +1117,7 @@ async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftTy
     const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
 
     // Загружаем настройки баллов
-    const pointsSettings = loadAttendancePointsSettings();
+    const pointsSettings = await loadAttendancePointsSettings();
     const penalty = pointsSettings.latePoints || -1;
 
     const penaltyRecord = {
@@ -1167,7 +1170,7 @@ async function createOnTimeBonus(employeeName, shopAddress, shiftType) {
     const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
 
     // Загружаем настройки баллов
-    const pointsSettings = loadAttendancePointsSettings();
+    const pointsSettings = await loadAttendancePointsSettings();
     const bonus = pointsSettings.onTimePoints || 0.5;
 
     if (bonus <= 0) {
@@ -1243,10 +1246,10 @@ app.post('/api/attendance', async (req, res) => {
     const recordFile = path.join(attendanceDir, `${sanitizedId}.json`);
 
     // Загружаем настройки магазина
-    const shopSettings = loadShopSettings(req.body.shopAddress);
+    const shopSettings = await loadShopSettings(req.body.shopAddress);
 
     // Проверяем время по интервалам смен
-    const checkResult = checkShiftTime(req.body.timestamp, shopSettings);
+    const checkResult = await checkShiftTime(req.body.timestamp, shopSettings);
 
     const recordData = {
       ...req.body,
@@ -1274,7 +1277,7 @@ app.post('/api/attendance', async (req, res) => {
 
     // Если пришёл вовремя - создаём бонус
     if (checkResult.isOnTime === true) {
-      createOnTimeBonus(req.body.employeeName, req.body.shopAddress, checkResult.shiftType);
+      await createOnTimeBonus(req.body.employeeName, req.body.shopAddress, checkResult.shiftType);
     }
 
     // Отправляем push-уведомление админу
@@ -1331,10 +1334,10 @@ app.post('/api/attendance/confirm-shift', async (req, res) => {
     const record = JSON.parse(content);
 
     // Загружаем настройки магазина
-    const shopSettings = loadShopSettings(record.shopAddress);
+    const shopSettings = await loadShopSettings(record.shopAddress);
 
     // Вычисляем опоздание
-    const lateMinutes = calculateLateMinutes(record.timestamp, selectedShift, shopSettings);
+    const lateMinutes = await calculateLateMinutes(record.timestamp, selectedShift, shopSettings);
 
     // Обновляем запись
     record.shiftType = selectedShift;
@@ -1347,11 +1350,11 @@ app.post('/api/attendance/confirm-shift', async (req, res) => {
     // Если опоздал - создаём штраф
     let penaltyCreated = false;
     if (lateMinutes > 0) {
-      const penalty = createLatePenalty(record.employeeName, record.shopAddress, lateMinutes, selectedShift);
+      const penalty = await createLatePenalty(record.employeeName, record.shopAddress, lateMinutes, selectedShift);
       penaltyCreated = penalty !== null;
     } else {
       // Если пришёл вовремя - создаём бонус
-      createOnTimeBonus(record.employeeName, record.shopAddress, selectedShift);
+      await createOnTimeBonus(record.employeeName, record.shopAddress, selectedShift);
     }
 
     const shiftNames = {
@@ -1863,7 +1866,7 @@ app.post('/api/employees', async (req, res) => {
     
     const employee = {
       id: sanitizedId,
-      referralCode: req.body.referralCode || getNextReferralCode(),
+      referralCode: req.body.referralCode || (await getNextReferralCode()),
       name: req.body.name.trim(),
       position: req.body.position || null,
       department: req.body.department || null,
@@ -1924,7 +1927,7 @@ app.put('/api/employees/:id', async (req, res) => {
     
     const employee = {
       id: sanitizedId,
-      referralCode: req.body.referralCode || getNextReferralCode(),
+      referralCode: req.body.referralCode || (await getNextReferralCode()),
       name: req.body.name.trim(),
       position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
       department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
@@ -2413,7 +2416,7 @@ async function saveRKOMetadata(metadata) {
 
 // Очистка старых РКО для сотрудника (максимум 150)
 async function cleanupEmployeeRKOs(employeeName) {
-  const metadata = loadRKOMetadata();
+  const metadata = await loadRKOMetadata();
   const employeeRKOs = metadata.items.filter(rko => rko.employeeName === employeeName);
   
   if (employeeRKOs.length > 150) {
@@ -2439,13 +2442,13 @@ async function cleanupEmployeeRKOs(employeeName) {
       );
     }
     
-    saveRKOMetadata(metadata);
+    await saveRKOMetadata(metadata);
   }
 }
 
 // Очистка старых РКО для магазина (максимум 6 месяцев)
 async function cleanupShopRKOs(shopAddress) {
-  const metadata = loadRKOMetadata();
+  const metadata = await loadRKOMetadata();
   const shopRKOs = metadata.items.filter(rko => rko.shopAddress === shopAddress);
   
   if (shopRKOs.length === 0) return;
@@ -2478,7 +2481,7 @@ async function cleanupShopRKOs(shopAddress) {
       }
     }
     
-    saveRKOMetadata(metadata);
+    await saveRKOMetadata(metadata);
   }
 }
 
@@ -2518,7 +2521,7 @@ app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
     console.log('РКО сохранен:', filePath);
     
     // Добавляем метаданные
-    const metadata = loadRKOMetadata();
+    const metadata = await loadRKOMetadata();
     const newRKO = {
       fileName: fileName,
       employeeName: employeeName,
@@ -2533,11 +2536,11 @@ app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
     metadata.items = metadata.items.filter(item => item.fileName !== fileName);
     metadata.items.push(newRKO);
     
-    saveRKOMetadata(metadata);
-    
+    await saveRKOMetadata(metadata);
+
     // Очистка старых РКО
-    cleanupEmployeeRKOs(employeeName);
-    cleanupShopRKOs(shopAddress);
+    await cleanupEmployeeRKOs(employeeName);
+    await cleanupShopRKOs(shopAddress);
     
     res.json({
       success: true,
@@ -2558,7 +2561,7 @@ app.get('/api/rko/list/employee/:employeeName', async (req, res) => {
     const employeeName = decodeURIComponent(req.params.employeeName);
     console.log('📋 GET /api/rko/list/employee:', employeeName);
     
-    const metadata = loadRKOMetadata();
+    const metadata = await loadRKOMetadata();
     // Нормализуем имена для сравнения (приводим к нижнему регистру и убираем лишние пробелы)
     const normalizedSearchName = employeeName.toLowerCase().trim().replace(/\s+/g, ' ');
     const employeeRKOs = metadata.items
@@ -2606,7 +2609,7 @@ app.get('/api/rko/list/shop/:shopAddress', async (req, res) => {
     const shopAddress = decodeURIComponent(req.params.shopAddress);
     console.log('📋 GET /api/rko/list/shop:', shopAddress);
     
-    const metadata = loadRKOMetadata();
+    const metadata = await loadRKOMetadata();
     const now = new Date();
     const currentMonth = now.toISOString().substring(0, 7); // YYYY-MM
     
@@ -2655,7 +2658,7 @@ app.get('/api/rko/all', async (req, res) => {
     const { month } = req.query; // YYYY-MM
     console.log('📋 GET /api/rko/all, month:', month);
 
-    const metadata = loadRKOMetadata();
+    const metadata = await loadRKOMetadata();
 
     let items = metadata.items || [];
 
@@ -2700,7 +2703,7 @@ app.get('/api/rko/file/:fileName', async (req, res) => {
     console.log('📄 GET /api/rko/file:', fileName);
     console.log('📄 Оригинальный параметр:', req.params.fileName);
     
-    const metadata = loadRKOMetadata();
+    const metadata = await loadRKOMetadata();
     const rko = metadata.items.find(item => item.fileName === fileName);
     
     if (!rko) {
@@ -3419,7 +3422,7 @@ async function getFCMTokensForWithdrawalNotifications(phones) {
 
   const tokens = [];
   for (const phone of phones) {
-    const token = getFCMTokenByPhoneForWithdrawals(phone);
+    const token = await getFCMTokenByPhoneForWithdrawals(phone);
     if (token) {
       tokens.push(token);
     }
@@ -3432,7 +3435,7 @@ async function getFCMTokensForWithdrawalNotifications(phones) {
 async function sendWithdrawalNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
-    const employees = loadAllEmployeesForWithdrawals();
+    const employees = await loadAllEmployeesForWithdrawals();
 
     // 2. Отфильтровать админов
     const admins = employees.filter(e => e.isAdmin === true);
@@ -3444,7 +3447,7 @@ async function sendWithdrawalNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = getFCMTokensForWithdrawalNotifications(adminPhones);
+    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
@@ -3479,7 +3482,7 @@ async function sendWithdrawalNotifications(withdrawal) {
 async function sendWithdrawalConfirmationNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
-    const employees = loadAllEmployeesForWithdrawals();
+    const employees = await loadAllEmployeesForWithdrawals();
 
     // 2. Отфильтровать админов
     const admins = employees.filter(e => e.isAdmin === true);
@@ -3491,7 +3494,7 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = getFCMTokensForWithdrawalNotifications(adminPhones);
+    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
 
     if (tokens.length === 0) {
       console.log("Нет FCM токенов для админов");
@@ -3694,7 +3697,7 @@ app.post('/api/withdrawals', async (req, res) => {
     await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
     // Обновить баланс главной кассы
-    updateMainCashBalance(shopAddress, type, totalAmount);
+    await updateMainCashBalance(shopAddress, type, totalAmount);
 
     // Отправить push-уведомления админам
     await sendWithdrawalNotifications(withdrawal);
@@ -3846,7 +3849,7 @@ app.get('/api/work-schedule', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
     }
 
-    const schedule = loadSchedule(month);
+    const schedule = await loadSchedule(month);
     console.log(`📥 Загружен график для ${month}: ${schedule.entries.length} записей`);
     res.json({ success: true, schedule });
   } catch (error) {
@@ -3864,7 +3867,7 @@ app.get('/api/work-schedule/employee/:employeeId', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
     }
 
-    const schedule = loadSchedule(month);
+    const schedule = await loadSchedule(month);
     const employeeEntries = schedule.entries.filter(e => e.employeeId === employeeId);
     const employeeSchedule = { month, entries: employeeEntries };
     
@@ -3887,7 +3890,7 @@ app.post('/api/work-schedule', async (req, res) => {
     }
 
     const month = entry.month;
-    const schedule = loadSchedule(month);
+    const schedule = await loadSchedule(month);
 
     // Если есть ID - это обновление существующей записи
     if (entry.id) {
@@ -3908,7 +3911,7 @@ app.post('/api/work-schedule', async (req, res) => {
     schedule.entries.push(entry);
     schedule.month = month;
 
-    if (saveSchedule(schedule)) {
+    if (await saveSchedule(schedule)) {
       res.json({ success: true, entry });
 
       // Отправляем push-уведомление сотруднику об изменении в графике
@@ -3956,7 +3959,7 @@ app.delete('/api/work-schedule/clear', async (req, res) => {
 
     console.log(`🗑️ Запрос на очистку графика за месяц: ${month}`);
 
-    const schedule = loadSchedule(month);
+    const schedule = await loadSchedule(month);
     const entriesCount = schedule.entries.length;
 
     if (entriesCount === 0) {
@@ -3967,7 +3970,7 @@ app.delete('/api/work-schedule/clear', async (req, res) => {
     // Очищаем все записи
     schedule.entries = [];
 
-    if (saveSchedule(schedule)) {
+    if (await saveSchedule(schedule)) {
       console.log(`✅ График за ${month} очищен. Удалено записей: ${entriesCount}`);
       res.json({
         success: true,
@@ -3994,12 +3997,12 @@ app.delete('/api/work-schedule/:entryId', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
     }
 
-    const schedule = loadSchedule(month);
+    const schedule = await loadSchedule(month);
     const initialLength = schedule.entries.length;
     schedule.entries = schedule.entries.filter(e => e.id !== entryId);
 
     if (schedule.entries.length < initialLength) {
-      if (saveSchedule(schedule)) {
+      if (await saveSchedule(schedule)) {
         res.json({ success: true, message: 'Смена удалена' });
       } else {
         res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
@@ -4040,7 +4043,8 @@ app.post('/api/work-schedule/bulk', async (req, res) => {
 
     // Группируем по месяцам
     const schedulesByMonth = {};
-    entries.forEach((entry, index) => {
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index];
       if (!entry.month) {
         // Извлекаем месяц из даты
         const date = new Date(entry.date);
@@ -4048,7 +4052,7 @@ app.post('/api/work-schedule/bulk', async (req, res) => {
       }
 
       if (!schedulesByMonth[entry.month]) {
-        schedulesByMonth[entry.month] = loadSchedule(entry.month);
+        schedulesByMonth[entry.month] = await loadSchedule(entry.month);
       }
 
       // Генерируем уникальный ID, если его нет
@@ -4088,7 +4092,7 @@ app.post('/api/work-schedule/bulk', async (req, res) => {
 
       // Добавляем новую запись
       schedulesByMonth[entry.month].entries.push(entry);
-    });
+    }
     
     console.log(`📊 Массовое создание: обработано ${entries.length} записей, сохранено в ${Object.keys(schedulesByMonth).length} месяцах`);
 
@@ -4097,7 +4101,7 @@ app.post('/api/work-schedule/bulk', async (req, res) => {
     let totalSaved = 0;
     for (const month in schedulesByMonth) {
       const schedule = schedulesByMonth[month];
-      if (saveSchedule(schedule)) {
+      if (await saveSchedule(schedule)) {
         totalSaved += schedule.entries.length;
         console.log(`✅ Сохранен график для ${month}: ${schedule.entries.length} записей`);
       } else {
@@ -4287,7 +4291,7 @@ app.post('/api/suppliers', async (req, res) => {
     
     const supplier = {
       id: sanitizedId,
-      referralCode: req.body.referralCode || getNextReferralCode(),
+      referralCode: req.body.referralCode || (await getNextReferralCode()),
       name: req.body.name.trim(),
       inn: req.body.inn ? req.body.inn.trim() : null,
       legalType: req.body.legalType,
@@ -4356,7 +4360,7 @@ app.put('/api/suppliers/:id', async (req, res) => {
     
     const supplier = {
       id: sanitizedId,
-      referralCode: req.body.referralCode || oldSupplier.referralCode || getNextReferralCode(),
+      referralCode: req.body.referralCode || oldSupplier.referralCode || (await getNextReferralCode()),
       name: req.body.name.trim(),
       inn: req.body.inn ? req.body.inn.trim() : null,
       legalType: req.body.legalType,
@@ -8339,10 +8343,12 @@ app.get('/api/efficiency/reports-batch', async (req, res) => {
     // Загружаем все типы отчётов параллельно
     const startTime = Date.now();
 
-    const shifts = loadShiftReportsForPeriod(startDate, endDate);
-    const recounts = loadRecountReportsForPeriod(startDate, endDate);
-    const handovers = loadShiftHandoverReportsForPeriod(startDate, endDate);
-    const attendance = loadAttendanceForPeriod(startDate, endDate);
+    const [shifts, recounts, handovers, attendance] = await Promise.all([
+      loadShiftReportsForPeriod(startDate, endDate),
+      loadRecountReportsForPeriod(startDate, endDate),
+      loadShiftHandoverReportsForPeriod(startDate, endDate),
+      loadAttendanceForPeriod(startDate, endDate),
+    ]);
 
     const loadTime = Date.now() - startTime;
 
@@ -8451,6 +8457,7 @@ setupEmployeeChatAPI(app);
 setupMediaAPI(app, uploadChatMedia);
 setupShopManagersAPI(app);
 setupLoyaltyGamificationAPI(app);
+setupCoffeeMachineAPI(app);
 
 // Auth API (регистрация, вход, сброс PIN)
 app.use('/api/auth', authApiRouter);
@@ -8480,6 +8487,9 @@ startAttendanceAutomationScheduler();
 
 // Start Envelope automation scheduler (auto-create reports, check deadlines, penalties)
 startEnvelopeAutomationScheduler();
+
+// Start Coffee Machine automation scheduler (auto-create reports, check deadlines, penalties)
+startCoffeeMachineAutomation();
 
 // Start order timeout scheduler (auto-expire orders and create penalties)
 setupOrderTimeoutAPI(app);

@@ -7,6 +7,7 @@ import '../../features/tests/pages/test_questions_management_page.dart';
 import '../../features/training/pages/training_articles_management_page.dart';
 import '../../features/clients/pages/clients_management_page.dart';
 import '../../features/shift_handover/pages/shift_handover_questions_management_page.dart';
+import '../../features/coffee_machine/pages/coffee_machine_questions_management_page.dart';
 import '../../features/suppliers/pages/suppliers_management_page.dart';
 import '../../features/efficiency/pages/points_settings_page.dart';
 import '../../features/tasks/pages/task_management_page.dart';
@@ -101,6 +102,14 @@ class DataManagementPage extends StatelessWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const ShiftHandoverQuestionsManagementPage()),
+                      ),
+                    ),
+                    _buildRow(
+                      icon: Icons.coffee_outlined,
+                      title: 'Счётчик кофемашин',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CoffeeMachineQuestionsManagementPage()),
                       ),
                     ),
                     _buildRow(

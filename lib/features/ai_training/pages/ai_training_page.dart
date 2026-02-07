@@ -3,6 +3,7 @@ import 'z_report_training_page.dart';
 import 'cigarette_training_page.dart';
 import 'shift_training_page.dart';
 import 'training_settings_page.dart';
+import '../../coffee_machine/pages/coffee_machine_template_management_page.dart';
 import '../../employees/services/user_role_service.dart';
 import '../../employees/models/user_role_model.dart';
 
@@ -135,6 +136,24 @@ class _AITrainingPageState extends State<AITrainingPage>
                               context,
                               MaterialPageRoute(
                                 builder: (context) => const ShiftTrainingPage(),
+                              ),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        _buildTrainingCard(
+                          title: 'Кофемашины',
+                          description: 'Шаблоны счётчиков для разных типов кофемашин',
+                          icon: Icons.coffee_outlined,
+                          gradient: const [Color(0xFFD4AF37), Color(0xFFF0C850)],
+                          stats: 'Шаблоны',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const CoffeeMachineTemplateManagementPage(),
                               ),
                             );
                           },

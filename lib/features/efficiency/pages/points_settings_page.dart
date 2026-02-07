@@ -11,6 +11,7 @@ import 'settings_tabs/product_search_points_settings_page.dart';
 import 'settings_tabs/orders_points_settings_page.dart';
 import 'settings_tabs/task_points_settings_page.dart';
 import 'settings_tabs/envelope_points_settings_page.dart';
+import 'settings_tabs/coffee_machine_points_settings_page.dart';
 import 'settings_tabs/manager_points_settings_page.dart';
 import '../../referrals/pages/referrals_points_settings_page.dart';
 import '../../loyalty/pages/loyalty_gamification_settings_page.dart';
@@ -24,6 +25,11 @@ class PointsSettingsPage extends StatefulWidget {
 }
 
 class _PointsSettingsPageState extends State<PointsSettingsPage> {
+  static const Color _emerald = Color(0xFF1A4D4D);
+  static const Color _emeraldDark = Color(0xFF0D2E2E);
+  static const Color _night = Color(0xFF051515);
+  static const Color _gold = Color(0xFFD4AF37);
+
   bool _isLoading = false;
 
   // Categories with colors
@@ -104,6 +110,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
       icon: Icons.mark_email_read_outlined,
       description: 'Баллы за сдачу конверта',
       gradientColors: [const Color(0xFFee0979), const Color(0xFFff6a00)],
+    ),
+    _PointsCategory(
+      id: 'coffee_machine',
+      title: 'Счётчик кофе',
+      icon: Icons.coffee_outlined,
+      description: 'Баллы за показания счётчика',
+      gradientColors: [const Color(0xFFD4AF37), const Color(0xFFF0C850)],
     ),
     _PointsCategory(
       id: 'referrals',
@@ -213,6 +226,13 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
           builder: (context) => const EnvelopePointsSettingsPage(),
         ),
       );
+    } else if (categoryId == 'coffee_machine') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CoffeeMachinePointsSettingsPage(),
+        ),
+      );
     } else if (categoryId == 'referrals') {
       Navigator.push(
         context,
@@ -247,91 +267,132 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text('Установка баллов'),
-        backgroundColor: const Color(0xFF004D40),
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Заголовок с градиентом
-          Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFF004D40),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
+      backgroundColor: _night,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_emeraldDark, _night],
+          ),
+        ),
+        child: Column(
+          children: [
+            // Custom Row AppBar
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 12, 20, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Установка баллов',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.stars_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Настройка баллов',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              '${_categories.length} категорий',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+            // Header section
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: _emerald.withOpacity(0.3),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(28),
+                  bottomRight: Radius.circular(28),
                 ),
-              ],
-            ),
-          ),
-          // Список категорий
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF004D40)))
-                : ListView.builder(
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                children: [
+                  Container(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final category = _categories[index];
-                      return _buildCategoryCard(category);
-                    },
+                    decoration: BoxDecoration(
+                      color: _emerald.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _gold.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: _gold.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _gold.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.stars_rounded,
+                            color: _gold,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Настройка баллов',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '${_categories.length} категорий',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.6),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-          ),
-        ],
+                ],
+              ),
+            ),
+            // Category list
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: _gold))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _categories.length,
+                      itemBuilder: (context, index) {
+                        final category = _categories[index];
+                        return _buildCategoryCard(category);
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -340,15 +401,12 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _emeraldDark,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: category.gradientColors[0].withOpacity(0.15),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(
+          color: _emerald.withOpacity(0.5),
+          width: 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -360,7 +418,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Иконка с градиентом
+                // Icon with gradient
                 Container(
                   width: 56,
                   height: 56,
@@ -371,13 +429,6 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                       colors: category.gradientColors,
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: category.gradientColors[0].withOpacity(0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Icon(
                     category.icon,
@@ -386,7 +437,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Текст
+                // Text
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +447,7 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D3436),
+                          color: Colors.white,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -404,23 +455,23 @@ class _PointsSettingsPageState extends State<PointsSettingsPage> {
                         category.description,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey[600],
+                          color: Colors.white.withOpacity(0.5),
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Стрелка
+                // Arrow
                 Container(
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: _emerald.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.grey[400],
+                    color: _gold.withOpacity(0.7),
                     size: 24,
                   ),
                 ),
