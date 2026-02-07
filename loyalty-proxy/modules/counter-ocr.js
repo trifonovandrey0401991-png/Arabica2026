@@ -2,7 +2,10 @@
  * Модуль OCR для распознавания чисел со счётчиков кофемашин
  *
  * Использует Tesseract OCR (локальный, бесплатный)
- * Оптимизирован для цифр: --psm 7 -c tessedit_char_whitelist=0123456789
+ * Поддерживает пресеты предобработки для разных типов машин:
+ *   - standard: для экранов с тёмным текстом на светлом фоне (BW3)
+ *   - standard_resize: standard + увеличение (BW4)
+ *   - invert_lcd: инверсия для LCD с светлым текстом на тёмном фоне (WMF)
  */
 
 const { exec } = require('child_process');
@@ -15,6 +18,34 @@ const execPromise = util.promisify(exec);
 
 // Temp directory для обработки изображений
 const TEMP_DIR = '/tmp/counter-ocr';
+
+// Пресеты предобработки
+const PRESETS = {
+  // Стандартный: для экранов с тёмным текстом на светлом фоне (Thermoplan BW3)
+  standard: {
+    negate: false,
+    resize: null,
+    threshold: 128,
+    psm: 7,
+    parseStrategy: 'direct',
+  },
+  // Стандартный с увеличением: для мелкого текста (Thermoplan BW4)
+  standard_resize: {
+    negate: false,
+    resize: 1200,
+    threshold: 128,
+    psm: 7,
+    parseStrategy: 'direct',
+  },
+  // Инверсия для LCD: для светлого текста на тёмном фоне (WMF)
+  invert_lcd: {
+    negate: true,
+    resize: 1200,
+    threshold: false,
+    psm: 6,
+    parseStrategy: 'largest_number',
+  },
+};
 
 // Async helper
 async function fileExists(filePath) {
@@ -38,16 +69,14 @@ async function fileExists(filePath) {
  *
  * @param {string} imageBase64 - Изображение в base64
  * @param {object} [region] - Область обрезки (относительные координаты 0.0-1.0)
- * @param {number} region.x - X координата (0.0-1.0)
- * @param {number} region.y - Y координата (0.0-1.0)
- * @param {number} region.width - Ширина (0.0-1.0)
- * @param {number} region.height - Высота (0.0-1.0)
+ * @param {string} [preset='standard'] - Пресет предобработки: 'standard', 'standard_resize', 'invert_lcd'
  * @returns {Promise<{number: number|null, confidence: number, rawText: string, success: boolean, error: string|null}>}
  */
-async function readCounterNumber(imageBase64, region) {
-  const timestamp = Date.now();
+async function readCounterNumber(imageBase64, region, preset) {
+  const presetConfig = PRESETS[preset] || PRESETS.standard;
+  const timestamp = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   const inputPath = path.join(TEMP_DIR, `counter_${timestamp}_input.jpg`);
-  const processedPath = path.join(TEMP_DIR, `counter_${timestamp}_processed.jpg`);
+  const processedPath = path.join(TEMP_DIR, `counter_${timestamp}_processed.png`);
   const outputBasePath = path.join(TEMP_DIR, `counter_${timestamp}_output`);
 
   try {
@@ -82,18 +111,28 @@ async function readCounterNumber(imageBase64, region) {
       }
     }
 
-    // 4. Улучшение контраста: преобразование в градации серого, увеличение контраста
-    await sharpInstance
-      .greyscale()
-      .normalise()       // Нормализация контраста
-      .sharpen()         // Повышение резкости
-      .threshold(128)    // Бинаризация (чёрное/белое)
-      .toFile(processedPath);
+    // 4. Предобработка по пресету
+    sharpInstance = sharpInstance.greyscale();
+
+    if (presetConfig.negate) {
+      sharpInstance = sharpInstance.negate();
+    } else {
+      sharpInstance = sharpInstance.normalise().sharpen();
+    }
+
+    if (presetConfig.threshold) {
+      sharpInstance = sharpInstance.threshold(presetConfig.threshold);
+    }
+
+    if (presetConfig.resize) {
+      sharpInstance = sharpInstance.resize({ width: presetConfig.resize, fit: 'inside' });
+    }
+
+    // Сохраняем в PNG (lossless) для лучшего OCR
+    await sharpInstance.png().toFile(processedPath);
 
     // 5. Запуск Tesseract OCR
-    // --psm 7: одна строка текста
-    // -c tessedit_char_whitelist=0123456789: только цифры
-    const tesseractCmd = `tesseract "${processedPath}" "${outputBasePath}" --psm 7 -c tessedit_char_whitelist=0123456789 2>/dev/null`;
+    const tesseractCmd = `tesseract "${processedPath}" "${outputBasePath}" --psm ${presetConfig.psm} -c tessedit_char_whitelist=0123456789 2>/dev/null`;
 
     await execPromise(tesseractCmd, { timeout: 10000 });
 
@@ -101,12 +140,25 @@ async function readCounterNumber(imageBase64, region) {
     const outputPath = `${outputBasePath}.txt`;
     const rawText = (await fsp.readFile(outputPath, 'utf8')).trim();
 
-    // 7. Обработка: убрать пробелы, запятые, оставить цифры
-    const cleanedText = rawText.replace(/[^0-9]/g, '');
-    const number = cleanedText.length > 0 ? parseInt(cleanedText, 10) : null;
+    // 7. Обработка результата по стратегии
+    let number = null;
+
+    if (presetConfig.parseStrategy === 'largest_number') {
+      // Для LCD-экранов: извлечь все числа и вернуть наибольшее > 100
+      const matches = rawText.match(/\d+/g);
+      if (matches) {
+        const numbers = matches.map(n => parseInt(n, 10)).filter(n => n > 100);
+        numbers.sort((a, b) => b - a);
+        number = numbers.length > 0 ? numbers[0] : null;
+      }
+    } else {
+      // Стандартная стратегия: убрать нецифровые символы
+      const cleanedText = rawText.replace(/[^0-9]/g, '');
+      number = cleanedText.length > 0 ? parseInt(cleanedText, 10) : null;
+    }
 
     // 8. Оценка confidence
-    const digitCount = cleanedText.length;
+    const digitCount = number !== null ? number.toString().length : 0;
     const confidence = number !== null ? Math.min(0.95, 0.5 + (digitCount * 0.1)) : 0.0;
 
     // Очистка temp файлов
@@ -150,4 +202,4 @@ async function cleanupTempFiles(files) {
   }
 }
 
-module.exports = { readCounterNumber };
+module.exports = { readCounterNumber, PRESETS };

@@ -456,7 +456,7 @@ function setupCoffeeMachineAPI(app) {
   // POST /api/coffee-machine/ocr — распознать число с фото
   app.post('/api/coffee-machine/ocr', async (req, res) => {
     try {
-      const { imageBase64, region } = req.body;
+      const { imageBase64, region, preset } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ success: false, error: 'Нужно передать imageBase64' });
@@ -477,7 +477,7 @@ function setupCoffeeMachineAPI(app) {
         });
       }
 
-      const result = await ocrModule.readCounterNumber(imageBase64, region);
+      const result = await ocrModule.readCounterNumber(imageBase64, region, preset);
       res.json(result);
     } catch (error) {
       console.error('[CoffeeMachine] Ошибка OCR:', error.message);
