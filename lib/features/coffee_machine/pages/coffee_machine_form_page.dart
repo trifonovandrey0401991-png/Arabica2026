@@ -246,12 +246,33 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
     return sum;
   }
 
-  int get _computerNumber {
-    return int.tryParse(_computerController.text) ?? 0;
+  /// Парсит число компьютера: убирает пробелы, заменяет запятую на точку
+  /// Поддержка форматов: "-138 141,20" (1С) и "-138,142.20" (FoxPro)
+  double get _computerNumber {
+    String text = _computerController.text.trim();
+    if (text.isEmpty) return 0.0;
+
+    // Определяем формат: если есть и запятая и точка — FoxPro (запятая=тысячи, точка=дробь)
+    final hasComma = text.contains(',');
+    final hasDot = text.contains('.');
+
+    if (hasComma && hasDot) {
+      // FoxPro: -138,142.20 → убираем запятые-тысячи
+      text = text.replaceAll(',', '');
+    } else if (hasComma && !hasDot) {
+      // 1С: -138 141,20 → убираем пробелы, запятая→точка
+      text = text.replaceAll(' ', '').replaceAll(',', '.');
+    } else {
+      // Только цифры/точка/минус
+      text = text.replaceAll(' ', '');
+    }
+
+    return double.tryParse(text) ?? 0.0;
   }
 
-  bool get _hasDiscrepancy => _sumOfMachines != _computerNumber;
-  int get _discrepancyAmount => (_sumOfMachines - _computerNumber).abs();
+  /// Сверка: компьютер (минус) + сумма машин (плюс) = 0
+  bool get _hasDiscrepancy => (_computerNumber + _sumOfMachines).abs() > 0.5;
+  double get _discrepancyAmount => (_computerNumber + _sumOfMachines).abs();
 
   Future<void> _submitReport() async {
     // Валидация
@@ -308,6 +329,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
 
       final computerNum = _computerNumber;
       final sum = _sumOfMachines;
+      final discrepancy = (computerNum + sum).abs();
 
       // Определить смену
       final hour = DateTime.now().hour;
@@ -323,8 +345,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
         computerNumber: computerNum,
         computerPhotoUrl: computerPhotoUrl,
         sumOfMachines: sum,
-        hasDiscrepancy: sum != computerNum,
-        discrepancyAmount: (sum - computerNum).abs(),
+        hasDiscrepancy: discrepancy > 0.5,
+        discrepancyAmount: discrepancy,
         status: 'pending',
         createdAt: DateTime.now(),
       );
@@ -629,13 +651,8 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           ),
           const SizedBox(height: 20),
 
-          // Поле ввода
-          _buildNumberInput(
-            controller: _computerController,
-            label: 'Показание компьютера',
-            ocrDone: _computerOcrDone,
-            aiNumber: _computerAiNumber,
-          ),
+          // Поле ввода (разрешаем минус, пробел, запятую, точку для компьютерного числа)
+          _buildComputerNumberInput(),
         ],
       ),
     );
@@ -668,9 +685,19 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
           const Divider(color: Colors.white24, height: 24),
 
           // Сумма
-          _buildSummaryRow('Сумма машин', '$sum', isBold: true, color: _gold),
+          _buildSummaryRow('Сумма машин', '+$sum', isBold: true, color: _gold),
           const SizedBox(height: 8),
-          _buildSummaryRow('Компьютер', '$computer', isBold: true, color: Colors.blue),
+          _buildSummaryRow('Компьютер', '${computer.toStringAsFixed(2)}', isBold: true, color: Colors.blue),
+
+          const Divider(color: Colors.white24, height: 24),
+
+          // Итог: компьютер + сумма
+          _buildSummaryRow(
+            'Итого (комп + машины)',
+            '${(computer + sum).toStringAsFixed(2)}',
+            isBold: true,
+            color: discrepancy ? Colors.orange : Colors.green,
+          ),
 
           const SizedBox(height: 16),
 
@@ -692,11 +719,11 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Расхождение!',
+                          'Не сходится!',
                           style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         Text(
-                          'Разница: $diff',
+                          'Разница: ${diff.toStringAsFixed(2)}',
                           style: const TextStyle(color: Colors.orange, fontSize: 14),
                         ),
                       ],
@@ -718,7 +745,7 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                   Icon(Icons.check_circle, color: Colors.green, size: 28),
                   SizedBox(width: 12),
                   Text(
-                    'Числа совпадают!',
+                    'Счётчик сходится!',
                     style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
@@ -873,6 +900,60 @@ class _CoffeeMachineFormPageState extends State<CoffeeMachineFormPage> {
                 borderSide: const BorderSide(color: _gold, width: 2),
               ),
               prefixIcon: Icon(Icons.numbers, color: Colors.white.withOpacity(0.4)),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Поле ввода числа компьютера (разрешает минус, пробелы, запятые, точки)
+  Widget _buildComputerNumberInput() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_computerOcrDone && _computerAiNumber != null) ...[
+            Row(
+              children: [
+                const Icon(Icons.smart_toy, color: _gold, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  'ИИ распознал: $_computerAiNumber',
+                  style: TextStyle(color: _gold, fontSize: 13),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          TextField(
+            controller: _computerController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9\-\., ]')),
+            ],
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              labelText: 'Остаток по компьютеру',
+              hintText: 'Напр: -138 141,20',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 16),
+              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: _gold, width: 2),
+              ),
+              prefixIcon: Icon(Icons.computer, color: Colors.white.withOpacity(0.4)),
             ),
             onChanged: (_) => setState(() {}),
           ),

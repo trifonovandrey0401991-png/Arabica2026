@@ -333,11 +333,13 @@ function setupCoffeeMachineAPI(app) {
       report.status = report.status || 'pending';
 
       // Вычисление суммы и расхождения
+      // Логика: компьютер (отрицательный) + сумма машин (положительная) = 0 → сходится
       if (report.readings && Array.isArray(report.readings)) {
         report.sumOfMachines = report.readings.reduce((sum, r) => sum + (r.confirmedNumber || 0), 0);
         if (report.computerNumber !== undefined) {
-          report.discrepancyAmount = Math.abs(report.sumOfMachines - report.computerNumber);
-          report.hasDiscrepancy = report.discrepancyAmount > 0;
+          const computerNum = parseFloat(report.computerNumber) || 0;
+          report.discrepancyAmount = Math.abs(computerNum + report.sumOfMachines);
+          report.hasDiscrepancy = report.discrepancyAmount > 0.5;
         }
       }
 

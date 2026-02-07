@@ -255,7 +255,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               ),
               const Spacer(),
               Text(
-                '${report.computerNumber}',
+                report.computerNumber.toStringAsFixed(2),
                 style: const TextStyle(color: Colors.blue, fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ],
@@ -302,7 +302,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Сумма машин', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              Text('${report.sumOfMachines}', style: TextStyle(color: _gold, fontWeight: FontWeight.bold)),
+              Text('+${report.sumOfMachines}', style: TextStyle(color: _gold, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 4),
@@ -310,7 +310,21 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Компьютер', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              Text('${report.computerNumber}', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              Text(report.computerNumber.toStringAsFixed(2), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Итого', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              Text(
+                (report.computerNumber + report.sumOfMachines).toStringAsFixed(2),
+                style: TextStyle(
+                  color: report.hasDiscrepancy ? Colors.orange : Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const Divider(color: Colors.white24, height: 16),
@@ -325,8 +339,8 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
               const SizedBox(width: 8),
               Text(
                 report.hasDiscrepancy
-                    ? 'Расхождение: ${report.discrepancyAmount}'
-                    : 'Числа совпадают',
+                    ? 'Не сходится: ${report.discrepancyAmount.toStringAsFixed(2)}'
+                    : 'Счётчик сходится!',
                 style: TextStyle(
                   color: report.hasDiscrepancy ? Colors.orange : Colors.green,
                   fontWeight: FontWeight.bold,

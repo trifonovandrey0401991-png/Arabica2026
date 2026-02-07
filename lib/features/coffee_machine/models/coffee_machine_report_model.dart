@@ -64,14 +64,14 @@ class CoffeeMachineReport {
   final String date; // YYYY-MM-DD
   final List<CoffeeMachineReading> readings;
 
-  // Показание компьютера
-  final int computerNumber;
+  // Показание компьютера (отрицательное число с копейками, напр. -138141.20)
+  final double computerNumber;
   final String? computerPhotoUrl;
 
-  // Сверка
-  final int sumOfMachines; // Сумма показаний всех машин
+  // Сверка: computerNumber + sumOfMachines должно быть = 0
+  final int sumOfMachines; // Сумма показаний всех машин (положительная)
   final bool hasDiscrepancy; // Есть расхождение
-  final int discrepancyAmount; // Размер расхождения
+  final double discrepancyAmount; // Размер расхождения
 
   // Статус
   final String status; // 'pending' | 'confirmed' | 'failed' | 'expired'
@@ -87,11 +87,11 @@ class CoffeeMachineReport {
     required this.shiftType,
     required this.date,
     this.readings = const [],
-    this.computerNumber = 0,
+    this.computerNumber = 0.0,
     this.computerPhotoUrl,
     this.sumOfMachines = 0,
     this.hasDiscrepancy = false,
-    this.discrepancyAmount = 0,
+    this.discrepancyAmount = 0.0,
     this.status = 'pending',
     required this.createdAt,
     this.confirmedAt,
@@ -122,11 +122,11 @@ class CoffeeMachineReport {
       shiftType: json['shiftType'] ?? 'morning',
       date: json['date'] ?? '',
       readings: readings,
-      computerNumber: json['computerNumber'] ?? 0,
+      computerNumber: (json['computerNumber'] ?? 0).toDouble(),
       computerPhotoUrl: json['computerPhotoUrl'],
       sumOfMachines: json['sumOfMachines'] ?? 0,
       hasDiscrepancy: json['hasDiscrepancy'] ?? false,
-      discrepancyAmount: json['discrepancyAmount'] ?? 0,
+      discrepancyAmount: (json['discrepancyAmount'] ?? 0).toDouble(),
       status: json['status'] ?? 'pending',
       createdAt: json['createdAt'] != null
           ? _parseDateTime(json['createdAt'])
@@ -165,11 +165,11 @@ class CoffeeMachineReport {
     String? shiftType,
     String? date,
     List<CoffeeMachineReading>? readings,
-    int? computerNumber,
+    double? computerNumber,
     String? computerPhotoUrl,
     int? sumOfMachines,
     bool? hasDiscrepancy,
-    int? discrepancyAmount,
+    double? discrepancyAmount,
     String? status,
     DateTime? createdAt,
     DateTime? confirmedAt,
