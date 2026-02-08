@@ -19,6 +19,15 @@ const CLIENT_MESSAGES_DIR = path.join(DATA_DIR, 'client-messages');
 const CLIENT_MESSAGES_NETWORK_DIR = path.join(DATA_DIR, 'client-messages-network');
 const CLIENT_MESSAGES_MANAGEMENT_DIR = path.join(DATA_DIR, 'client-messages-management');
 
+/**
+ * Sanitize phone — нормализация + защита от path traversal
+ */
+function sanitizePhone(phone) {
+  if (!phone) return '';
+  // Убираем пробелы и +, затем оставляем только цифры
+  return phone.replace(/[^\d]/g, '');
+}
+
 // Async helper
 async function fileExists(filePath) {
   try {
@@ -48,8 +57,8 @@ function verifyClientPhone(req, urlPhone) {
   const queryPhone = req.query.clientPhone;
   const bodyPhone = req.body?.clientPhone || req.body?.senderPhone;
 
-  const clientPhone = (headerPhone || queryPhone || bodyPhone || '').replace(/[\s+]/g, '');
-  const normalizedUrlPhone = urlPhone.replace(/[\s+]/g, '');
+  const clientPhone = sanitizePhone(headerPhone || queryPhone || bodyPhone);
+  const normalizedUrlPhone = sanitizePhone(urlPhone);
 
   return clientPhone === normalizedUrlPhone;
 }
@@ -108,7 +117,7 @@ function setupClientsAPI(app) {
   app.post('/api/clients', async (req, res) => {
     try {
       const client = req.body;
-      const phone = (client.phone || '').replace(/[\s+]/g, '');
+      const phone = sanitizePhone(client.phone);
 
       if (!phone) {
         return res.status(400).json({ success: false, error: 'Phone required' });
@@ -136,7 +145,7 @@ function setupClientsAPI(app) {
 
   app.get('/api/client-dialogs/:phone', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const dialogDir = path.join(CLIENT_DIALOGS_DIR, phone);
 
       if (!(await fileExists(dialogDir))) {
@@ -160,7 +169,7 @@ function setupClientsAPI(app) {
 
   app.get('/api/client-dialogs/:phone/shop/:shopAddress', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const { shopAddress } = req.params;
 
       const sanitizedShop = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ]/g, '_');
@@ -180,7 +189,7 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/shop/:shopAddress/messages', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const { shopAddress } = req.params;
       const message = req.body;
 
@@ -210,11 +219,11 @@ function setupClientsAPI(app) {
 
   app.get('/api/client-dialogs/:phone/network', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
 
       // SECURITY: Проверка авторизации - клиент может читать только свои диалоги
       // Админ может читать любые диалоги
-      const requesterPhone = (req.query.clientPhone || req.headers['x-client-phone'] || '').replace(/[\s+]/g, '');
+      const requesterPhone = sanitizePhone(req.query.clientPhone || req.headers['x-client-phone']);
       const isAdmin = isAdminPhone(requesterPhone);
 
       if (!isAdmin && requesterPhone !== phone) {
@@ -242,11 +251,11 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/network/reply', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const { text, imageUrl, clientName, senderPhone } = req.body;
 
       // SECURITY: Проверка что клиент отправляет сообщение от своего имени
-      const normalizedSenderPhone = (senderPhone || '').replace(/[\s+]/g, '');
+      const normalizedSenderPhone = sanitizePhone(senderPhone);
       if (normalizedSenderPhone && normalizedSenderPhone !== phone) {
         console.warn(`SECURITY: Попытка отправки сообщения от чужого имени: ${normalizedSenderPhone} -> ${phone}`);
         return res.status(403).json({ success: false, error: 'Access denied' });
@@ -287,7 +296,7 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/network/read-by-client', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
@@ -305,7 +314,7 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/network/read-by-admin', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_NETWORK_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
@@ -325,11 +334,11 @@ function setupClientsAPI(app) {
 
   app.get('/api/client-dialogs/:phone/management', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
 
       // SECURITY: Проверка авторизации - клиент может читать только свои диалоги
       // Админ может читать любые диалоги
-      const requesterPhone = (req.query.clientPhone || req.headers['x-client-phone'] || '').replace(/[\s+]/g, '');
+      const requesterPhone = sanitizePhone(req.query.clientPhone || req.headers['x-client-phone']);
       const isAdmin = isAdminPhone(requesterPhone);
 
       if (!isAdmin && requesterPhone !== phone) {
@@ -357,11 +366,11 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/management/reply', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const { text, imageUrl, clientName, senderPhone } = req.body;
 
       // SECURITY: Проверка что клиент отправляет сообщение от своего имени
-      const normalizedSenderPhone = (senderPhone || '').replace(/[\s+]/g, '');
+      const normalizedSenderPhone = sanitizePhone(senderPhone);
       if (normalizedSenderPhone && normalizedSenderPhone !== phone) {
         console.warn(`SECURITY: Попытка отправки management сообщения от чужого имени: ${normalizedSenderPhone} -> ${phone}`);
         return res.status(403).json({ success: false, error: 'Access denied' });
@@ -413,7 +422,7 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/management/read-by-client', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
@@ -431,7 +440,7 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/management/read-by-manager', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${phone}.json`);
 
       if (await fileExists(filePath)) {
@@ -449,11 +458,11 @@ function setupClientsAPI(app) {
 
   app.post('/api/client-dialogs/:phone/management/send', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const { text, imageUrl, senderPhone } = req.body;
 
       // SECURITY: Только админы могут отправлять сообщения от имени руководства
-      const normalizedSenderPhone = (senderPhone || '').replace(/[\s+]/g, '');
+      const normalizedSenderPhone = sanitizePhone(senderPhone);
       if (!isAdminPhone(normalizedSenderPhone)) {
         console.warn(`SECURITY: Неадмин пытается отправить management сообщение: ${normalizedSenderPhone}`);
         return res.status(403).json({ success: false, error: 'Access denied - admin only' });
@@ -506,7 +515,7 @@ function setupClientsAPI(app) {
 
   app.get('/api/clients/:phone/messages', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const clientDir = path.join(CLIENT_MESSAGES_DIR, phone);
 
       if (!(await fileExists(clientDir))) {
@@ -534,7 +543,7 @@ function setupClientsAPI(app) {
 
   app.post('/api/clients/:phone/messages', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       const { shopAddress, ...message } = req.body;
 
       const clientDir = path.join(CLIENT_MESSAGES_DIR, phone);
@@ -566,7 +575,7 @@ function setupClientsAPI(app) {
 
       let sent = 0;
       for (const phone of phones) {
-        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        const normalizedPhone = sanitizePhone(phone);
         const filePath = path.join(CLIENT_MESSAGES_MANAGEMENT_DIR, `${normalizedPhone}.json`);
 
         let dialog = { phone: normalizedPhone, messages: [] };

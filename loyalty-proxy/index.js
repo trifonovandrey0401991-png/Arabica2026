@@ -2088,7 +2088,7 @@ app.get('/api/shops', async (req, res) => {
 // GET /api/shops/:id - получить магазин по ID
 app.get('/api/shops/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('GET /api/shops/' + id);
 
     const shopFile = path.join(SHOPS_DIR, `${id}.json`);
@@ -2135,7 +2135,7 @@ app.post('/api/shops', async (req, res) => {
 // PUT /api/shops/:id - обновить магазин
 app.put('/api/shops/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const updates = req.body;
     console.log('PUT /api/shops/' + id, updates);
 
@@ -2167,7 +2167,7 @@ app.put('/api/shops/:id', async (req, res) => {
 // DELETE /api/shops/:id - удалить магазин
 app.delete('/api/shops/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/shops/' + id);
 
     const shopFile = path.join(SHOPS_DIR, `${id}.json`);
@@ -3752,7 +3752,7 @@ app.post('/api/withdrawals', async (req, res) => {
 // PATCH /api/withdrawals/:id/confirm - подтвердить выемку
 app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
     if (!await fileExists(filePath)) {
@@ -3782,7 +3782,7 @@ app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
 // DELETE /api/withdrawals/:id - удалить выемку
 app.delete('/api/withdrawals/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
     if (!await fileExists(filePath)) {
@@ -3801,7 +3801,7 @@ app.delete('/api/withdrawals/:id', async (req, res) => {
 // PATCH /api/withdrawals/:id/cancel - отменить выемку
 app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const { cancelledBy, cancelReason } = req.body;
     console.log('PATCH /api/withdrawals/:id/cancel', id);
 
@@ -5390,7 +5390,7 @@ app.get('/api/envelope-questions', async (req, res) => {
 // GET /api/envelope-questions/:id - получить один вопрос
 app.get('/api/envelope-questions/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
     const filePath = path.join(ENVELOPE_QUESTIONS_DIR, `${sanitizedId}.json`);
 
@@ -5444,7 +5444,7 @@ app.post('/api/envelope-questions', async (req, res) => {
 // PUT /api/envelope-questions/:id - обновить вопрос
 app.put('/api/envelope-questions/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('PUT /api/envelope-questions:', id);
 
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -5484,7 +5484,7 @@ app.put('/api/envelope-questions/:id', async (req, res) => {
 // DELETE /api/envelope-questions/:id - удалить вопрос
 app.delete('/api/envelope-questions/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/envelope-questions:', id);
 
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -5616,7 +5616,7 @@ app.get('/api/envelope-reports/expired', async (req, res) => {
 // GET /api/envelope-reports/:id - получить один отчет
 app.get('/api/envelope-reports/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('GET /api/envelope-reports/:id', id);
 
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -5665,7 +5665,7 @@ app.post('/api/envelope-reports', async (req, res) => {
 // PUT /api/envelope-reports/:id - обновить отчет
 app.put('/api/envelope-reports/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('PUT /api/envelope-reports/:id', id);
 
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -5698,7 +5698,7 @@ app.put('/api/envelope-reports/:id', async (req, res) => {
 // PUT /api/envelope-reports/:id/confirm - подтвердить отчет с оценкой
 app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const { confirmedByAdmin, rating } = req.body;
     console.log('PUT /api/envelope-reports/:id/confirm', id, confirmedByAdmin, rating);
 
@@ -5730,7 +5730,7 @@ app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
 // DELETE /api/envelope-reports/:id - удалить отчет
 app.delete('/api/envelope-reports/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/envelope-reports/:id', id);
 
     const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -6741,7 +6741,7 @@ app.post('/api/training-articles/upload-image', uploadTrainingArticleMedia.singl
 // Удаление изображения статьи обучения
 app.delete('/api/training-articles/delete-image/:filename', async (req, res) => {
   try {
-    const filename = req.params.filename;
+    const filename = path.basename(req.params.filename);
     const filePath = path.join(TRAINING_ARTICLES_MEDIA_DIR, filename);
 
     if (!await fileExists(filePath)) {
@@ -7341,7 +7341,7 @@ app.post('/api/recipes', async (req, res) => {
 // PUT /api/recipes/:id - обновить рецепт
 app.put('/api/recipes/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const updates = req.body;
     console.log('PUT /api/recipes:', id);
 
@@ -7375,7 +7375,7 @@ app.put('/api/recipes/:id', async (req, res) => {
 // DELETE /api/recipes/:id - удалить рецепт
 app.delete('/api/recipes/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/recipes:', id);
 
     const recipeFile = path.join(RECIPES_DIR, `${id}.json`);
@@ -7470,7 +7470,7 @@ app.get('/api/shift-handover-reports', async (req, res) => {
 // GET /api/shift-handover-reports/:id - получить отчет по ID
 app.get('/api/shift-handover-reports/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('GET /api/shift-handover-reports/:id', id);
 
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
@@ -7522,7 +7522,7 @@ app.post('/api/shift-handover-reports', async (req, res) => {
 // PUT /api/shift-handover-reports/:id - обновить отчет (подтвердить/отклонить)
 app.put('/api/shift-handover-reports/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const updatedData = req.body;
     console.log('PUT /api/shift-handover-reports/:id', id, 'status:', updatedData.status);
 
@@ -7590,7 +7590,7 @@ app.put('/api/shift-handover-reports/:id', async (req, res) => {
 // DELETE /api/shift-handover-reports/:id - удалить отчет
 app.delete('/api/shift-handover-reports/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/shift-handover-reports:', id);
 
     const reportFile = path.join(SHIFT_HANDOVER_REPORTS_DIR, `${id}.json`);
@@ -7695,7 +7695,7 @@ app.get('/api/menu', async (req, res) => {
 // GET /api/menu/:id - получить позицию меню по ID
 app.get('/api/menu/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('GET /api/menu/:id', id);
 
     const itemFile = path.join(MENU_DIR, `${id}.json`);
@@ -7741,7 +7741,7 @@ app.post('/api/menu', async (req, res) => {
 // PUT /api/menu/:id - обновить позицию меню
 app.put('/api/menu/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const updates = req.body;
     console.log('PUT /api/menu/:id', id);
 
@@ -7773,7 +7773,7 @@ app.put('/api/menu/:id', async (req, res) => {
 // DELETE /api/menu/:id - удалить позицию меню
 app.delete('/api/menu/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/menu/:id', id);
 
     const itemFile = path.join(MENU_DIR, `${id}.json`);
@@ -7891,7 +7891,7 @@ app.post('/api/orders/mark-viewed/:type', async (req, res) => {
 // GET /api/orders/:id - получить заказ по ID
 app.get('/api/orders/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('GET /api/orders/:id', id);
 
     const orderFile = path.join(ORDERS_DIR, `${id}.json`);
@@ -7916,7 +7916,7 @@ app.get('/api/orders/:id', async (req, res) => {
 // PATCH /api/orders/:id - обновить статус заказа
 app.patch('/api/orders/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const updates = {};
     
     if (req.body.status) updates.status = req.body.status;
@@ -7936,7 +7936,7 @@ app.patch('/api/orders/:id', async (req, res) => {
 // DELETE /api/orders/:id - удалить заказ
 app.delete('/api/orders/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     console.log('DELETE /api/orders/:id', id);
 
     const orderFile = path.join(ORDERS_DIR, `${id}.json`);
@@ -8127,7 +8127,7 @@ app.post('/api/bonus-penalties', async (req, res) => {
 // DELETE /api/bonus-penalties/:id - удалить премию/штраф
 app.delete('/api/bonus-penalties/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = sanitizeId(req.params.id);
     const month = req.query.month || getCurrentMonth();
 
     console.log(`🗑️ DELETE /api/bonus-penalties/${id} month=${month}`);

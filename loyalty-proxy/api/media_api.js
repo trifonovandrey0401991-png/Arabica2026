@@ -13,6 +13,15 @@ const CHAT_MEDIA_DIR = `${DATA_DIR}/chat-media`;
 const TASK_MEDIA_DIR = `${DATA_DIR}/task-media`;
 const APP_LOGS_DIR = `${DATA_DIR}/app-logs`;
 
+/**
+ * Sanitize date string — только формат YYYY-MM-DD
+ */
+function sanitizeDate(date) {
+  if (!date) return null;
+  const match = date.match(/^(\d{4}-\d{2}-\d{2})$/);
+  return match ? match[1] : null;
+}
+
 // Async helper
 async function fileExists(filePath) {
   try {
@@ -147,7 +156,7 @@ function setupMediaAPI(app, uploadChatMedia) {
       const { date, phone, level } = req.query;
       const logs = [];
 
-      const searchDate = date || new Date().toISOString().split('T')[0];
+      const searchDate = sanitizeDate(date) || new Date().toISOString().split('T')[0];
       const dateDir = path.join(APP_LOGS_DIR, searchDate);
 
       if (await fileExists(dateDir)) {

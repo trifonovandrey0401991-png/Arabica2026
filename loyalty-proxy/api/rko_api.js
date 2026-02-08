@@ -14,6 +14,14 @@ const RKO_REPORTS_DIR = `${DATA_DIR}/rko-reports`;
 const RKO_FILES_DIR = `${DATA_DIR}/rko-files`;
 const RKO_METADATA_FILE = `${DATA_DIR}/rko-reports/rko_metadata.json`;
 
+/**
+ * Sanitize file name - защита от path traversal
+ */
+function sanitizeFileName(name) {
+  if (!name) return '';
+  return path.basename(name).replace(/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ ]/g, '_');
+}
+
 // Async helper
 async function fileExists(filePath) {
   try {
@@ -204,7 +212,8 @@ function setupRkoAPI(app) {
   // ===== RKO FILE DOWNLOAD (Flutter endpoint) =====
   app.get('/api/rko/file/:fileName', async (req, res) => {
     try {
-      const fileName = decodeURIComponent(req.params.fileName);
+      const rawFileName = decodeURIComponent(req.params.fileName);
+      const fileName = sanitizeFileName(rawFileName);
       console.log('GET /api/rko/file:', fileName);
 
       // 1. Ищем файл в папке RKO_FILES_DIR (новый формат)

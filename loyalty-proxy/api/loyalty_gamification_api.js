@@ -18,6 +18,14 @@ const GAMIFICATION_DIR = `${DATA_DIR}/loyalty-gamification`;
 const BADGES_DIR = `${GAMIFICATION_DIR}/badges`;
 const WHEEL_HISTORY_DIR = `${GAMIFICATION_DIR}/wheel-history`;
 const CLIENT_PRIZES_DIR = `${GAMIFICATION_DIR}/client-prizes`;
+
+/**
+ * Sanitize phone — только цифры (защита от path traversal)
+ */
+function sanitizePhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/[^\d]/g, '');
+}
 const SETTINGS_FILE = `${GAMIFICATION_DIR}/settings.json`;
 
 // Firebase для push-уведомлений
@@ -381,7 +389,7 @@ function setupLoyaltyGamificationAPI(app) {
   // GET client gamification data
   app.get('/api/loyalty-gamification/client/:phone', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       console.log('GET /api/loyalty-gamification/client:', phone);
 
       const clientPath = path.join(CLIENTS_DIR, `${phone}.json`);
@@ -460,7 +468,7 @@ function setupLoyaltyGamificationAPI(app) {
         return res.status(400).json({ success: false, error: 'Phone required' });
       }
 
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = sanitizePhone(phone);
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
       const settings = await loadSettings();
 
@@ -613,7 +621,7 @@ function setupLoyaltyGamificationAPI(app) {
       }
 
       if (phone) {
-        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        const normalizedPhone = sanitizePhone(phone);
         history = history.filter(h => h.phone === normalizedPhone);
       }
 
@@ -664,7 +672,7 @@ function setupLoyaltyGamificationAPI(app) {
   // GET pending prize for client
   app.get('/api/loyalty-gamification/client/:phone/pending-prize', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       console.log('GET /api/loyalty-gamification/client/:phone/pending-prize:', phone);
 
       const prize = await findPendingPrize(phone);
@@ -705,7 +713,7 @@ function setupLoyaltyGamificationAPI(app) {
       if (prizeId) {
         prize = await loadPrize(prizeId);
       } else if (phone) {
-        const normalizedPhone = phone.replace(/[\s+]/g, '');
+        const normalizedPhone = sanitizePhone(phone);
         prize = await findPendingPrize(normalizedPhone);
       }
 

@@ -2938,7 +2938,7 @@ async function checkManagerAccess(phone, shopAddress) {
 # 11. СЛАБЫЕ МЕСТА И РЕКОМЕНДАЦИИ
 
 > **Дата аудита:** 2026-02-08
-> **Дата исправлений:** 2026-02-08 (Category 1 + Category 2 fixes applied)
+> **Дата исправлений:** 2026-02-08 (Category 1 + Category 2 + Phase 3 fixes applied)
 > **Методология:** Полный статический анализ всего кода (449 Dart файлов, ~37000 строк JS, 54 API модуля)
 
 ### Новые компоненты безопасности (добавлены 2026-02-08):
@@ -2951,16 +2951,19 @@ async function checkManagerAccess(phone, shopAddress) {
 | WebSocket Auth | `loyalty-proxy/api/employee_chat_websocket.js` | Опциональная проверка `token` query param через `verifyToken()`. Код 4003 при невалидном токене |
 | Bcrypt PIN | `loyalty-proxy/api/auth_api.js` | `bcryptjs` для хеширования PIN. Авто-миграция с SHA-256 при успешном логине. `hashType` поле в данных |
 | RKO File Validation | `loyalty-proxy/index.js` | Отдельный `uploadRKO` multer с `docFileFilter` (DOCX/DOC/PDF). `safeFileName` + `isPathSafe()` |
+| File Helpers | `loyalty-proxy/utils/file_helpers.js` | Общие утилиты: `fileExists`, `ensureDir`, `loadJsonFile`, `saveJsonFile`, `sanitizeId`, `isPathSafe`, `sanitizePhone` |
+| Path Traversal Protection | 10 API модулей | `sanitizeId()` в index.js (25 эндпоинтов), `sanitizePhone()` в clients/loyalty/orders/gamification, `sanitizeFileName()` в rko/cigarette, `sanitizeDate()` в media |
+| API Smoke Test | `loyalty-proxy/tests/smoke-test.js` | Автоматический тест 61 GET/POST эндпоинта. Baseline + post-deploy сравнение |
 
 ## 11.1 Критические проблемы (БЛОКЕРЫ)
 
-**Статус: 5 из 6 критических блокеров РЕШЕНЫ (2026-02-08). Осталось: Telegram token.**
+**Статус: 7 из 8 критических блокеров РЕШЕНЫ (2026-02-08). Осталось: File locking (частично).**
 
 | № | Проблема | Статус | Описание | Приоритет |
 |---|----------|--------|----------|-----------|
 | 1 | API аутентификация отключена | ✅ **РЕШЕНО** | API Key включён на сервере (`API_KEY_ENABLED=true`), Flutter отправляет `X-API-Key` во всех запросах (через `jsonHeaders` getter). Все bare `http.get/delete` вызовы исправлены | ✅ Готово |
 | 2 | Нет серверной проверки ролей | ✅ **РЕШЕНО** | Добавлен `session_middleware.js` — неблокирующий middleware, заполняет `req.user = {phone, name, isAdmin}` из session token. In-memory token index для O(1) lookup | ✅ Готово |
-| 3 | Hardcoded Telegram Bot Token | **НЕ РЕШЕНО** | Fallback-значение с реальным токеном в `telegram_bot_service.js:15`. Токен скомпрометирован через git history | **P0** |
+| 3 | Hardcoded Telegram Bot Token | ✅ **РЕШЕНО** | Hardcoded fallback удалён. Используется только `process.env.TELEGRAM_BOT_TOKEN`. Рекомендуется ревокация старого токена | ✅ (ревокация P0) |
 | 4 | WebSocket без аутентификации | ✅ **РЕШЕНО** | WebSocket принимает `token` query param, верифицирует через `verifyToken()`. Невалидный token = close(4003). Обратно совместимо (без token работает как раньше) | ✅ Готово |
 | 5 | Публичная загрузка файлов | ✅ **РЕШЕНО** | РКО upload использует отдельный `uploadRKO` multer с `docFileFilter` (DOCX/DOC/PDF). Добавлена `safeFileName` санитизация + `isPathSafe()` проверка path traversal | ✅ Готово |
 | 6 | PIN — однократный SHA-256 | ✅ **РЕШЕНО** | Добавлен bcryptjs с автоматической миграцией. Новые PIN хешируются bcrypt. При логине SHA-256 PIN автоматически мигрируется на bcrypt. Обратно совместимо | ✅ Готово |
@@ -2972,16 +2975,16 @@ async function checkManagerAccess(phone, shopAddress) {
 | № | Уязвимость | Риск | Статус |
 |---|------------|------|--------|
 | 1 | API Key по умолчанию выключен | **КРИТИЧЕСКИЙ** — все API публичны | ✅ РЕШЕНО — API Key включён, Flutter отправляет X-API-Key |
-| 2 | CORS допускает HTTP origin | Средний — возможен MITM | НЕ РЕШЕНО |
+| 2 | CORS допускает HTTP origin | Средний — возможен MITM | ✅ РЕШЕНО — HTTP origin удалён |
 | 3 | Нет CSRF защиты | Средний — Cross-site атаки | НЕ РЕШЕНО |
 | 4 | PIN — SHA-256 без итераций | **КРИТИЧЕСКИЙ** — перебор за мс | ✅ РЕШЕНО — bcryptjs с авто-миграцией |
 | 5 | User enumeration через /api/auth | Средний — утечка списка пользователей | НЕ РЕШЕНО |
-| 6 | bodyParser limit 50MB | Средний — DDoS вектор | НЕ РЕШЕНО |
-| 7 | helmet/compression опциональные | Низкий — деградирует молча | НЕ РЕШЕНО |
+| 6 | bodyParser limit 50MB | Средний — DDoS вектор | ✅ РЕШЕНО — лимит 10MB |
+| 7 | helmet/compression опциональные | Низкий — деградирует молча | ✅ РЕШЕНО — compression в package.json |
 | 8 | OTP в plaintext JSON файлах | Низкий — локальный доступ | НЕ РЕШЕНО |
 | 9 | Firebase SA в require() | Низкий — нет env var подхода | НЕ РЕШЕНО |
 | 10 | Rate limiting на auth | ✅ Есть: 50 req/min | РЕШЕНО |
-| 11 | sanitizeId/isPathSafe | ✅ Добавлена проверка в RKO upload | ✅ РЕШЕНО (RKO) |
+| 11 | sanitizeId/isPathSafe | ✅ Во всех модулях | ✅ РЕШЕНО (index.js 25 ep, clients, loyalty, orders, gamification, rko, media) |
 
 ## 11.3 Архитектурные проблемы
 
@@ -2993,15 +2996,15 @@ async function checkManagerAccess(phone, shopAddress) {
 | 4 | 657 ручных Navigator.push | Дублирование, нет deep linking |
 | 5 | Страницы >3000 строк | cigarette_training_page.dart: 3992 строк |
 | 6 | Silent error handling в Flutter | Пользователь не видит ошибок, сложная отладка |
-| 7 | compression в middleware, но не в package.json | Может крашнуть при чистой установке |
+| 7 | ~~compression в middleware, но не в package.json~~ | ✅ РЕШЕНО — compression в package.json |
 
 ## 11.4 Dead Code
 
 | Элемент | Файл |
 |---------|------|
-| `_verifyRegistrationInBackground()` | main.dart:287 — определён, не вызывается |
-| `_checkUserRoleInBackground()` | main.dart:331 — определён, не вызывается |
-| 5 backup-файлов в git | index.js.backup-*, *.bak-* |
+| ~~`_verifyRegistrationInBackground()`~~ | ✅ Удалено |
+| ~~`_checkUserRoleInBackground()`~~ | ✅ Удалено |
+| ~~5 backup-файлов в git~~ | ✅ Удалены + .gitignore |
 | TODO: "Обновить PIN на сервере" | auth_service.dart |
 
 ## 11.5 Рекомендации по приоритету
@@ -3009,8 +3012,8 @@ async function checkManagerAccess(phone, shopAddress) {
 ### P0 — Немедленно (1-2 дня):
 1. ✅ Включить `API_KEY_ENABLED=true` в env vars сервера + установить ключ — **РЕШЕНО**
 2. ✅ Установить apiKey в Flutter `api_constants.dart` — **РЕШЕНО**
-3. Удалить hardcoded Telegram token, оставить только `process.env`
-4. Ревокировать текущий Telegram bot token (скомпрометирован)
+3. ✅ Удалить hardcoded Telegram token — **РЕШЕНО** (fallback убран, только process.env)
+4. Ревокировать текущий Telegram bot token (скомпрометирован через git history)
 5. ✅ Добавить session-based auth middleware — **РЕШЕНО** (`session_middleware.js`)
 
 ### P1 — Краткосрочно (1-2 недели):
@@ -3018,12 +3021,12 @@ async function checkManagerAccess(phone, shopAddress) {
 7. ✅ Bcrypt/scrypt для PIN вместо SHA-256 — **РЕШЕНО** (bcryptjs + авто-миграция)
 8. ✅ Token auth для WebSocket — **РЕШЕНО** (verifyToken в WebSocket handshake)
 9. ✅ Валидация файлов при upload — **РЕШЕНО** (docFileFilter для RKO, safeFileName, isPathSafe)
-10. Удалить backup-файлы из git + .gitignore
+10. ✅ Удалить backup-файлы из git + .gitignore — **РЕШЕНО**
 
 ### P2 — Среднесрочно (1-2 месяца):
-11. Вынести inline-маршруты из index.js в модули
-12. Добавить compression в package.json
-13. sanitizeId/isPathSafe во всех модулях
+11. Вынести inline-маршруты из index.js в модули (модули уже созданы, но не подключены — 18 файлов в api/)
+12. ✅ Добавить compression в package.json — **РЕШЕНО** (уже было)
+13. ✅ sanitizeId/isPathSafe во всех модулях — **РЕШЕНО** (Phase 3: index.js 25 ep + 6 API модулей)
 14. CSRF protection
 15. Structured logging
 

@@ -13,6 +13,22 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ORDERS_DIR = `${DATA_DIR}/orders`;
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
+/**
+ * Sanitize ID — защита от path traversal
+ */
+function sanitizeId(id) {
+  if (!id || typeof id !== 'string') return '';
+  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+}
+
+/**
+ * Sanitize phone — только цифры
+ */
+function sanitizePhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/[^\d]/g, '');
+}
+
 // Async helper
 async function fileExists(filePath) {
   try {
@@ -165,7 +181,7 @@ function setupOrdersAPI(app) {
 
   app.get('/api/orders/:orderId', async (req, res) => {
     try {
-      const { orderId } = req.params;
+      const orderId = sanitizeId(req.params.orderId);
       console.log('GET /api/orders/:orderId', orderId);
 
       const filePath = path.join(ORDERS_DIR, `${orderId}.json`);
@@ -184,7 +200,7 @@ function setupOrdersAPI(app) {
 
   app.put('/api/orders/:orderId', async (req, res) => {
     try {
-      const { orderId } = req.params;
+      const orderId = sanitizeId(req.params.orderId);
       const updates = req.body;
       console.log('PUT /api/orders/:orderId', orderId);
 
@@ -207,7 +223,7 @@ function setupOrdersAPI(app) {
 
   app.delete('/api/orders/:orderId', async (req, res) => {
     try {
-      const { orderId } = req.params;
+      const orderId = sanitizeId(req.params.orderId);
       console.log('DELETE /api/orders/:orderId', orderId);
 
       const filePath = path.join(ORDERS_DIR, `${orderId}.json`);
@@ -273,7 +289,7 @@ function setupOrdersAPI(app) {
 
   app.delete('/api/fcm-tokens/:phone', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       console.log('DELETE /api/fcm-tokens:', phone);
 
       const filePath = path.join(FCM_TOKENS_DIR, `${phone}.json`);

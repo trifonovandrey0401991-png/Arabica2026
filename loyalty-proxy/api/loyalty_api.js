@@ -12,6 +12,14 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const CLIENTS_DIR = `${DATA_DIR}/clients`;
 const LOYALTY_TRANSACTIONS_DIR = `${DATA_DIR}/loyalty-transactions`;
 
+/**
+ * Sanitize phone — только цифры (защита от path traversal)
+ */
+function sanitizePhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/[^\d]/g, '');
+}
+
 // Async helper
 async function fileExists(filePath) {
   try {
@@ -43,7 +51,7 @@ function setupLoyaltyAPI(app) {
         return res.status(400).json({ success: false, error: 'Phone and points required' });
       }
 
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = sanitizePhone(phone);
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
 
       let client = { phone: normalizedPhone, points: 0, createdAt: new Date().toISOString() };
@@ -87,7 +95,7 @@ function setupLoyaltyAPI(app) {
         return res.status(400).json({ success: false, error: 'Phone and points required' });
       }
 
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
+      const normalizedPhone = sanitizePhone(phone);
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
 
       if (!(await fileExists(clientPath))) {
@@ -129,7 +137,7 @@ function setupLoyaltyAPI(app) {
 
   app.get('/api/loyalty/balance/:phone', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       console.log('GET /api/loyalty/balance:', phone);
 
       const clientPath = path.join(CLIENTS_DIR, `${phone}.json`);
@@ -148,7 +156,7 @@ function setupLoyaltyAPI(app) {
 
   app.get('/api/loyalty/transactions/:phone', async (req, res) => {
     try {
-      const phone = req.params.phone.replace(/[\s+]/g, '');
+      const phone = sanitizePhone(req.params.phone);
       console.log('GET /api/loyalty/transactions:', phone);
 
       const transactions = [];
@@ -189,7 +197,7 @@ function setupLoyaltyAPI(app) {
       }
 
       // Find client by QR (assuming QR is phone or client ID)
-      const normalizedPhone = qr.replace(/[\s+]/g, '');
+      const normalizedPhone = sanitizePhone(qr);
       const clientPath = path.join(CLIENTS_DIR, `${normalizedPhone}.json`);
 
       let client = { phone: normalizedPhone, points: 0, createdAt: new Date().toISOString() };
