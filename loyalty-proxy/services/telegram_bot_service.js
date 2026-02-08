@@ -12,7 +12,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 // Конфигурация
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8525076367:AAFIM8T8xcIB3XWGdXqak5-Yek8zq_iX2yA';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const OTP_DIR = path.join(DATA_DIR, 'auth-otp');
 
@@ -30,6 +30,11 @@ let bot = null;
  */
 async function initBot() {
   if (bot) return bot;
+
+  if (!BOT_TOKEN) {
+    console.error('❌ TELEGRAM_BOT_TOKEN not set in environment variables. Telegram bot will not start.');
+    return null;
+  }
 
   try {
     // Создаём директорию для OTP если не существует
@@ -322,6 +327,5 @@ module.exports = {
   verifyOtp,
   verifyRegistrationToken,
   deleteOtp,
-  sendNotification,
-  BOT_TOKEN
+  sendNotification
 };

@@ -2,9 +2,13 @@ class ApiConstants {
   // URL
   static const String serverUrl = 'https://arabica26.ru';
 
-  // API Key для аутентификации (null = отключено)
-  // ВАЖНО: При включении API_KEY_ENABLED на сервере нужно установить этот ключ
-  static const String? apiKey = null; // Установить ключ когда сервер будет готов
+  // API Key для аутентификации запросов к серверу
+  static const String? apiKey = '58c4d46b9bb324d03c5d96781223821f3528c5efa4604090a8e95ac540173585';
+
+  // Session token (устанавливается при логине, очищается при логауте)
+  static String? _sessionToken;
+  static String? get sessionToken => _sessionToken;
+  static set sessionToken(String? value) => _sessionToken = value;
 
   // Timeouts
   static const Duration shortTimeout = Duration(seconds: 10);
@@ -12,20 +16,23 @@ class ApiConstants {
   static const Duration longTimeout = Duration(seconds: 30);
   static const Duration uploadTimeout = Duration(seconds: 120);
 
-  // Headers
-  static const Map<String, String> jsonHeaders = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-
-  /// Получить заголовки с API ключом (если настроен)
-  static Map<String, String> get headersWithApiKey {
-    final headers = Map<String, String>.from(jsonHeaders);
+  // Headers (автоматически включают API key и session token если настроены)
+  static Map<String, String> get jsonHeaders {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
     if (apiKey != null && apiKey!.isNotEmpty) {
       headers['X-API-Key'] = apiKey!;
     }
+    if (_sessionToken != null && _sessionToken!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $_sessionToken';
+    }
     return headers;
   }
+
+  /// Алиас для jsonHeaders (обратная совместимость)
+  static Map<String, String> get headersWithApiKey => jsonHeaders;
 
   // Endpoints - Core
   static const String attendanceEndpoint = '/api/attendance';

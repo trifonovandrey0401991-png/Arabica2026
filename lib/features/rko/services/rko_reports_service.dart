@@ -53,6 +53,9 @@ class RKOReportsService {
         );
       }
 
+      // Добавляем API key
+      request.headers.addAll(ApiConstants.headersWithApiKey);
+
       // Добавляем метаданные (используем нормализованную дату)
       request.fields['fileName'] = fileName;
       request.fields['employeeName'] = employeeName;
@@ -83,7 +86,7 @@ class RKOReportsService {
   static Future<Map<String, dynamic>?> getEmployeeRKOs(String employeeName) async {
     try {
       final url = '${ApiConstants.serverUrl}$baseEndpoint/list/employee/${Uri.encodeComponent(employeeName)}';
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -104,7 +107,7 @@ class RKOReportsService {
       final encodedAddress = Uri.encodeComponent(shopAddress);
       final url = '${ApiConstants.serverUrl}$baseEndpoint/list/shop/$encodedAddress';
       Logger.debug('Запрос РКО для магазина: "$shopAddress"');
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -140,7 +143,7 @@ class RKOReportsService {
     try {
       final url = '${ApiConstants.serverUrl}$baseEndpoint/pending';
       Logger.debug('Запрос pending РКО: $url');
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -161,7 +164,7 @@ class RKOReportsService {
     try {
       final url = '${ApiConstants.serverUrl}$baseEndpoint/failed';
       Logger.debug('Запрос failed РКО: $url');
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -187,7 +190,7 @@ class RKOReportsService {
         url += '?month=$month';
       }
       Logger.debug('Запрос всех РКО: $url');
-      final response = await http.get(Uri.parse(url)).timeout(ApiConstants.shortTimeout);
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.shortTimeout);
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -256,7 +259,7 @@ class RKOReportsService {
 
       final response = await http.put(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'status': 'confirmed',
           'rating': rating,
@@ -309,7 +312,7 @@ class RKOReportsService {
 
       final response = await http.put(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'status': 'rejected',
           'rejectedBy': adminName,

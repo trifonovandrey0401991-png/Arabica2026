@@ -127,7 +127,7 @@ class _ShopsOnMapPageState extends State<ShopsOnMapPage> with TickerProviderStat
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/geofence-settings'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'enabled': _geofenceEnabled,
           'radiusMeters': int.tryParse(_radiusController.text) ?? 500,

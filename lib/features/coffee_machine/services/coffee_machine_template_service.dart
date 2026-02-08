@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import '../models/coffee_machine_template_model.dart';
 
 /// Сервис для работы с шаблонами кофемашин и привязками к магазинам
@@ -13,6 +14,7 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/templates'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -23,7 +25,7 @@ class CoffeeMachineTemplateService {
       }
       return [];
     } catch (e) {
-      print('Ошибка получения шаблонов кофемашин: $e');
+      Logger.warning('Ошибка получения шаблонов кофемашин: $e');
       return [];
     }
   }
@@ -33,6 +35,7 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/templates/$id'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -41,7 +44,7 @@ class CoffeeMachineTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка получения шаблона кофемашины: $e');
+      Logger.warning('Ошибка получения шаблона кофемашины: $e');
       return null;
     }
   }
@@ -61,13 +64,13 @@ class CoffeeMachineTemplateService {
 
       final response = await http.post(
         Uri.parse('$_baseUrl/templates'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(body),
       );
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка сохранения шаблона кофемашины: $e');
+      Logger.warning('Ошибка сохранения шаблона кофемашины: $e');
       return false;
     }
   }
@@ -87,13 +90,13 @@ class CoffeeMachineTemplateService {
 
       final response = await http.put(
         Uri.parse('$_baseUrl/templates/${template.id}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(body),
       );
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка обновления шаблона кофемашины: $e');
+      Logger.warning('Ошибка обновления шаблона кофемашины: $e');
       return false;
     }
   }
@@ -103,10 +106,11 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl/templates/$id'),
+        headers: ApiConstants.headersWithApiKey,
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка удаления шаблона кофемашины: $e');
+      Logger.warning('Ошибка удаления шаблона кофемашины: $e');
       return false;
     }
   }
@@ -116,6 +120,7 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/templates/$templateId/image'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -123,7 +128,7 @@ class CoffeeMachineTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка получения изображения шаблона: $e');
+      Logger.warning('Ошибка получения изображения шаблона: $e');
       return null;
     }
   }
@@ -135,6 +140,7 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/shop-config'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -145,7 +151,7 @@ class CoffeeMachineTemplateService {
       }
       return [];
     } catch (e) {
-      print('Ошибка получения привязок магазинов: $e');
+      Logger.warning('Ошибка получения привязок магазинов: $e');
       return [];
     }
   }
@@ -155,6 +161,7 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/shop-config/${Uri.encodeComponent(shopAddress)}'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -163,7 +170,7 @@ class CoffeeMachineTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка получения конфига магазина: $e');
+      Logger.warning('Ошибка получения конфига магазина: $e');
       return null;
     }
   }
@@ -173,13 +180,13 @@ class CoffeeMachineTemplateService {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/shop-config/${Uri.encodeComponent(config.shopAddress)}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(config.toJson()),
       );
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка обновления привязки магазина: $e');
+      Logger.warning('Ошибка обновления привязки магазина: $e');
       return false;
     }
   }

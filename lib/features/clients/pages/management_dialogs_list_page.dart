@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/logger.dart';
 import '../models/client_model.dart';
 import '../../../core/services/base_http_service.dart';
 import '../../../core/constants/api_constants.dart';
@@ -40,9 +41,9 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
             .where((dialog) => dialog.phone.isNotEmpty) // Фильтруем диалоги с пустым телефоном
             .toList();
 
-        print('🔍 DEBUG ManagementDialogsList: Loaded ${dialogs.length} dialogs');
+        Logger.debug('ManagementDialogsList: Loaded ${dialogs.length} dialogs');
         for (var i = 0; i < dialogs.length && i < 3; i++) {
-          print('🔍 Dialog $i: ${dialogs[i].clientName} (${dialogs[i].phone}), unread: ${dialogs[i].unreadCount}');
+          Logger.debug('Dialog $i: ${dialogs[i].clientName} (${dialogs[i].phone}), unread: ${dialogs[i].unreadCount}');
         }
 
         if (mounted) {
@@ -231,14 +232,14 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
                           ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () async {
-                            print('🔍 DEBUG: Tapped on dialog: ${dialog.clientName} (${dialog.phone})');
+                            Logger.debug('Tapped on dialog: ${dialog.clientName} (${dialog.phone})');
                             // Создаем простой объект Client
                             final client = Client(
                               phone: dialog.phone,
                               name: dialog.clientName,
                             );
 
-                            print('🔍 DEBUG: Navigating to AdminManagementDialogPage with client: ${client.name}, ${client.phone}');
+                            Logger.debug('Navigating to AdminManagementDialogPage with client: ${client.name}, ${client.phone}');
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -247,7 +248,7 @@ class _ManagementDialogsListPageState extends State<ManagementDialogsListPage> {
                                 ),
                               ),
                             );
-                            print('🔍 DEBUG: Returned from AdminManagementDialogPage, reloading dialogs');
+                            Logger.debug('Returned from AdminManagementDialogPage, reloading dialogs');
                             // Перезагрузить список после возврата
                             _loadDialogs();
                           },

@@ -130,7 +130,9 @@ class ChatWebSocketService {
     } else if (baseUrl.startsWith('http://')) {
       baseUrl = baseUrl.replaceFirst('http://', 'ws://');
     }
-    return '$baseUrl/ws/employee-chat?phone=$_userPhone';
+    final token = ApiConstants.sessionToken;
+    final tokenParam = (token != null && token.isNotEmpty) ? '&token=$token' : '';
+    return '$baseUrl/ws/employee-chat?phone=$_userPhone$tokenParam';
   }
 
   void _send(Map<String, dynamic> data) {

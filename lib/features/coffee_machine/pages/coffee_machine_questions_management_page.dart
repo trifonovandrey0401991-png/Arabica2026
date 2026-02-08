@@ -62,7 +62,7 @@ class _CoffeeMachineQuestionsManagementPageState extends State<CoffeeMachineQues
   Future<Map<String, int>> _loadTrainingStats() async {
     try {
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/training/stats');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final byMachine = data['byMachine'] as Map<String, dynamic>? ?? {};

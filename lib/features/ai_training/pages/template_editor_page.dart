@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/utils/logger.dart';
 import '../models/z_report_template_model.dart';
 import '../widgets/region_selector_widget.dart';
 import '../services/z_report_template_service.dart';
@@ -94,7 +95,7 @@ class _TemplateEditorPageState extends State<TemplateEditorPage> {
         }
       }
     } catch (e) {
-      print('Ошибка загрузки изображений шаблона: $e');
+      Logger.warning('Ошибка загрузки изображений шаблона: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

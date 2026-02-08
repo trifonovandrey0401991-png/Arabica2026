@@ -65,7 +65,7 @@ class ZReportService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/parse'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({'imageBase64': imageBase64}),
       );
 
@@ -96,7 +96,7 @@ class ZReportService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/validate'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'imageBase64': imageBase64,
           'userInput': {
@@ -137,7 +137,7 @@ class ZReportService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/samples'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'imageBase64': imageBase64,
           'correctData': {

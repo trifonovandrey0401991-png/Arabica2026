@@ -15,6 +15,12 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 
 const RECOUNT_QUESTIONS_DIR = `${DATA_DIR}/recount-questions`;
 
+// Sanitize filename to prevent path traversal
+function sanitizeFileName(name) {
+  if (!name || typeof name !== 'string') return '';
+  return path.basename(name).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+}
+
 // Кэш вопросов пересчёта
 let recountQuestionsCache = [];
 
@@ -537,7 +543,7 @@ async function setupCigaretteVisionAPI(app) {
   app.get('/api/cigarette-vision/counting-images/:fileName', async (req, res) => {
     try {
       const paths = cigaretteVision.getTrainingPaths(cigaretteVision.TRAINING_TYPES.COUNTING);
-      const imagePath = path.join(paths.imagesDir, req.params.fileName);
+      const imagePath = path.join(paths.imagesDir, sanitizeFileName(req.params.fileName));
 
       if (await fileExists(imagePath)) {
         res.sendFile(imagePath);
@@ -603,7 +609,7 @@ async function setupCigaretteVisionAPI(app) {
   app.get('/api/cigarette-vision/counting-pending-images/:fileName', async (req, res) => {
     try {
       const paths = cigaretteVision.getCountingPendingPaths();
-      const imagePath = path.join(paths.imagesDir, req.params.fileName);
+      const imagePath = path.join(paths.imagesDir, sanitizeFileName(req.params.fileName));
 
       if (await fileExists(imagePath)) {
         res.sendFile(imagePath);

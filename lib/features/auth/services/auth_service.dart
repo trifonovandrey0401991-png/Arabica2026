@@ -51,6 +51,14 @@ class AuthService {
   /// Базовый URL API авторизации
   String get _authApiUrl => '${ApiConstants.serverUrl}/api/auth';
 
+  /// Инициализировать session token из хранилища при старте приложения
+  Future<void> initSessionToken() async {
+    final session = await _storage.getSession();
+    if (session != null && !session.isExpired) {
+      ApiConstants.sessionToken = session.sessionToken;
+    }
+  }
+
   // ==================== OTP (TELEGRAM) ====================
 
   /// Запрашивает OTP-код для телефона
@@ -152,6 +160,9 @@ class AuthService {
         final session = AuthSession.fromJson(data['session'] as Map<String, dynamic>);
         await _storage.saveSession(session);
 
+        // Устанавливаем session token для всех API запросов
+        ApiConstants.sessionToken = session.sessionToken;
+
         // Получаем pinHash и salt от сервера для локального хранения
         final serverPinHash = data['pinHash'] as String?;
         final serverSalt = data['salt'] as String?;
@@ -214,6 +225,9 @@ class AuthService {
         final session = AuthSession.fromJson(data['session'] as Map<String, dynamic>);
         await _storage.saveSession(session);
 
+        // Устанавливаем session token для всех API запросов
+        ApiConstants.sessionToken = session.sessionToken;
+
         // Сохраняем credentials локально
         final credentials = AuthCredentials(
           pinHash: pinHash,
@@ -274,6 +288,9 @@ class AuthService {
           isVerified: true,
         );
         await _storage.saveSession(session);
+
+        // Устанавливаем session token для всех API запросов
+        ApiConstants.sessionToken = session.sessionToken;
 
         // Создаём локальные credentials для будущего офлайн-входа
         // Используем тот же PIN для создания локального хеша
@@ -346,6 +363,9 @@ class AuthService {
       return AuthResult.failure('Сессия истекла. Требуется повторная верификация.');
     }
 
+    // Устанавливаем session token для всех API запросов
+    ApiConstants.sessionToken = session.sessionToken;
+
     // Обновляем lastActivity на сервере (асинхронно)
     _refreshSessionOnServer(session.sessionToken);
 
@@ -378,6 +398,9 @@ class AuthService {
     if (session == null || session.isExpired) {
       return AuthResult.failure('Сессия истекла. Требуется повторная верификация.');
     }
+
+    // Устанавливаем session token для всех API запросов
+    ApiConstants.sessionToken = session.sessionToken;
 
     return AuthResult.success(session: session);
   }
@@ -446,6 +469,9 @@ class AuthService {
         // Игнорируем ошибки сети при выходе
       }
     }
+
+    // Очищаем session token
+    ApiConstants.sessionToken = null;
 
     // Очищаем локальные данные
     await _storage.clearSession();
@@ -520,6 +546,9 @@ class AuthService {
           isVerified: true,
         );
         await _storage.saveSession(session);
+
+        // Устанавливаем session token для всех API запросов
+        ApiConstants.sessionToken = session.sessionToken;
 
         return AuthResult.success(session: session, message: 'PIN-код успешно сброшен');
       } else {

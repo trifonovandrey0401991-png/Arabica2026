@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
+import '../../../core/utils/logger.dart';
 import '../../shops/models/shop_model.dart';
 import '../services/job_application_service.dart';
 
@@ -82,7 +83,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
         }
       }
     } catch (e) {
-      print('Ошибка загрузки черновика: $e');
+      Logger.warning('Ошибка загрузки черновика: $e');
     }
   }
 
@@ -100,7 +101,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
 
       await prefs.setString(_draftKey, json.encode(draft));
     } catch (e) {
-      print('Ошибка сохранения черновика: $e');
+      Logger.warning('Ошибка сохранения черновика: $e');
     }
   }
 
@@ -110,7 +111,7 @@ class _JobApplicationFormPageState extends State<JobApplicationFormPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_draftKey);
     } catch (e) {
-      print('Ошибка очистки черновика: $e');
+      Logger.warning('Ошибка очистки черновика: $e');
     }
   }
 

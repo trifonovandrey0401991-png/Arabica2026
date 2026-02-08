@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/api_constants.dart';
+import '../../../core/utils/logger.dart';
 import '../models/z_report_template_model.dart';
 
 /// Сервис для работы с шаблонами распознавания Z-отчётов
@@ -14,7 +15,7 @@ class ZReportTemplateService {
         url += '?shopId=$shopId';
       }
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url), headers: ApiConstants.headersWithApiKey);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -25,7 +26,7 @@ class ZReportTemplateService {
       }
       return [];
     } catch (e) {
-      print('Ошибка получения шаблонов: $e');
+      Logger.warning('Ошибка получения шаблонов: $e');
       return [];
     }
   }
@@ -35,6 +36,7 @@ class ZReportTemplateService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/templates/$id'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -43,7 +45,7 @@ class ZReportTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка получения шаблона: $e');
+      Logger.warning('Ошибка получения шаблона: $e');
       return null;
     }
   }
@@ -53,6 +55,7 @@ class ZReportTemplateService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/templates/$templateId/image'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -60,7 +63,7 @@ class ZReportTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка получения изображения шаблона: $e');
+      Logger.warning('Ошибка получения изображения шаблона: $e');
       return null;
     }
   }
@@ -70,6 +73,7 @@ class ZReportTemplateService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/templates/$templateId/region-sets/$setId/image'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -77,7 +81,7 @@ class ZReportTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка получения изображения формата: $e');
+      Logger.warning('Ошибка получения изображения формата: $e');
       return null;
     }
   }
@@ -109,13 +113,13 @@ class ZReportTemplateService {
 
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/templates'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(body),
       );
 
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка сохранения шаблона: $e');
+      Logger.warning('Ошибка сохранения шаблона: $e');
       return false;
     }
   }
@@ -125,10 +129,11 @@ class ZReportTemplateService {
     try {
       final response = await http.delete(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/templates/$id'),
+        headers: ApiConstants.headersWithApiKey,
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('Ошибка удаления шаблона: $e');
+      Logger.warning('Ошибка удаления шаблона: $e');
       return false;
     }
   }
@@ -139,6 +144,7 @@ class ZReportTemplateService {
       final response = await http.get(
         Uri.parse(
             '${ApiConstants.serverUrl}/api/z-report/templates/find?shopId=$shopId'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -149,7 +155,7 @@ class ZReportTemplateService {
       }
       return null;
     } catch (e) {
-      print('Ошибка поиска шаблона: $e');
+      Logger.warning('Ошибка поиска шаблона: $e');
       return null;
     }
   }
@@ -162,7 +168,7 @@ class ZReportTemplateService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/parse-with-template'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'imageBase64': imageBase64,
           'templateId': templateId,
@@ -187,11 +193,11 @@ class ZReportTemplateService {
       await http.post(
         Uri.parse(
             '${ApiConstants.serverUrl}/api/z-report/templates/$templateId/stats'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({'wasSuccessful': wasSuccessful}),
       );
     } catch (e) {
-      print('Ошибка обновления статистики: $e');
+      Logger.warning('Ошибка обновления статистики: $e');
     }
   }
 
@@ -212,7 +218,7 @@ class ZReportTemplateService {
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/training-samples'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'imageBase64': imageBase64,
           'rawText': rawText,
@@ -231,7 +237,7 @@ class ZReportTemplateService {
       }
       return false;
     } catch (e) {
-      print('Ошибка сохранения образца: $e');
+      Logger.warning('Ошибка сохранения образца: $e');
       return false;
     }
   }
@@ -241,6 +247,7 @@ class ZReportTemplateService {
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.serverUrl}/api/z-report/training-stats'),
+        headers: ApiConstants.headersWithApiKey,
       );
 
       if (response.statusCode == 200) {
@@ -248,7 +255,7 @@ class ZReportTemplateService {
       }
       return {};
     } catch (e) {
-      print('Ошибка получения статистики: $e');
+      Logger.warning('Ошибка получения статистики: $e');
       return {};
     }
   }

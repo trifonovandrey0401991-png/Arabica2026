@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/utils/logger.dart';
 import '../models/product_question_message_model.dart';
 import '../services/product_question_service.dart';
 import 'product_question_personal_dialog_page.dart';
@@ -324,7 +325,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
             backgroundColor: Colors.red,
           ),
         );
-        print('DEBUG: createPersonalDialog returned null for shopAddress: $shopAddress');
+        Logger.debug('createPersonalDialog returned null for shopAddress: $shopAddress');
       }
     } catch (e) {
       if (mounted) {
@@ -334,7 +335,7 @@ class _ProductQuestionClientDialogPageState extends State<ProductQuestionClientD
             backgroundColor: Colors.red,
           ),
         );
-        print('DEBUG: Exception in createPersonalDialog: $e');
+        Logger.warning('Exception in createPersonalDialog: $e');
       }
     } finally {
       if (mounted) {

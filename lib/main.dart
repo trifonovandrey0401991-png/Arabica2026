@@ -71,6 +71,13 @@ void main() async {
     Logger.warning('Ошибка инициализации Geofence: $e');
   }
 
+  // Загрузка session token из хранилища (для API запросов)
+  try {
+    await AuthService().initSessionToken();
+  } catch (e) {
+    Logger.warning('Ошибка загрузки session token: $e');
+  }
+
   // Синхронизация отчетов пересменки в фоне (не блокирует запуск)
   Future.microtask(() {
     ShiftSyncService.syncAllReports().catchError((e) {
@@ -283,29 +290,6 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
     }
   }
 
-  /// Проверка регистрации в фоне (без блокировки UI)
-  Future<void> _verifyRegistrationInBackground(String phone) async {
-    try {
-      final loyaltyInfo = await LoyaltyService.fetchByPhone(phone);
-      final prefs = await SharedPreferences.getInstance();
-
-      // Обновляем данные в фоне
-      await prefs.setBool('is_registered', true);
-      await prefs.setString('user_name', loyaltyInfo.name);
-      await prefs.setString('user_phone', loyaltyInfo.phone);
-      await LoyaltyStorage.save(loyaltyInfo);
-
-      // Сохраняем FCM токен (теперь когда phone известен)
-      await FirebaseService.resaveToken();
-
-      // Проверяем роль пользователя в фоне (важно для установки currentEmployeeName)
-      await _checkUserRole(phone);
-    } catch (e) {
-      // Игнорируем ошибки в фоновой проверке
-      Logger.warning('Фоновая проверка регистрации не удалась: $e');
-    }
-  }
-
   /// Проверка роли пользователя
   Future<void> _checkUserRole(String phone) async {
     try {
@@ -324,15 +308,6 @@ class _CheckRegistrationPageState extends State<_CheckRegistrationPage> {
     } catch (e) {
       Logger.warning('Ошибка проверки роли: $e');
       // Продолжаем работу без роли (по умолчанию клиент)
-    }
-  }
-
-  /// Проверка роли пользователя в фоне (без блокировки UI)
-  Future<void> _checkUserRoleInBackground(String phone) async {
-    try {
-      await _checkUserRole(phone);
-    } catch (e) {
-      Logger.warning('Фоновая проверка роли не удалась: $e');
     }
   }
 

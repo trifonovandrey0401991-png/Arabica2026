@@ -61,7 +61,7 @@ class CoffeeMachineOcrService {
 
       final response = await http.post(
         Uri.parse('$_baseUrl/ocr'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode(body),
       ).timeout(ApiConstants.longTimeout);
 

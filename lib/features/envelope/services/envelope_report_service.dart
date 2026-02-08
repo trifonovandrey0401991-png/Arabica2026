@@ -199,7 +199,7 @@ class EnvelopeReportService {
     Logger.debug('Загрузка pending отчетов...');
     try {
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/envelope-pending');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -219,7 +219,7 @@ class EnvelopeReportService {
     Logger.debug('Загрузка failed отчетов...');
     try {
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/envelope-failed');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);

@@ -12,6 +12,12 @@ const DATA_DIR = process.env.DATA_DIR || '/var/www';
 const ENVELOPE_REPORTS_DIR = `${DATA_DIR}/envelope-reports`;
 const ENVELOPE_QUESTIONS_DIR = `${DATA_DIR}/envelope-questions`;
 
+// Sanitize ID to prevent path traversal
+function sanitizeId(id) {
+  if (!id || typeof id !== 'string') return '';
+  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+}
+
 // Async helper
 async function fileExists(filePath) {
   try {
@@ -123,7 +129,7 @@ function setupEnvelopeAPI(app) {
 
   app.get('/api/envelope-reports/:id', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_REPORTS_DIR, sanitizeId(req.params.id) + '.json');
       if (await fileExists(filePath)) {
         res.json({ success: true, report: JSON.parse(await fsp.readFile(filePath, 'utf8')) });
       } else {
@@ -140,7 +146,7 @@ function setupEnvelopeAPI(app) {
       if (!report.id) report.id = 'envelope_' + Date.now();
       report.createdAt = report.createdAt || new Date().toISOString();
       report.status = report.status || 'pending';
-      await fsp.writeFile(path.join(ENVELOPE_REPORTS_DIR, report.id + '.json'), JSON.stringify(report, null, 2));
+      await fsp.writeFile(path.join(ENVELOPE_REPORTS_DIR, sanitizeId(report.id) + '.json'), JSON.stringify(report, null, 2));
       res.json({ success: true, report });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -149,7 +155,7 @@ function setupEnvelopeAPI(app) {
 
   app.put('/api/envelope-reports/:id', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_REPORTS_DIR, sanitizeId(req.params.id) + '.json');
       if (!(await fileExists(filePath))) return res.json({ success: false, error: 'Report not found' });
       const updated = { ...JSON.parse(await fsp.readFile(filePath, 'utf8')), ...req.body };
       await fsp.writeFile(filePath, JSON.stringify(updated, null, 2));
@@ -161,7 +167,7 @@ function setupEnvelopeAPI(app) {
 
   app.put('/api/envelope-reports/:id/confirm', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_REPORTS_DIR, sanitizeId(req.params.id) + '.json');
       if (!(await fileExists(filePath))) return res.json({ success: false, error: 'Report not found' });
       const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       report.status = 'confirmed';
@@ -178,7 +184,7 @@ function setupEnvelopeAPI(app) {
   // Отклонить отчет конверта
   app.put('/api/envelope-reports/:id/reject', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_REPORTS_DIR, sanitizeId(req.params.id) + '.json');
       if (!(await fileExists(filePath))) return res.json({ success: false, error: 'Report not found' });
       const report = JSON.parse(await fsp.readFile(filePath, 'utf8'));
       report.status = 'rejected';
@@ -195,7 +201,7 @@ function setupEnvelopeAPI(app) {
 
   app.delete('/api/envelope-reports/:id', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_REPORTS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_REPORTS_DIR, sanitizeId(req.params.id) + '.json');
       if (!(await fileExists(filePath))) return res.json({ success: false, error: 'Report not found' });
       await fsp.unlink(filePath);
       res.json({ success: true });
@@ -229,7 +235,7 @@ function setupEnvelopeAPI(app) {
 
   app.get('/api/envelope-questions/:id', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_QUESTIONS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_QUESTIONS_DIR, sanitizeId(req.params.id) + '.json');
       if (await fileExists(filePath)) {
         res.json({ success: true, question: JSON.parse(await fsp.readFile(filePath, 'utf8')) });
       } else {
@@ -244,7 +250,7 @@ function setupEnvelopeAPI(app) {
     try {
       const question = req.body;
       if (!question.id) question.id = 'envelope_q_' + Date.now();
-      await fsp.writeFile(path.join(ENVELOPE_QUESTIONS_DIR, question.id + '.json'), JSON.stringify(question, null, 2));
+      await fsp.writeFile(path.join(ENVELOPE_QUESTIONS_DIR, sanitizeId(question.id) + '.json'), JSON.stringify(question, null, 2));
       res.json({ success: true, question });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -253,7 +259,7 @@ function setupEnvelopeAPI(app) {
 
   app.put('/api/envelope-questions/:id', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_QUESTIONS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_QUESTIONS_DIR, sanitizeId(req.params.id) + '.json');
       if (!(await fileExists(filePath))) return res.json({ success: false, error: 'Question not found' });
       const updated = { ...JSON.parse(await fsp.readFile(filePath, 'utf8')), ...req.body, id: req.params.id };
       await fsp.writeFile(filePath, JSON.stringify(updated, null, 2));
@@ -265,7 +271,7 @@ function setupEnvelopeAPI(app) {
 
   app.delete('/api/envelope-questions/:id', async (req, res) => {
     try {
-      const filePath = path.join(ENVELOPE_QUESTIONS_DIR, req.params.id + '.json');
+      const filePath = path.join(ENVELOPE_QUESTIONS_DIR, sanitizeId(req.params.id) + '.json');
       if (!(await fileExists(filePath))) return res.json({ success: false, error: 'Question not found' });
       await fsp.unlink(filePath);
       res.json({ success: true });

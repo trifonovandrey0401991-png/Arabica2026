@@ -530,6 +530,7 @@ async function createPenalty({ employeeId, employeeName, shopAddress, points, re
   // Load existing penalties
   const penaltiesFile = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
   let penalties = await loadJsonFile(penaltiesFile, []);
+  if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
 
   // Check for duplicate
   const exists = penalties.some(p => p.sourceId === sourceId);

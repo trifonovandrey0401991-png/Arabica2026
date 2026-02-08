@@ -3,6 +3,7 @@ import '../../features/work_schedule/models/work_schedule_model.dart';
 import '../../features/employees/pages/employees_page.dart';
 import '../../features/shops/models/shop_model.dart';
 import '../../features/shops/models/shop_settings_model.dart';
+import '../../core/utils/logger.dart';
 
 /// Диалог выбора параметров автозаполнения графика
 class AutoFillScheduleDialog extends StatefulWidget {
@@ -50,9 +51,9 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
   }
 
   Future<void> _performAutoFill() async {
-    print('📋 Диалог автозаполнения: нажата кнопка Заполнить');
-    print('   Период: с $_selectedStartDay по $_selectedEndDay');
-    print('   Режим: ${_replaceExisting ? "Заменить" : "Только пустые"}');
+    Logger.debug('📋 Диалог автозаполнения: нажата кнопка Заполнить');
+    Logger.debug('   Период: с $_selectedStartDay по $_selectedEndDay');
+    Logger.debug('   Режим: ${_replaceExisting ? "Заменить" : "Только пустые"}');
 
     if (_selectedStartDay > _selectedEndDay) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -64,8 +65,8 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
       return;
     }
 
-    print('✅ Диалог автозаполнения: возвращаем результат');
-    print('   mounted: $mounted');
+    Logger.debug('✅ Диалог автозаполнения: возвращаем результат');
+    Logger.debug('   mounted: $mounted');
 
     // Возвращаем результат диалога
     if (mounted) {
@@ -74,11 +75,11 @@ class _AutoFillScheduleDialogState extends State<AutoFillScheduleDialog> {
         'endDay': _selectedEndDay,
         'replaceExisting': _replaceExisting,
       };
-      print('   Результат: $result');
+      Logger.debug('   Результат: $result');
       Navigator.of(context).pop(result);
-      print('   Navigator.pop вызван');
+      Logger.debug('   Navigator.pop вызван');
     } else {
-      print('   ⚠️ Диалог не mounted!');
+      Logger.warning('   ⚠️ Диалог не mounted!');
     }
   }
 

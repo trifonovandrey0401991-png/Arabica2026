@@ -160,7 +160,7 @@ class CoffeeMachineReportService {
     Logger.debug('Загрузка pending отчётов кофемашин...');
     try {
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/pending');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -180,7 +180,7 @@ class CoffeeMachineReportService {
     Logger.debug('Загрузка failed отчётов кофемашин...');
     try {
       final uri = Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/failed');
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);

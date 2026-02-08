@@ -8,6 +8,16 @@
 
 const WebSocket = require('ws');
 
+// Опциональная проверка session token
+let tokenIndex;
+try {
+  const sessionMiddleware = require('../utils/session_middleware');
+  // Используем внутренний tokenIndex для проверки (через экспортированные функции)
+  tokenIndex = sessionMiddleware;
+} catch (e) {
+  tokenIndex = null;
+}
+
 // Хранилище подключений: Map<phone, Set<WebSocket>>
 const connections = new Map();
 
@@ -38,14 +48,27 @@ function setupChatWebSocket(server) {
     let pingInterval = null;
     let lastPong = Date.now();
 
-    // Парсим phone из query string
+    // Парсим phone и token из query string
     const url = new URL(req.url, `http://${req.headers.host}`);
     userPhone = url.searchParams.get('phone');
+    const authToken = url.searchParams.get('token');
 
     if (!userPhone) {
       console.log('❌ WebSocket: подключение без phone, отклонено');
       ws.close(4001, 'Phone required');
       return;
+    }
+
+    // Проверяем session token если предоставлен
+    if (authToken && tokenIndex) {
+      const tokenUser = tokenIndex.verifyToken(authToken);
+      if (!tokenUser) {
+        console.log(`❌ WebSocket: невалидный token для ${userPhone}`);
+        ws.close(4003, 'Invalid session token');
+        return;
+      }
+      // Используем phone из token (более надёжный)
+      userPhone = tokenUser.phone || userPhone;
     }
 
     const normalizedPhone = userPhone.replace(/[\s+]/g, '');

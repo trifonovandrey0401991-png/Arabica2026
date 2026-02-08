@@ -13,6 +13,12 @@ const visionModule = require('../modules/z-report-vision');
 const TEMPLATE_IMAGES_DIR = path.join(__dirname, '../data/template-images');
 const REGION_SET_IMAGES_DIR = path.join(__dirname, '../data/region-set-images');
 
+// Sanitize ID to prevent path traversal
+function sanitizeId(id) {
+  if (!id || typeof id !== 'string') return '';
+  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+}
+
 /**
  * Настройка API для Z-отчётов
  */
@@ -119,7 +125,7 @@ function setupZReportAPI(app) {
   // Получить основное изображение шаблона
   app.get('/api/z-report/templates/:id/image', async (req, res) => {
     try {
-      const imagePath = path.join(TEMPLATE_IMAGES_DIR, `${req.params.id}.jpg`);
+      const imagePath = path.join(TEMPLATE_IMAGES_DIR, `${sanitizeId(req.params.id)}.jpg`);
       try {
         await fs.access(imagePath);
         res.sendFile(imagePath);
@@ -144,7 +150,7 @@ function setupZReportAPI(app) {
         return res.status(400).json({ success: false, error: 'Изображение не передано' });
       }
 
-      await saveRegionSetImage(templateId, setId, imageBase64);
+      await saveRegionSetImage(sanitizeId(templateId), sanitizeId(setId), imageBase64);
       res.json({ success: true });
     } catch (error) {
       console.error('[Z-Report API] Ошибка сохранения изображения формата:', error);
@@ -155,7 +161,8 @@ function setupZReportAPI(app) {
   // Получить изображение формата
   app.get('/api/z-report/templates/:templateId/region-sets/:setId/image', async (req, res) => {
     try {
-      const { templateId, setId } = req.params;
+      const templateId = sanitizeId(req.params.templateId);
+      const setId = sanitizeId(req.params.setId);
       const imagePath = path.join(REGION_SET_IMAGES_DIR, templateId, `${setId}.jpg`);
 
       try {
@@ -180,7 +187,8 @@ function setupZReportAPI(app) {
   // Удалить изображение формата
   app.delete('/api/z-report/templates/:templateId/region-sets/:setId/image', async (req, res) => {
     try {
-      const { templateId, setId } = req.params;
+      const templateId = sanitizeId(req.params.templateId);
+      const setId = sanitizeId(req.params.setId);
       const imagePath = path.join(REGION_SET_IMAGES_DIR, templateId, `${setId}.jpg`);
 
       try {

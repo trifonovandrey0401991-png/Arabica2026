@@ -81,6 +81,10 @@ TOV.DBF
 # Прочие временные файлы
 TEST_PROGRESS.md
 
+# Backup файлы (создаются при ручных бэкапах)
+*.backup-*
+*.bak-*
+
 # Release signing (КРИТИЧЕСКИ ВАЖНО - НЕ КОММИТИТЬ!)
 android/key.properties
 android/*.jks

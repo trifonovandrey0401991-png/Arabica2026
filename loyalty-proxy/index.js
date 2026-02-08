@@ -122,6 +122,7 @@ const { setupCoffeeMachineAPI } = require("./api/coffee_machine_api");
 const { startCoffeeMachineAutomation } = require("./api/coffee_machine_automation_scheduler");
 const authApiRouter = require("./api/auth_api");
 const telegramBotService = require("./services/telegram_bot_service");
+const { sessionMiddleware, initSessionMiddleware, addTokenToIndex, removeTokenFromIndex } = require("./utils/session_middleware");
 
 // ============================================
 // SECURITY: API Key Authentication
@@ -195,7 +196,7 @@ try {
   helmet = null;
 }
 
-app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.json({ limit: "10mb" }));
 
 // Применяем Security Headers если helmet установлен
 if (helmet) {
@@ -213,10 +214,9 @@ const corsOptions = {
     // Разрешаем запросы без origin (мобильные приложения, curl, Postman)
     if (!origin) return callback(null, true);
 
-    // Разрешённые домены
+    // Разрешённые домены (только HTTPS в продакшн, HTTP только для localhost)
     const allowedOrigins = [
       'https://arabica26.ru',
-      'http://arabica26.ru',
       'http://localhost:3000',
       'http://localhost:8080',
       'http://127.0.0.1:3000',
@@ -259,6 +259,9 @@ app.set('trust proxy', 1);
 
 // Применяем API Key middleware
 app.use(apiKeyMiddleware);
+
+// Применяем Session middleware (неблокирующий - только заполняет req.user)
+app.use(sessionMiddleware);
 
 // Применяем Rate Limiting если пакет установлен
 if (rateLimit) {
@@ -449,6 +452,37 @@ const uploadChatMedia = multer({
   storage: chatMediaStorage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: mediaFileFilter
+});
+
+// Настройка multer для загрузки документов (РКО)
+const allowedDocTypes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/pdf', 'application/octet-stream'];
+const docFileFilter = (req, file, cb) => {
+  if (allowedDocTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Invalid file type: ${file.mimetype}. Only DOCX, DOC, PDF allowed.`), false);
+  }
+};
+
+const rkoStorage = multer.diskStorage({
+  destination: async function (req, file, cb) {
+    const uploadDir = `${DATA_DIR}/rko-uploads-temp`;
+    if (!await fileExists(uploadDir)) {
+      await fsp.mkdir(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const timestamp = Date.now();
+    const originalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/g, '_');
+    cb(null, `rko_${timestamp}_${originalName}`);
+  }
+});
+
+const uploadRKO = multer({
+  storage: rkoStorage,
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB для документов
+  fileFilter: docFileFilter
 });
 
 // URL Google Apps Script для регистрации, лояльности и ролей
@@ -902,6 +936,7 @@ app.post('/api/recount-reports/:reportId/rating', async (req, res) => {
     let penalties = [];
     if (await fileExists(penaltiesFile)) {
       penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+      if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
     }
 
     // Проверяем дубликат
@@ -1150,6 +1185,7 @@ async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftTy
     if (await fileExists(penaltiesFile)) {
       const content = await fsp.readFile(penaltiesFile, 'utf8');
       penalties = JSON.parse(content);
+      if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
     }
 
     penalties.push(penaltyRecord);
@@ -2486,7 +2522,7 @@ async function cleanupShopRKOs(shopAddress) {
 }
 
 // Загрузка РКО на сервер
-app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
+app.post('/api/rko/upload', uploadRKO.single('docx'), async (req, res) => {
   try {
     console.log('📤 POST /api/rko/upload');
     
@@ -2515,8 +2551,12 @@ app.post('/api/rko/upload', upload.single('docx'), async (req, res) => {
       await fsp.mkdir(employeeDir, { recursive: true });
     }
     
-    // Сохраняем файл
-    const filePath = path.join(employeeDir, fileName);
+    // SECURITY: Sanitize fileName для предотвращения path traversal
+    const safeFileName = path.basename(fileName).replace(/[^a-zA-Z0-9_\-\.а-яА-ЯёЁ]/g, '_');
+    const filePath = path.join(employeeDir, safeFileName);
+    if (!isPathSafe(employeeDir, filePath)) {
+      return res.status(400).json({ success: false, error: 'Invalid file name' });
+    }
     fs.renameSync(req.file.path, filePath);
     console.log('РКО сохранен:', filePath);
     
@@ -6910,6 +6950,7 @@ async function assignTestPoints(result) {
     if (await fileExists(penaltiesFile)) {
       try {
         penalties = JSON.parse(await fsp.readFile(penaltiesFile, 'utf8'));
+        if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
       } catch (e) {
         console.error('Error reading penalties file:', e);
       }
@@ -8402,6 +8443,7 @@ app.get('/api/efficiency-penalties', async (req, res) => {
     if (await fileExists(penaltiesFile)) {
       const content = await fsp.readFile(penaltiesFile, 'utf8');
       penalties = JSON.parse(content);
+      if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
     }
 
     console.log(`  ✅ Загружено ${penalties.length} штрафов за ${month}`);
@@ -8432,6 +8474,11 @@ setupChatWebSocket(server);
 // SCALABILITY: Предзагрузка кэша админов при старте сервера
 // Это предотвращает сканирование всех файлов сотрудников при каждом запросе
 preloadAdminCache();
+
+// Инициализация session middleware (индекс token -> session)
+initSessionMiddleware().catch(e => {
+  console.error('Session middleware init error:', e.message);
+});
 
 server.listen(3000, () => console.log("Proxy listening on port 3000 (HTTP + WebSocket)"));
 setupRecountPointsAPI(app);

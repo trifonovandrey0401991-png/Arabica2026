@@ -126,7 +126,7 @@ class BackgroundGpsService {
       // - Кэш уведомлений (не спамить)
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/attendance/gps-check'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'lat': position.latitude,
           'lng': position.longitude,
@@ -214,7 +214,7 @@ class BackgroundGpsService {
       final normalizedPhone = phone.replaceAll(RegExp(r'[\s+]'), '');
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/geofence/client-check'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: jsonEncode({
           'clientPhone': normalizedPhone,
           'latitude': position.latitude,

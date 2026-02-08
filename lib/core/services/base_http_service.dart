@@ -322,7 +322,7 @@ class BaseHttpService {
       Logger.debug('📥 GET $endpoint');
 
       final response = await http
-          .get(Uri.parse('${ApiConstants.serverUrl}$endpoint'))
+          .get(Uri.parse('${ApiConstants.serverUrl}$endpoint'), headers: ApiConstants.headersWithApiKey)
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
@@ -354,7 +354,7 @@ class BaseHttpService {
       Logger.debug('📥 GET $endpoint');
 
       final response = await http
-          .get(uri)
+          .get(uri, headers: ApiConstants.headersWithApiKey)
           .timeout(timeout ?? ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {

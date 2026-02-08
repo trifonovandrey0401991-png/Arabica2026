@@ -17,6 +17,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const router = express.Router();
+const { addTokenToIndex, removeTokenFromIndex, removePhoneFromIndex } = require('../utils/session_middleware');
 
 // Конфигурация
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
@@ -39,11 +40,75 @@ async function initDirs() {
 }
 initDirs().catch(console.error);
 
+// Bcrypt (опциональный - если не установлен, используем SHA-256)
+let bcrypt;
+try {
+  bcrypt = require('bcryptjs');
+  console.log('[Auth] bcryptjs loaded - secure PIN hashing enabled');
+} catch (e) {
+  bcrypt = null;
+  console.warn('[Auth] bcryptjs not installed - using SHA-256 fallback. Run: npm install bcryptjs');
+}
+const BCRYPT_ROUNDS = 10;
+
 /**
- * Генерирует хеш PIN-кода
+ * Генерирует хеш PIN-кода (SHA-256 - legacy)
  */
-function hashPin(pin, salt) {
+function hashPinSha256(pin, salt) {
   return crypto.createHash('sha256').update(pin + salt).digest('hex');
+}
+
+/**
+ * Генерирует хеш PIN-кода (bcrypt или SHA-256 fallback)
+ */
+async function hashPinSecure(pin) {
+  if (bcrypt) {
+    return await bcrypt.hash(pin, BCRYPT_ROUNDS);
+  }
+  // Fallback: SHA-256
+  const salt = generateSalt();
+  return { pinHash: hashPinSha256(pin, salt), salt, hashType: 'sha256' };
+}
+
+/**
+ * Проверяет PIN против хеша (поддержка bcrypt и SHA-256)
+ * Возвращает { valid: boolean, needsMigration: boolean }
+ */
+async function verifyPin(pin, pinData) {
+  if (pinData.hashType === 'bcrypt' && bcrypt) {
+    // Bcrypt проверка
+    const valid = await bcrypt.compare(pin, pinData.pinHash);
+    return { valid, needsMigration: false };
+  }
+
+  // SHA-256 проверка (legacy или если bcrypt недоступен)
+  const inputHash = hashPinSha256(pin, pinData.salt);
+  const valid = inputHash === pinData.pinHash;
+  // Нужна миграция если bcrypt доступен и хэш пока SHA-256
+  return { valid, needsMigration: valid && bcrypt !== null && pinData.hashType !== 'bcrypt' };
+}
+
+/**
+ * Мигрирует PIN на bcrypt (вызывается после успешного логина)
+ */
+async function migratePinToBcrypt(phone, pin, pinData) {
+  if (!bcrypt) return;
+  try {
+    const bcryptHash = await bcrypt.hash(pin, BCRYPT_ROUNDS);
+    pinData.pinHash = bcryptHash;
+    pinData.hashType = 'bcrypt';
+    pinData.salt = ''; // Bcrypt включает соль в хэш
+    pinData.migratedAt = new Date().toISOString();
+    await savePinData(phone, pinData);
+    console.log(`[Auth] PIN migrated to bcrypt for: ${phone}`);
+  } catch (e) {
+    console.error(`[Auth] bcrypt migration error for ${phone}:`, e.message);
+  }
+}
+
+// Legacy alias (для совместимости если где-то используется)
+function hashPin(pin, salt) {
+  return hashPinSha256(pin, salt);
 }
 
 /**
@@ -165,15 +230,24 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Пользователь уже зарегистрирован. Используйте функцию входа.' });
     }
 
-    // Создаём PIN
-    const salt = generateSalt();
-    const pinHash = hashPin(pin, salt);
+    // Создаём PIN (bcrypt если доступен, иначе SHA-256)
+    let pinHash, salt, hashType;
+    if (bcrypt) {
+      pinHash = await bcrypt.hash(pin, BCRYPT_ROUNDS);
+      salt = '';
+      hashType = 'bcrypt';
+    } else {
+      salt = generateSalt();
+      pinHash = hashPinSha256(pin, salt);
+      hashType = 'sha256';
+    }
 
     const pinData = {
       phone: normalizedPhone,
       name,
       pinHash,
       salt,
+      hashType,
       biometricEnabled: false,
       failedAttempts: 0,
       lockedUntil: null,
@@ -197,6 +271,7 @@ router.post('/register', async (req, res) => {
     };
 
     await saveSession(normalizedPhone, session);
+    addTokenToIndex(sessionToken, normalizedPhone, name, session.expiresAt);
 
     console.log(`✅ User registered: ${normalizedPhone}`);
 
@@ -252,9 +327,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Проверяем PIN
-    const inputHash = hashPin(pin, pinData.salt);
-    if (inputHash !== pinData.pinHash) {
+    // Проверяем PIN (поддержка bcrypt и SHA-256)
+    const { valid, needsMigration } = await verifyPin(pin, pinData);
+    if (!valid) {
       // Увеличиваем счётчик неудачных попыток
       pinData.failedAttempts++;
 
@@ -283,6 +358,11 @@ router.post('/login', async (req, res) => {
     pinData.lockedUntil = null;
     await savePinData(normalizedPhone, pinData);
 
+    // Автомиграция на bcrypt (асинхронно, не блокирует ответ)
+    if (needsMigration) {
+      migratePinToBcrypt(normalizedPhone, pin, pinData).catch(() => {});
+    }
+
     // Создаём или обновляем сессию
     const sessionToken = generateSessionToken();
     const session = {
@@ -297,6 +377,7 @@ router.post('/login', async (req, res) => {
     };
 
     await saveSession(normalizedPhone, session);
+    addTokenToIndex(sessionToken, normalizedPhone, pinData.name, session.expiresAt);
 
     console.log(`✅ User logged in: ${normalizedPhone}`);
 
@@ -411,12 +492,17 @@ router.post('/reset-pin', async (req, res) => {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
-    // Обновляем PIN
-    const salt = generateSalt();
-    const pinHash = hashPin(pin, salt);
-
-    pinData.pinHash = pinHash;
-    pinData.salt = salt;
+    // Обновляем PIN (bcrypt если доступен)
+    if (bcrypt) {
+      pinData.pinHash = await bcrypt.hash(pin, BCRYPT_ROUNDS);
+      pinData.salt = '';
+      pinData.hashType = 'bcrypt';
+    } else {
+      const salt = generateSalt();
+      pinData.pinHash = hashPinSha256(pin, salt);
+      pinData.salt = salt;
+      pinData.hashType = 'sha256';
+    }
     pinData.failedAttempts = 0;
     pinData.lockedUntil = null;
     pinData.updatedAt = Date.now();
@@ -440,6 +526,7 @@ router.post('/reset-pin', async (req, res) => {
     };
 
     await saveSession(normalizedPhone, session);
+    addTokenToIndex(sessionToken, normalizedPhone, pinData.name, session.expiresAt);
 
     console.log(`✅ PIN reset for: ${normalizedPhone}`);
 
@@ -506,11 +593,13 @@ router.post('/logout', async (req, res) => {
     if (sessionToken) {
       const session = await getSessionByToken(sessionToken);
       if (session) {
+        removeTokenFromIndex(sessionToken);
         await deleteSession(session.phone);
         console.log(`✅ User logged out: ${session.phone}`);
       }
     } else if (phone) {
       const normalizedPhone = normalizePhone(phone);
+      removePhoneFromIndex(normalizedPhone);
       await deleteSession(normalizedPhone);
       console.log(`✅ User logged out: ${normalizedPhone}`);
     }

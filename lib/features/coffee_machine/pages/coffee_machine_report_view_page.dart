@@ -383,7 +383,7 @@ class _CoffeeMachineReportViewPageState extends State<CoffeeMachineReportViewPag
 
       final response = await http.post(
         Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/training'),
-        headers: {'Content-Type': 'application/json'},
+        headers: ApiConstants.headersWithApiKey,
         body: body,
       );
 

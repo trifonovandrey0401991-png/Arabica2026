@@ -65,6 +65,7 @@ function setupProductQuestionsAPI(app, uploadProductQuestionPhoto) {
       try {
         const content = await fsp.readFile(penaltiesFile, 'utf8');
         penalties = JSON.parse(content);
+        if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
       } catch (e) {
         console.error('Error reading penalties file:', e);
       }

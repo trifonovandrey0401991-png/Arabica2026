@@ -39,7 +39,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
       final uri = Uri.parse(
         '${ApiConstants.serverUrl}/api/coffee-machine/training?machineName=${Uri.encodeComponent(widget.machineName)}',
       );
-      final response = await http.get(uri).timeout(ApiConstants.defaultTimeout);
+      final response = await http.get(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -84,7 +84,7 @@ class _CoffeeMachineTrainingPhotosPageState extends State<CoffeeMachineTrainingP
     if (confirm == true) {
       try {
         final uri = Uri.parse('${ApiConstants.serverUrl}/api/coffee-machine/training/$id');
-        final response = await http.delete(uri).timeout(ApiConstants.defaultTimeout);
+        final response = await http.delete(uri, headers: ApiConstants.headersWithApiKey).timeout(ApiConstants.defaultTimeout);
 
         if (response.statusCode == 200) {
           setState(() {

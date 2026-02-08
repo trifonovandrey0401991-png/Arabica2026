@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import '../services/rko_reports_service.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/utils/logger.dart';
 
 // http оставлен для скачивания binary файлов (DOCX/PDF) с сервера
@@ -52,7 +53,7 @@ class _RKOPDFViewerPageState extends State<RKOPDFViewerPage> {
       Logger.info('Скачиваем файл: $fileUrl');
 
       // Скачиваем файл
-      final response = await http.get(Uri.parse(fileUrl));
+      final response = await http.get(Uri.parse(fileUrl), headers: ApiConstants.headersWithApiKey);
       if (response.statusCode != 200) {
         throw Exception('Ошибка скачивания файла: ${response.statusCode}');
       }
