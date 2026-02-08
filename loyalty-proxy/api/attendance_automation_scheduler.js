@@ -18,7 +18,7 @@ const path = require('path');
 let sendPushNotification = null;
 let sendPushToPhone = null;
 try {
-  const notificationsApi = require('../report_notifications_api');
+  const notificationsApi = require('./report_notifications_api');
   sendPushNotification = notificationsApi.sendPushNotification;
   sendPushToPhone = notificationsApi.sendPushToPhone;
   console.log('[AttendanceScheduler] Push notifications enabled');

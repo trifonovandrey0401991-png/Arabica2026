@@ -8,7 +8,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { admin, firebaseInitialized } = require('../firebase-admin-config');
-const { sendPushNotification } = require('../report_notifications_api');
+const { sendPushNotification } = require('../api/report_notifications_api');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 

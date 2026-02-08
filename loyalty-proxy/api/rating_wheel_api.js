@@ -7,7 +7,7 @@
 const fsp = require('fs').promises;
 const path = require('path');
 const { calculateReferralPointsWithMilestone } = require('./referrals_api');
-const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('./efficiency_calc');
+const { calculateFullEfficiency, initBatchCache, clearBatchCache, calculateFullEfficiencyCached } = require('../efficiency_calc');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
 

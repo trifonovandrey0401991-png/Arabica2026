@@ -82,7 +82,7 @@ async function checkDuplicateApplication(phone) {
 // Функция отправки push-уведомления админам
 async function sendPushToAdmins(title, body) {
   try {
-    const { admin, firebaseInitialized } = require('./firebase-admin-config');
+    const { admin, firebaseInitialized } = require('../firebase-admin-config');
     if (!firebaseInitialized) {
       console.log('⚠️ Firebase не инициализирован, push не отправлен');
       return;

@@ -13,7 +13,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { admin, firebaseInitialized } = require('./firebase-admin-config');
+const { admin, firebaseInitialized } = require('../firebase-admin-config');
 
 // Директория хранения уведомлений
 const DATA_DIR = process.env.DATA_DIR || '/var/www';

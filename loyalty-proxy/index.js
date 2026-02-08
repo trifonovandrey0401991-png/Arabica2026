@@ -74,24 +74,24 @@ function spawnPython(args) {
     });
   });
 }
-const setupJobApplicationsAPI = require('./job_applications_api');
+const setupJobApplicationsAPI = require('./api/job_applications_api');
 
-const setupRecountPointsAPI = require("./recount_points_api");
+const setupRecountPointsAPI = require("./api/recount_points_api");
 const app = express();
-const setupRatingWheelAPI = require("./rating_wheel_api");
-const setupReferralsAPI = require("./referrals_api");
-const { invalidateStatsCache, checkReferralLimit } = require("./referrals_api");
-const { setupTasksAPI } = require("./tasks_api");
-const { setupRecurringTasksAPI } = require("./recurring_tasks_api");
-const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = require("./report_notifications_api");
+const setupRatingWheelAPI = require("./api/rating_wheel_api");
+const setupReferralsAPI = require("./api/referrals_api");
+const { invalidateStatsCache, checkReferralLimit } = require("./api/referrals_api");
+const { setupTasksAPI } = require("./api/tasks_api");
+const { setupRecurringTasksAPI } = require("./api/recurring_tasks_api");
+const { setupReportNotificationsAPI, sendPushNotification, sendPushToPhone } = require("./api/report_notifications_api");
 const { setupClientsAPI } = require("./api/clients_api");
 const { setupShiftTransfersAPI } = require("./api/shift_transfers_api");
 const { setupTaskPointsSettingsAPI } = require("./api/task_points_settings_api");
 const { setupPointsSettingsAPI, calculateRecountPoints, calculateShiftPoints } = require("./api/points_settings_api");
 const { setupManagerEfficiencyAPI } = require("./api/manager_efficiency_api");
 const { setupProductQuestionsAPI } = require("./api/product_questions_api");
-const { setupProductQuestionsPenaltyScheduler } = require("./product_questions_penalty_scheduler");
-const { setupOrderTimeoutAPI } = require("./order_timeout_api");
+const { setupProductQuestionsPenaltyScheduler } = require("./api/product_questions_penalty_scheduler");
+const { setupOrderTimeoutAPI } = require("./api/order_timeout_api");
 const { startShiftAutomationScheduler } = require("./api/shift_automation_scheduler");
 const { startRecountAutomationScheduler } = require("./api/recount_automation_scheduler");
 const { startRkoAutomationScheduler, getPendingReports: getPendingRkoReports, getFailedReports: getFailedRkoReports } = require("./api/rko_automation_scheduler");

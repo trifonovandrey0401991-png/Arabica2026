@@ -7,7 +7,7 @@
 
 const fsp = require('fs').promises;
 const path = require('path');
-const { sendPushNotification, sendPushToPhone } = require('../report_notifications_api');
+const { sendPushNotification, sendPushToPhone } = require('./report_notifications_api');
 const { isAdminPhone } = require('../utils/admin_cache');
 const { createPaginatedResponse, isPaginationRequested } = require('../utils/pagination');
 
