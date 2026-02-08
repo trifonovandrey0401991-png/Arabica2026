@@ -1,34 +1,22 @@
 /**
  * Efficiency Penalties API
+ * Штрафы/бонусы эффективности + batch загрузка отчётов
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
+ * Utility functions (addPenalty, penaltyExists, loadMonthPenalties) preserved for other modules.
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const EFFICIENCY_PENALTIES_DIR = `${DATA_DIR}/efficiency-penalties`;
+const SHIFT_REPORTS_DIR = `${DATA_DIR}/shift-reports`;
+const SHIFT_HANDOVER_REPORTS_DIR = `${DATA_DIR}/shift-handover-reports`;
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// ===== Utility functions (used by other modules like pending_api.js) =====
 
-// Ensure directory exists
-async function ensureDir() {
-  if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
-    await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
-  }
-}
-
-// Get month key from date (YYYY-MM)
 function getMonthKey(date) {
   if (!date) {
     const now = new Date();
@@ -37,14 +25,14 @@ function getMonthKey(date) {
   return date.substring(0, 7);
 }
 
-// Generate unique ID
 function generateId() {
   return `penalty_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Load penalties for a month
 async function loadMonthPenalties(monthKey) {
-  await ensureDir();
+  if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
+    await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
+  }
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
 
   if (await fileExists(filePath)) {
@@ -59,15 +47,15 @@ async function loadMonthPenalties(monthKey) {
   return { monthKey, penalties: [] };
 }
 
-// Save penalties for a month
 async function saveMonthPenalties(monthKey, data) {
-  await ensureDir();
+  if (!(await fileExists(EFFICIENCY_PENALTIES_DIR))) {
+    await fsp.mkdir(EFFICIENCY_PENALTIES_DIR, { recursive: true });
+  }
   const filePath = path.join(EFFICIENCY_PENALTIES_DIR, `${monthKey}.json`);
   data.updatedAt = new Date().toISOString();
   await fsp.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-// Add penalty
 async function addPenalty(penalty) {
   const monthKey = getMonthKey(penalty.date);
   const data = await loadMonthPenalties(monthKey);
@@ -83,7 +71,6 @@ async function addPenalty(penalty) {
   return penalty;
 }
 
-// Check if penalty already exists (to avoid duplicates)
 async function penaltyExists(date, shiftType, shopAddress, type) {
   const monthKey = getMonthKey(date);
   const data = await loadMonthPenalties(monthKey);
@@ -96,225 +83,233 @@ async function penaltyExists(date, shiftType, shopAddress, type) {
   );
 }
 
+// ===== Helper functions for reports-batch (from inline code) =====
+
+async function loadShiftReportsForPeriod(startDate, endDate) {
+  const reports = [];
+
+  if (!await fileExists(SHIFT_REPORTS_DIR)) {
+    return reports;
+  }
+
+  const files = (await fsp.readdir(SHIFT_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = await fsp.readFile(path.join(SHIFT_REPORTS_DIR, file), 'utf8');
+      const report = JSON.parse(content);
+
+      // Проверяем период
+      const reportDate = new Date(report.createdAt || report.timestamp);
+      if (reportDate >= startDate && reportDate <= endDate) {
+        reports.push(report);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения shift report ${file}:`, e.message);
+    }
+  }
+
+  return reports;
+}
+
+async function loadRecountReportsForPeriod(startDate, endDate) {
+  const reports = [];
+  const reportsDir = `${DATA_DIR}/recount-reports`;
+
+  if (!await fileExists(reportsDir)) {
+    return reports;
+  }
+
+  const files = (await fsp.readdir(reportsDir)).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = await fsp.readFile(path.join(reportsDir, file), 'utf8');
+      const report = JSON.parse(content);
+
+      // Проверяем период
+      const reportDate = new Date(report.completedAt || report.createdAt);
+      if (reportDate >= startDate && reportDate <= endDate) {
+        reports.push(report);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения recount report ${file}:`, e.message);
+    }
+  }
+
+  return reports;
+}
+
+async function loadShiftHandoverReportsForPeriod(startDate, endDate) {
+  const reports = [];
+
+  if (!await fileExists(SHIFT_HANDOVER_REPORTS_DIR)) {
+    return reports;
+  }
+
+  const files = (await fsp.readdir(SHIFT_HANDOVER_REPORTS_DIR)).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = await fsp.readFile(path.join(SHIFT_HANDOVER_REPORTS_DIR, file), 'utf8');
+      const report = JSON.parse(content);
+
+      // Проверяем период
+      const reportDate = new Date(report.createdAt);
+      if (reportDate >= startDate && reportDate <= endDate) {
+        reports.push(report);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения shift handover report ${file}:`, e.message);
+    }
+  }
+
+  return reports;
+}
+
+async function loadAttendanceForPeriod(startDate, endDate) {
+  const records = [];
+  const attendanceDir = `${DATA_DIR}/attendance`;
+
+  if (!await fileExists(attendanceDir)) {
+    return records;
+  }
+
+  const files = (await fsp.readdir(attendanceDir)).filter(f => f.endsWith('.json'));
+
+  for (const file of files) {
+    try {
+      const content = await fsp.readFile(path.join(attendanceDir, file), 'utf8');
+      const record = JSON.parse(content);
+
+      // Проверяем период
+      const recordDate = new Date(record.timestamp || record.createdAt);
+      if (recordDate >= startDate && recordDate <= endDate) {
+        records.push(record);
+      }
+    } catch (e) {
+      console.error(`Ошибка чтения attendance record ${file}:`, e.message);
+    }
+  }
+
+  return records;
+}
+
+// ===== Routes =====
+
 function setupEfficiencyPenaltiesAPI(app) {
-  // GET /api/efficiency-penalties - Get penalties for a period
-  app.get('/api/efficiency-penalties', async (req, res) => {
+  /**
+   * GET /api/efficiency/reports-batch
+   * Batch endpoint для загрузки всех отчётов за месяц одним запросом
+   */
+  app.get('/api/efficiency/reports-batch', async (req, res) => {
     try {
-      const { month, shopAddress, employeeName, type, fromDate, toDate } = req.query;
+      const { month } = req.query;
 
-      console.log('GET /api/efficiency-penalties', { month, shopAddress, employeeName, type });
-
-      let allPenalties = [];
-
-      if (month) {
-        // Load specific month
-        const data = await loadMonthPenalties(month);
-        allPenalties = data.penalties || [];
-      } else if (fromDate && toDate) {
-        // Load range of months
-        const startMonth = getMonthKey(fromDate);
-        const endMonth = getMonthKey(toDate);
-
-        // Simple approach: load all months between start and end
-        const startDate = new Date(fromDate);
-        const endDate = new Date(toDate);
-
-        const months = new Set();
-        const current = new Date(startDate);
-        while (current <= endDate) {
-          months.add(getMonthKey(current.toISOString().split('T')[0]));
-          current.setMonth(current.getMonth() + 1);
-        }
-
-        for (const m of months) {
-          const data = await loadMonthPenalties(m);
-          allPenalties.push(...(data.penalties || []));
-        }
-
-        // Filter by exact date range
-        allPenalties = allPenalties.filter(p => p.date >= fromDate && p.date <= toDate);
-      } else {
-        // Default: current month
-        const data = await loadMonthPenalties(getMonthKey());
-        allPenalties = data.penalties || [];
-      }
-
-      // Apply filters
-      if (shopAddress) {
-        allPenalties = allPenalties.filter(p => p.shopAddress === shopAddress || p.entityId === shopAddress);
-      }
-      if (employeeName) {
-        allPenalties = allPenalties.filter(p => p.entityId === employeeName || p.employeeName === employeeName);
-      }
-      if (type) {
-        allPenalties = allPenalties.filter(p => p.type === type);
-      }
-
-      // Sort by date descending
-      allPenalties.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      res.json({ success: true, penalties: allPenalties });
-    } catch (error) {
-      console.error('Error getting efficiency penalties:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // POST /api/efficiency-penalties - Create a penalty
-  app.post('/api/efficiency-penalties', async (req, res) => {
-    try {
-      const penalty = req.body;
-      console.log('POST /api/efficiency-penalties:', penalty);
-
-      // Validate required fields
-      if (!penalty.type || !penalty.entityId || !penalty.date || penalty.points === undefined) {
+      // Валидация формата месяца
+      if (!month || !month.match(/^\d{4}-\d{2}$/)) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: type, entityId, date, points'
+          error: 'Неверный формат месяца. Используйте YYYY-MM (например 2025-01)'
         });
       }
 
-      // Check for duplicates if it's a shift penalty
-      if (penalty.category === 'shift_penalty') {
-        if (await penaltyExists(penalty.date, penalty.shiftType, penalty.shopAddress, penalty.type)) {
-          return res.json({
-            success: true,
-            duplicate: true,
-            message: 'Penalty already exists for this shift'
-          });
-        }
-      }
+      console.log(`📊 GET /api/efficiency/reports-batch?month=${month}`);
 
-      const savedPenalty = await addPenalty(penalty);
+      // Парсим год и месяц
+      const [year, monthNum] = month.split('-').map(Number);
 
-      res.json({ success: true, penalty: savedPenalty });
-    } catch (error) {
-      console.error('Error creating efficiency penalty:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // POST /api/efficiency-penalties/bulk - Create multiple penalties
-  app.post('/api/efficiency-penalties/bulk', async (req, res) => {
-    try {
-      const { penalties } = req.body;
-      console.log('POST /api/efficiency-penalties/bulk:', penalties?.length || 0, 'penalties');
-
-      if (!penalties || !Array.isArray(penalties)) {
+      // Дополнительная валидация месяца
+      if (monthNum < 1 || monthNum > 12) {
         return res.status(400).json({
           success: false,
-          error: 'penalties array is required'
+          error: 'Неверный номер месяца. Используйте месяц от 01 до 12'
         });
       }
 
-      const savedPenalties = [];
-      const skipped = [];
+      // Создаём границы периода
+      const startDate = new Date(year, monthNum - 1, 1, 0, 0, 0);
+      const endDate = new Date(year, monthNum, 0, 23, 59, 59);
 
-      for (const penalty of penalties) {
-        // Check for duplicates
-        if (penalty.category === 'shift_penalty') {
-          if (await penaltyExists(penalty.date, penalty.shiftType, penalty.shopAddress, penalty.type)) {
-            skipped.push(penalty);
-            continue;
-          }
-        }
+      console.log(`  📅 Период: ${startDate.toISOString()} - ${endDate.toISOString()}`);
 
-        const saved = await addPenalty(penalty);
-        savedPenalties.push(saved);
-      }
+      // Загружаем все типы отчётов параллельно
+      const startTime = Date.now();
 
-      console.log(`  Created: ${savedPenalties.length}, Skipped: ${skipped.length}`);
+      const [shifts, recounts, handovers, attendance] = await Promise.all([
+        loadShiftReportsForPeriod(startDate, endDate),
+        loadRecountReportsForPeriod(startDate, endDate),
+        loadShiftHandoverReportsForPeriod(startDate, endDate),
+        loadAttendanceForPeriod(startDate, endDate),
+      ]);
+
+      const loadTime = Date.now() - startTime;
+
+      console.log(`  ✅ Загружено за ${loadTime}ms:`);
+      console.log(`     - shifts: ${shifts.length}`);
+      console.log(`     - recounts: ${recounts.length}`);
+      console.log(`     - handovers: ${handovers.length}`);
+      console.log(`     - attendance: ${attendance.length}`);
+      console.log(`     - ИТОГО: ${shifts.length + recounts.length + handovers.length + attendance.length} записей`);
 
       res.json({
         success: true,
-        created: savedPenalties.length,
-        skipped: skipped.length,
-        penalties: savedPenalties
+        month,
+        shifts,
+        recounts,
+        handovers,
+        attendance
       });
     } catch (error) {
-      console.error('Error creating bulk efficiency penalties:', error);
-      res.status(500).json({ success: false, error: error.message });
+      console.error('❌ Ошибка загрузки batch отчётов:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   });
 
-  // DELETE /api/efficiency-penalties/:id - Delete a penalty
-  app.delete('/api/efficiency-penalties/:id', async (req, res) => {
+  /**
+   * GET /api/efficiency-penalties
+   * Получить штрафы эффективности за месяц
+   */
+  app.get('/api/efficiency-penalties', async (req, res) => {
     try {
-      const { id } = req.params;
       const { month } = req.query;
 
-      console.log('DELETE /api/efficiency-penalties:', id);
-
-      // Need to search in the specified month or all months
-      const searchMonths = month ? [month] : [];
-
-      if (!month) {
-        // List all month files
-        await ensureDir();
-        const files = (await fsp.readdir(EFFICIENCY_PENALTIES_DIR)).filter(f => f.endsWith('.json'));
-        for (const file of files) {
-          searchMonths.push(file.replace('.json', ''));
-        }
+      // Валидация формата месяца
+      if (!month || !month.match(/^\d{4}-\d{2}$/)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Неверный формат месяца. Используйте YYYY-MM (например 2026-02)'
+        });
       }
 
-      for (const m of searchMonths) {
-        const data = await loadMonthPenalties(m);
-        const index = data.penalties.findIndex(p => p.id === id);
+      console.log(`📊 GET /api/efficiency-penalties?month=${month}`);
 
-        if (index !== -1) {
-          data.penalties.splice(index, 1);
-          await saveMonthPenalties(m, data);
-          return res.json({ success: true });
-        }
+      const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
+      const penaltiesFile = path.join(penaltiesDir, `${month}.json`);
+
+      let penalties = [];
+      if (await fileExists(penaltiesFile)) {
+        const content = await fsp.readFile(penaltiesFile, 'utf8');
+        penalties = JSON.parse(content);
+        if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
       }
 
-      res.status(404).json({ success: false, error: 'Penalty not found' });
+      console.log(`  ✅ Загружено ${penalties.length} штрафов за ${month}`);
+
+      res.json({
+        success: true,
+        month,
+        penalties
+      });
     } catch (error) {
-      console.error('Error deleting efficiency penalty:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // GET /api/efficiency-penalties/summary - Get summary by shop or employee
-  app.get('/api/efficiency-penalties/summary', async (req, res) => {
-    try {
-      const { month, groupBy } = req.query;
-      const monthKey = month || getMonthKey();
-
-      console.log('GET /api/efficiency-penalties/summary', { monthKey, groupBy });
-
-      const data = await loadMonthPenalties(monthKey);
-      const penalties = data.penalties || [];
-
-      const summary = {};
-
-      for (const penalty of penalties) {
-        const key = groupBy === 'employee'
-          ? (penalty.type === 'employee' ? penalty.entityId : null)
-          : penalty.shopAddress;
-
-        if (!key) continue;
-
-        if (!summary[key]) {
-          summary[key] = {
-            entityId: key,
-            totalPoints: 0,
-            count: 0,
-            penalties: []
-          };
-        }
-
-        summary[key].totalPoints += penalty.points;
-        summary[key].count++;
-        summary[key].penalties.push(penalty);
-      }
-
-      const result = Object.values(summary).sort((a, b) => a.totalPoints - b.totalPoints);
-
-      res.json({ success: true, summary: result, month: monthKey });
-    } catch (error) {
-      console.error('Error getting efficiency penalties summary:', error);
-      res.status(500).json({ success: false, error: error.message });
+      console.error('❌ Ошибка загрузки штрафов:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   });
 

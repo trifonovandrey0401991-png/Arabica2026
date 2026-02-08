@@ -1,233 +1,793 @@
 /**
  * Attendance API
+ * Отметки прихода, проверка опозданий, GPS-уведомления
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const ATTENDANCE_DIR = `${DATA_DIR}/attendance`;
+const SHOPS_DIR = `${DATA_DIR}/shops`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
-// Async helper
-async function fileExists(filePath) {
+// Кэш отправленных GPS-уведомлений (phone_date -> { shopAddress, notifiedAt })
+const gpsNotificationCache = new Map();
+
+// ============================================
+// Вспомогательные функции
+// ============================================
+
+// Загрузить настройки магазина
+async function loadShopSettings(shopAddress) {
   try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
+    const settingsDir = `${DATA_DIR}/shop-settings`;
+    const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const settingsFile = path.join(settingsDir, `${sanitizedAddress}.json`);
+
+    if (!await fileExists(settingsFile)) {
+      console.log(`Настройки магазина не найдены: ${shopAddress}`);
+      return null;
+    }
+
+    const content = await fsp.readFile(settingsFile, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Ошибка загрузки настроек магазина:', error);
+    return null;
   }
 }
 
-// Ensure directory exists at startup
-(async () => {
+// Загрузить настройки баллов за attendance
+async function loadAttendancePointsSettings() {
   try {
-    if (!(await fileExists(ATTENDANCE_DIR))) {
-      await fsp.mkdir(ATTENDANCE_DIR, { recursive: true });
-    }
-  } catch (e) {
-    console.error('Error creating attendance directory:', e.message);
-  }
-})();
+    const settingsFile = `${DATA_DIR}/points-settings/attendance.json`;
 
-function setupAttendanceAPI(app) {
-  // POST /api/attendance - поддерживает оба формата:
-  // 1. Старый: { phone, action, shopAddress, timestamp, coordinates }
-  // 2. Flutter: { id, employeeName, shopAddress, timestamp, latitude, longitude, distance }
+    if (!await fileExists(settingsFile)) {
+      console.log('Настройки баллов attendance не найдены, используются значения по умолчанию');
+      return { onTimePoints: 0.5, latePoints: -1 };
+    }
+
+    const content = await fsp.readFile(settingsFile, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Ошибка загрузки настроек баллов attendance:', error);
+    return { onTimePoints: 0.5, latePoints: -1 };
+  }
+}
+
+// Парсить время из строки "HH:mm" в минуты
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return null;
+  const parts = timeStr.split(':');
+  if (parts.length !== 2) return null;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  if (isNaN(hours) || isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+// Проверить попадает ли время в интервал смены
+async function checkShiftTime(timestamp, shopSettings) {
+  const time = new Date(timestamp);
+  const hour = time.getHours();
+  const minute = time.getMinutes();
+  const currentMinutes = hour * 60 + minute;
+
+  console.log(`Проверка времени: ${hour}:${minute} (${currentMinutes} минут)`);
+
+  if (!shopSettings) {
+    console.log('Нет настроек магазина - пропускаем проверку');
+    return { isOnTime: null, shiftType: null, needsShiftSelection: false, lateMinutes: 0 };
+  }
+
+  // Проверяем утреннюю смену
+  if (shopSettings.morningShiftStart && shopSettings.morningShiftEnd) {
+    const start = parseTimeToMinutes(shopSettings.morningShiftStart);
+    const end = parseTimeToMinutes(shopSettings.morningShiftEnd);
+    console.log(`Утренняя смена: ${start}-${end} минут`);
+
+    if (start !== null && end !== null && currentMinutes >= start && currentMinutes <= end) {
+      return { isOnTime: true, shiftType: 'morning', needsShiftSelection: false, lateMinutes: 0 };
+    }
+  }
+
+  // Проверяем дневную смену (опциональная)
+  if (shopSettings.dayShiftStart && shopSettings.dayShiftEnd) {
+    const start = parseTimeToMinutes(shopSettings.dayShiftStart);
+    const end = parseTimeToMinutes(shopSettings.dayShiftEnd);
+    console.log(`Дневная смена: ${start}-${end} минут`);
+
+    if (start !== null && end !== null && currentMinutes >= start && currentMinutes <= end) {
+      return { isOnTime: true, shiftType: 'day', needsShiftSelection: false, lateMinutes: 0 };
+    }
+  }
+
+  // Проверяем ночную смену
+  if (shopSettings.nightShiftStart && shopSettings.nightShiftEnd) {
+    const start = parseTimeToMinutes(shopSettings.nightShiftStart);
+    const end = parseTimeToMinutes(shopSettings.nightShiftEnd);
+    console.log(`Ночная смена: ${start}-${end} минут`);
+
+    if (start !== null && end !== null && currentMinutes >= start && currentMinutes <= end) {
+      return { isOnTime: true, shiftType: 'night', needsShiftSelection: false, lateMinutes: 0 };
+    }
+  }
+
+  // Если не попал ни в один интервал - нужен выбор смены
+  console.log('Время не попадает в интервалы смен - требуется выбор');
+  return {
+    isOnTime: null,
+    shiftType: null,
+    needsShiftSelection: true,
+    lateMinutes: 0
+  };
+}
+
+// Вычислить опоздание в минутах
+async function calculateLateMinutes(timestamp, shiftType, shopSettings) {
+  if (!shopSettings || !shiftType) return 0;
+
+  const time = new Date(timestamp);
+  const currentMinutes = time.getHours() * 60 + time.getMinutes();
+
+  let shiftStart = null;
+  if (shiftType === 'morning' && shopSettings.morningShiftStart) {
+    shiftStart = parseTimeToMinutes(shopSettings.morningShiftStart);
+  } else if (shiftType === 'day' && shopSettings.dayShiftStart) {
+    shiftStart = parseTimeToMinutes(shopSettings.dayShiftStart);
+  } else if (shiftType === 'night' && shopSettings.nightShiftStart) {
+    shiftStart = parseTimeToMinutes(shopSettings.nightShiftStart);
+  }
+
+  if (shiftStart === null) return 0;
+
+  // Если пришёл раньше или вовремя
+  if (currentMinutes <= shiftStart) return 0;
+
+  // Вычисляем опоздание
+  return currentMinutes - shiftStart;
+}
+
+// Создать штраф за опоздание
+async function createLatePenalty(employeeName, shopAddress, lateMinutes, shiftType) {
+  try {
+    const now = new Date();
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+
+    // Загружаем настройки баллов
+    const pointsSettings = await loadAttendancePointsSettings();
+    const penalty = pointsSettings.latePoints || -1;
+
+    const penaltyRecord = {
+      id: `late_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: employeeName,
+      entityName: employeeName,
+      shopAddress: shopAddress,
+      employeeName: employeeName,
+      category: 'attendance_late',
+      categoryName: 'Опоздание на работу',
+      date: now.toISOString().split('T')[0],
+      points: penalty,
+      reason: `Опоздание на ${lateMinutes} мин (${shiftType === 'morning' ? 'утренняя' : shiftType === 'day' ? 'дневная' : 'ночная'} смена)`,
+      lateMinutes: lateMinutes,
+      shiftType: shiftType,
+      sourceType: 'attendance',
+      createdAt: now.toISOString()
+    };
+
+    // Сохраняем в файл штрафов
+    const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
+    if (!await fileExists(penaltiesDir)) {
+      await fsp.mkdir(penaltiesDir, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(penaltiesDir, `${monthKey}.json`);
+    let penalties = [];
+
+    if (await fileExists(penaltiesFile)) {
+      const content = await fsp.readFile(penaltiesFile, 'utf8');
+      penalties = JSON.parse(content);
+      if (!Array.isArray(penalties)) penalties = (penalties && penalties.penalties) || [];
+    }
+
+    penalties.push(penaltyRecord);
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+
+    console.log(`Штраф создан: ${penalty} баллов за опоздание ${lateMinutes} мин для ${employeeName}`);
+    return penaltyRecord;
+  } catch (error) {
+    console.error('Ошибка создания штрафа:', error);
+    return null;
+  }
+}
+
+// Создать бонус за своевременный приход
+async function createOnTimeBonus(employeeName, shopAddress, shiftType) {
+  try {
+    const now = new Date();
+    const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+
+    // Загружаем настройки баллов
+    const pointsSettings = await loadAttendancePointsSettings();
+    const bonus = pointsSettings.onTimePoints || 0.5;
+
+    if (bonus <= 0) {
+      console.log('Бонус за своевременный приход отключен (0 или меньше)');
+      return null;
+    }
+
+    const bonusRecord = {
+      id: `ontime_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'employee',
+      entityId: employeeName,
+      entityName: employeeName,
+      shopAddress: shopAddress,
+      employeeName: employeeName,
+      category: 'attendance_ontime',
+      categoryName: 'Своевременный приход',
+      date: now.toISOString().split('T')[0],
+      points: bonus,
+      reason: `Приход вовремя (${shiftType === 'morning' ? 'утренняя' : shiftType === 'day' ? 'дневная' : 'ночная'} смена)`,
+      shiftType: shiftType,
+      sourceType: 'attendance',
+      createdAt: now.toISOString()
+    };
+
+    // Сохраняем в файл бонусов
+    const penaltiesDir = `${DATA_DIR}/efficiency-penalties`;
+    if (!await fileExists(penaltiesDir)) {
+      await fsp.mkdir(penaltiesDir, { recursive: true });
+    }
+
+    const penaltiesFile = path.join(penaltiesDir, `${monthKey}.json`);
+    let penalties = [];
+
+    if (await fileExists(penaltiesFile)) {
+      const content = await fsp.readFile(penaltiesFile, 'utf8');
+      penalties = JSON.parse(content);
+    }
+
+    penalties.push(bonusRecord);
+    await fsp.writeFile(penaltiesFile, JSON.stringify(penalties, null, 2), 'utf8');
+
+    console.log(`Бонус создан: +${bonus} баллов за своевременный приход для ${employeeName}`);
+    return bonusRecord;
+  } catch (error) {
+    console.error('Ошибка создания бонуса:', error);
+    return null;
+  }
+}
+
+// Функция расчёта расстояния между координатами (Haversine formula)
+function calculateGpsDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Радиус Земли в метрах
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// ============================================
+// Setup function
+// ============================================
+
+function setupAttendanceAPI(app, {
+  canMarkAttendance,
+  markAttendancePendingCompleted,
+  getPendingAttendanceReports,
+  getFailedAttendanceReports,
+  sendPushToPhone,
+} = {}) {
+
+  // POST /api/attendance - отметка прихода
   app.post('/api/attendance', async (req, res) => {
     try {
-      const {
-        // Старый формат
-        phone, action, coordinates, photoPath,
-        // Flutter формат
-        id, employeeName, latitude, longitude, distance,
-        // Общие поля
-        shopAddress, timestamp
-      } = req.body;
+      console.log('POST /api/attendance:', JSON.stringify(req.body).substring(0, 200));
 
-      // Определяем идентификатор (phone или employeeName)
-      const identifier = phone || employeeName;
-      console.log('POST /api/attendance:', identifier, shopAddress);
+      // Проверяем есть ли pending отчёт для этого магазина
+      if (canMarkAttendance) {
+        const canMark = canMarkAttendance(req.body.shopAddress);
+        if (!canMark) {
+          console.log('Отметка отклонена: нет pending отчёта для', req.body.shopAddress);
+          return res.status(400).json({
+            success: false,
+            error: 'Сейчас не время для отметки. Подождите начала смены.',
+            cannotMark: true
+          });
+        }
+      }
 
-      if (!identifier) {
-        return res.status(400).json({
-          success: false,
-          error: 'Требуется phone или employeeName'
+      if (!await fileExists(ATTENDANCE_DIR)) {
+        await fsp.mkdir(ATTENDANCE_DIR, { recursive: true });
+      }
+
+      const recordId = req.body.id || `attendance_${Date.now()}`;
+      const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const recordFile = path.join(ATTENDANCE_DIR, `${sanitizedId}.json`);
+
+      // Загружаем настройки магазина
+      const shopSettings = await loadShopSettings(req.body.shopAddress);
+
+      // Проверяем время по интервалам смен
+      const checkResult = await checkShiftTime(req.body.timestamp, shopSettings);
+
+      const recordData = {
+        ...req.body,
+        isOnTime: checkResult.isOnTime,
+        shiftType: checkResult.shiftType,
+        lateMinutes: checkResult.lateMinutes,
+        createdAt: new Date().toISOString(),
+      };
+
+      await fsp.writeFile(recordFile, JSON.stringify(recordData, null, 2), 'utf8');
+      console.log('Отметка сохранена:', recordFile);
+
+      // Удаляем pending отчёт после успешной отметки
+      if (markAttendancePendingCompleted) {
+        markAttendancePendingCompleted(req.body.shopAddress, checkResult.shiftType);
+      }
+
+      // Если время вне интервала - возвращаем флаг для диалога выбора смены
+      if (checkResult.needsShiftSelection) {
+        return res.json({
+          success: true,
+          needsShiftSelection: true,
+          recordId: sanitizedId,
+          message: 'Выберите смену'
         });
       }
 
-      // Нормализуем идентификатор для имени файла
-      const normalizedId = identifier.replace(/[\s+]/g, '_').replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
-      const today = new Date().toISOString().split('T')[0];
-      const filePath = path.join(ATTENDANCE_DIR, `${normalizedId}_${today}.json`);
-
-      let attendance = {
-        identifier: identifier,
-        date: today,
-        records: []
-      };
-
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        attendance = JSON.parse(content);
+      // Если пришёл вовремя - создаём бонус
+      if (checkResult.isOnTime === true) {
+        await createOnTimeBonus(req.body.employeeName, req.body.shopAddress, checkResult.shiftType);
       }
 
-      // Создаем запись в унифицированном формате
-      const record = {
-        id: id || `att_${Date.now()}`,
-        action: action || 'check-in',
-        shopAddress,
-        timestamp: timestamp || new Date().toISOString(),
-        employeeName: employeeName || null,
-        latitude: latitude || (coordinates ? coordinates.latitude : null),
-        longitude: longitude || (coordinates ? coordinates.longitude : null),
-        distance: distance || null,
-        photoPath: photoPath || null
-      };
+      // Отправляем push-уведомление админу
+      try {
+        console.log('Push-уведомление отправлено админу');
+      } catch (notifyError) {
+        console.log('Ошибка отправки уведомления:', notifyError);
+      }
 
-      attendance.records.push(record);
-
-      await fsp.writeFile(filePath, JSON.stringify(attendance, null, 2), 'utf8');
-
-      // Возвращаем результат с информацией о времени
       res.json({
         success: true,
-        attendance,
-        isOnTime: true, // TODO: проверять по графику смен
-        message: `Отметка сохранена: ${shopAddress}`
+        isOnTime: checkResult.isOnTime,
+        shiftType: checkResult.shiftType,
+        lateMinutes: checkResult.lateMinutes,
+        message: checkResult.isOnTime ? 'Вы пришли вовремя!' : 'Отметка успешно сохранена',
+        recordId: sanitizedId
       });
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      res.status(500).json({ success: false, error: error.message });
+      console.error('Ошибка сохранения отметки:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Ошибка при сохранении отметки'
+      });
     }
   });
 
-  // GET /api/attendance/check - проверка отметки (поддерживает phone или employeeName)
+  // POST /api/attendance/confirm-shift - подтверждение выбора смены
+  app.post('/api/attendance/confirm-shift', async (req, res) => {
+    try {
+      console.log('POST /api/attendance/confirm-shift:', JSON.stringify(req.body));
+
+      const { recordId, selectedShift } = req.body;
+
+      if (!recordId || !selectedShift) {
+        return res.status(400).json({
+          success: false,
+          error: 'Отсутствуют обязательные поля: recordId, selectedShift'
+        });
+      }
+
+      const sanitizedId = recordId.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const recordFile = path.join(ATTENDANCE_DIR, `${sanitizedId}.json`);
+
+      if (!await fileExists(recordFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Запись отметки не найдена'
+        });
+      }
+
+      // Загружаем существующую запись
+      const content = await fsp.readFile(recordFile, 'utf8');
+      const record = JSON.parse(content);
+
+      // Загружаем настройки магазина
+      const shopSettings = await loadShopSettings(record.shopAddress);
+
+      // Вычисляем опоздание
+      const lateMinutes = await calculateLateMinutes(record.timestamp, selectedShift, shopSettings);
+
+      // Обновляем запись
+      record.shiftType = selectedShift;
+      record.isOnTime = lateMinutes === 0;
+      record.lateMinutes = lateMinutes;
+      record.confirmedAt = new Date().toISOString();
+
+      await fsp.writeFile(recordFile, JSON.stringify(record, null, 2), 'utf8');
+
+      // Если опоздал - создаём штраф
+      let penaltyCreated = false;
+      if (lateMinutes > 0) {
+        const penalty = await createLatePenalty(record.employeeName, record.shopAddress, lateMinutes, selectedShift);
+        penaltyCreated = penalty !== null;
+      } else {
+        // Если пришёл вовремя - создаём бонус
+        await createOnTimeBonus(record.employeeName, record.shopAddress, selectedShift);
+      }
+
+      const shiftNames = {
+        morning: 'утренняя',
+        day: 'дневная',
+        night: 'ночная'
+      };
+
+      const message = lateMinutes > 0
+        ? `Вы опоздали на ${lateMinutes} мин (${shiftNames[selectedShift]} смена). Начислен штраф.`
+        : `Отметка подтверждена (${shiftNames[selectedShift]} смена)`;
+
+      res.json({
+        success: true,
+        isOnTime: lateMinutes === 0,
+        shiftType: selectedShift,
+        lateMinutes: lateMinutes,
+        penaltyCreated: penaltyCreated,
+        message: message
+      });
+    } catch (error) {
+      console.error('Ошибка подтверждения смены:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Ошибка при подтверждении смены'
+      });
+    }
+  });
+
+  // GET /api/attendance/check - проверка отметки сегодня
   app.get('/api/attendance/check', async (req, res) => {
     try {
-      const { phone, employeeName, date } = req.query;
-      const identifier = phone || employeeName;
-      console.log('GET /api/attendance/check:', identifier, date);
-
-      if (!identifier) {
-        return res.json({ success: true, hasAttendance: false, lastAction: null, records: [] });
+      const employeeName = req.query.employeeName;
+      if (!employeeName) {
+        return res.json({ success: true, hasAttendance: false });
       }
 
-      const normalizedId = identifier.replace(/[\s+]/g, '_').replace(/[^a-zA-Zа-яА-Я0-9_]/g, '');
-      const checkDate = date || new Date().toISOString().split('T')[0];
-      const filePath = path.join(ATTENDANCE_DIR, `${normalizedId}_${checkDate}.json`);
-
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const attendance = JSON.parse(content);
-        const lastRecord = attendance.records[attendance.records.length - 1];
-        res.json({
-          success: true,
-          hasAttendance: true,
-          lastAction: lastRecord ? lastRecord.action : null,
-          records: attendance.records
-        });
-      } else {
-        res.json({ success: true, hasAttendance: false, lastAction: null, records: [] });
+      if (!await fileExists(ATTENDANCE_DIR)) {
+        return res.json({ success: true, hasAttendance: false });
       }
+
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const files = (await fsp.readdir(ATTENDANCE_DIR)).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const filePath = path.join(ATTENDANCE_DIR, file);
+          const content = await fsp.readFile(filePath, 'utf8');
+          const record = JSON.parse(content);
+
+          if (record.employeeName === employeeName) {
+            const recordDate = new Date(record.timestamp);
+            const recordDateStr = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}-${String(recordDate.getDate()).padStart(2, '0')}`;
+
+            if (recordDateStr === todayStr) {
+              return res.json({ success: true, hasAttendance: true });
+            }
+          }
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
+        }
+      }
+
+      res.json({ success: true, hasAttendance: false });
     } catch (error) {
-      console.error('Error checking attendance:', error);
-      res.status(500).json({ success: false, error: error.message });
+      console.error('Ошибка проверки отметки:', error);
+      res.json({ success: true, hasAttendance: false });
     }
   });
 
+  // GET /api/attendance - получение списка отметок
   app.get('/api/attendance', async (req, res) => {
     try {
-      const { phone, employeeName, fromDate, toDate, shopAddress, date } = req.query;
-      console.log('GET /api/attendance', { phone, employeeName, shopAddress, date });
+      console.log('GET /api/attendance:', req.query);
 
-      const flatRecords = [];
+      const records = [];
 
       if (await fileExists(ATTENDANCE_DIR)) {
         const files = (await fsp.readdir(ATTENDANCE_DIR)).filter(f => f.endsWith('.json'));
 
         for (const file of files) {
           try {
-            const content = await fsp.readFile(path.join(ATTENDANCE_DIR, file), 'utf8');
-            const attendance = JSON.parse(content);
+            const filePath = path.join(ATTENDANCE_DIR, file);
+            const content = await fsp.readFile(filePath, 'utf8');
+            const record = JSON.parse(content);
+            records.push(record);
+          } catch (e) {
+            console.error(`Ошибка чтения файла ${file}:`, e);
+          }
+        }
 
-            // Проверяем, это новый формат (с вложенными records) или старый (плоский)
-            if (attendance.records && Array.isArray(attendance.records)) {
-              // Новый формат: разворачиваем записи
-              for (const record of attendance.records) {
-                // Фильтрация по employeeName
-                if (employeeName && record.employeeName !== employeeName) continue;
-                // Фильтрация по phone
-                if (phone) {
-                  const normalizedPhone = phone.replace(/[\s+]/g, '');
-                  if (attendance.identifier !== normalizedPhone && attendance.phone !== normalizedPhone) continue;
-                }
-                // Фильтрация по магазину
-                if (shopAddress && record.shopAddress !== shopAddress) continue;
-                // Фильтрация по дате
-                if (date) {
-                  const recordDate = record.timestamp ? record.timestamp.split('T')[0] : attendance.date;
-                  if (recordDate !== date.split('T')[0]) continue;
-                }
-                if (fromDate && attendance.date < fromDate) continue;
-                if (toDate && attendance.date > toDate) continue;
+        // Сортируем по дате (новые первыми)
+        records.sort((a, b) => {
+          const dateA = new Date(a.timestamp || a.createdAt || 0);
+          const dateB = new Date(b.timestamp || b.createdAt || 0);
+          return dateB - dateA;
+        });
 
-                flatRecords.push({
-                  id: record.id || `attendance_${attendance.identifier}_${attendance.date}`,
-                  employeeName: record.employeeName || attendance.identifier,
-                  shopAddress: record.shopAddress,
-                  timestamp: record.timestamp,
-                  latitude: record.latitude,
-                  longitude: record.longitude,
-                  distance: record.distance,
-                  action: record.action,
-                  isOnTime: record.isOnTime,
-                  shiftType: record.shiftType,
-                  lateMinutes: record.lateMinutes,
-                  createdAt: record.createdAt
-                });
-              }
-            } else if (attendance.id || attendance.employeeName) {
-              // Старый плоский формат - добавляем напрямую
-              // Фильтрация по employeeName
-              if (employeeName && attendance.employeeName !== employeeName) continue;
-              // Фильтрация по магазину
-              if (shopAddress && attendance.shopAddress !== shopAddress) continue;
-              // Фильтрация по дате
-              if (date) {
-                const recordDate = attendance.timestamp ? attendance.timestamp.split('T')[0] : '';
-                if (recordDate !== date.split('T')[0]) continue;
-              }
-              if (fromDate) {
-                const recordDate = attendance.timestamp ? attendance.timestamp.split('T')[0] : '';
-                if (recordDate < fromDate) continue;
-              }
-              if (toDate) {
-                const recordDate = attendance.timestamp ? attendance.timestamp.split('T')[0] : '';
-                if (recordDate > toDate) continue;
-              }
+        // Применяем фильтры
+        let filteredRecords = records;
+        if (req.query.employeeName) {
+          filteredRecords = filteredRecords.filter(r =>
+            r.employeeName && r.employeeName.includes(req.query.employeeName)
+          );
+        }
+        if (req.query.shopAddress) {
+          filteredRecords = filteredRecords.filter(r =>
+            r.shopAddress && r.shopAddress.includes(req.query.shopAddress)
+          );
+        }
+        if (req.query.date) {
+          const filterDate = new Date(req.query.date);
+          filteredRecords = filteredRecords.filter(r => {
+            const recordDate = new Date(r.timestamp || r.createdAt);
+            return recordDate.toDateString() === filterDate.toDateString();
+          });
+        }
 
-              flatRecords.push(attendance);
+        return res.json({ success: true, records: filteredRecords });
+      }
+
+      res.json({ success: true, records: [] });
+    } catch (error) {
+      console.error('Ошибка получения отметок:', error);
+      res.json({ success: true, records: [] });
+    }
+  });
+
+  // GET /api/attendance/pending - получить pending отчеты
+  app.get('/api/attendance/pending', async (req, res) => {
+    try {
+      console.log('GET /api/attendance/pending');
+      const reports = getPendingAttendanceReports ? getPendingAttendanceReports() : [];
+      res.json({
+        success: true,
+        items: reports,
+        count: reports.length
+      });
+    } catch (error) {
+      console.error('Ошибка получения pending attendance:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Ошибка при получении pending attendance'
+      });
+    }
+  });
+
+  // GET /api/attendance/failed - получить failed отчеты
+  app.get('/api/attendance/failed', async (req, res) => {
+    try {
+      console.log('GET /api/attendance/failed');
+      const reports = getFailedAttendanceReports ? getFailedAttendanceReports() : [];
+      res.json({
+        success: true,
+        items: reports,
+        count: reports.length
+      });
+    } catch (error) {
+      console.error('Ошибка получения failed attendance:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Ошибка при получении failed attendance'
+      });
+    }
+  });
+
+  // GET /api/attendance/can-mark - проверить можно ли отмечаться на магазине
+  app.get('/api/attendance/can-mark', async (req, res) => {
+    try {
+      const { shopAddress } = req.query;
+      console.log('GET /api/attendance/can-mark:', shopAddress);
+
+      if (!shopAddress) {
+        return res.status(400).json({
+          success: false,
+          canMark: false,
+          error: 'shopAddress is required'
+        });
+      }
+
+      const canMark = canMarkAttendance ? canMarkAttendance(shopAddress) : false;
+      res.json({
+        success: true,
+        canMark: canMark,
+        shopAddress: shopAddress
+      });
+    } catch (error) {
+      console.error('Ошибка проверки can-mark attendance:', error);
+      res.status(500).json({
+        success: false,
+        canMark: false,
+        error: error.message || 'Ошибка проверки'
+      });
+    }
+  });
+
+  // POST /api/attendance/gps-check - Проверка GPS и отправка уведомления
+  app.post('/api/attendance/gps-check', async (req, res) => {
+    try {
+      const { lat, lng, phone, employeeName } = req.body;
+
+      console.log(`[GPS-Check] Request: lat=${lat}, lng=${lng}, phone=${phone}, employee=${employeeName}`);
+
+      if (!lat || !lng || !phone) {
+        return res.json({ success: true, notified: false, reason: 'missing_params' });
+      }
+
+      // 1. Загружаем список магазинов с координатами из отдельных файлов
+      let shops = [];
+      try {
+        const shopFiles = (await fsp.readdir(SHOPS_DIR)).filter(f => f.startsWith('shop_') && f.endsWith('.json'));
+        for (const file of shopFiles) {
+          try {
+            const data = await fsp.readFile(path.join(SHOPS_DIR, file), 'utf8');
+            const shop = JSON.parse(data);
+            if (shop.latitude && shop.longitude) {
+              shops.push(shop);
             }
           } catch (e) {
-            console.error(`Error reading ${file}:`, e);
+            console.error(`[GPS-Check] Error loading shop ${file}:`, e.message);
+          }
+        }
+        console.log(`[GPS-Check] Loaded ${shops.length} shops with coordinates`);
+      } catch (e) {
+        console.error('[GPS-Check] Error reading shops directory:', e.message);
+      }
+
+      if (shops.length === 0) {
+        console.log('[GPS-Check] No shops found');
+        return res.json({ success: true, notified: false, reason: 'no_shops' });
+      }
+
+      // 2. Находим ближайший магазин (в пределах 750м)
+      let nearestShop = null;
+      let minDistance = Infinity;
+      const MAX_DISTANCE = 750; // метров
+
+      for (const shop of shops) {
+        if (shop.latitude && shop.longitude) {
+          const distance = calculateGpsDistance(lat, lng, shop.latitude, shop.longitude);
+          if (distance < minDistance && distance <= MAX_DISTANCE) {
+            minDistance = distance;
+            nearestShop = shop;
           }
         }
       }
 
-      // Сортируем по timestamp (новые первыми)
-      flatRecords.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-      console.log(`  Returning ${flatRecords.length} attendance records`);
-      res.json({ success: true, records: flatRecords });
+      if (!nearestShop) {
+        console.log('[GPS-Check] Employee not near any shop');
+        return res.json({ success: true, notified: false, reason: 'not_near_shop' });
+      }
+
+      console.log(`[GPS-Check] Nearest shop: ${nearestShop.name} (${Math.round(minDistance)}m)`);
+
+      // 3. Проверяем расписание - есть ли смена сегодня на этом магазине
+      const today = new Date().toISOString().split('T')[0];
+      const monthKey = today.substring(0, 7); // YYYY-MM
+      const scheduleFile = path.join(`${DATA_DIR}/work-schedules`, `${monthKey}.json`);
+
+      // Сначала ищем сотрудника по телефону в базе employees
+      let employeeId = null;
+      try {
+        const empFiles = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+        for (const file of empFiles) {
+          try {
+            const empData = JSON.parse(await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8'));
+            const empPhone = (empData.phone || '').replace(/\D/g, '');
+            const checkPhone = phone.replace(/\D/g, '');
+            if (empPhone && (empPhone === checkPhone || empPhone.endsWith(checkPhone.slice(-10)) || checkPhone.endsWith(empPhone.slice(-10)))) {
+              employeeId = empData.id;
+              console.log(`[GPS-Check] Found employee: ${empData.name} (${employeeId})`);
+              break;
+            }
+          } catch (e) {}
+        }
+      } catch (e) {
+        console.error('[GPS-Check] Error loading employees:', e.message);
+      }
+
+      let hasShiftToday = false;
+      if (await fileExists(scheduleFile)) {
+        try {
+          const data = await fsp.readFile(scheduleFile, 'utf8');
+          const schedule = JSON.parse(data);
+          const entries = schedule.entries || [];
+
+          // Ищем смену по employeeId и адресу магазина
+          hasShiftToday = entries.some(entry => {
+            const idMatch = employeeId && entry.employeeId === employeeId;
+            return idMatch &&
+                   entry.shopAddress === nearestShop.address &&
+                   entry.date === today;
+          });
+
+          if (hasShiftToday) {
+            console.log(`[GPS-Check] Found shift for ${employeeId} at ${nearestShop.address}`);
+          }
+        } catch (e) {
+          console.error('[GPS-Check] Error loading schedule:', e.message);
+        }
+      }
+
+      if (!hasShiftToday) {
+        console.log(`[GPS-Check] No shift today for ${phone} at ${nearestShop.address}`);
+        return res.json({ success: true, notified: false, reason: 'no_shift_here' });
+      }
+
+      // 4. Проверяем есть ли pending отчёт для этого магазина
+      const pendingReports = getPendingAttendanceReports ? getPendingAttendanceReports() : [];
+      const hasPending = pendingReports.some(r =>
+        r.shopAddress === nearestShop.address && r.status === 'pending'
+      );
+
+      if (!hasPending) {
+        console.log(`[GPS-Check] No pending attendance report for ${nearestShop.address}`);
+        return res.json({ success: true, notified: false, reason: 'no_pending' });
+      }
+
+      // 5. Проверяем кэш (чтобы не спамить)
+      const cacheKey = `${phone}_${today}`;
+      const cached = gpsNotificationCache.get(cacheKey);
+      if (cached && cached.shopAddress === nearestShop.address) {
+        console.log(`[GPS-Check] Already notified ${phone} for ${nearestShop.address} today`);
+        return res.json({ success: true, notified: false, reason: 'already_notified' });
+      }
+
+      // 6. Отправляем push-уведомление
+      const title = 'Не забудьте отметиться!';
+      const body = `Я Вас вижу на магазине ${nearestShop.name || nearestShop.address}`;
+
+      if (sendPushToPhone) {
+        try {
+          await sendPushToPhone(phone, title, body, {
+            type: 'attendance_reminder',
+            shopAddress: nearestShop.address
+          });
+          console.log(`[GPS-Check] Push sent to ${phone} for ${nearestShop.address}`);
+        } catch (e) {
+          console.error('[GPS-Check] Error sending push:', e.message);
+        }
+      }
+
+      // 7. Записываем в кэш
+      gpsNotificationCache.set(cacheKey, {
+        shopAddress: nearestShop.address,
+        notifiedAt: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        notified: true,
+        shop: nearestShop.address,
+        shopName: nearestShop.name,
+        distance: Math.round(minDistance)
+      });
+
     } catch (error) {
-      console.error('Error getting attendance:', error);
-      res.status(500).json({ success: false, error: error.message });
+      console.error('[GPS-Check] Error:', error);
+      res.json({ success: true, notified: false, reason: 'error' });
     }
   });
 
   console.log('✅ Attendance API initialized');
 }
 
-module.exports = { setupAttendanceAPI };
+module.exports = { setupAttendanceAPI, loadShopSettings, checkShiftTime, calculateLateMinutes, createLatePenalty, createOnTimeBonus };

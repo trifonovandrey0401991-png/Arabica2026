@@ -1,251 +1,280 @@
 /**
- * Employees API
+ * Employees API - CRUD сотрудников
+ * Поиск, пагинация, referralCode, кэш invalidation
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
-const EMPLOYEE_REGISTRATIONS_DIR = `${DATA_DIR}/employee-registrations`;
-const EMPLOYEE_PHOTOS_DIR = `${DATA_DIR}/employee-photos`;
 
-// Async helper
-async function fileExists(filePath) {
+// Получить следующий свободный referralCode
+async function getNextReferralCode() {
   try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
+    if (!await fileExists(EMPLOYEES_DIR)) return 1;
+
+    const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+    const usedCodes = new Set();
+
+    for (const file of files) {
+      try {
+        const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
+        const emp = JSON.parse(content);
+        if (emp.referralCode) {
+          usedCodes.add(emp.referralCode);
+        }
+      } catch (e) {}
+    }
+
+    for (let code = 1; code <= 1000; code++) {
+      if (!usedCodes.has(code)) return code;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Ошибка получения referralCode:', error);
+    return 1;
   }
 }
 
-// Ensure directories exist (async IIFE)
-(async () => {
-  for (const dir of [EMPLOYEES_DIR, EMPLOYEE_REGISTRATIONS_DIR, EMPLOYEE_PHOTOS_DIR]) {
-    if (!(await fileExists(dir))) {
-      await fsp.mkdir(dir, { recursive: true });
-    }
-  }
-})();
+function setupEmployeesAPI(app, { isPaginationRequested, createPaginatedResponse, invalidateCache } = {}) {
 
-function setupEmployeesAPI(app, uploadEmployeePhoto) {
-  // ===== EMPLOYEE REGISTRATION =====
-
-  app.post('/api/employee-registration', async (req, res) => {
-    try {
-      const { phone, name, shopAddress, position } = req.body;
-      console.log('POST /api/employee-registration:', phone);
-
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
-      const filePath = path.join(EMPLOYEE_REGISTRATIONS_DIR, `${normalizedPhone}.json`);
-
-      const registration = {
-        phone: normalizedPhone,
-        name,
-        shopAddress,
-        position,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      };
-
-      await fsp.writeFile(filePath, JSON.stringify(registration, null, 2), 'utf8');
-      res.json({ success: true, registration });
-    } catch (error) {
-      console.error('Error creating registration:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/employee-registration/:phone', async (req, res) => {
-    try {
-      const { phone } = req.params;
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
-      const filePath = path.join(EMPLOYEE_REGISTRATIONS_DIR, `${normalizedPhone}.json`);
-
-      if (await fileExists(filePath)) {
-        const data = await fsp.readFile(filePath, 'utf8');
-        const registration = JSON.parse(data);
-        res.json({ success: true, registration });
-      } else {
-        res.json({ success: false, error: 'Registration not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.post('/api/employee-registration/:phone/verify', async (req, res) => {
-    try {
-      const { phone } = req.params;
-      const { approved, adminName } = req.body;
-
-      const normalizedPhone = phone.replace(/[\s+]/g, '');
-      const filePath = path.join(EMPLOYEE_REGISTRATIONS_DIR, `${normalizedPhone}.json`);
-
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Registration not found' });
-      }
-
-      const data = await fsp.readFile(filePath, 'utf8');
-      const registration = JSON.parse(data);
-      registration.status = approved ? 'approved' : 'rejected';
-      registration.verifiedBy = adminName;
-      registration.verifiedAt = new Date().toISOString();
-
-      await fsp.writeFile(filePath, JSON.stringify(registration, null, 2), 'utf8');
-      res.json({ success: true, registration });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/employee-registrations', async (req, res) => {
-    try {
-      console.log('GET /api/employee-registrations');
-      const registrations = [];
-
-      if (await fileExists(EMPLOYEE_REGISTRATIONS_DIR)) {
-        const files = (await fsp.readdir(EMPLOYEE_REGISTRATIONS_DIR)).filter(f => f.endsWith('.json'));
-
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(EMPLOYEE_REGISTRATIONS_DIR, file), 'utf8');
-            registrations.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
-        }
-      }
-
-      registrations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      res.json({ success: true, registrations });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // ===== EMPLOYEES =====
-
+  // GET /api/employees - получить всех сотрудников
   app.get('/api/employees', async (req, res) => {
     try {
       console.log('GET /api/employees');
-      const employees = [];
 
-      if (await fileExists(EMPLOYEES_DIR)) {
-        const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+      let employees = [];
 
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(EMPLOYEES_DIR, file), 'utf8');
-            employees.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
+      if (!await fileExists(EMPLOYEES_DIR)) {
+        await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
+      }
+
+      const files = (await fsp.readdir(EMPLOYEES_DIR)).filter(f => f.endsWith('.json'));
+
+      for (const file of files) {
+        try {
+          const filePath = path.join(EMPLOYEES_DIR, file);
+          const content = await fsp.readFile(filePath, 'utf8');
+          const employee = JSON.parse(content);
+          employees.push(employee);
+        } catch (e) {
+          console.error(`Ошибка чтения файла ${file}:`, e);
         }
       }
 
-      res.json({ success: true, employees });
+      // SCALABILITY: Поддержка поиска по имени/телефону
+      const { search } = req.query;
+      if (search) {
+        const searchLower = search.toLowerCase();
+        employees = employees.filter(e =>
+          (e.name && e.name.toLowerCase().includes(searchLower)) ||
+          (e.phone && e.phone.includes(search)) ||
+          (e.position && e.position.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Сортируем по дате создания (новые первыми)
+      employees.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+
+      // SCALABILITY: Пагинация если запрошена
+      if (isPaginationRequested && isPaginationRequested(req.query)) {
+        res.json(createPaginatedResponse(employees, req.query, 'employees'));
+      } else {
+        // Backwards compatibility - возвращаем все без пагинации
+        res.json({ success: true, employees });
+      }
     } catch (error) {
+      console.error('Ошибка получения сотрудников:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
+  // GET /api/employees/:id - получить сотрудника по ID
   app.get('/api/employees/:id', async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      console.log('GET /api/employees:', id);
+
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-      if (await fileExists(filePath)) {
-        const data = await fsp.readFile(filePath, 'utf8');
-        const employee = JSON.parse(data);
-        res.json({ success: true, employee });
-      } else {
-        res.status(404).json({ success: false, error: 'Employee not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.post('/api/employees', async (req, res) => {
-    try {
-      const employee = req.body;
-      console.log('POST /api/employees:', employee.name);
-
-      if (!employee.id) {
-        employee.id = `employee_${Date.now()}`;
+      if (!await fileExists(employeeFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Сотрудник не найден'
+        });
       }
 
-      const sanitizedId = employee.id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
-
-      employee.createdAt = new Date().toISOString();
-      await fsp.writeFile(filePath, JSON.stringify(employee, null, 2), 'utf8');
+      const content = await fsp.readFile(employeeFile, 'utf8');
+      const employee = JSON.parse(content);
 
       res.json({ success: true, employee });
     } catch (error) {
+      console.error('Ошибка получения сотрудника:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
+  // POST /api/employees - создать нового сотрудника
+  app.post('/api/employees', async (req, res) => {
+    try {
+      console.log('POST /api/employees:', JSON.stringify(req.body).substring(0, 200));
+
+      if (!await fileExists(EMPLOYEES_DIR)) {
+        await fsp.mkdir(EMPLOYEES_DIR, { recursive: true });
+      }
+
+      // Валидация обязательных полей
+      if (!req.body.name || req.body.name.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          error: 'Имя сотрудника обязательно'
+        });
+      }
+
+      // Генерируем ID если не указан
+      const id = req.body.id || `employee_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+
+      const employee = {
+        id: sanitizedId,
+        referralCode: req.body.referralCode || (await getNextReferralCode()),
+        name: req.body.name.trim(),
+        position: req.body.position || null,
+        department: req.body.department || null,
+        phone: req.body.phone || null,
+        email: req.body.email || null,
+        isAdmin: req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1,
+        isManager: req.body.isManager === true || req.body.isManager === 'true' || req.body.isManager === 1,
+        employeeName: req.body.employeeName || null,
+        preferredWorkDays: req.body.preferredWorkDays || [],
+        preferredShops: req.body.preferredShops || [],
+        shiftPreferences: req.body.shiftPreferences || {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+      console.log('Сотрудник создан:', employeeFile);
+
+      // SCALABILITY: Инвалидируем кэш isAdmin при создании сотрудника
+      if (employee.phone && invalidateCache) {
+        invalidateCache(employee.phone);
+      }
+
+      res.json({ success: true, employee });
+    } catch (error) {
+      console.error('Ошибка создания сотрудника:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/employees/:id - обновить сотрудника
   app.put('/api/employees/:id', async (req, res) => {
     try {
-      const { id } = req.params;
-      const updateData = req.body;
+      const id = req.params.id;
+      console.log('PUT /api/employees:', id);
 
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Employee not found' });
+      if (!await fileExists(employeeFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Сотрудник не найден'
+        });
       }
 
-      const data = await fsp.readFile(filePath, 'utf8');
-      const existing = JSON.parse(data);
-      const updated = { ...existing, ...updateData, id };
-      updated.updatedAt = new Date().toISOString();
+      // Валидация обязательных полей
+      if (!req.body.name || req.body.name.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          error: 'Имя сотрудника обязательно'
+        });
+      }
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
-      res.json({ success: true, employee: updated });
+      // Читаем существующие данные для сохранения createdAt
+      const oldContent = await fsp.readFile(employeeFile, 'utf8');
+      const oldEmployee = JSON.parse(oldContent);
+
+      const employee = {
+        id: sanitizedId,
+        referralCode: req.body.referralCode || (await getNextReferralCode()),
+        name: req.body.name.trim(),
+        position: req.body.position !== undefined ? req.body.position : oldEmployee.position,
+        department: req.body.department !== undefined ? req.body.department : oldEmployee.department,
+        phone: req.body.phone !== undefined ? req.body.phone : oldEmployee.phone,
+        email: req.body.email !== undefined ? req.body.email : oldEmployee.email,
+        isAdmin: req.body.isAdmin !== undefined ? (req.body.isAdmin === true || req.body.isAdmin === 'true' || req.body.isAdmin === 1) : oldEmployee.isAdmin,
+        isManager: req.body.isManager !== undefined ? (req.body.isManager === true || req.body.isManager === 'true' || req.body.isManager === 1) : oldEmployee.isManager,
+        employeeName: req.body.employeeName !== undefined ? req.body.employeeName : oldEmployee.employeeName,
+        preferredWorkDays: req.body.preferredWorkDays !== undefined ? req.body.preferredWorkDays : oldEmployee.preferredWorkDays,
+        preferredShops: req.body.preferredShops !== undefined ? req.body.preferredShops : oldEmployee.preferredShops,
+        shiftPreferences: req.body.shiftPreferences !== undefined ? req.body.shiftPreferences : oldEmployee.shiftPreferences,
+        createdAt: oldEmployee.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await fsp.writeFile(employeeFile, JSON.stringify(employee, null, 2), 'utf8');
+      console.log('Сотрудник обновлен:', employeeFile);
+
+      // SCALABILITY: Инвалидируем кэш isAdmin при изменении сотрудника
+      if (invalidateCache) {
+        invalidateCache(employee.phone);
+      }
+
+      res.json({ success: true, employee });
     } catch (error) {
+      console.error('Ошибка обновления сотрудника:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
+  // DELETE /api/employees/:id - удалить сотрудника
   app.delete('/api/employees/:id', async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      console.log('DELETE /api/employees:', id);
+
       const sanitizedId = id.replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const filePath = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
+      const employeeFile = path.join(EMPLOYEES_DIR, `${sanitizedId}.json`);
 
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Employee not found' });
+      if (!await fileExists(employeeFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Сотрудник не найден'
+        });
       }
 
-      await fsp.unlink(filePath);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
+      // SCALABILITY: Читаем телефон перед удалением для инвалидации кэша
+      let employeePhone = null;
+      try {
+        const content = await fsp.readFile(employeeFile, 'utf8');
+        const employee = JSON.parse(content);
+        employeePhone = employee.phone;
+      } catch (e) { /* ignore */ }
 
-  // ===== EMPLOYEE PHOTO UPLOAD =====
+      await fsp.unlink(employeeFile);
+      console.log('Сотрудник удален:', employeeFile);
 
-  app.post('/upload-employee-photo', uploadEmployeePhoto.single('file'), (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ success: false, error: 'No file provided' });
+      // SCALABILITY: Инвалидируем кэш isAdmin при удалении сотрудника
+      if (employeePhone && invalidateCache) {
+        invalidateCache(employeePhone);
       }
 
-      const photoUrl = `https://arabica26.ru/employee-photos/${req.file.filename}`;
-      console.log('Employee photo uploaded:', photoUrl);
-      res.json({ success: true, photoUrl });
+      res.json({ success: true, message: 'Сотрудник удален' });
     } catch (error) {
+      console.error('Ошибка удаления сотрудника:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -253,4 +282,4 @@ function setupEmployeesAPI(app, uploadEmployeePhoto) {
   console.log('✅ Employees API initialized');
 }
 
-module.exports = { setupEmployeesAPI };
+module.exports = { setupEmployeesAPI, getNextReferralCode };

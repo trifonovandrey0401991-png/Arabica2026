@@ -1,40 +1,42 @@
 /**
  * Withdrawals API
+ * Выемки из кассы (ООО/ИП) с уведомлениями и балансом главной кассы
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
-const admin = require('firebase-admin');
+const { fileExists, sanitizeId } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const WITHDRAWALS_DIR = `${DATA_DIR}/withdrawals`;
 const MAIN_CASH_DIR = `${DATA_DIR}/main_cash`;
 const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+// Firebase Admin SDK
+let admin = null;
+try {
+  const firebaseConfig = require('../firebase-admin-config');
+  admin = firebaseConfig.admin;
+} catch (e) {
+  console.warn('⚠️ Withdrawals API: Firebase not available, push notifications disabled');
 }
 
-// Убедиться что директория существует
-async function ensureDirectoryExists(dir) {
-  if (!(await fileExists(dir))) {
-    await fsp.mkdir(dir, { recursive: true, mode: 0o755 });
+// Создаем директории, если их нет
+(async () => {
+  if (!await fileExists(WITHDRAWALS_DIR)) {
+    await fsp.mkdir(WITHDRAWALS_DIR, { recursive: true, mode: 0o755 });
   }
-}
+  if (!await fileExists(MAIN_CASH_DIR)) {
+    await fsp.mkdir(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
+  }
+})();
 
-// Загрузить всех сотрудников
-async function loadAllEmployees() {
-  if (!(await fileExists(EMPLOYEES_DIR))) {
+// Вспомогательная функция для загрузки всех сотрудников (для уведомлений)
+async function loadAllEmployeesForWithdrawals() {
+  if (!await fileExists(EMPLOYEES_DIR)) {
     return [];
   }
 
@@ -57,18 +59,17 @@ async function loadAllEmployees() {
   return employees;
 }
 
-// Получить FCM токен пользователя по телефону
-async function getFCMTokenByPhone(phone) {
+// Получить FCM токен по телефону
+async function getFCMTokenByPhoneForWithdrawals(phone) {
   try {
-    const normalizedPhone = phone.replace(/[\s+]/g, '');
+    const normalizedPhone = phone.replace(/[\s+]/g, "");
     const tokenFile = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
 
-    if (!(await fileExists(tokenFile))) {
+    if (!await fileExists(tokenFile)) {
       return null;
     }
 
-    const data = await fsp.readFile(tokenFile, 'utf8');
-    const tokenData = JSON.parse(data);
+    const tokenData = JSON.parse(await fsp.readFile(tokenFile, "utf8"));
     return tokenData.token || null;
   } catch (err) {
     console.error(`Ошибка получения токена для ${phone}:`, err.message);
@@ -76,16 +77,16 @@ async function getFCMTokenByPhone(phone) {
   }
 }
 
-// Получить FCM токены пользователей
-async function getFCMTokensForUsers(phones) {
-  if (!(await fileExists(FCM_TOKENS_DIR))) {
-    console.log('⚠️  Папка FCM токенов не существует');
+// Получить FCM токены пользователей для уведомлений о выемках
+async function getFCMTokensForWithdrawalNotifications(phones) {
+  if (!await fileExists(FCM_TOKENS_DIR)) {
+    console.log("⚠️  Папка FCM токенов не существует");
     return [];
   }
 
   const tokens = [];
   for (const phone of phones) {
-    const token = await getFCMTokenByPhone(phone);
+    const token = await getFCMTokenByPhoneForWithdrawals(phone);
     if (token) {
       tokens.push(token);
     }
@@ -94,23 +95,23 @@ async function getFCMTokensForUsers(phones) {
   return tokens;
 }
 
-// Отправить push-уведомления о новой выемке
+// Отправить push-уведомления о выемке всем админам
 async function sendWithdrawalNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
-    const employees = await loadAllEmployees();
+    const employees = await loadAllEmployeesForWithdrawals();
 
     // 2. Отфильтровать админов
     const admins = employees.filter(e => e.isAdmin === true);
 
     if (admins.length === 0) {
-      console.log('Нет админов для отправки уведомлений о создании');
+      console.log('Нет админов для отправки уведомлений о выемке');
       return;
     }
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForUsers(adminPhones);
+    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
 
     if (tokens.length === 0) {
       console.log('Нет FCM токенов для админов');
@@ -120,31 +121,26 @@ async function sendWithdrawalNotifications(withdrawal) {
     // 4. Отправить уведомление
     const message = {
       notification: {
-        title: `Новая выемка: ${withdrawal.shopAddress}`,
+        title: `Выемка: ${withdrawal.shopAddress}`,
         body: `${withdrawal.employeeName} сделал выемку на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()})`,
       },
       data: {
-        type: 'withdrawal_created',
+        type: 'withdrawal',
         withdrawalId: withdrawal.id,
         shopAddress: withdrawal.shopAddress,
       },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'withdrawals_channel',
-        },
-      },
     };
 
-    await admin.messaging().sendMulticast({
-      tokens: tokens,
-      ...message,
-    });
+    if (admin && admin.messaging) {
+      await admin.messaging().sendMulticast({
+        tokens: tokens,
+        ...message,
+      });
+    }
 
-    console.log(`✅ Отправлено уведомление о создании выемки ${tokens.length} админам`);
+    console.log(`Отправлено уведомление о выемке ${tokens.length} админам`);
   } catch (err) {
-    console.error('❌ Ошибка отправки push-уведомлений о создании:', err);
+    console.error('Ошибка отправки push-уведомлений о выемке:', err);
   }
 }
 
@@ -152,22 +148,22 @@ async function sendWithdrawalNotifications(withdrawal) {
 async function sendWithdrawalConfirmationNotifications(withdrawal) {
   try {
     // 1. Загрузить всех сотрудников
-    const employees = await loadAllEmployees();
+    const employees = await loadAllEmployeesForWithdrawals();
 
     // 2. Отфильтровать админов
     const admins = employees.filter(e => e.isAdmin === true);
 
     if (admins.length === 0) {
-      console.log('Нет админов для отправки уведомлений о подтверждении');
+      console.log("Нет админов для отправки уведомлений о подтверждении");
       return;
     }
 
     // 3. Получить FCM токены админов
     const adminPhones = admins.map(a => a.phone).filter(p => p);
-    const tokens = await getFCMTokensForUsers(adminPhones);
+    const tokens = await getFCMTokensForWithdrawalNotifications(adminPhones);
 
     if (tokens.length === 0) {
-      console.log('Нет FCM токенов для админов');
+      console.log("Нет FCM токенов для админов");
       return;
     }
 
@@ -178,31 +174,33 @@ async function sendWithdrawalConfirmationNotifications(withdrawal) {
         body: `Выемка от ${withdrawal.employeeName} на ${withdrawal.totalAmount.toFixed(0)} руб (${withdrawal.type.toUpperCase()}) подтверждена`,
       },
       data: {
-        type: 'withdrawal_confirmed',
+        type: "withdrawal_confirmed",
         withdrawalId: withdrawal.id,
         shopAddress: withdrawal.shopAddress,
       },
       android: {
-        priority: 'high',
+        priority: "high",
         notification: {
-          sound: 'default',
-          channelId: 'withdrawals_channel',
+          sound: "default",
+          channelId: "withdrawals_channel",
         },
       },
     };
 
-    await admin.messaging().sendMulticast({
-      tokens: tokens,
-      ...message,
-    });
+    if (admin && admin.messaging) {
+      await admin.messaging().sendMulticast({
+        tokens: tokens,
+        ...message,
+      });
+    }
 
     console.log(`✅ Отправлено уведомление о подтверждении выемки ${tokens.length} админам`);
   } catch (err) {
-    console.error('❌ Ошибка отправки push-уведомлений о подтверждении:', err);
+    console.error("❌ Ошибка отправки push-уведомлений о подтверждении:", err);
   }
 }
 
-// Обновить баланс главной кассы
+// Обновить баланс главной кассы после выемки
 async function updateMainCashBalance(shopAddress, type, amount) {
   try {
     // Нормализовать адрес для имени файла
@@ -235,7 +233,9 @@ async function updateMainCashBalance(shopAddress, type, amount) {
     balance.lastUpdated = new Date().toISOString();
 
     // Сохранить обновлённый баланс
-    await ensureDirectoryExists(MAIN_CASH_DIR);
+    if (!await fileExists(MAIN_CASH_DIR)) {
+      await fsp.mkdir(MAIN_CASH_DIR, { recursive: true, mode: 0o755 });
+    }
     await fsp.writeFile(filePath, JSON.stringify(balance, null, 2), 'utf8');
 
     console.log(`Обновлён баланс ${shopAddress}: ${type}Balance -= ${amount}`);
@@ -245,12 +245,10 @@ async function updateMainCashBalance(shopAddress, type, amount) {
   }
 }
 
-function registerWithdrawalsAPI(app) {
+function setupWithdrawalsAPI(app) {
   // GET /api/withdrawals - получить все выемки с опциональными фильтрами
   app.get('/api/withdrawals', async (req, res) => {
     try {
-      await ensureDirectoryExists(WITHDRAWALS_DIR);
-
       const { shopAddress, type, fromDate, toDate } = req.query;
 
       const files = await fsp.readdir(WITHDRAWALS_DIR);
@@ -308,29 +306,39 @@ function registerWithdrawalsAPI(app) {
         type,
         expenses,
         adminName,
+        category,          // 'withdrawal' | 'deposit' | 'transfer'
+        transferDirection, // 'ooo_to_ip' | 'ip_to_ooo' (для переносов)
       } = req.body;
 
-      // Валидация
-      if (!shopAddress || !employeeName || !employeeId || !type || !expenses || !Array.isArray(expenses)) {
-        return res.status(400).json({ success: false, error: 'Не все обязательные поля заполнены' });
+      // Валидация - для переносов employeeId может быть пустым
+      const effectiveCategory = category || 'withdrawal';
+      const isTransfer = effectiveCategory === 'transfer';
+
+      if (!shopAddress || !employeeName || !type || !expenses || !Array.isArray(expenses)) {
+        return res.status(400).json({ error: 'Не все обязательные поля заполнены' });
+      }
+
+      // employeeId обязателен только для выемок и внесений (не для переносов)
+      if (!isTransfer && !employeeId) {
+        return res.status(400).json({ error: 'ID сотрудника обязателен' });
       }
 
       if (type !== 'ooo' && type !== 'ip') {
-        return res.status(400).json({ success: false, error: 'Тип должен быть ooo или ip' });
+        return res.status(400).json({ error: 'Тип должен быть ooo или ip' });
       }
 
       if (expenses.length === 0) {
-        return res.status(400).json({ success: false, error: 'Добавьте хотя бы один расход' });
+        return res.status(400).json({ error: 'Добавьте хотя бы один расход' });
       }
 
       // Валидация расходов
       for (const expense of expenses) {
         if (!expense.amount || expense.amount <= 0) {
-          return res.status(400).json({ success: false, error: 'Все суммы расходов должны быть положительными' });
+          return res.status(400).json({ error: 'Все суммы расходов должны быть положительными' });
         }
 
         if (!expense.supplierId && !expense.comment) {
-          return res.status(400).json({ success: false, error: 'Для "Другого расхода" комментарий обязателен' });
+          return res.status(400).json({ error: 'Для "Другого расхода" комментарий обязателен' });
         }
       }
 
@@ -342,17 +350,18 @@ function registerWithdrawalsAPI(app) {
         id: `withdrawal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         shopAddress,
         employeeName,
-        employeeId,
+        employeeId: employeeId || '',
         type,
         totalAmount,
         expenses,
         adminName: adminName || null,
         createdAt: new Date().toISOString(),
-        confirmed: false, // По умолчанию не подтверждена
+        confirmed: false,
+        category: effectiveCategory,
+        ...(transferDirection && { transferDirection }),
       };
 
       // Сохранить в файл
-      await ensureDirectoryExists(WITHDRAWALS_DIR);
       const filePath = path.join(WITHDRAWALS_DIR, `${withdrawal.id}.json`);
       await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
@@ -372,30 +381,24 @@ function registerWithdrawalsAPI(app) {
   // PATCH /api/withdrawals/:id/confirm - подтвердить выемку
   app.patch('/api/withdrawals/:id/confirm', async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = sanitizeId(req.params.id);
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-      if (!(await fileExists(filePath))) {
+      if (!await fileExists(filePath)) {
         return res.status(404).json({ success: false, error: 'Выемка не найдена' });
       }
 
-      // Загрузить выемку
-      const data = await fsp.readFile(filePath, 'utf8');
-      const withdrawal = JSON.parse(data);
-
-      // Проверить что уже не подтверждена
-      if (withdrawal.confirmed === true) {
-        return res.status(400).json({ success: false, error: 'Выемка уже подтверждена' });
-      }
+      // Прочитать выемку
+      const withdrawal = JSON.parse(await fsp.readFile(filePath, 'utf8'));
 
       // Обновить статус
       withdrawal.confirmed = true;
       withdrawal.confirmedAt = new Date().toISOString();
 
-      // Сохранить обновлённую выемку
+      // Сохранить обратно
       await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
 
-      // Отправить push-уведомления админам о подтверждении
+      // Отправить push-уведомления о подтверждении
       await sendWithdrawalConfirmationNotifications(withdrawal);
 
       res.json({ success: true, withdrawal });
@@ -408,10 +411,10 @@ function registerWithdrawalsAPI(app) {
   // DELETE /api/withdrawals/:id - удалить выемку
   app.delete('/api/withdrawals/:id', async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = sanitizeId(req.params.id);
       const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
 
-      if (!(await fileExists(filePath))) {
+      if (!await fileExists(filePath)) {
         return res.status(404).json({ success: false, error: 'Выемка не найдена' });
       }
 
@@ -423,6 +426,44 @@ function registerWithdrawalsAPI(app) {
       res.status(500).json({ success: false, error: 'Ошибка удаления выемки' });
     }
   });
+
+  // PATCH /api/withdrawals/:id/cancel - отменить выемку
+  app.patch('/api/withdrawals/:id/cancel', async (req, res) => {
+    try {
+      const id = sanitizeId(req.params.id);
+      const { cancelledBy, cancelReason } = req.body;
+      console.log('PATCH /api/withdrawals/:id/cancel', id);
+
+      const filePath = path.join(WITHDRAWALS_DIR, `${id}.json`);
+
+      if (!await fileExists(filePath)) {
+        return res.status(404).json({ success: false, error: 'Withdrawal not found' });
+      }
+
+      const withdrawal = JSON.parse(await fsp.readFile(filePath, 'utf8'));
+
+      if (withdrawal.status === 'cancelled') {
+        return res.status(400).json({
+          success: false,
+          error: 'Withdrawal is already cancelled'
+        });
+      }
+
+      withdrawal.status = 'cancelled';
+      withdrawal.cancelledAt = new Date().toISOString();
+      withdrawal.cancelledBy = cancelledBy || 'unknown';
+      withdrawal.cancelReason = cancelReason || 'No reason provided';
+
+      await fsp.writeFile(filePath, JSON.stringify(withdrawal, null, 2), 'utf8');
+
+      res.json({ success: true, withdrawal });
+    } catch (error) {
+      console.error('Error cancelling withdrawal:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  console.log('✅ Withdrawals API initialized');
 }
 
-module.exports = { registerWithdrawalsAPI };
+module.exports = { setupWithdrawalsAPI, loadAllEmployeesForWithdrawals };

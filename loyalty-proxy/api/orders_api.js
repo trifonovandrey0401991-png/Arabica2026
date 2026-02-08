@@ -1,382 +1,178 @@
 /**
  * Orders API
+ * Заказы клиентов
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
-const fs = require('fs');
 const path = require('path');
+const { sanitizeId, fileExists } = require('../utils/file_helpers');
+const ordersModule = require('../modules/orders');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-
 const ORDERS_DIR = `${DATA_DIR}/orders`;
-const FCM_TOKENS_DIR = `${DATA_DIR}/fcm-tokens`;
 
-/**
- * Sanitize ID — защита от path traversal
- */
-function sanitizeId(id) {
-  if (!id || typeof id !== 'string') return '';
-  return id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-}
-
-/**
- * Sanitize phone — только цифры
- */
-function sanitizePhone(phone) {
-  if (!phone) return '';
-  return phone.replace(/[^\d]/g, '');
-}
-
-// Async helper
-async function fileExists(filePath) {
-  try {
-    await fsp.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Ensure directories exist (async IIFE)
 (async () => {
-  for (const dir of [ORDERS_DIR, FCM_TOKENS_DIR]) {
-    if (!(await fileExists(dir))) {
-      await fsp.mkdir(dir, { recursive: true });
-    }
+  if (!await fileExists(ORDERS_DIR)) {
+    await fsp.mkdir(ORDERS_DIR, { recursive: true });
   }
 })();
 
-// Firebase initialization (sync for require, but needs existsSync for file check)
-let admin = null;
-let firebaseInitialized = false;
-
-try {
-  admin = require('firebase-admin');
-  const serviceAccountPath = path.join(__dirname, '..', 'firebase-service-account.json');
-
-  // Using sync here because require() needs sync check
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = require(serviceAccountPath);
-
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-    }
-
-    firebaseInitialized = true;
-    console.log('✅ Firebase Admin SDK инициализирован');
-  } else {
-    console.warn('⚠️  firebase-service-account.json не найден');
-  }
-} catch (error) {
-  console.warn('⚠️  Firebase не инициализирован:', error.message);
-}
-
-// Helper function to send push notification
-async function sendPushNotification(token, title, body, data = {}) {
-  if (!firebaseInitialized || !admin) {
-    console.log('Firebase не инициализирован, пропуск отправки push');
-    return false;
-  }
-
-  try {
-    const message = {
-      token,
-      notification: { title, body },
-      data: Object.fromEntries(
-        Object.entries(data).map(([k, v]) => [k, String(v)])
-      ),
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channelId: 'orders'
-        }
-      }
-    };
-
-    const response = await admin.messaging().send(message);
-    console.log('✅ Push отправлен:', response);
-    return true;
-  } catch (error) {
-    console.error('❌ Ошибка отправки push:', error.message);
-    return false;
-  }
-}
-
-// Helper to get FCM token by phone
-async function getFcmToken(phone) {
-  const normalizedPhone = phone.replace(/[\s+]/g, '');
-  const filePath = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
-
-  if (await fileExists(filePath)) {
-    try {
-      const data = JSON.parse(await fsp.readFile(filePath, 'utf8'));
-      return data.token;
-    } catch (e) {
-      return null;
-    }
-  }
-  return null;
-}
-
 function setupOrdersAPI(app) {
-  // ===== ORDERS =====
+  // POST /api/orders - создать заказ
+  app.post('/api/orders', async (req, res) => {
+    try {
+      console.log('POST /api/orders', req.body);
+      const { clientPhone, clientName, shopAddress, items, totalPrice, comment } = req.body;
+      const normalizedPhone = clientPhone.replace(/[\s+]/g, '');
 
+      const order = await ordersModule.createOrder({
+        clientPhone: normalizedPhone,
+        clientName,
+        shopAddress,
+        items,
+        totalPrice,
+        comment
+      });
+
+      console.log(`✅ Создан заказ #${order.orderNumber} от ${clientName}`);
+      res.json({ success: true, order });
+    } catch (err) {
+      console.error('❌ Ошибка создания заказа:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // GET /api/orders - получить заказы (с фильтрацией по clientPhone)
   app.get('/api/orders', async (req, res) => {
     try {
-      console.log('GET /api/orders');
-      const { shopAddress, status, date } = req.query;
-      const orders = [];
-
-      if (await fileExists(ORDERS_DIR)) {
-        const files = (await fsp.readdir(ORDERS_DIR)).filter(f => f.endsWith('.json'));
-
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(ORDERS_DIR, file), 'utf8');
-            const order = JSON.parse(content);
-
-            if (shopAddress && order.shopAddress !== shopAddress) continue;
-            if (status && order.status !== status) continue;
-            if (date && !order.createdAt?.startsWith(date)) continue;
-
-            orders.push(order);
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
-        }
+      console.log('GET /api/orders', req.query);
+      const filters = {};
+      if (req.query.clientPhone) {
+        filters.clientPhone = req.query.clientPhone.replace(/[\s+]/g, '');
       }
+      if (req.query.status) filters.status = req.query.status;
+      if (req.query.shopAddress) filters.shopAddress = req.query.shopAddress;
 
-      orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const orders = await ordersModule.getOrders(filters);
       res.json({ success: true, orders });
+    } catch (err) {
+      console.error('❌ Ошибка получения заказов:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // GET /api/orders/unviewed-count - получить количество непросмотренных заказов
+  // ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
+  app.get('/api/orders/unviewed-count', async (req, res) => {
+    try {
+      console.log('GET /api/orders/unviewed-count');
+      const counts = await ordersModule.getUnviewedOrdersCounts();
+      res.json({
+        success: true,
+        rejected: counts.rejected,
+        unconfirmed: counts.unconfirmed,
+        total: counts.total
+      });
     } catch (error) {
+      console.error('Ошибка получения непросмотренных заказов:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.post('/api/orders', async (req, res) => {
+  // POST /api/orders/mark-viewed/:type - отметить заказы как просмотренные
+  // ВАЖНО: этот route должен быть ПЕРЕД /api/orders/:id
+  app.post('/api/orders/mark-viewed/:type', async (req, res) => {
     try {
-      const order = req.body;
-      console.log('POST /api/orders:', order.shopAddress);
+      const { type } = req.params;
+      console.log('POST /api/orders/mark-viewed/' + type);
 
-      if (!order.id) {
-        order.id = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (type !== 'rejected' && type !== 'unconfirmed') {
+        return res.status(400).json({
+          success: false,
+          error: 'Incorrect type: should be rejected or unconfirmed'
+        });
       }
 
-      order.createdAt = order.createdAt || new Date().toISOString();
-      order.status = order.status || 'pending';
+      const success = await ordersModule.saveLastViewedAt(type, new Date());
+      res.json({ success });
+    } catch (error) {
+      console.error('Ошибка отметки заказов как просмотренных:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 
-      const filePath = path.join(ORDERS_DIR, `${order.id}.json`);
-      await fsp.writeFile(filePath, JSON.stringify(order, null, 2), 'utf8');
+  // GET /api/orders/:id - получить заказ по ID
+  app.get('/api/orders/:id', async (req, res) => {
+    try {
+      const id = sanitizeId(req.params.id);
+      console.log('GET /api/orders/:id', id);
+
+      const orderFile = path.join(ORDERS_DIR, `${id}.json`);
+
+      if (!await fileExists(orderFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Заказ не найден'
+        });
+      }
+
+      const content = await fsp.readFile(orderFile, 'utf8');
+      const order = JSON.parse(content);
 
       res.json({ success: true, order });
     } catch (error) {
+      console.error('Ошибка получения заказа:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.get('/api/orders/:orderId', async (req, res) => {
+  // PATCH /api/orders/:id - обновить статус заказа
+  app.patch('/api/orders/:id', async (req, res) => {
     try {
-      const orderId = sanitizeId(req.params.orderId);
-      console.log('GET /api/orders/:orderId', orderId);
+      const id = sanitizeId(req.params.id);
+      const updates = {};
 
-      const filePath = path.join(ORDERS_DIR, `${orderId}.json`);
+      if (req.body.status) updates.status = req.body.status;
+      if (req.body.acceptedBy) updates.acceptedBy = req.body.acceptedBy;
+      if (req.body.rejectedBy) updates.rejectedBy = req.body.rejectedBy;
+      if (req.body.rejectionReason) updates.rejectionReason = req.body.rejectionReason;
 
-      if (await fileExists(filePath)) {
-        const data = await fsp.readFile(filePath, 'utf8');
-        const order = JSON.parse(data);
-        res.json({ success: true, order });
-      } else {
-        res.status(404).json({ success: false, error: 'Order not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      const order = await ordersModule.updateOrderStatus(id, updates);
+      console.log(`✅ Заказ #${order.orderNumber} обновлен: ${updates.status}`);
+      res.json({ success: true, order });
+    } catch (err) {
+      console.error('❌ Ошибка обновления заказа:', err);
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 
-  app.put('/api/orders/:orderId', async (req, res) => {
+  // DELETE /api/orders/:id - удалить заказ
+  app.delete('/api/orders/:id', async (req, res) => {
     try {
-      const orderId = sanitizeId(req.params.orderId);
-      const updates = req.body;
-      console.log('PUT /api/orders/:orderId', orderId);
+      const id = sanitizeId(req.params.id);
+      console.log('DELETE /api/orders/:id', id);
 
-      const filePath = path.join(ORDERS_DIR, `${orderId}.json`);
+      const orderFile = path.join(ORDERS_DIR, `${id}.json`);
 
-      if (!(await fileExists(filePath))) {
-        return res.status(404).json({ success: false, error: 'Order not found' });
+      if (!await fileExists(orderFile)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Заказ не найден'
+        });
       }
 
-      const data = await fsp.readFile(filePath, 'utf8');
-      const order = JSON.parse(data);
-      const updated = { ...order, ...updates, updatedAt: new Date().toISOString() };
+      await fsp.unlink(orderFile);
 
-      await fsp.writeFile(filePath, JSON.stringify(updated, null, 2), 'utf8');
-      res.json({ success: true, order: updated });
+      res.json({ success: true, message: 'Заказ удален' });
     } catch (error) {
+      console.error('Ошибка удаления заказа:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  app.delete('/api/orders/:orderId', async (req, res) => {
-    try {
-      const orderId = sanitizeId(req.params.orderId);
-      console.log('DELETE /api/orders/:orderId', orderId);
-
-      const filePath = path.join(ORDERS_DIR, `${orderId}.json`);
-
-      if (await fileExists(filePath)) {
-        await fsp.unlink(filePath);
-        res.json({ success: true });
-      } else {
-        res.status(404).json({ success: false, error: 'Order not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // ===== FCM TOKENS =====
-
-  app.get('/api/fcm-tokens', async (req, res) => {
-    try {
-      console.log('GET /api/fcm-tokens');
-      const tokens = [];
-
-      if (await fileExists(FCM_TOKENS_DIR)) {
-        const files = (await fsp.readdir(FCM_TOKENS_DIR)).filter(f => f.endsWith('.json'));
-
-        for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(FCM_TOKENS_DIR, file), 'utf8');
-            tokens.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
-          }
-        }
-      }
-
-      res.json({ success: true, tokens });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.post('/api/fcm-tokens', async (req, res) => {
-    try {
-      const tokenData = req.body;
-      console.log('POST /api/fcm-tokens:', tokenData.phone);
-
-      if (!tokenData.phone || !tokenData.token) {
-        return res.status(400).json({ success: false, error: 'Phone and token required' });
-      }
-
-      const normalizedPhone = tokenData.phone.replace(/[\s+]/g, '');
-      const filePath = path.join(FCM_TOKENS_DIR, `${normalizedPhone}.json`);
-
-      tokenData.phone = normalizedPhone;
-      tokenData.updatedAt = new Date().toISOString();
-
-      await fsp.writeFile(filePath, JSON.stringify(tokenData, null, 2), 'utf8');
-      res.json({ success: true, tokenData });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.delete('/api/fcm-tokens/:phone', async (req, res) => {
-    try {
-      const phone = sanitizePhone(req.params.phone);
-      console.log('DELETE /api/fcm-tokens:', phone);
-
-      const filePath = path.join(FCM_TOKENS_DIR, `${phone}.json`);
-
-      if (await fileExists(filePath)) {
-        await fsp.unlink(filePath);
-        res.json({ success: true });
-      } else {
-        res.status(404).json({ success: false, error: 'Token not found' });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // ===== SEND PUSH NOTIFICATION =====
-
-  app.post('/api/send-push', async (req, res) => {
-    try {
-      const { phone, title, body, data } = req.body;
-      console.log('POST /api/send-push:', phone, title);
-
-      if (!phone || !title) {
-        return res.status(400).json({ success: false, error: 'Phone and title required' });
-      }
-
-      const token = await getFcmToken(phone);
-      if (!token) {
-        return res.status(404).json({ success: false, error: 'FCM token not found for phone' });
-      }
-
-      const sent = await sendPushNotification(token, title, body || '', data || {});
-      res.json({ success: sent });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // ===== BROADCAST PUSH =====
-
-  app.post('/api/send-push/broadcast', async (req, res) => {
-    try {
-      const { title, body, data, phones } = req.body;
-      console.log('POST /api/send-push/broadcast:', title);
-
-      if (!title) {
-        return res.status(400).json({ success: false, error: 'Title required' });
-      }
-
-      let sent = 0;
-      let failed = 0;
-
-      // Get all tokens or filter by phones
-      const tokensToSend = [];
-
-      if (phones && phones.length > 0) {
-        for (const phone of phones) {
-          const token = await getFcmToken(phone);
-          if (token) tokensToSend.push(token);
-        }
-      } else {
-        // Send to all
-        if (await fileExists(FCM_TOKENS_DIR)) {
-          const files = (await fsp.readdir(FCM_TOKENS_DIR)).filter(f => f.endsWith('.json'));
-          for (const file of files) {
-            try {
-              const content = await fsp.readFile(path.join(FCM_TOKENS_DIR, file), 'utf8');
-              const tokenData = JSON.parse(content);
-              if (tokenData.token) tokensToSend.push(tokenData.token);
-            } catch (e) {}
-          }
-        }
-      }
-
-      for (const token of tokensToSend) {
-        const success = await sendPushNotification(token, title, body || '', data || {});
-        if (success) sent++;
-        else failed++;
-      }
-
-      res.json({ success: true, sent, failed, total: tokensToSend.length });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  console.log('✅ Orders & FCM API initialized');
+  console.log('✅ Orders API initialized');
 }
 
-module.exports = { setupOrdersAPI, sendPushNotification, getFcmToken };
+module.exports = { setupOrdersAPI };

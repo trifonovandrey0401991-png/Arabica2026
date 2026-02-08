@@ -2,141 +2,401 @@
  * Work Schedule API
  * Графики работы и шаблоны
  *
- * REFACTORED: Converted from sync to async I/O (2026-02-05)
+ * REWRITTEN: Exact match with index.js inline code (2026-02-08)
  */
 
 const fsp = require('fs').promises;
 const path = require('path');
+const { fileExists } = require('../utils/file_helpers');
 
 const DATA_DIR = process.env.DATA_DIR || '/var/www';
-const WORK_SCHEDULES_DIR = path.join(DATA_DIR, 'work-schedules');
-const WORK_SCHEDULE_TEMPLATES_DIR = path.join(DATA_DIR, 'work-schedule-templates');
+const WORK_SCHEDULES_DIR = `${DATA_DIR}/work-schedules`;
+const WORK_SCHEDULE_TEMPLATES_DIR = `${DATA_DIR}/work-schedule-templates`;
+const EMPLOYEES_DIR = `${DATA_DIR}/employees`;
 
-// Async helper
-async function fileExists(filePath) {
+// Создаем директории, если их нет
+(async () => {
+  if (!await fileExists(WORK_SCHEDULES_DIR)) {
+    await fsp.mkdir(WORK_SCHEDULES_DIR, { recursive: true });
+  }
+  if (!await fileExists(WORK_SCHEDULE_TEMPLATES_DIR)) {
+    await fsp.mkdir(WORK_SCHEDULE_TEMPLATES_DIR, { recursive: true });
+  }
+})();
+
+// Вспомогательная функция для получения файла графика
+function getScheduleFilePath(month) {
+  return path.join(WORK_SCHEDULES_DIR, `${month}.json`);
+}
+
+// Вспомогательная функция для загрузки графика
+async function loadSchedule(month) {
+  const filePath = getScheduleFilePath(month);
+  if (await fileExists(filePath)) {
+    try {
+      const data = await fsp.readFile(filePath, 'utf8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('Ошибка чтения графика:', error);
+      return { month, entries: [] };
+    }
+  }
+  return { month, entries: [] };
+}
+
+// Вспомогательная функция для сохранения графика
+async function saveSchedule(schedule) {
+  const filePath = getScheduleFilePath(schedule.month);
   try {
-    await fsp.access(filePath);
+    await fsp.writeFile(filePath, JSON.stringify(schedule, null, 2), 'utf8');
     return true;
-  } catch {
+  } catch (error) {
+    console.error('Ошибка сохранения графика:', error);
     return false;
   }
 }
 
-// Initialize directories on module load
-(async () => {
-  try {
-    await fsp.mkdir(WORK_SCHEDULES_DIR, { recursive: true });
-    await fsp.mkdir(WORK_SCHEDULE_TEMPLATES_DIR, { recursive: true });
-  } catch (e) {
-    console.error('Failed to create work schedule directories:', e);
-  }
-})();
-
-function setupWorkScheduleAPI(app) {
-  // ===== WORK SCHEDULES =====
-
-  app.get('/api/work-schedule/:shopAddress', async (req, res) => {
+function setupWorkScheduleAPI(app, { sendPushToPhone } = {}) {
+  // GET /api/work-schedule?month=YYYY-MM - получить график на месяц
+  app.get('/api/work-schedule', async (req, res) => {
     try {
-      const { shopAddress } = req.params;
-      const { year, month } = req.query;
-      console.log('GET /api/work-schedule:', shopAddress, year, month);
-
-      const sanitizedAddress = shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
-      const filePath = path.join(WORK_SCHEDULES_DIR, `${sanitizedAddress}_${year}_${month}.json`);
-
-      if (await fileExists(filePath)) {
-        const content = await fsp.readFile(filePath, 'utf8');
-        const schedule = JSON.parse(content);
-        res.json({ success: true, schedule });
-      } else {
-        res.json({ success: true, schedule: { shopAddress, year: parseInt(year), month: parseInt(month), days: {} } });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.post('/api/work-schedule', async (req, res) => {
-    try {
-      const schedule = req.body;
-      console.log('POST /api/work-schedule:', schedule.shopAddress, schedule.year, schedule.month);
-
-      if (!schedule.shopAddress || !schedule.year || !schedule.month) {
-        return res.status(400).json({ success: false, error: 'Shop address, year, and month are required' });
+      const month = req.query.month;
+      if (!month) {
+        return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
       }
 
-      const sanitizedAddress = schedule.shopAddress.replace(/[^a-zA-Z0-9_\-а-яА-ЯёЁ\s,\.]/g, '_');
-      const filePath = path.join(WORK_SCHEDULES_DIR, `${sanitizedAddress}_${schedule.year}_${schedule.month}.json`);
-
-      schedule.updatedAt = new Date().toISOString();
-      await fsp.writeFile(filePath, JSON.stringify(schedule, null, 2), 'utf8');
-
+      const schedule = await loadSchedule(month);
+      console.log(`📥 Загружен график для ${month}: ${schedule.entries.length} записей`);
       res.json({ success: true, schedule });
     } catch (error) {
+      console.error('Ошибка получения графика:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  // ===== WORK SCHEDULE TEMPLATES =====
-
-  app.get('/api/work-schedule-templates', async (req, res) => {
+  // GET /api/work-schedule/employee/:employeeId?month=YYYY-MM - график сотрудника
+  app.get('/api/work-schedule/employee/:employeeId', async (req, res) => {
     try {
-      console.log('GET /api/work-schedule-templates');
+      const employeeId = req.params.employeeId;
+      const month = req.query.month;
+      if (!month) {
+        return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+      }
+
+      const schedule = await loadSchedule(month);
+      const employeeEntries = schedule.entries.filter(e => e.employeeId === employeeId);
+      const employeeSchedule = { month, entries: employeeEntries };
+
+      res.json({ success: true, schedule: employeeSchedule });
+    } catch (error) {
+      console.error('Ошибка получения графика сотрудника:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/work-schedule - создать/обновить смену
+  app.post('/api/work-schedule', async (req, res) => {
+    try {
+      const entry = req.body;
+      if (!entry.month || !entry.employeeId || !entry.date || !entry.shiftType) {
+        return res.status(400).json({
+          success: false,
+          error: 'Не указаны обязательные поля: month, employeeId, date, shiftType'
+        });
+      }
+
+      const month = entry.month;
+      const schedule = await loadSchedule(month);
+
+      // Если есть ID - это обновление существующей записи
+      if (entry.id) {
+        // Удаляем старую запись по ID
+        schedule.entries = schedule.entries.filter(e => e.id !== entry.id);
+      } else {
+        // Новая запись - генерируем ID
+        entry.id = `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // Удаляем возможные дубликаты для этого сотрудника, даты и типа смены
+        schedule.entries = schedule.entries.filter(e =>
+          !(e.employeeId === entry.employeeId &&
+            e.date === entry.date &&
+            e.shiftType === entry.shiftType)
+        );
+      }
+
+      // Добавляем новую запись
+      schedule.entries.push(entry);
+      schedule.month = month;
+
+      if (await saveSchedule(schedule)) {
+        res.json({ success: true, entry });
+
+        // Отправляем push-уведомление сотруднику об изменении в графике
+        try {
+          const employeeFile = path.join(EMPLOYEES_DIR, `${entry.employeeId}.json`);
+          if (await fileExists(employeeFile)) {
+            const employeeData = JSON.parse(await fsp.readFile(employeeFile, 'utf8'));
+            if (employeeData.phone && sendPushToPhone) {
+              const shiftLabels = { morning: 'Утренняя', day: 'Дневная', night: 'Ночная' };
+              const shiftLabel = shiftLabels[entry.shiftType] || entry.shiftType;
+              const dateFormatted = entry.date; // формат YYYY-MM-DD
+              const dateParts = dateFormatted.split('-');
+              const displayDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : dateFormatted;
+
+              await sendPushToPhone(
+                employeeData.phone,
+                'Изменение в графике',
+                `Ваша смена на ${displayDate}: ${shiftLabel}`,
+                { type: 'schedule_change', date: entry.date, shiftType: entry.shiftType }
+              );
+              console.log(`Push-уведомление отправлено сотруднику ${employeeData.name || entry.employeeId} об изменении смены`);
+            }
+          }
+        } catch (pushError) {
+          console.error('Ошибка отправки push-уведомления о смене:', pushError.message);
+          // Не прерываем работу, уведомление не критично
+        }
+      } else {
+        res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения смены:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/work-schedule/clear - очистить весь месяц
+  app.delete('/api/work-schedule/clear', async (req, res) => {
+    try {
+      const month = req.query.month;
+
+      if (!month) {
+        return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+      }
+
+      console.log(`🗑️ Запрос на очистку графика за месяц: ${month}`);
+
+      const schedule = await loadSchedule(month);
+      const entriesCount = schedule.entries.length;
+
+      if (entriesCount === 0) {
+        console.log(`ℹ️ График за ${month} уже пуст`);
+        return res.json({ success: true, message: 'График уже пуст', deletedCount: 0 });
+      }
+
+      // Очищаем все записи
+      schedule.entries = [];
+
+      if (await saveSchedule(schedule)) {
+        console.log(`✅ График за ${month} очищен. Удалено записей: ${entriesCount}`);
+        res.json({
+          success: true,
+          message: `График очищен. Удалено смен: ${entriesCount}`,
+          deletedCount: entriesCount
+        });
+      } else {
+        console.error(`❌ Ошибка сохранения графика при очистке ${month}`);
+        res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
+      }
+    } catch (error) {
+      console.error('Ошибка очистки графика:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/work-schedule/:entryId - удалить смену
+  app.delete('/api/work-schedule/:entryId', async (req, res) => {
+    try {
+      const entryId = req.params.entryId;
+      const month = req.query.month;
+
+      if (!month) {
+        return res.status(400).json({ success: false, error: 'Не указан месяц (month)' });
+      }
+
+      const schedule = await loadSchedule(month);
+      const initialLength = schedule.entries.length;
+      schedule.entries = schedule.entries.filter(e => e.id !== entryId);
+
+      if (schedule.entries.length < initialLength) {
+        if (await saveSchedule(schedule)) {
+          res.json({ success: true, message: 'Смена удалена' });
+        } else {
+          res.status(500).json({ success: false, error: 'Ошибка сохранения графика' });
+        }
+      } else {
+        res.status(404).json({ success: false, error: 'Смена не найдена' });
+      }
+    } catch (error) {
+      console.error('Ошибка удаления смены:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/work-schedule/bulk - массовое создание смен
+  app.post('/api/work-schedule/bulk', async (req, res) => {
+    try {
+      const entries = req.body.entries;
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Не указаны записи (entries)'
+        });
+      }
+
+      console.log(`📥 BULK-создание: получено ${entries.length} записей от клиента`);
+
+      // Проверяем наличие дубликатов во входящих данных
+      const duplicatesCheck = {};
+      entries.forEach((e, i) => {
+        const key = `${e.shopAddress}|${e.date}|${e.shiftType}`;
+        if (duplicatesCheck[key]) {
+          console.log(`⚠️ ДУБЛИКАТ ВО ВХОДЯЩИХ ДАННЫХ [${i}]: ${e.employeeName} → ${e.shopAddress}, ${e.date}, ${e.shiftType}`);
+          console.log(`   Первое вхождение: [${duplicatesCheck[key].index}] ${duplicatesCheck[key].employeeName}`);
+        } else {
+          duplicatesCheck[key] = { index: i, employeeName: e.employeeName };
+        }
+      });
+
+      // Группируем по месяцам
+      const schedulesByMonth = {};
+      for (let index = 0; index < entries.length; index++) {
+        const entry = entries[index];
+        if (!entry.month) {
+          // Извлекаем месяц из даты
+          const date = new Date(entry.date);
+          entry.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        if (!schedulesByMonth[entry.month]) {
+          schedulesByMonth[entry.month] = await loadSchedule(entry.month);
+        }
+
+        // Генерируем уникальный ID, если его нет
+        if (!entry.id) {
+          entry.id = `entry_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+
+        // Удаляем старую запись для этого сотрудника, даты и типа смены, если есть
+        // КРИТИЧНО: Также удаляем дубликаты по магазину+дате+типу смены (независимо от сотрудника)
+        const beforeFilter = schedulesByMonth[entry.month].entries.length;
+
+        schedulesByMonth[entry.month].entries = schedulesByMonth[entry.month].entries.filter(e => {
+          // Удаляем если совпадают: сотрудник + дата + тип смены
+          const sameEmployeeShift = (e.employeeId === entry.employeeId &&
+                                      e.date === entry.date &&
+                                      e.shiftType === entry.shiftType);
+
+          // ИЛИ удаляем если совпадают: магазин + дата + тип смены (дубликат слота)
+          const sameSlot = (e.shopAddress === entry.shopAddress &&
+                            e.date === entry.date &&
+                            e.shiftType === entry.shiftType);
+
+          const shouldRemove = (sameEmployeeShift || sameSlot);
+
+          if (shouldRemove) {
+            console.log(`🗑️ Удаление дубликата: ${e.employeeName} → ${e.shopAddress}, ${e.date}, ${e.shiftType}`);
+            console.log(`   Причина: ${sameEmployeeShift ? 'тот же сотрудник' : ''} ${sameSlot ? 'тот же слот' : ''}`);
+          }
+
+          return !shouldRemove;
+        });
+
+        const afterFilter = schedulesByMonth[entry.month].entries.length;
+        if (beforeFilter !== afterFilter) {
+          console.log(`📉 Фильтрация: было ${beforeFilter} записей, осталось ${afterFilter} (удалено ${beforeFilter - afterFilter})`);
+        }
+
+        // Добавляем новую запись
+        schedulesByMonth[entry.month].entries.push(entry);
+      }
+
+      console.log(`📊 Массовое создание: обработано ${entries.length} записей, сохранено в ${Object.keys(schedulesByMonth).length} месяцах`);
+
+      // Сохраняем все графики
+      let allSaved = true;
+      let totalSaved = 0;
+      for (const month in schedulesByMonth) {
+        const schedule = schedulesByMonth[month];
+        if (await saveSchedule(schedule)) {
+          totalSaved += schedule.entries.length;
+          console.log(`✅ Сохранен график для ${month}: ${schedule.entries.length} записей`);
+        } else {
+          allSaved = false;
+          console.error(`❌ Ошибка сохранения графика для ${month}`);
+        }
+      }
+
+      if (allSaved) {
+        console.log(`✅ Всего сохранено записей в графиках: ${totalSaved}`);
+        res.json({ success: true, message: `Создано ${entries.length} смен, всего в графиках: ${totalSaved}` });
+      } else {
+        res.status(500).json({ success: false, error: 'Ошибка сохранения некоторых графиков' });
+      }
+    } catch (error) {
+      console.error('Ошибка массового создания смен:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/work-schedule/template - сохранить/применить шаблон
+  app.post('/api/work-schedule/template', async (req, res) => {
+    try {
+      const action = req.body.action; // 'save' или 'apply'
+      const template = req.body.template;
+
+      if (action === 'save') {
+        if (!template || !template.name) {
+          return res.status(400).json({
+            success: false,
+            error: 'Не указан шаблон или его название'
+          });
+        }
+
+        // Генерируем ID, если его нет
+        if (!template.id) {
+          template.id = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+
+        const templateFile = path.join(WORK_SCHEDULE_TEMPLATES_DIR, `${template.id}.json`);
+        await fsp.writeFile(templateFile, JSON.stringify(template, null, 2), 'utf8');
+
+        res.json({ success: true, template });
+      } else if (action === 'apply') {
+        // Применение шаблона обрабатывается на клиенте
+        res.json({ success: true, message: 'Шаблон применен' });
+      } else {
+        res.status(400).json({ success: false, error: 'Неизвестное действие' });
+      }
+    } catch (error) {
+      console.error('Ошибка работы с шаблоном:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/work-schedule/template - получить список шаблонов
+  app.get('/api/work-schedule/template', async (req, res) => {
+    try {
       const templates = [];
 
       if (await fileExists(WORK_SCHEDULE_TEMPLATES_DIR)) {
-        const allFiles = await fsp.readdir(WORK_SCHEDULE_TEMPLATES_DIR);
-        const files = allFiles.filter(f => f.endsWith('.json'));
-
+        const files = await fsp.readdir(WORK_SCHEDULE_TEMPLATES_DIR);
         for (const file of files) {
-          try {
-            const content = await fsp.readFile(path.join(WORK_SCHEDULE_TEMPLATES_DIR, file), 'utf8');
-            templates.push(JSON.parse(content));
-          } catch (e) {
-            console.error(`Error reading ${file}:`, e);
+          if (file.endsWith('.json')) {
+            try {
+              const filePath = path.join(WORK_SCHEDULE_TEMPLATES_DIR, file);
+              const data = await fsp.readFile(filePath, 'utf8');
+              const template = JSON.parse(data);
+              templates.push(template);
+            } catch (error) {
+              console.error(`Ошибка чтения шаблона ${file}:`, error);
+            }
           }
         }
       }
 
       res.json({ success: true, templates });
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.post('/api/work-schedule-templates', async (req, res) => {
-    try {
-      const template = req.body;
-      console.log('POST /api/work-schedule-templates:', template.name);
-
-      if (!template.id) {
-        template.id = `template_${Date.now()}`;
-      }
-
-      const filePath = path.join(WORK_SCHEDULE_TEMPLATES_DIR, `${template.id}.json`);
-      template.updatedAt = new Date().toISOString();
-
-      await fsp.writeFile(filePath, JSON.stringify(template, null, 2), 'utf8');
-      res.json({ success: true, template });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.delete('/api/work-schedule-templates/:templateId', async (req, res) => {
-    try {
-      const { templateId } = req.params;
-      console.log('DELETE /api/work-schedule-templates:', templateId);
-
-      const filePath = path.join(WORK_SCHEDULE_TEMPLATES_DIR, `${templateId}.json`);
-
-      if (await fileExists(filePath)) {
-        await fsp.unlink(filePath);
-        res.json({ success: true });
-      } else {
-        res.status(404).json({ success: false, error: 'Template not found' });
-      }
-    } catch (error) {
+      console.error('Ошибка получения шаблонов:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
